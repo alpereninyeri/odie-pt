@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx vite:*)",
+      "Read(//c/Users/PC/AppData/Local/Temp/claude/C--Users-PC-OdiePt/945f4358-2908-4d7b-9e20-307d40dd2207/tasks/**)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel login:*)",
+      "Bash(npm run:*)",
+      "Bash(vercel --prod --yes)",
+      "Bash(vercel --prod --yes --name odie-pt)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel alias:*)",
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
