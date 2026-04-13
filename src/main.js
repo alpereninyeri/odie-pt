@@ -6,6 +6,7 @@ import { renderMuscles, initMuscles } from './components/panel-muscles.js'
 import { renderSkills, initSkills } from './components/panel-skills.js'
 import { renderHealth, initHealth } from './components/panel-health.js'
 import { renderQuests, initQuests } from './components/panel-quests.js'
+import { renderCoach, initCoach } from './components/panel-coach.js'
 import { initModal, closeModal } from './components/modal.js'
 
 // Expose closeModal globally for inline onclick in modal HTML
@@ -17,6 +18,7 @@ const tabs = [
   { key: 'skills',  label: '⚔️ Skill' },
   { key: 'health',  label: '❤️ Sağlık' },
   { key: 'quests',  label: '📋 Görevler' },
+  { key: 'coach',   label: '☠ Koç' },
 ]
 
 let activeTab = 'stats'
@@ -49,6 +51,7 @@ function getPanelContent(key) {
     case 'skills':  return renderSkills(profile)
     case 'health':  return renderHealth(profile)
     case 'quests':  return renderQuests(profile)
+    case 'coach':   return renderCoach(profile)
     default:        return ''
   }
 }
@@ -60,6 +63,7 @@ function initActivePanel(key) {
     case 'skills':  initSkills(); break
     case 'health':  initHealth(profile); break
     case 'quests':  initQuests(profile); break
+    case 'coach':   initCoach(profile); break
   }
 }
 

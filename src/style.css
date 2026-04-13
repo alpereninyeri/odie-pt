@@ -241,6 +241,56 @@ body::before { content:''; position:fixed; inset:0; background:radial-gradient(e
 .log-vol { font-family:'Share Tech Mono',monospace; color:var(--gold); font-size:10px; }
 .log-hl { font-size:10px; color:var(--grn); font-family:'Share Tech Mono',monospace; }
 
+/* ══ COACH TERMINAL ══ */
+.coach-terminal { position:relative; background:var(--bg2); border:1px solid var(--brd); overflow:hidden; }
+.coach-scanline { position:absolute; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,#00000018 2px,#00000018 4px); pointer-events:none; z-index:0; }
+
+.coach-header { display:flex; align-items:center; gap:14px; padding:16px 18px; background:var(--bg4); border-bottom:1px solid var(--brd); position:relative; z-index:1; }
+.coach-avatar { width:48px; height:48px; border-radius:50%; border:2px solid var(--red); background:radial-gradient(circle at 35% 35%,#2a0000,#0d0d12); display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 0 20px #e0525230; flex-shrink:0; animation:axiomPulse 3s ease-in-out infinite; }
+@keyframes axiomPulse { 0%,100%{box-shadow:0 0 20px #e0525230;} 50%{box-shadow:0 0 35px #e0525260;} }
+.coach-npc-info { flex:1; }
+.coach-npc-name { font-family:'Cinzel',serif; font-size:16px; font-weight:900; color:var(--red); letter-spacing:4px; }
+.coach-npc-sub { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:1px; margin-top:2px; }
+.coach-meta { text-align:right; flex-shrink:0; }
+.coach-date { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--gold); }
+.coach-session { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); margin-top:2px; }
+
+.coach-body { padding:14px 16px; min-height:200px; position:relative; z-index:1; display:flex; flex-direction:column; gap:0; }
+.coach-init-line { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--dim); padding:8px 0; display:flex; align-items:center; gap:4px; }
+.coach-blink { animation:coachBlink 1s step-end infinite; color:var(--gold); }
+@keyframes coachBlink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+.coach-section { border:1px solid transparent; margin-bottom:10px; opacity:.35; transition:opacity .3s, border-color .3s; }
+.coach-section.active { opacity:1; }
+.coach-section[data-mood="fire"].active   { border-color:#e08c5240; }
+.coach-section[data-mood="warning"].active{ border-color:#f0a50040; }
+.coach-section[data-mood="danger"].active { border-color:#e0525240; }
+.coach-section[data-mood="calm"].active   { border-color:#52e09a40; }
+
+.coach-sec-head { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg3); border-bottom:1px solid var(--brd); }
+.coach-section[data-mood="fire"]    .coach-sec-head { background:#e08c5210; }
+.coach-section[data-mood="warning"] .coach-sec-head { background:#f0a50010; }
+.coach-section[data-mood="danger"]  .coach-sec-head { background:#e0525210; }
+.coach-section[data-mood="calm"]    .coach-sec-head { background:#52e09a10; }
+
+.coach-sec-icon { font-size:13px; flex-shrink:0; }
+.coach-sec-title { font-family:'Cinzel',serif; font-size:10px; letter-spacing:3px; color:var(--txt); flex:1; }
+.coach-sec-status { font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:2px; color:var(--dim); border:1px solid var(--brd); padding:2px 6px; }
+.coach-sec-status.done { color:var(--grn); border-color:#52e09a40; background:#52e09a08; }
+
+.coach-sec-body { padding:10px 12px; min-height:4px; }
+.coach-line { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); line-height:1.7; white-space:pre-wrap; }
+.coach-line:empty { height:6px; }
+.coach-section[data-mood="fire"]    .coach-line { color:#e0c090; }
+.coach-section[data-mood="warning"] .coach-line { color:#d4b870; }
+.coach-section[data-mood="danger"]  .coach-line { color:#e08888; }
+.coach-section[data-mood="calm"]    .coach-line { color:#88c8a8; }
+
+.coach-footer { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--bg4); border-top:1px solid var(--brd); position:relative; z-index:1; }
+.coach-skip-btn { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--dim); background:transparent; border:1px solid var(--brd); padding:5px 12px; cursor:pointer; transition:all .2s; }
+.coach-skip-btn:hover { color:var(--gold); border-color:var(--gold); background:#f0a50010; }
+.coach-xp-badge { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--gold); letter-spacing:1px; }
+
 @media(max-width:600px) {
   .gstats { grid-template-columns:repeat(2,1fr); }
   .ach-grid { grid-template-columns:repeat(3,1fr); }
