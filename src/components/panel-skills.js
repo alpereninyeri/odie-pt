@@ -27,14 +27,13 @@ export function renderSkills(p) {
       <div class="sbranch">
         <div class="sbhead">
           ${branch.branch}
-          <span style="margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim)">${doneCount}/${total} UNLOCKED</span>
+          <span class="sbhead-counter">${doneCount}/${total} UNLOCKED</span>
           ${branch.warning ? '<span class="sbhead-warn">⚠ DIKKAT</span>' : ''}
         </div>
         <div class="slist">${items}</div>
       </div>`
   }).join('')
 
-  // Progress summary
   const allItems = p.skills.flatMap(b => b.items)
   const totalDone = allItems.filter(i => i.status === 'done').length
   const totalProg = allItems.filter(i => i.status === 'prog').length
@@ -42,18 +41,18 @@ export function renderSkills(p) {
 
   return `
     <div class="sec">Skill Ağacı ve Hedefler</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px">
-      <div style="background:var(--bg3);border:1px solid var(--brd);padding:10px;text-align:center">
-        <div style="font-family:'Cinzel',serif;font-size:20px;color:var(--grn)">${totalDone}</div>
-        <div style="font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-top:2px">Unlocked</div>
+    <div class="skill-summary">
+      <div class="skill-summary-card">
+        <div class="skill-summary-val" style="color:var(--grn)">${totalDone}</div>
+        <div class="skill-summary-lbl">Unlocked</div>
       </div>
-      <div style="background:var(--bg3);border:1px solid var(--brd);padding:10px;text-align:center">
-        <div style="font-family:'Cinzel',serif;font-size:20px;color:var(--gold)">${totalProg}</div>
-        <div style="font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-top:2px">In Progress</div>
+      <div class="skill-summary-card">
+        <div class="skill-summary-val" style="color:var(--gold)">${totalProg}</div>
+        <div class="skill-summary-lbl">In Progress</div>
       </div>
-      <div style="background:var(--bg3);border:1px solid var(--brd);padding:10px;text-align:center">
-        <div style="font-family:'Cinzel',serif;font-size:20px;color:var(--dim)">${totalLock}</div>
-        <div style="font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-top:2px">Locked</div>
+      <div class="skill-summary-card">
+        <div class="skill-summary-val" style="color:var(--dim)">${totalLock}</div>
+        <div class="skill-summary-lbl">Locked</div>
       </div>
     </div>
     ${branches}`

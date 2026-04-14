@@ -12,6 +12,23 @@ import { initModal, closeModal } from './components/modal.js'
 // Expose closeModal globally for inline onclick in modal HTML
 window.__closeModal = closeModal
 
+// ── Theme ──
+function initTheme() {
+  const saved = localStorage.getItem('odiept-theme') || 'dark'
+  document.documentElement.setAttribute('data-theme', saved)
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark'
+  const next = current === 'dark' ? 'light' : 'dark'
+  document.documentElement.setAttribute('data-theme', next)
+  localStorage.setItem('odiept-theme', next)
+  const icon = document.getElementById('themeIcon')
+  if (icon) icon.textContent = next === 'dark' ? '🌙' : '☀️'
+  const label = document.getElementById('themeLabel')
+  if (label) label.textContent = next === 'dark' ? 'DARK' : 'LIGHT'
+}
+initTheme()
+
 const tabs = [
   { key: 'stats',   label: '📊 Stats' },
   { key: 'muscles', label: '💪 Kas' },
@@ -24,6 +41,7 @@ const tabs = [
 let activeTab = 'stats'
 
 function renderApp() {
+  const theme = document.documentElement.getAttribute('data-theme') || 'dark'
   const tabButtons = tabs.map(t => `
     <button class="tab ${activeTab === t.key ? 'active' : ''}" data-tab="${t.key}">${t.label}</button>
   `).join('')
@@ -38,10 +56,15 @@ function renderApp() {
       <div class="modal" id="modalContent"></div>
     </div>
     <div class="wrap">
+      <button class="theme-toggle" id="themeToggle">
+        <span id="themeIcon">${theme === 'dark' ? '🌙' : '☀️'}</span>
+        <span class="theme-toggle-label" id="themeLabel">${theme === 'dark' ? 'DARK' : 'LIGHT'}</span>
+      </button>
       ${renderHeader(profile)}
       <div class="tabs">${tabButtons}</div>
       ${panels}
-    </div>`
+    </div>
+    <button class="coach-fab ${activeTab === 'coach' ? 'hidden' : ''}" id="coachFab">☠</button>`
 }
 
 function getPanelContent(key) {
@@ -79,6 +102,10 @@ function switchTab(key) {
     p.classList.toggle('active', p.id === `panel-${key}`)
   })
 
+  // Show/hide FAB
+  const fab = document.getElementById('coachFab')
+  if (fab) fab.classList.toggle('hidden', key === 'coach')
+
   initActivePanel(key)
 }
 
@@ -88,8 +115,12 @@ initModal()
 initHeader(profile)
 initStats(profile)
 
-// Tab click events
+// Event delegation
 document.addEventListener('click', e => {
   const tab = e.target.closest('[data-tab]')
-  if (tab) switchTab(tab.dataset.tab)
+  if (tab) { switchTab(tab.dataset.tab); return }
+
+  if (e.target.closest('#themeToggle')) { toggleTheme(); return }
+
+  if (e.target.closest('#coachFab')) { switchTab('coach'); return }
 })
