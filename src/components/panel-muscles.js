@@ -56,11 +56,11 @@ export function initMuscles() {
     }, 150)
   })
 
-  // Accordion toggle — delegated, guard against double-init
+  // Accordion toggle — delegated, always re-bind on re-render
   const panel = document.getElementById('panel-muscles')
-  if (!panel || panel.dataset.initialized) return
-  panel.dataset.initialized = 'true'
-  panel.addEventListener('click', e => {
+  if (!panel) return
+  panel.removeEventListener('click', panel._musclesHandler)
+  panel._musclesHandler = e => {
     const row = e.target.closest('[data-muscle]')
     if (!row) return
     const idx = row.dataset.muscle
@@ -70,5 +70,6 @@ export function initMuscles() {
     document.querySelectorAll('.mrow.open').forEach(r => r.classList.remove('open'))
     document.querySelectorAll('.mdet.open').forEach(d => d.classList.remove('open'))
     if (!isOpen) { row.classList.add('open'); det.classList.add('open') }
-  })
+  }
+  panel.addEventListener('click', panel._musclesHandler)
 }

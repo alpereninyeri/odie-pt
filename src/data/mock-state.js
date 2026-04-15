@@ -1,0 +1,188 @@
+// Mock state — Supabase bağlantısı olmadan tüm sistemi test etmek için.
+// store.js bu dosyayı VITE_SUPABASE_URL tanımlanmamışsa kullanır.
+
+export const MOCK_STATE = {
+  profile: {
+    nick: 'SenUzulme27',
+    handle: '@senuzulme27',
+    rank: 'Silver III',
+    rankIcon: '🥉',
+    class: 'Calisthenic Warrior',
+    subClass: 'Acrobatic Sub-Class',
+    avatar: '🥷',
+    level: 4,
+    xp: { current: 1340, max: 2000 },
+    sessions: 52,
+    totalVolumeKg: 213000,
+    totalSets: 975,
+    totalMinutes: 2678,
+    totalVolume: '213k kg',
+    totalTime: '44h 38min',
+    stats: { str: 78, agi: 77, end: 73, dex: 68, con: 12, sta: 63 },
+    streak: {
+      current: 3,
+      max: 7,
+      multiplier: 1.1,
+      label: '🔥 Ateşlendi',
+      lastWorkoutDate: '2026-04-13',
+    },
+    lastUpdated: '2026-04-13T18:30:00Z',
+  },
+
+  workouts: [
+    {
+      id: 'w52',
+      date: '2026-04-13',
+      type: 'Parkour',
+      durationMin: 150,
+      volumeKg: 0,
+      sets: 0,
+      highlight: 'Front Flip tekrar + Barani deneme, 2.5h',
+      exercises: [],
+      xpEarned: 132,
+      xpMultiplier: 1.1,
+      hasPr: false,
+    },
+    {
+      id: 'w51',
+      date: '2026-04-13',
+      type: 'Yürüyüş',
+      durationMin: 90,
+      volumeKg: 0,
+      sets: 0,
+      highlight: '1.5h yürüyüş, 12.292 adım',
+      exercises: [],
+      xpEarned: 44,
+      xpMultiplier: 1.1,
+      hasPr: false,
+    },
+    {
+      id: 'w50',
+      date: '2026-04-12',
+      type: 'Push',
+      durationMin: 65,
+      volumeKg: 4500,
+      sets: 20,
+      highlight: 'Bench 60kg x 7 — Rekor',
+      exercises: [
+        { name: 'Bench Press',    sets: [{ reps: 7, weightKg: 60 }, { reps: 6, weightKg: 60 }, { reps: 5, weightKg: 60 }] },
+        { name: 'OHP',            sets: [{ reps: 8, weightKg: 40 }, { reps: 7, weightKg: 40 }, { reps: 6, weightKg: 40 }] },
+        { name: 'Dips',           sets: [{ reps: 12 }, { reps: 11 }, { reps: 10 }] },
+        { name: 'Lateral Raise',  sets: [{ reps: 12, weightKg: 10 }, { reps: 12, weightKg: 10 }] },
+      ],
+      xpEarned: 110,
+      xpMultiplier: 1.1,
+      hasPr: true,
+    },
+    {
+      id: 'w49',
+      date: '2026-04-11',
+      type: 'Pull',
+      durationMin: 55,
+      volumeKg: 3200,
+      sets: 18,
+      highlight: 'Muscle-Up ×3 clean',
+      exercises: [
+        { name: 'Muscle-Up',      sets: [{ reps: 3 }, { reps: 2 }, { reps: 2 }] },
+        { name: 'Pull-Up',        sets: [{ reps: 10 }, { reps: 9 }, { reps: 8 }] },
+        { name: 'Dead Hang',      sets: [{ durationSec: 80 }, { durationSec: 70 }] },
+        { name: 'Barbell Row',    sets: [{ reps: 8, weightKg: 50 }, { reps: 8, weightKg: 50 }] },
+      ],
+      xpEarned: 100,
+      xpMultiplier: 1.0,
+      hasPr: false,
+    },
+    {
+      id: 'w48',
+      date: '2026-04-09',
+      type: 'Akrobasi',
+      durationMin: 80,
+      volumeKg: 0,
+      sets: 0,
+      highlight: 'Barani ilk tutarlı denemeler',
+      exercises: [],
+      xpEarned: 120,
+      xpMultiplier: 1.0,
+      hasPr: false,
+    },
+  ],
+
+  dailyLogs: [
+    { date: '2026-04-14', waterMl: 1500, sleepHours: 7.2, steps: 8420, mood: 4 },
+    { date: '2026-04-13', waterMl: 2100, sleepHours: 6.8, steps: 12292, mood: 5 },
+    { date: '2026-04-12', waterMl: 1800, sleepHours: 7.0, steps: 9100,  mood: 4 },
+    { date: '2026-04-11', waterMl: 2200, sleepHours: 7.5, steps: 11500, mood: 5 },
+    { date: '2026-04-10', waterMl: 1600, sleepHours: 6.5, steps: 7800,  mood: 3 },
+    { date: '2026-04-09', waterMl: 2000, sleepHours: 8.0, steps: 10200, mood: 5 },
+    { date: '2026-04-08', waterMl: 1700, sleepHours: 7.2, steps: 9800,  mood: 4 },
+  ],
+
+  prs: {
+    'Bench Press':   { weightKg: 60, reps: 7, score: 420, date: '2026-04-12' },
+    'OHP':           { weightKg: 40, reps: 8, score: 320, date: '2026-04-12' },
+    'Barbell Row':   { weightKg: 50, reps: 8, score: 400, date: '2026-04-11' },
+    'Muscle-Up':     { reps: 3,              score: 3,   date: '2026-04-11' },
+    'Dead Hang':     { durationSec: 80,      score: 80,  date: '2026-04-11' },
+    'Jump Squat':    { reps: 15,             score: 15,  date: '2026-04-09' },
+  },
+
+  badges: [
+    { id: 'first_blood',       earnedAt: '2025-12-01', rarity: 'common',    icon: '🩸', name: 'İlk Kan' },
+    { id: 'parkour_initiate',  earnedAt: '2026-01-15', rarity: 'common',    icon: '🏃', name: 'Parkour Başlangıcı' },
+    { id: 'muscle_up',         earnedAt: '2026-02-10', rarity: 'epic',      icon: '💫', name: 'Muscle-Up Üstadı' },
+    { id: 'bench_60',          earnedAt: '2026-04-12', rarity: 'rare',      icon: '🏋️', name: 'Bench 60kg' },
+    { id: 'streak_3',          earnedAt: '2026-04-13', rarity: 'common',    icon: '🔥', name: 'Ateşlendi' },
+    // Kazanılmamış — lock durumu için
+    { id: 'streak_7',          earnedAt: null,          rarity: 'rare',      icon: '🔥🔥', name: 'Yanıyor',        locked: true, req: '7 gün streak' },
+    { id: 'streak_14',         earnedAt: null,          rarity: 'epic',      icon: '💀',   name: 'Durdurulamaz',   locked: true, req: '14 gün streak' },
+    { id: 'streak_30',         earnedAt: null,          rarity: 'legendary', icon: '⚡',   name: 'Efsane',         locked: true, req: '30 gün streak' },
+    { id: 'iron_week',         earnedAt: null,          rarity: 'epic',      icon: '⚙️',  name: 'Iron Week',      locked: true, req: '7 gün üst üste antrenman' },
+    { id: 'pr_hunter',         earnedAt: null,          rarity: 'rare',      icon: '🎯',   name: 'PR Avcısı',      locked: true, req: '5 farklı egzersizde PR (3/5)' },
+    { id: 'core_awakening',    earnedAt: null,          rarity: 'rare',      icon: '⚡',   name: 'Core Uyanışı',   locked: true, req: 'CON 12→25' },
+    { id: 'bench_70',          earnedAt: null,          rarity: 'epic',      icon: '🔩',   name: 'Bench 70kg',     locked: true, req: 'Bench ≥70kg' },
+    { id: 'centurion',         earnedAt: null,          rarity: 'legendary', icon: '🛡️',  name: 'Centurion',      locked: true, req: '100 seans (52/100)' },
+    { id: 'volume_250k',       earnedAt: null,          rarity: 'legendary', icon: '⚖️',  name: 'Volume King',    locked: true, req: '250k kg toplam hacim (213k/250k)' },
+    { id: 'consistency_king',  earnedAt: null,          rarity: 'epic',      icon: '👑',   name: 'Consistency King', locked: true, req: '30 günde 20+ seans' },
+    { id: 'hidden_early_bird', earnedAt: null,          rarity: 'hidden',    icon: '🌅',   name: '???',            locked: true, req: 'Gizli rozet' },
+    { id: 'hidden_midnight',   earnedAt: null,          rarity: 'hidden',    icon: '🌙',   name: '???',            locked: true, req: 'Gizli rozet' },
+  ],
+
+  // Mevcut profile.js verilerinin geri kalanı (panels için)
+  // Bu alanlar profile.js'ten olduğu gibi alınır, store.init() bu mock ile merge eder
+  globalStats: [
+    { val: '12.292', label: 'Ort. Adım/Gün' },
+    { val: '64dk',   label: 'Ort. Egzersiz' },
+    { val: '26/31',  label: 'Egzersiz Halkası' },
+    { val: '17/31',  label: 'Hareket Halkası', red: true },
+  ],
+}
+
+// XP base değerleri (engine.js tarafından import edilir)
+export const XP_BASE = {
+  Push:       100,
+  Pull:       100,
+  Bacak:      100,
+  Parkour:    120,
+  Akrobasi:   120,
+  Shoulder:    80,
+  Stretching:  60,
+  Yürüyüş:    40,
+  Custom:      80,
+}
+
+// XP flat bonuslar
+export const XP_BONUS = {
+  newPr:           50,
+  coreAdded:       20,  // CON < 40 iken core egzersiz eklenmişse
+  doubleSession:   30,  // aynı gün 2. antrenman
+  questComplete:   50,  // ortalama — quest'in kendi ödülüne ek değil
+}
+
+// Streak eşikleri → multiplier
+export const STREAK_TIERS = [
+  { days: 30, multiplier: 2.0,  label: '⚡ Efsane',      badgeId: 'streak_30' },
+  { days: 14, multiplier: 1.5,  label: '💀 Durdurulamaz', badgeId: 'streak_14' },
+  { days:  7, multiplier: 1.25, label: '🔥🔥 Yanıyor',   badgeId: 'streak_7'  },
+  { days:  3, multiplier: 1.1,  label: '🔥 Ateşlendi',   badgeId: 'streak_3'  },
+  { days:  0, multiplier: 1.0,  label: '',                badgeId: null        },
+]

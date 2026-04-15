@@ -1,8 +1,14 @@
 let _onClose = null
 
 export function initModal() {
-  document.getElementById('statModal').addEventListener('click', e => {
-    if (e.target === document.getElementById('statModal')) closeModal()
+  const bg = document.getElementById('statModal')
+  // Backdrop tıklama — event delegation
+  bg.addEventListener('click', e => {
+    if (e.target === bg) closeModal()
+  })
+  // Close butonu — data-close-modal ile markup'tan bağımsız tetikleme
+  bg.addEventListener('click', e => {
+    if (e.target.closest('[data-close-modal]')) closeModal()
   })
 }
 
@@ -50,13 +56,16 @@ function miniBarChart(data, color) {
     </div>`
 }
 
+function _closeBtn() {
+  return `<button class="modal-close" data-close-modal aria-label="Kapat">✕</button>`
+}
+
 export function openStatModal(stat) {
-  const pct = Math.min(100, stat.val)
   const html = `
     <div class="modal-head">
       <span style="font-size:22px">${stat.icon}</span>
       <div class="modal-head-title">${stat.name}</div>
-      <button class="modal-close" onclick="window.__closeModal()">✕</button>
+      ${_closeBtn()}
     </div>
     <div class="modal-body">
       <div class="modal-stat-big" style="color:${stat.color}">
@@ -83,7 +92,7 @@ export function openPerfModal(perf) {
     <div class="modal-head">
       <span style="font-size:22px">${perf.icon}</span>
       <div class="modal-head-title">${perf.name}</div>
-      <button class="modal-close" onclick="window.__closeModal()">✕</button>
+      ${_closeBtn()}
     </div>
     <div class="modal-body">
       <div class="modal-stat-big" style="color:var(--gold);font-size:38px;padding-bottom:8px">${perf.val}</div>
@@ -106,7 +115,7 @@ export function openAvatarModal(p) {
     <div class="modal-head">
       <span style="font-size:22px">${p.avatar}</span>
       <div class="modal-head-title">${p.nick}</div>
-      <button class="modal-close" onclick="window.__closeModal()">✕</button>
+      ${_closeBtn()}
     </div>
     <div class="modal-body">
       <div style="text-align:center;padding:16px 0 12px">

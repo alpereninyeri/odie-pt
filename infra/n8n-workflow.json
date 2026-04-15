@@ -1,0 +1,292 @@
+{
+  "name": "OdiePt — Telegram to Supabase (Mini App)",
+  "active": false,
+  "pinData": {},
+  "versionId": "2",
+  "meta": {
+    "instanceId": "odiept"
+  },
+  "tags": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "Chat ID Filtresi",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [400, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ String($json.message.chat.id) }}",
+              "operation": "equal",
+              "value2": "={{ $env.ALLOWED_CHAT_ID }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "Komut mu Antrenman mi",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ ($json.message.text || '').trim() }}",
+              "operation": "startsWith",
+              "value2": "/"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4",
+      "name": "Mini App Karsilama",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [800, 180],
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "🎮 OdiePt AXIOM aktif. Karakter kartini acmak icin asagidaki butona bas — Telegram icinde tam ekran olarak calisir.\n\nAntrenman eklemek icin bana yaz:\n`bench 62.5 3x5, 70dk push`\n\nAXIOM her antrenmanda XP, streak ve stat hesaplar.",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": "={{ JSON.stringify({ inline_keyboard: [[{ text: '⚔️ Karakter Kartini Ac', web_app: { url: 'https://odie-pt.vercel.app' } }]] }) }}"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "Prompt Hazirla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 420],
+      "parameters": {
+        "jsCode": "const msg = $input.first().json.message.text;\nconst today = new Date().toISOString().slice(0,10);\n\nconst prompt = `Sen AXIOM, OdiePt fitness RPG kocusun. Kullanici mesajini analiz et ve JSON dondur.\\n\\nKullanici mesaji: ${msg}\\n\\nGorev: Mesajdan sunlari cikar:\\n1. date: YYYY-MM-DD formatinda tarih (belirtilmemisse bugun: ${today})\\n2. type: Push/Pull/Shoulder/Parkour/Akrobasi/Bacak/Yuruyus/Stretching/Custom\\n3. duration_min: dakika cinsinden sure (sayi)\\n4. highlight: kisa ozet metin (max 60 karakter)\\n5. exercises: [{name, sets:[{reps, weight_kg, duration_sec}]}]\\n6. coach_reply: Turkce kisa motivasyon (1-2 cumle, emoji olabilir)\\n\\nSadece gecerli JSON dondur, kod blogu kullanma, baska metin ekleme.`;\n\nreturn [{ json: { prompt, userMessage: msg, today } }];"
+      }
+    },
+    {
+      "id": "6",
+      "name": "Gemini Flash",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1000, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: $json.prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.3 } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "7",
+      "name": "Gemini Yaniti Isle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 420],
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst text = raw.candidates[0].content.parts[0].text;\nconst parsed = JSON.parse(text);\nreturn [{ json: parsed }];"
+      }
+    },
+    {
+      "id": "8",
+      "name": "Supabase Profile Oku",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1200, 600],
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "profiles",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "string",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": []
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "2",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "id": "9",
+      "name": "XP Streak Class Hesapla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 420],
+      "parameters": {
+        "jsCode": "const XP_BASE = { Push:100, Pull:100, Bacak:100, Parkour:120, Akrobasi:120, Shoulder:80, Stretching:60, Yuruyus:40, Custom:80 };\nconst parsed = $('Gemini Yaniti Isle').item.json;\nconst profile = $('Supabase Profile Oku').item.json;\n\nconst streakCurrent = profile.streak_current || 0;\nconst lastDate = profile.last_workout_date;\nconst today = parsed.date;\n\nlet newStreak = 1;\nif (lastDate) {\n  const dayDiff = Math.floor((new Date(today) - new Date(lastDate)) / 86400000);\n  if (dayDiff === 0) newStreak = streakCurrent;\n  else if (dayDiff === 1) newStreak = streakCurrent + 1;\n  else if (dayDiff === 2) newStreak = streakCurrent;\n  else newStreak = 1;\n}\n\nlet mult = 1.0;\nif (newStreak >= 30) mult = 2.0;\nelse if (newStreak >= 14) mult = 1.5;\nelse if (newStreak >= 7) mult = 1.25;\nelse if (newStreak >= 3) mult = 1.1;\n\nconst baseXp = XP_BASE[parsed.type] || 80;\nconst xpEarned = Math.round(baseXp * mult);\n\nlet streakLabel = '';\nif (newStreak >= 30) streakLabel = 'Efsane';\nelse if (newStreak >= 14) streakLabel = 'Durdurulamaz';\nelse if (newStreak >= 7) streakLabel = 'Yaniyor';\nelse if (newStreak >= 3) streakLabel = 'Ateslendin';\n\n// Fatigue hesapla — ard arda agir gun\nconst heavyTypes = ['Push','Pull','Bacak','Parkour','Akrobasi'];\nconst isHeavy = heavyTypes.includes(parsed.type);\nlet fatigue = profile.fatigue_current || 0;\nif (isHeavy) fatigue = Math.min(100, fatigue + 25);\nelse fatigue = Math.max(0, fatigue - 15);\n\nlet armor = profile.armor_current || 100;\nif (isHeavy && fatigue >= 75) armor = Math.max(0, armor - 10);\nif (parsed.type === 'Stretching' || parsed.type === 'Yuruyus') armor = Math.min(100, armor + 12);\n\nreturn [{ json: {\n  ...parsed,\n  xpEarned,\n  xpMultiplier: mult,\n  newStreak,\n  streakLabel,\n  profileId: profile.id,\n  currentXp: profile.xp_current || 0,\n  currentSessions: profile.sessions || 0,\n  fatigue,\n  armor,\n  isHeavy\n} }];"
+      }
+    },
+    {
+      "id": "10",
+      "name": "Supabase Workout Ekle",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1600, 320],
+      "parameters": {
+        "operation": "insert",
+        "tableId": "workouts",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "date",          "fieldValue": "={{ $json.date }}" },
+            { "fieldId": "type",          "fieldValue": "={{ $json.type }}" },
+            { "fieldId": "duration_min",  "fieldValue": "={{ $json.duration_min }}" },
+            { "fieldId": "highlight",     "fieldValue": "={{ $json.highlight }}" },
+            { "fieldId": "exercises",     "fieldValue": "={{ JSON.stringify($json.exercises) }}" },
+            { "fieldId": "xp_earned",     "fieldValue": "={{ $json.xpEarned }}" },
+            { "fieldId": "xp_multiplier", "fieldValue": "={{ $json.xpMultiplier }}" }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "2",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "id": "11",
+      "name": "Supabase Profile Guncelle",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1600, 520],
+      "parameters": {
+        "operation": "update",
+        "tableId": "profiles",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.profileId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "sessions",          "fieldValue": "={{ $json.currentSessions + 1 }}" },
+            { "fieldId": "xp_current",        "fieldValue": "={{ $json.currentXp + $json.xpEarned }}" },
+            { "fieldId": "streak_current",    "fieldValue": "={{ $json.newStreak }}" },
+            { "fieldId": "last_workout_date", "fieldValue": "={{ $json.date }}" },
+            { "fieldId": "fatigue_current",   "fieldValue": "={{ $json.fatigue }}" },
+            { "fieldId": "armor_current",     "fieldValue": "={{ $json.armor }}" },
+            { "fieldId": "last_updated",      "fieldValue": "={{ $now.toISO() }}" }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "2",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "id": "12",
+      "name": "Telegram Yanitla",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1820, 420],
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ '✅ Kaydedildi!\\n\\n' + ($json.coach_reply || '') + '\\n\\n⚡ +' + $json.xpEarned + ' XP' + ($json.xpMultiplier > 1 ? ' (x' + $json.xpMultiplier + ')' : '') + '\\n🔥 Streak: ' + $json.newStreak + ' gun' + ($json.streakLabel ? ' — ' + $json.streakLabel : '') + '\\n🛡️ Armor: ' + $json.armor + '/100  |  🧠 Fatigue: ' + $json.fatigue + '/100' }}",
+        "additionalFields": {
+          "reply_markup": "={{ JSON.stringify({ inline_keyboard: [[{ text: '⚔️ Karti Ac', web_app: { url: 'https://odie-pt.vercel.app' } }]] }) }}"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{ "node": "Chat ID Filtresi", "type": "main", "index": 0 }]]
+    },
+    "Chat ID Filtresi": {
+      "main": [
+        [{ "node": "Komut mu Antrenman mi", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Komut mu Antrenman mi": {
+      "main": [
+        [{ "node": "Mini App Karsilama", "type": "main", "index": 0 }],
+        [
+          { "node": "Prompt Hazirla", "type": "main", "index": 0 },
+          { "node": "Supabase Profile Oku", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Prompt Hazirla": {
+      "main": [[{ "node": "Gemini Flash", "type": "main", "index": 0 }]]
+    },
+    "Gemini Flash": {
+      "main": [[{ "node": "Gemini Yaniti Isle", "type": "main", "index": 0 }]]
+    },
+    "Gemini Yaniti Isle": {
+      "main": [[{ "node": "XP Streak Class Hesapla", "type": "main", "index": 0 }]]
+    },
+    "Supabase Profile Oku": {
+      "main": [[{ "node": "XP Streak Class Hesapla", "type": "main", "index": 0 }]]
+    },
+    "XP Streak Class Hesapla": {
+      "main": [[
+        { "node": "Supabase Workout Ekle", "type": "main", "index": 0 },
+        { "node": "Supabase Profile Guncelle", "type": "main", "index": 0 }
+      ]]
+    },
+    "Supabase Workout Ekle": {
+      "main": [[{ "node": "Telegram Yanitla", "type": "main", "index": 0 }]]
+    },
+    "Supabase Profile Guncelle": {
+      "main": [[{ "node": "Telegram Yanitla", "type": "main", "index": 0 }]]
+    }
+  }
+}

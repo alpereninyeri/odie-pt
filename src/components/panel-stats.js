@@ -44,9 +44,10 @@ export function renderStats(p) {
 
 export function initStats(p) {
   const panel = document.getElementById('panel-stats')
-  if (!panel || panel.dataset.initialized) return
-  panel.dataset.initialized = 'true'
-  panel.addEventListener('click', e => {
+  if (!panel) return
+  // Her render'da temiz listener: önce eski handler'ı kaldır, yenisini ekle
+  panel.removeEventListener('click', panel._statsHandler)
+  panel._statsHandler = e => {
     const statEl = e.target.closest('[data-stat-key]')
     if (statEl) {
       const stat = p.stats.find(s => s.key === statEl.dataset.statKey)
@@ -58,5 +59,6 @@ export function initStats(p) {
       const perf = p.performance.find(pr => pr.key === perfEl.dataset.perfKey)
       if (perf) openPerfModal(perf)
     }
-  })
+  }
+  panel.addEventListener('click', panel._statsHandler)
 }

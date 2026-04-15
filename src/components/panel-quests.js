@@ -96,10 +96,13 @@ function renderLog(p) {
 export function initQuests(p) {
   const section = document.getElementById('quest-section')
   if (!section) return
-  section.addEventListener('click', e => {
+  // Her render'da eski handler'ı kaldır, yenisini bağla
+  section.removeEventListener('click', section._questsHandler)
+  section._questsHandler = e => {
     const btn = e.target.closest('[data-qtab]')
     if (!btn) return
     activeQuestTab = btn.dataset.qtab
     section.innerHTML = renderQuestSection(p)
-  })
+  }
+  section.addEventListener('click', section._questsHandler)
 }

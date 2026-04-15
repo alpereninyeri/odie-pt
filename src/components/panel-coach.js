@@ -1,6 +1,9 @@
-let _coachTimer = null
+// Cancellation token: her initCoach çağrısında yeni token üretilir.
+// Tüm async adımlar token'ı kontrol eder — DOM yokken hiçbir şey çalışmaz.
+let _token = 0
 
-// Parse **bold** markup safely
+function _cancelled(t) { return t !== _token }
+
 function _parseMarkup(text) {
   return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
 }
@@ -49,22 +52,30 @@ function _moodIcon(mood) {
 }
 
 export function initCoach(p) {
-  if (_coachTimer) { clearTimeout(_coachTimer); _coachTimer = null }
+  // Her initCoach çağrısında token ilerler — önceki zincir otomatik iptal
+  const myToken = ++_token
 
-  // Delegated skip button
   const skipBtn = document.getElementById('coach-skip')
   if (skipBtn) {
-    skipBtn.onclick = () => _skipAll(p)
+    skipBtn.onclick = () => {
+      ++_token  // skip de zinciri iptal eder
+      _skipAll(p)
+    }
   }
 
-  _coachTimer = setTimeout(() => {
+  setTimeout(() => {
+    if (_cancelled(myToken)) return
     const initLine = document.getElementById('coach-init')
     if (initLine) { initLine.style.transition = 'opacity .4s'; initLine.style.opacity = '0' }
-    _coachTimer = setTimeout(() => _startTransmission(p, 0), 400)
+    setTimeout(() => {
+      if (_cancelled(myToken)) return
+      _startTransmission(p, 0, myToken)
+    }, 400)
   }, 800)
 }
 
-function _startTransmission(p, idx) {
+function _startTransmission(p, idx, token) {
+  if (_cancelled(token)) return
   const cn = p.coachNote
   if (idx >= cn.sections.length) {
     const skipBtn = document.getElementById('coach-skip')
@@ -72,24 +83,26 @@ function _startTransmission(p, idx) {
     return
   }
 
-  const secEl   = document.getElementById(`coach-sec-${idx}`)
-  const bodyEl  = document.getElementById(`coach-sb-${idx}`)
-  const statEl  = document.getElementById(`coach-st-${idx}`)
+  const secEl  = document.getElementById(`coach-sec-${idx}`)
+  const bodyEl = document.getElementById(`coach-sb-${idx}`)
+  const statEl = document.getElementById(`coach-st-${idx}`)
   if (!secEl || !bodyEl) return
 
   secEl.classList.add('active')
   if (statEl) statEl.textContent = 'YAYINDA'
 
-  _typewriterSection(cn.sections[idx].lines, bodyEl, () => {
+  _typewriterSection(cn.sections[idx].lines, bodyEl, token, () => {
+    if (_cancelled(token)) return
     if (statEl) { statEl.textContent = 'TAMAMLANDI'; statEl.classList.add('done') }
-    _coachTimer = setTimeout(() => _startTransmission(p, idx + 1), 300)
+    setTimeout(() => _startTransmission(p, idx + 1, token), 300)
   })
 }
 
-function _typewriterSection(lines, containerEl, onDone) {
+function _typewriterSection(lines, containerEl, token, onDone) {
   let lineIdx = 0
 
   function typeLine() {
+    if (_cancelled(token)) return
     if (lineIdx >= lines.length) { onDone(); return }
 
     const el = document.createElement('div')
@@ -98,29 +111,25 @@ function _typewriterSection(lines, containerEl, onDone) {
 
     const raw = lines[lineIdx]
     if (!raw) {
-      // Empty line — just a spacer
       lineIdx++
-      _coachTimer = setTimeout(typeLine, 60)
+      setTimeout(typeLine, 60)
       return
     }
 
     const parsed = _parseMarkup(raw)
     let charIdx = 0
-    // Strip tags for length counting but render with tags
     const plainText = raw.replace(/\*\*/g, '')
 
     function typeChar() {
+      if (_cancelled(token)) return
       if (charIdx < plainText.length) {
-        // Slice the parsed HTML proportionally — use plain text progress
-        const visibleText = plainText.slice(0, charIdx + 1)
-        // Rebuild with markup applied to visible portion
         el.innerHTML = _parseMarkup(_slicePlainWithMarkup(raw, charIdx + 1))
         charIdx++
-        _coachTimer = setTimeout(typeChar, 14)
+        setTimeout(typeChar, 14)
       } else {
         el.innerHTML = parsed
         lineIdx++
-        _coachTimer = setTimeout(typeLine, 70)
+        setTimeout(typeLine, 70)
       }
     }
     typeChar()
@@ -129,17 +138,11 @@ function _typewriterSection(lines, containerEl, onDone) {
   typeLine()
 }
 
-// Slice original marked-up text to show N plain chars, preserving ** markers
 function _slicePlainWithMarkup(raw, n) {
   let plain = 0
   let i = 0
-  const inBold = []
   while (i < raw.length && plain < n) {
-    if (raw[i] === '*' && raw[i + 1] === '*') {
-      inBold.push(i)
-      i += 2
-      continue
-    }
+    if (raw[i] === '*' && raw[i + 1] === '*') { i += 2; continue }
     plain++
     i++
   }
@@ -147,8 +150,6 @@ function _slicePlainWithMarkup(raw, n) {
 }
 
 function _skipAll(p) {
-  if (_coachTimer) { clearTimeout(_coachTimer); _coachTimer = null }
-
   const initLine = document.getElementById('coach-init')
   if (initLine) initLine.style.display = 'none'
 
