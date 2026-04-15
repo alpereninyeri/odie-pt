@@ -9,7 +9,6 @@ import { renderQuests, initQuests } from './components/panel-quests.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
 import { initModal, closeModal } from './components/modal.js'
 import { openWorkoutForm } from './components/workout-form.js'
-import { renderDailyChecklist, initDailyChecklist } from './components/daily-checklist.js'
 import { renderStatusWidget } from './components/status-widget.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { checkStreakIntact } from './data/streak-engine.js'
@@ -125,7 +124,7 @@ function renderApp() {
 
 function getPanelContent(key, p) {
   switch (key) {
-    case 'stats':   return renderStatusWidget() + renderDailyChecklist() + renderStats(p)
+    case 'stats':   return renderStatusWidget() + renderStats(p)
     case 'muscles': return renderMuscles(p)
     case 'skills':  return renderSkills(p)
     case 'health':  return renderHealth(p)
@@ -140,7 +139,6 @@ function _initPanelForKey(key) {
   switch (key) {
     case 'stats':
       initStats(p)
-      initDailyChecklist()
       break
     case 'muscles': initMuscles(); break
     case 'skills':  initSkills();  break
