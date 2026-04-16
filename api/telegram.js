@@ -16,6 +16,68 @@ const XP_BASE = {
   'Yürüyüş': 40, Yuruyus: 40, Stretching: 60, Custom: 70,
 }
 
+// ── Supabase REST API yardımcıları ────────────────────────────────────────────
+
+function _sbHeaders() {
+  const key = process.env.VITE_SUPABASE_ANON_KEY
+  return {
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+  }
+}
+
+async function sbGet(path) {
+  const url = `${process.env.VITE_SUPABASE_URL}/rest/v1/${path}`
+  const r = await fetch(url, { headers: _sbHeaders() })
+  return r.json()
+}
+
+async function sbPost(table, body) {
+  const url = `${process.env.VITE_SUPABASE_URL}/rest/v1/${table}`
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { ..._sbHeaders(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) {
+    const err = await r.text()
+    throw new Error(`Supabase insert hatası (${table}): ${err}`)
+  }
+}
+
+async function sbPatch(table, filter, body) {
+  const url = `${process.env.VITE_SUPABASE_URL}/rest/v1/${table}?${filter}`
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: _sbHeaders(),
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) {
+    const err = await r.text()
+    throw new Error(`Supabase update hatası (${table}): ${err}`)
+  }
+}
+
+// ── Streak hesapla ─────────────────────────────────────────────────────────────
+
+function calcStreak(lastDateStr, currentStreak) {
+  const today = new Date().toISOString().split('T')[0]
+  if (!lastDateStr) return 1  // ilk antrenman
+  const diff = Math.round((new Date(today) - new Date(lastDateStr)) / 86400000)
+  if (diff === 0) return currentStreak      // bugün zaten çalışmış
+  if (diff === 1) return currentStreak + 1  // ardışık gün
+  return 1  // streak kırıldı, sıfırdan başla
+}
+
+function streakMult(days) {
+  if (days >= 30) return 2.0
+  if (days >= 14) return 1.5
+  if (days >= 7)  return 1.25
+  if (days >= 3)  return 1.1
+  return 1.0
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMPT 1 — PARSE
 // Antrenman metnini yapılandırılmış JSON'a çevirir.
@@ -230,27 +292,64 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true })
   }
 
-  // Antrenman parse + cevap
+  // Antrenman parse + kaydet + cevap
   try {
     console.log(`[bot] Gemini'ye gönderiliyor...`)
     const parsed = await parseWithGemini(text)
     console.log(`[bot] Parse tamam: ${parsed.type}`)
 
-    const baseXP = XP_BASE[parsed.type] || 70
-    const xp     = baseXP + (parsed.has_pr ? 50 : 0)
-    const streak = 4  // TODO: Supabase'den gerçek streak
+    // Supabase'den profili çek
+    const profiles = await sbGet('profiles?select=*&limit=1')
+    const profile  = profiles?.[0]
+    if (!profile) throw new Error('Profil bulunamadı')
 
+    // Streak + XP hesapla
+    const today      = new Date().toISOString().split('T')[0]
+    const streak     = calcStreak(profile.last_workout_date, profile.streak_current || 0)
+    const mult       = streakMult(streak)
+    const baseXP     = XP_BASE[parsed.type] || 70
+    const xp         = Math.round(baseXP * mult) + (parsed.has_pr ? 50 : 0)
+    const totalSets  = (parsed.exercises || []).reduce((s, e) => s + (e.sets || 1), 0)
+
+    // Workout ekle
+    await sbPost('workouts', {
+      profile_id:   profile.id,
+      date:         today,
+      type:         parsed.type,
+      duration_min: parsed.duration_min || null,
+      volume_kg:    parsed.volume_kg    || 0,
+      sets:         totalSets,
+      highlight:    parsed.highlight,
+      exercises:    parsed.exercises    || [],
+      xp_earned:    xp,
+      xp_multiplier: mult,
+      has_pr:       parsed.has_pr       || false,
+    })
+    console.log(`[bot] Workout Supabase'e kaydedildi`)
+
+    // Profili güncelle
+    await sbPatch('profiles', `id=eq.${profile.id}`, {
+      xp_current:       (profile.xp_current || 0) + xp,
+      sessions:         (profile.sessions   || 0) + 1,
+      total_volume_kg:  parseFloat(profile.total_volume_kg || 0) + (parsed.volume_kg || 0),
+      streak_current:   streak,
+      streak_max:       Math.max(profile.streak_max || 0, streak),
+      last_workout_date: today,
+      last_updated:     new Date().toISOString(),
+    })
+    console.log(`[bot] Profil güncellendi. Streak: ${streak}, XP: +${xp}`)
+
+    // Coach yanıtı
     let coachText = ''
     try {
       coachText = await getCoachReply(parsed, xp, streak)
-      console.log(`[bot] Coach yanıtı alındı`)
     } catch (e) {
       console.warn('[bot] Coach yanıtı alınamadı:', e.message)
     }
 
     const reply = formatSummary(parsed, xp, streak, coachText)
     await sendTelegram(chatId, reply)
-    console.log(`[bot] Cevap gönderildi. XP: +${xp}`)
+    console.log(`[bot] Cevap gönderildi`)
 
     return res.status(200).json({ ok: true })
 
