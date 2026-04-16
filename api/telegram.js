@@ -182,21 +182,29 @@ function formatSummary(parsed, xp, streak, coachText) {
 // ── Ana handler ──────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  res.status(200).json({ ok: true })  // Telegram her zaman 200 bekler
-
-  if (req.method !== 'POST') return
+  // GET isteği — endpoint sağlık kontrolü
+  if (req.method !== 'POST') {
+    return res.status(200).json({ ok: true, status: 'OdiePt bot aktif' })
+  }
 
   const update = req.body
   const message = update?.message
-  if (!message?.text) return
+  if (!message?.text) {
+    return res.status(200).json({ ok: true })
+  }
 
   const chatId    = String(message.chat.id)
   const text      = message.text.trim()
   const firstName = message.from?.first_name || 'Sporcu'
 
-  // Güvenlik: sadece senin chat'in
+  // Güvenlik: sadece belirlenmiş chat (boşsa herkese açık)
   const ALLOWED = process.env.TELEGRAM_CHAT_ID
-  if (ALLOWED && chatId !== ALLOWED) return
+  if (ALLOWED && chatId !== ALLOWED) {
+    console.log(`[bot] Yetkisiz chat engellendi: ${chatId}`)
+    return res.status(200).json({ ok: true })
+  }
+
+  console.log(`[bot] Mesaj alındı: "${text.slice(0, 60)}" — chatId: ${chatId}`)
 
   // /start
   if (text === '/start') {
@@ -206,7 +214,7 @@ export default async function handler(req, res) {
       `<i>"bench 62.5kg 3x5, dips 3x12, 70dk push"</i>\n\n` +
       `PR kırdıysa "PR" yaz → +50 XP bonus alırsın.`
     )
-    return
+    return res.status(200).json({ ok: true })
   }
 
   // /help
@@ -219,32 +227,38 @@ export default async function handler(req, res) {
       `• "yürüyüş 45dk"\n\n` +
       `Türler: Push · Pull · Shoulder · Bacak · Parkour · Akrobasi · Yürüyüş · Stretching`
     )
-    return
+    return res.status(200).json({ ok: true })
   }
 
-  // Antrenman kaydet
+  // Antrenman parse + cevap
   try {
-    // 1. Parse et
+    console.log(`[bot] Gemini'ye gönderiliyor...`)
     const parsed = await parseWithGemini(text)
+    console.log(`[bot] Parse tamam: ${parsed.type}`)
+
     const baseXP = XP_BASE[parsed.type] || 70
     const xp     = baseXP + (parsed.has_pr ? 50 : 0)
-    const streak = 4  // TODO: Supabase'den gerçek streak çek
+    const streak = 4  // TODO: Supabase'den gerçek streak
 
-    // 2. AXIOM koç yanıtı (parse ile paralel yapılabilir ama sıralı daha güvenli)
     let coachText = ''
     try {
       coachText = await getCoachReply(parsed, xp, streak)
+      console.log(`[bot] Coach yanıtı alındı`)
     } catch (e) {
       console.warn('[bot] Coach yanıtı alınamadı:', e.message)
-      // Coach başarısız olsa bile antrenman özeti gider
     }
 
-    // 3. Gönder
     const reply = formatSummary(parsed, xp, streak, coachText)
     await sendTelegram(chatId, reply)
+    console.log(`[bot] Cevap gönderildi. XP: +${xp}`)
+
+    return res.status(200).json({ ok: true })
 
   } catch (err) {
-    console.error('[bot] Hata:', err.message)
-    await sendTelegram(chatId, `❌ Hata: <code>${err.message}</code>\n\nTekrar dene.`)
+    console.error('[bot] HATA:', err.message)
+    try {
+      await sendTelegram(chatId, `❌ Hata: <code>${err.message}</code>`)
+    } catch {}
+    return res.status(200).json({ ok: true })
   }
 }
