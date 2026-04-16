@@ -351,7 +351,7 @@ export const profile = {
       {
         id: 'motivate',
         mood: 'fire',
-        title: "AXIOM'DAN NOT",
+        title: "ODIE'DEN NOT",
         lines: [
           '> **53 seans. 4 ay.**',
           '> Bench **40kg → 65kg**. Muscle-Up **0 → 3**. Dead Hang **top %5**.',
@@ -365,7 +365,7 @@ export const profile = {
           '',
           '> 1000 set baraji geçildi. Milestone: gerçek.',
           '> Şimdi CON\'u inşa ediyoruz. Sıra geldi.',
-          '> AXIOM — takipteyim.',
+          '> ODIE — takipteyim.',
         ],
       },
     ],

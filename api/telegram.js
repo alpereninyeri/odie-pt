@@ -86,25 +86,40 @@ function streakMult(days) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildParsePrompt(text) {
-  return `Sen bir fitness veri analistissin. Aşağıdaki Türkçe antrenman mesajını JSON'a çevir.
+  return `Sen titiz bir fitness veri analistisin. Aşağıdaki Türkçe antrenman mesajını EKSİKSİZ JSON'a çevir.
 
-Mesaj: "${text}"
+Mesaj: """${text}"""
 
-Sadece bu JSON formatında yanıt ver, başka hiçbir şey yazma:
+KRİTİK KURALLAR:
+- Her set ayrı ayrı verilmişse (örn. "Set 1: 20kg x 9, Set 2: 20kg x 8, Set 3: 15kg x 10"), HER SET'İ ayrı kaydet. Özetleme, ortalama alma.
+- "3x5 @ 60kg" gibi kısa format varsa 3 özdeş set üret.
+- Süreli set (örn. "L-sit 25sn") → duration_sec alanını doldur, reps null bırak.
+- Ağırlık yoksa (bodyweight) weight_kg = 0.
+- volume_kg = tüm setlerin (weight_kg × reps) toplamı. Bodyweight hareketlerde 0 say.
+- Ağırlık birimi "kg" varsayılan. "lb" geçerse kg'a çevir (×0.453).
+
+SADECE şu JSON'u üret, başka hiçbir şey yazma, markdown code fence kullanma:
 {
   "type": "Push|Pull|Shoulder|Bacak|Parkour|Akrobasi|Yürüyüş|Stretching|Custom",
-  "duration_min": <sayı veya null>,
+  "duration_min": <toplam dakika, sayı veya null>,
   "exercises": [
-    { "name": "<egzersiz adı>", "sets": <sayı veya null>, "reps": <sayı veya null>, "weight_kg": <sayı veya null> }
+    {
+      "name": "<egzersiz adı — kanonik İngilizce veya orijinal>",
+      "sets": [
+        { "reps": <sayı veya null>, "weight_kg": <sayı veya 0>, "duration_sec": <sayı veya null>, "note": "<varsa tempo/rpe/form notu, yoksa ''>" }
+      ]
+    }
   ],
-  "volume_kg": <toplam hacim kg, hesaplanabiliyorsa, değilse null>,
-  "highlight": "<1 cümle özet>",
-  "has_pr": <true/false — "PR" veya "kişisel rekor" geçiyorsa true>
+  "volume_kg": <toplam kaldırılan kg, sayı>,
+  "total_sets": <tüm setlerin sayısı>,
+  "highlight": "<1 cümle — oturumun özeti, PR varsa vurgula>",
+  "has_pr": <true/false — mesajda "PR" / "rekor" / "yeni max" geçerse true>,
+  "notes": "<kullanıcının form/yorgunluk/teknik notları, yoksa ''>"
 }`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROMPT 2 — AXIOM KOÇU
+// PROMPT 2 — Odie KOÇU
 // ⬇️ İSTEDİĞİN GİBİ DEĞİŞTİREBİLİRSİN ⬇️
 //
 // Bu fonksiyon parse edilen antrenman verisini alır ve kısa bir koç yanıtı üretir.
@@ -112,61 +127,125 @@ Sadece bu JSON formatında yanıt ver, başka hiçbir şey yazma:
 // Değişkenler: type, duration_min, has_pr, exercises, streak, xp
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── AXIOM Sistem Promptu (değiştirmek istersen burası) ───────────────────────
+// ── Odie Sistem Promptu (değiştirmek istersen burası) ────────────────────────
 
-const AXIOM_SYSTEM = `You are an elite Hybrid Athletic Performance Coach AI.
+const ODIE_SYSTEM = `Senin adın ODIE. Elit seviyede Hybrid Athletic Performance Coach AI'sın.
 
-All user-facing responses must be in Turkish.
+Tüm kullanıcıya dönük yanıtların TÜRKÇE olmalı. Kendine "Odie" de, asla "AXIOM" veya başka bir isim kullanma.
 
-Your role is to act as a professional performance coach, strength coach, calisthenics coach, climbing-support coach, and movement analyst combined. You are not a generic fitness assistant. You are a persistent coaching system that uses Supabase as the source of truth for historical training data, recovery notes, body metrics, and coaching continuity.
+Rol: Profesyonel performans koçu, kuvvet koçu, calisthenics koçu, tırmanış-destek koçu ve hareket analisti birleşimisin. Jenerik fitness asistanı DEĞİLSİN. Supabase'deki geçmiş antrenman verisini, toparlanma notlarını ve vücut metriklerini bilen, süreklilik taşıyan bir koçluk sistemisin.
 
-CORE ROLE: Help the user become athletic, lean, strong relative to bodyweight, explosive, mobile, resilient, aesthetically impressive. Optimize for hybrid athleticism, not bodybuilding-only outcomes.
+ANA HEDEF: Kullanıcıyı atletik, yağsız, vücut ağırlığına göre güçlü, patlayıcı, mobil, dayanıklı ve estetik bir hibrit atlet yapmak. Vücut geliştirme-odaklı değil — hibrit atletizm optimize edilir.
 
-USER PROFILE:
-- Male, 172 cm, ~70-72 kg
-- Athletic background: fitness, crossfit, parkour, freerunning, climbing, skiing, calisthenics
-- Goal: strong, aesthetic, agile hybrid athlete
-- Wants broad shoulders, strong back, lean core, explosive legs, durable joints
-- Typical training: ~4 days/week, max 80-90 min sessions
-- Gym closed Mondays
+KULLANICI PROFİLİ:
+- Erkek, 172 cm, ~70–72 kg
+- Geçmiş: fitness, crossfit, parkour, freerunning, tırmanış, kayak, calisthenics
+- Hedef: güçlü, estetik, çevik hibrit atlet
+- İster: geniş omuz, güçlü sırt, yağsız core, patlayıcı bacak, dayanıklı eklemler
+- Tipik: haftada ~4 gün, oturum başı 80–90 dk maksimum
+- Pazartesi salon kapalı
 
-COACHING PHILOSOPHY — Prioritize: relative strength, athletic aesthetics, pulling strength, shoulder development, posterior chain, core stiffness and control, joint durability, movement quality, explosiveness.
-Avoid: junk volume, random exercise selection, excessive failure training, generic bodybuilding-only responses.
+KOÇLUK FELSEFESİ — Öncelikler: göreceli kuvvet, atletik estetik, çekiş gücü, omuz gelişimi, arka zincir, core sertliği ve kontrolü, eklem dayanıklılığı, hareket kalitesi, patlayıcılık.
+KAÇIN: gereksiz hacim, rastgele egzersiz seçimi, aşırı failure training, jenerik bodybuilding yanıtlar, boş motivasyon.
 
-STYLE: Direct, sharp, practical, analytical, coach-like, motivating without fake hype. Do real coaching. Do not overpraise poor sessions.`
+STİL: Direkt, keskin, pratik, analitik, koç gibi. Sahte hype yok. Gerçek koçluk yap. Zayıf seansı överse güvenini kaybedersin.
 
-function buildCoachPrompt(parsed, xp, streak, profile) {
-  const exerciseList = parsed.exercises?.length
-    ? parsed.exercises.map(e => `${e.name}${e.weight_kg ? ` ${e.weight_kg}kg` : ''} ${e.sets ? ` ${e.sets}x${e.reps || '?'}` : ''}`).join(', ')
-    : 'egzersiz detayı yok'
+ÇIKTI FORMATI — Her yanıtta hem Telegram mesajı hem site koç raporu üretirsin. Koç raporu sitedeki bu bölümleri besler:
+- SEANS ANALİZİ (ne iyi, ne kötü, neden)
+- PERFORMANS METRİKLERİ (hangi lift'te ilerleme, hangi lift'te regresyon)
+- KOÇ STATİ ANALİZİ (STR/AGI/END/DEX/CON/STA'dan hangisi bu seansla değişti)
+- UYARILAR (ihmal edilen kas grubu, overtraining riski, form riski)
+- SKILL & HEDEF GÜNCELLEMESİ (hangi skill'e yaklaşıldı)
+- SONRAKİ ADIM (somut, tek maddelik tavsiye)
 
-  return `Kullanıcı bugün şu antrenmanı tamamladı:
+Mood seçimi: fire = PR/streak/kalite, calm = normal/tavsiye, warn = ihmal/dengesizlik, danger = kritik (overtraining/yaralanma/0 core ısrarı).`
 
-Antrenman tipi: ${parsed.type}
-Süre: ${parsed.duration_min ? parsed.duration_min + ' dk' : 'belirtilmemiş'}
-Egzersizler: ${exerciseList}
-PR kırdı mı: ${parsed.has_pr ? 'EVET' : 'Hayır'}
-Özet: ${parsed.highlight}
-Streak: ${streak} gün
-Kazanılan XP: +${xp}
-Toplam seans: ${profile?.sessions || '?'}
-
-Bana 2 şey yaz:
-
-1. TELEGRAM_MSG: Telegram'a gidecek kısa koç yanıtı (2-3 cümle, karakter ol, emoji max 3)
-
-2. COACH_NOTE: Sitedeki Koç paneli için JSON rapor. Şu formatta yaz, başka hiçbir şey yazma:
-{
-  "sections": [
-    { "title": "SEANS ANALİZİ", "mood": "fire|calm|warn|danger", "lines": ["satır1", "satır2", "satır3"] },
-    { "title": "SONRAKİ ADIM", "mood": "calm", "lines": ["tavsiye1", "tavsiye2"] }
-  ],
-  "xp_note": "+${xp} XP | Streak: ${streak} gün"
+function _fmtExercises(exercises) {
+  if (!exercises?.length) return '  (egzersiz detayı yok)'
+  return exercises.map(e => {
+    // YENİ format: sets array
+    if (Array.isArray(e.sets)) {
+      const setLines = e.sets.map((s, i) => {
+        const parts = []
+        if (s.weight_kg != null && s.weight_kg !== 0) parts.push(`${s.weight_kg}kg`)
+        else if (s.weight_kg === 0) parts.push('BW')
+        if (s.reps != null) parts.push(`${s.reps} rep`)
+        if (s.duration_sec != null) parts.push(`${s.duration_sec}sn`)
+        if (s.note) parts.push(`(${s.note})`)
+        return `    Set ${i + 1}: ${parts.join(' × ')}`
+      }).join('\n')
+      return `  • ${e.name}\n${setLines}`
+    }
+    // ESKİ format (fallback): sets/reps/weight_kg tekil
+    const parts = [`  • ${e.name}`]
+    if (e.weight_kg) parts.push(`${e.weight_kg}kg`)
+    if (e.sets && e.reps) parts.push(`${e.sets}×${e.reps}`)
+    return parts.join(' ')
+  }).join('\n')
 }
 
-Mood seçimi: fire=başarı/PR/streak, calm=normal/tavsiye, warn=ihmal/uyarı, danger=kritik sorun
+function _fmtRecentWorkouts(recent) {
+  if (!recent?.length) return '(geçmiş yok)'
+  return recent.slice(0, 5).map(w => {
+    const exCount = Array.isArray(w.exercises) ? w.exercises.length : 0
+    return `  - ${w.date} · ${w.type} · ${w.duration_min || 0}dk · ${exCount} hareket · ${w.highlight || ''}`
+  }).join('\n')
+}
 
-Formatı kesinlikle boz ma. TELEGRAM_MSG: ile başla, sonra COACH_NOTE: ile devam et.`
+function buildCoachPrompt(parsed, xp, streak, profile, recentWorkouts = []) {
+  const stats = profile?.stats || {}
+  return `YENİ ANTRENMAN — bugün tamamlandı:
+
+Tip: ${parsed.type}
+Süre: ${parsed.duration_min ? parsed.duration_min + ' dk' : 'belirtilmemiş'}
+Toplam set: ${parsed.total_sets ?? '—'}
+Hacim: ${parsed.volume_kg ? parsed.volume_kg + ' kg' : '—'}
+PR: ${parsed.has_pr ? 'EVET — kutla' : 'yok'}
+Özet: ${parsed.highlight || '—'}
+Kullanıcı notları: ${parsed.notes || '—'}
+
+EGZERSİZLER (HER SET GÖSTERİLDİ — OKU, ÖZETLEME):
+${_fmtExercises(parsed.exercises)}
+
+BAĞLAM:
+- Streak: ${streak} gün
+- Bu seans XP: +${xp}
+- Toplam seans: ${profile?.sessions || '?'}
+- Mevcut statlar: STR ${stats.str ?? '?'} · AGI ${stats.agi ?? '?'} · END ${stats.end ?? '?'} · DEX ${stats.dex ?? '?'} · CON ${stats.con ?? '?'} · STA ${stats.sta ?? '?'}
+
+SON 5 ANTRENMAN:
+${_fmtRecentWorkouts(recentWorkouts)}
+
+GÖREVİN: Gerçek bir koçluk analizi yap. Egzersizlerdeki set-set verileri (yükler, rep'ler, dalgalanmalar, düşüşler) okuman lazım; her set'i ayrı gör. "Rep belirtilmemiş" gibi bir şey yazarsan hatalısın — yukarıda tüm set'ler var.
+
+İKİ BÖLÜM ÜRET — format aynen:
+
+TELEGRAM_MSG:
+(2-3 cümle, direkt Türkçe koç yanıtı. İsmin "Odie". Emoji max 2. Spesifik bir sayı/lift'e referans ver. Sahte hype yok.)
+
+COACH_NOTE:
+{
+  "sections": [
+    { "title": "SEANS ANALİZİ",      "mood": "fire|calm|warn|danger", "lines": ["...", "...", "..."] },
+    { "title": "PERFORMANS METRİKLERİ","mood": "calm|fire|warn",        "lines": ["hangi lift'te ilerleme/regresyon — sayı ver"] },
+    { "title": "KOÇ STAT ANALİZİ",   "mood": "calm|fire|warn",        "lines": ["STR/AGI/END/DEX/CON/STA — bu seansla hangisi nereye gitmeli, kısa"] },
+    { "title": "UYARILAR",           "mood": "warn|danger|calm",      "lines": ["ihmal/overtraining/form uyarısı — 0-2 satır"] },
+    { "title": "SKILL & HEDEF",      "mood": "calm|fire",             "lines": ["hangi skill'e yaklaşıldı, sıradaki hedef"] },
+    { "title": "SONRAKİ ADIM",       "mood": "calm",                  "lines": ["tek somut, ölçülebilir tavsiye"] }
+  ],
+  "stat_deltas":  { "str": 0, "agi": 0, "end": 0, "dex": 0, "con": 0, "sta": 0 },
+  "quest_hints":  ["örn. Core 10 set/hafta — 3/10", "Bacak günü bu hafta eksik"],
+  "warnings":     ["Aktif Sistem Uyarıları paneli için 0-3 kısa uyarı"],
+  "skill_progress": [{ "name": "Muscle-Up", "note": "stabilite iyileşti" }],
+  "xp_note":      "+${xp} XP | Streak: ${streak} gün"
+}
+
+KURALLAR:
+- stat_deltas: bu seans STR/AGI/END/DEX/CON/STA için tahmini mini delta (-2..+3 aralığı). Push = +STR, Parkour = +AGI, Core = +CON, uzun süre = +END.
+- warnings: ihmal edilen kas grubu (örn. "3 gün bacak atlandı"), overtraining (aynı kas arka arkaya), 0 core ısrarı gibi gerçek gözlemler.
+- quest_hints: görevler paneline yansıyacak 1-3 somut ilerleme satırı.
+- JSON'u kesinlikle markdown code fence (\`\`\`) ile sarma. Direkt JSON yaz.
+- Önce TELEGRAM_MSG: sonra COACH_NOTE: — başka bir şey yok.`
 }
 
 // ── Gemini çağrısı ────────────────────────────────────────────────────────────
@@ -205,10 +284,10 @@ async function parseWithGemini(text) {
   }
 }
 
-async function getCoachResponse(parsed, xp, streak, profile) {
+async function getCoachResponse(parsed, xp, streak, profile, recentWorkouts = []) {
   const raw = await callGemini(
-    buildCoachPrompt(parsed, xp, streak, profile),
-    { system: AXIOM_SYSTEM, maxTokens: 600, temperature: 0.8 }
+    buildCoachPrompt(parsed, xp, streak, profile, recentWorkouts),
+    { system: ODIE_SYSTEM, maxTokens: 1200, temperature: 0.75 }
   )
 
   // Yanıtı iki parçaya ayır
@@ -254,6 +333,29 @@ function formatSummary(parsed, xp, streak, coachText) {
 
   const exerciseLines = parsed.exercises?.length
     ? parsed.exercises.map(e => {
+        // YENİ format: e.sets = [{ reps, weight_kg, duration_sec }, ...]
+        if (Array.isArray(e.sets)) {
+          if (!e.sets.length) return `  • ${e.name}`
+          // Tüm setler aynıysa kompakt göster
+          const first = e.sets[0]
+          const allSame = e.sets.every(s =>
+            s.reps === first.reps && s.weight_kg === first.weight_kg && s.duration_sec === first.duration_sec
+          )
+          if (allSame) {
+            const w = first.weight_kg ? `${first.weight_kg}kg` : (first.weight_kg === 0 ? 'BW' : '')
+            const r = first.reps != null ? `${e.sets.length}×${first.reps}` :
+                      first.duration_sec != null ? `${e.sets.length}×${first.duration_sec}sn` : `${e.sets.length} set`
+            return `  • ${e.name} ${w} ${r}`.trim()
+          }
+          // Farklılarsa set set göster
+          const setLines = e.sets.map((s, i) => {
+            const w = s.weight_kg ? `${s.weight_kg}kg` : (s.weight_kg === 0 ? 'BW' : '')
+            const r = s.reps != null ? `${s.reps} rep` : (s.duration_sec != null ? `${s.duration_sec}sn` : '')
+            return `    ${i + 1}. ${[w, r].filter(Boolean).join(' × ')}`
+          }).join('\n')
+          return `  • ${e.name}\n${setLines}`
+        }
+        // ESKİ format fallback
         const parts = [`  • ${e.name}`]
         if (e.weight_kg) parts.push(`${e.weight_kg}kg`)
         if (e.sets && e.reps) parts.push(`${e.sets}x${e.reps}`)
@@ -281,7 +383,7 @@ function formatSummary(parsed, xp, streak, coachText) {
   if (coachText) {
     lines.push(``)
     lines.push(`━━━━━━━━━━━━━━`)
-    lines.push(`☠ <b>AXIOM:</b>`)
+    lines.push(`☠ <b>Odie:</b>`)
     lines.push(coachText.trim())
   }
 
@@ -356,7 +458,20 @@ export default async function handler(req, res) {
     const mult       = streakMult(streak)
     const baseXP     = XP_BASE[parsed.type] || 70
     const xp         = Math.round(baseXP * mult) + (parsed.has_pr ? 50 : 0)
-    const totalSets  = (parsed.exercises || []).reduce((s, e) => s + (e.sets || 1), 0)
+    // Set sayısını YENİ formatta (sets = array) ve ESKİ formatta (sets = number) destekle
+    const totalSets  = parsed.total_sets || (parsed.exercises || []).reduce((s, e) => {
+      if (Array.isArray(e.sets)) return s + e.sets.length
+      if (typeof e.sets === 'number') return s + e.sets
+      return s + 1
+    }, 0)
+
+    // Koç bağlamı için son 5 antrenmanı çek
+    let recentWorkouts = []
+    try {
+      recentWorkouts = await sbGet(`workouts?select=date,type,duration_min,exercises,highlight&order=date.desc&limit=5`) || []
+    } catch (e) {
+      console.warn('[bot] recent workouts fetch failed:', e.message)
+    }
 
     // Workout ekle
     await sbPost('workouts', {
@@ -390,7 +505,7 @@ export default async function handler(req, res) {
     let telegramMsg = ''
     let coachNote   = null
     try {
-      const coach = await getCoachResponse(parsed, xp, streak, profile)
+      const coach = await getCoachResponse(parsed, xp, streak, profile, recentWorkouts)
       telegramMsg = coach.telegramMsg
       coachNote   = coach.coachNote
 
@@ -403,6 +518,22 @@ export default async function handler(req, res) {
           xp_note:    coachNote.xp_note  || `+${xp} XP`,
         })
         console.log('[bot] Coach note Supabase\'e kaydedildi')
+
+        // Koçun önerdiği stat delta'larını profile.stats'a uygula
+        if (coachNote.stat_deltas && typeof coachNote.stat_deltas === 'object') {
+          const currentStats = profile.stats || { str:0,agi:0,end:0,dex:0,con:0,sta:0 }
+          const next = { ...currentStats }
+          for (const k of ['str','agi','end','dex','con','sta']) {
+            const d = Number(coachNote.stat_deltas[k]) || 0
+            if (d !== 0) next[k] = Math.max(0, Math.min(100, (Number(currentStats[k]) || 0) + d))
+          }
+          try {
+            await sbPatch('profiles', `id=eq.${profile.id}`, { stats: next })
+            console.log('[bot] Stat delta uygulandı:', coachNote.stat_deltas)
+          } catch (e) {
+            console.warn('[bot] Stat delta yazılamadı:', e.message)
+          }
+        }
       }
     } catch (e) {
       console.warn('[bot] Coach yanıtı alınamadı:', e.message)

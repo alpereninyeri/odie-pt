@@ -98,15 +98,16 @@ export const store = {
       // Realtime subscription başlat
       _unsubSupabase.push(subscribeToProfile(profileRow => {
         _applySupabaseProfile(profileRow)
-        _notify('profile')
+        _deriveMetaFields(_state)
         _saveToLS()
+        _notify('*')
       }))
       _unsubSupabase.push(subscribeToWorkouts(workoutRow => {
         _state.workouts.unshift(_normalizeWorkout(workoutRow))
+        _deriveMetaFields(_state)
         recalculate(_state)
-        _notify('workouts')
-        _notify('profile')
         _saveToLS()
+        _notify('*')
       }))
     }
 
@@ -256,8 +257,21 @@ export const store = {
         sections: coachNoteRow.sections,
         xpNote:   coachNoteRow.xp_note || '',
       }
+      // Koçun önerdiği quest/warning/skill bilgilerini state'e yansıt ki paneller güncellesin
+      if (Array.isArray(coachNoteRow.warnings)) {
+        _state.profile.survivalWarnings = coachNoteRow.warnings
+      }
+      if (Array.isArray(coachNoteRow.quest_hints)) {
+        _state.coachQuestHints = coachNoteRow.quest_hints
+      }
+      if (Array.isArray(coachNoteRow.skill_progress)) {
+        _state.coachSkillProgress = coachNoteRow.skill_progress
+      }
     }
+    // Profil/workouts değişti → class, epic, geography, survival yeniden türet
+    _deriveMetaFields(_state)
     recalculate(_state)
+    _saveToLS()
     _notify('*')
   },
 

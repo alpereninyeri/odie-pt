@@ -26,7 +26,7 @@ export function renderCoach(p) {
       <div class="coach-header">
         <div class="coach-avatar">☠</div>
         <div class="coach-npc-info">
-          <div class="coach-npc-name">AXIOM</div>
+          <div class="coach-npc-name">ODIE</div>
           <div class="coach-npc-sub">Personal Combat Coach // AI v2.1</div>
         </div>
         <div class="coach-meta">
@@ -36,7 +36,7 @@ export function renderCoach(p) {
       </div>
       <div class="coach-body" id="coach-body">
         <div class="coach-init-line" id="coach-init">
-          <span>AXIOM yükleniyor</span><span class="coach-blink">_</span>
+          <span>ODIE yükleniyor</span><span class="coach-blink">_</span>
         </div>
         ${shells}
       </div>

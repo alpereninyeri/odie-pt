@@ -73,7 +73,7 @@
       "parameters": {
         "operation": "sendMessage",
         "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
-        "text": "🎮 OdiePt AXIOM aktif. Karakter kartini acmak icin asagidaki butona bas — Telegram icinde tam ekran olarak calisir.\n\nAntrenman eklemek icin bana yaz:\n`bench 62.5 3x5, 70dk push`\n\nAXIOM her antrenmanda XP, streak ve stat hesaplar.",
+        "text": "🎮 OdiePt ODIE aktif. Karakter kartini acmak icin asagidaki butona bas — Telegram icinde tam ekran olarak calisir.\n\nAntrenman eklemek icin bana yaz:\n`bench 62.5 3x5, 70dk push`\n\nODIE her antrenmanda XP, streak ve stat hesaplar.",
         "additionalFields": {
           "parse_mode": "Markdown",
           "reply_markup": "={{ JSON.stringify({ inline_keyboard: [[{ text: '⚔️ Karakter Kartini Ac', web_app: { url: 'https://odie-pt.vercel.app' } }]] }) }}"
@@ -93,7 +93,7 @@
       "typeVersion": 2,
       "position": [800, 420],
       "parameters": {
-        "jsCode": "const msg = $input.first().json.message.text;\nconst today = new Date().toISOString().slice(0,10);\n\nconst prompt = `Sen AXIOM, OdiePt fitness RPG kocusun. Kullanici mesajini analiz et ve JSON dondur.\\n\\nKullanici mesaji: ${msg}\\n\\nGorev: Mesajdan sunlari cikar:\\n1. date: YYYY-MM-DD formatinda tarih (belirtilmemisse bugun: ${today})\\n2. type: Push/Pull/Shoulder/Parkour/Akrobasi/Bacak/Yuruyus/Stretching/Custom\\n3. duration_min: dakika cinsinden sure (sayi)\\n4. highlight: kisa ozet metin (max 60 karakter)\\n5. exercises: [{name, sets:[{reps, weight_kg, duration_sec}]}]\\n6. coach_reply: Turkce kisa motivasyon (1-2 cumle, emoji olabilir)\\n\\nSadece gecerli JSON dondur, kod blogu kullanma, baska metin ekleme.`;\n\nreturn [{ json: { prompt, userMessage: msg, today } }];"
+        "jsCode": "const msg = $input.first().json.message.text;\nconst today = new Date().toISOString().slice(0,10);\n\nconst prompt = `Sen ODIE, OdiePt fitness RPG kocusun. Kullanici mesajini analiz et ve JSON dondur.\\n\\nKullanici mesaji: ${msg}\\n\\nGorev: Mesajdan sunlari cikar:\\n1. date: YYYY-MM-DD formatinda tarih (belirtilmemisse bugun: ${today})\\n2. type: Push/Pull/Shoulder/Parkour/Akrobasi/Bacak/Yuruyus/Stretching/Custom\\n3. duration_min: dakika cinsinden sure (sayi)\\n4. highlight: kisa ozet metin (max 60 karakter)\\n5. exercises: [{name, sets:[{reps, weight_kg, duration_sec}]}]\\n6. coach_reply: Turkce kisa motivasyon (1-2 cumle, emoji olabilir)\\n\\nSadece gecerli JSON dondur, kod blogu kullanma, baska metin ekleme.`;\n\nreturn [{ json: { prompt, userMessage: msg, today } }];"
       }
     },
     {
