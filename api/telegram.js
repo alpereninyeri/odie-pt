@@ -275,7 +275,7 @@ async function callGemini(prompt, { system = '', maxTokens = 512, temperature = 
 }
 
 async function parseWithGemini(text) {
-  const raw = await callGemini(buildParsePrompt(text), { maxTokens: 512, temperature: 0.1 })
+  const raw = await callGemini(buildParsePrompt(text), { maxTokens: 1500, temperature: 0.1 })
   const clean = raw.replace(/```json\n?|\n?```/g, '').trim()
   try {
     return JSON.parse(clean)
