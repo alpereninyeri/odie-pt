@@ -316,7 +316,7 @@ export default async function handler(req, res) {
       profile_id:   profile.id,
       date:         today,
       type:         parsed.type,
-      duration_min: parsed.duration_min || null,
+      duration_min: parsed.duration_min || 0,
       volume_kg:    parsed.volume_kg    || 0,
       sets:         totalSets,
       highlight:    parsed.highlight,
