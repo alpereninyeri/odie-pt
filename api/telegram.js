@@ -274,14 +274,42 @@ async function callGemini(prompt, { system = '', maxTokens = 512, temperature = 
   return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 }
 
+function calcVolumeFromExercises(exercises) {
+  if (!Array.isArray(exercises)) return 0
+  let total = 0
+  for (const ex of exercises) {
+    if (!Array.isArray(ex.sets)) continue
+    for (const s of ex.sets) {
+      const kg   = Number(s.weight_kg) || 0
+      const reps = Number(s.reps) || 0
+      if (kg > 0 && reps > 0) total += kg * reps
+    }
+  }
+  return Math.round(total)
+}
+
+function calcTotalSetsFromExercises(exercises) {
+  if (!Array.isArray(exercises)) return 0
+  return exercises.reduce((sum, ex) => {
+    if (Array.isArray(ex.sets)) return sum + ex.sets.length
+    if (typeof ex.sets === 'number') return sum + ex.sets
+    return sum + 1
+  }, 0)
+}
+
 async function parseWithGemini(text) {
   const raw = await callGemini(buildParsePrompt(text), { maxTokens: 1500, temperature: 0.1 })
   const clean = raw.replace(/```json\n?|\n?```/g, '').trim()
+  let parsed
   try {
-    return JSON.parse(clean)
+    parsed = JSON.parse(clean)
   } catch {
     throw new Error(`Parse hatası. Ham yanıt: ${raw.slice(0, 200)}`)
   }
+  // Gemini'nin hesapladığı volume/total_sets'e güvenme — kendimiz hesapla
+  parsed.volume_kg   = calcVolumeFromExercises(parsed.exercises)
+  parsed.total_sets  = calcTotalSetsFromExercises(parsed.exercises)
+  return parsed
 }
 
 async function getCoachResponse(parsed, xp, streak, profile, recentWorkouts = []) {
