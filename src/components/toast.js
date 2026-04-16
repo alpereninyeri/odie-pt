@@ -22,7 +22,8 @@ function _ensureContainer() {
  * Tek bir toast göster.
  * @param {Object} opts - { icon, title, sub, duration, rarity }
  */
-export function showToast({ icon = '🏆', title, sub = '', duration = 3500, rarity = 'common' }) {
+export function showToast({ icon = '🏆', title, sub = '', msg = '', duration = 3500, rarity = 'common' }) {
+  sub = sub || msg  // msg alias (main.js uyumluluğu)
   const container = _ensureContainer()
   const el = document.createElement('div')
   el.className = `toast toast-${rarity}`
@@ -101,7 +102,7 @@ export function injectToastStyles() {
   s.textContent = `
     .toast {
       display: flex; align-items: center; gap: 10px;
-      background: var(--card); border: 1px solid var(--border);
+      background: var(--bg3); border: 1px solid var(--brd);
       border-radius: 10px; padding: 10px 16px;
       font-family: 'Share Tech Mono', monospace;
       box-shadow: 0 4px 24px rgba(0,0,0,.5);
@@ -115,7 +116,7 @@ export function injectToastStyles() {
     .toast-legendary { border-color: var(--gold); box-shadow: 0 0 20px color-mix(in srgb, var(--gold) 30%, transparent); }
     .toast-hidden    { border-color: var(--dim); }
     .toast-icon { font-size: 22px; flex-shrink: 0; }
-    .toast-title { font-size: 11px; font-weight: 700; color: var(--fg); letter-spacing: 1px; }
+    .toast-title { font-size: 11px; font-weight: 700; color: var(--txt); letter-spacing: 1px; }
     .toast-sub   { font-size: 10px; color: var(--dim); margin-top: 2px; }
   `
   document.head.appendChild(s)

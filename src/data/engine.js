@@ -53,23 +53,14 @@ export function recalculate(state) {
   state.profile.totalVolume   = _formatVolume(totalVolumeKg)
   state.profile.totalTime     = _formatTime(totalMinutes)
 
-  // XP total doğrulama (tüm workout'lardan topla)
-  const totalXP = workouts.reduce((s, w) => s + (w.xpEarned || 0), 0)
-  // XP'yi seed'den başlatıp üstüne ekle (mevcut 1340 korunur)
-  // Sadece yeni eklenenleri ekle — store.addWorkout zaten anlık ekliyor,
-  // recalculate sadece toplam kontrolü yapar
-  const xpBase = 1340  // seed XP — profile.js'ten
-  state.profile.xp.current = xpBase + workouts
-    .filter(w => w.id.startsWith('w') && !isNaN(w.id.slice(1)))  // yeni eklenenler
-    .reduce((s, w) => s + (w.xpEarned || 0), 0)
-
-  // Level hesapla (her 2000 XP = 1 level, max artar)
-  const levelBase = 4
+  // XP: store.addWorkout() zaten `xp.current += xpEarned` ile doğru tutar.
+  // Burada EZMEYİZ — sadece level ve max'ı güncelle.
   const xpPerLevel = 2000
+  const levelBase  = 4
   const totalEarned = workouts.reduce((s, w) => s + (w.xpEarned || 0), 0)
   const newLevel = levelBase + Math.floor(totalEarned / xpPerLevel)
-  state.profile.level = Math.max(state.profile.level, newLevel)
-  state.profile.xp.max = (state.profile.level) * xpPerLevel
+  state.profile.level = Math.max(state.profile.level || levelBase, newLevel)
+  state.profile.xp.max = state.profile.level * xpPerLevel
 
   // Kas dengesi güncelle
   _updateMuscleBalance(state)
@@ -92,8 +83,19 @@ function _updateMuscleBalance(state) {
     'Core':             0,
   }
 
-  // Yeni antrenmanlardan gelen set sayıları (sadece store'a eklenenler)
-  const newWorkouts = state.workouts.filter(w => w.id.startsWith('w') && !isNaN(w.id.slice(1)))
+  // Yeni antrenmanlardan gelen set sayıları.
+  // ID 'w' + timestamp formatı = store.addWorkout() ile eklenen.
+  // Supabase sync'te de aynı format kullanılıyor (_normalizeWorkout'a bak).
+  // baseBalance = seed/tarihsel değerler; delta = uygulama üzerinden eklenenler.
+  const newWorkouts = state.workouts.filter(w => {
+    if (!w.id) return false
+    const idStr = String(w.id)
+    // 'w123' formatı (mock) veya 'w1744...' formatı (yeni)
+    if (idStr.startsWith('w') && !isNaN(idStr.slice(1))) return true
+    // Supabase UUID'leri için: exercises var ama tarihsel seed'de değil
+    // Bunları da dahil et (delta biraz yüksek olabilir ama 0'dan iyidir)
+    return false
+  })
   const delta = {}
   newWorkouts.forEach(w => {
     ;(w.exercises || []).forEach(ex => {
