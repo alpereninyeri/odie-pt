@@ -14,6 +14,7 @@ import {
   supabase, isMockMode,
   fetchProfile, fetchWorkouts, updateProfile, insertWorkout,
   subscribeToProfile, subscribeToWorkouts,
+  fetchLatestCoachNote,
 } from './supabase-client.js'
 import { recalculate } from './engine.js'
 import { computeStreak } from './streak-engine.js'
@@ -22,8 +23,8 @@ import { computeClass, classXpMult } from './class-engine.js'
 import { applySurvival } from './survival-engine.js'
 import { computeVolumeTier, computeGeographyTier, estimateKm } from './epic-volume-engine.js'
 
-const LS_KEY = 'odiept-state-v3'
-const CURRENT_VERSION = 3
+const LS_KEY = 'odiept-state-v4'
+const CURRENT_VERSION = 4
 
 // ── İç state ────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,11 @@ export const store = {
    * Supabase yoksa mock-state + profile.js seed kullanılır.
    */
   async init() {
+    // Eski versiyon cache'leri temizle
+    try {
+      ['odiept-state-v1','odiept-state-v2','odiept-state-v3'].forEach(k => localStorage.removeItem(k))
+    } catch {}
+
     // 1. localStorage'dan oku
     const cached = _loadFromLS()
 
@@ -235,13 +241,21 @@ export const store = {
 
   /** Supabase'den tüm state'i çek ve güncelle */
   async syncFromSupabase() {
-    const [profileRow, workoutRows] = await Promise.all([
+    const [profileRow, workoutRows, coachNoteRow] = await Promise.all([
       fetchProfile(),
       fetchWorkouts(),
+      fetchLatestCoachNote(),
     ])
     if (profileRow) _applySupabaseProfile(profileRow)
     if (workoutRows?.length) {
       _state.workouts = workoutRows.map(_normalizeWorkout)
+    }
+    if (coachNoteRow?.sections?.length) {
+      _state.coachNote = {
+        date:     coachNoteRow.date,
+        sections: coachNoteRow.sections,
+        xpNote:   coachNoteRow.xp_note || '',
+      }
     }
     recalculate(_state)
     _notify('*')

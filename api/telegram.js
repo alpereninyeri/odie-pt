@@ -112,51 +112,78 @@ Sadece bu JSON formatında yanıt ver, başka hiçbir şey yazma:
 // Değişkenler: type, duration_min, has_pr, exercises, streak, xp
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildCoachPrompt(parsed, xp, streak) {
+// ── AXIOM Sistem Promptu (değiştirmek istersen burası) ───────────────────────
+
+const AXIOM_SYSTEM = `You are an elite Hybrid Athletic Performance Coach AI.
+
+All user-facing responses must be in Turkish.
+
+Your role is to act as a professional performance coach, strength coach, calisthenics coach, climbing-support coach, and movement analyst combined. You are not a generic fitness assistant. You are a persistent coaching system that uses Supabase as the source of truth for historical training data, recovery notes, body metrics, and coaching continuity.
+
+CORE ROLE: Help the user become athletic, lean, strong relative to bodyweight, explosive, mobile, resilient, aesthetically impressive. Optimize for hybrid athleticism, not bodybuilding-only outcomes.
+
+USER PROFILE:
+- Male, 172 cm, ~70-72 kg
+- Athletic background: fitness, crossfit, parkour, freerunning, climbing, skiing, calisthenics
+- Goal: strong, aesthetic, agile hybrid athlete
+- Wants broad shoulders, strong back, lean core, explosive legs, durable joints
+- Typical training: ~4 days/week, max 80-90 min sessions
+- Gym closed Mondays
+
+COACHING PHILOSOPHY — Prioritize: relative strength, athletic aesthetics, pulling strength, shoulder development, posterior chain, core stiffness and control, joint durability, movement quality, explosiveness.
+Avoid: junk volume, random exercise selection, excessive failure training, generic bodybuilding-only responses.
+
+STYLE: Direct, sharp, practical, analytical, coach-like, motivating without fake hype. Do real coaching. Do not overpraise poor sessions.`
+
+function buildCoachPrompt(parsed, xp, streak, profile) {
   const exerciseList = parsed.exercises?.length
-    ? parsed.exercises.map(e => `${e.name}${e.weight_kg ? ` ${e.weight_kg}kg` : ''} ${e.sets ? `${e.sets}x${e.reps || '?'}` : ''}`).join(', ')
+    ? parsed.exercises.map(e => `${e.name}${e.weight_kg ? ` ${e.weight_kg}kg` : ''} ${e.sets ? ` ${e.sets}x${e.reps || '?'}` : ''}`).join(', ')
     : 'egzersiz detayı yok'
 
-  return `Sen AXIOM'sun — bir fitness RPG'sinin sert, espirili ama motive edici koçu.
-Kullanıcı adı SenUzulme27. Calisthenic + parkour sporcusu. Güçlü yanları: Dead Hang, Bench 65kg, Muscle-Up, Front Flip.
-Zayıf yanı: Core (ihmal ediyor, uyar), Bacak (neredeyse hiç yapmıyor).
+  return `Kullanıcı bugün şu antrenmanı tamamladı:
 
-Kullanıcı bugün şu antrenmanı yaptı:
-- Tür: ${parsed.type}
-- Süre: ${parsed.duration_min ? parsed.duration_min + ' dk' : 'belirtilmemiş'}
-- Egzersizler: ${exerciseList}
-- PR kırdı mı: ${parsed.has_pr ? 'EVET' : 'Hayır'}
-- Özet: ${parsed.highlight}
-- Streak: ${streak} gün üst üste
-- Bu antrenmandan kazandığı XP: +${xp}
+Antrenman tipi: ${parsed.type}
+Süre: ${parsed.duration_min ? parsed.duration_min + ' dk' : 'belirtilmemiş'}
+Egzersizler: ${exerciseList}
+PR kırdı mı: ${parsed.has_pr ? 'EVET' : 'Hayır'}
+Özet: ${parsed.highlight}
+Streak: ${streak} gün
+Kazanılan XP: +${xp}
+Toplam seans: ${profile?.sessions || '?'}
 
-Şimdi AXIOM olarak 2-3 cümle yaz:
-- Sert ama motivasyonlu, kısalt uzatma
-- PR kırdıysa onu kutla
-- Streak 7+'ysa özellikle vurgula
-- Core veya Bacak çalışılmadıysa bir sonraki için hafifçe uyar
-- Emoji kullan ama abartma (max 3)
-- Türkçe yaz, karakter ol
+Bana 2 şey yaz:
 
-Sadece koç yanıtını yaz, başka bir şey yazma.`
+1. TELEGRAM_MSG: Telegram'a gidecek kısa koç yanıtı (2-3 cümle, karakter ol, emoji max 3)
+
+2. COACH_NOTE: Sitedeki Koç paneli için JSON rapor. Şu formatta yaz, başka hiçbir şey yazma:
+{
+  "sections": [
+    { "title": "SEANS ANALİZİ", "mood": "fire|calm|warn|danger", "lines": ["satır1", "satır2", "satır3"] },
+    { "title": "SONRAKİ ADIM", "mood": "calm", "lines": ["tavsiye1", "tavsiye2"] }
+  ],
+  "xp_note": "+${xp} XP | Streak: ${streak} gün"
+}
+
+Mood seçimi: fire=başarı/PR/streak, calm=normal/tavsiye, warn=ihmal/uyarı, danger=kritik sorun
+
+Formatı kesinlikle boz ma. TELEGRAM_MSG: ile başla, sonra COACH_NOTE: ile devam et.`
 }
 
 // ── Gemini çağrısı ────────────────────────────────────────────────────────────
 
-async function callGemini(prompt, maxTokens = 512, temperature = 0.1) {
+async function callGemini(prompt, { system = '', maxTokens = 512, temperature = 0.1 } = {}) {
   const GEMINI_KEY = process.env.GEMINI_API_KEY
   if (!GEMINI_KEY) throw new Error('GEMINI_API_KEY eksik')
 
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { temperature, maxOutputTokens: maxTokens },
+  }
+  if (system) body.system_instruction = { parts: [{ text: system }] }
+
   const resp = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature, maxOutputTokens: maxTokens },
-      }),
-    }
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   )
 
   if (!resp.ok) {
@@ -169,7 +196,7 @@ async function callGemini(prompt, maxTokens = 512, temperature = 0.1) {
 }
 
 async function parseWithGemini(text) {
-  const raw = await callGemini(buildParsePrompt(text), 512, 0.1)
+  const raw = await callGemini(buildParsePrompt(text), { maxTokens: 512, temperature: 0.1 })
   const clean = raw.replace(/```json\n?|\n?```/g, '').trim()
   try {
     return JSON.parse(clean)
@@ -178,9 +205,29 @@ async function parseWithGemini(text) {
   }
 }
 
-async function getCoachReply(parsed, xp, streak) {
-  // temperature 0.8 → daha yaratıcı ve farklı yanıtlar
-  return await callGemini(buildCoachPrompt(parsed, xp, streak), 200, 0.8)
+async function getCoachResponse(parsed, xp, streak, profile) {
+  const raw = await callGemini(
+    buildCoachPrompt(parsed, xp, streak, profile),
+    { system: AXIOM_SYSTEM, maxTokens: 600, temperature: 0.8 }
+  )
+
+  // Yanıtı iki parçaya ayır
+  const telegramMatch = raw.match(/TELEGRAM_MSG:\s*([\s\S]*?)(?=COACH_NOTE:|$)/i)
+  const coachMatch    = raw.match(/COACH_NOTE:\s*([\s\S]*)/i)
+
+  const telegramMsg = telegramMatch?.[1]?.trim() || raw.trim()
+
+  let coachNote = null
+  if (coachMatch?.[1]) {
+    try {
+      const jsonStr = coachMatch[1].replace(/```json\n?|\n?```/g, '').trim()
+      coachNote = JSON.parse(jsonStr)
+    } catch {
+      console.warn('[bot] Coach note JSON parse başarısız')
+    }
+  }
+
+  return { telegramMsg, coachNote }
 }
 
 // ── Telegram mesaj gönder ────────────────────────────────────────────────────
@@ -339,15 +386,29 @@ export default async function handler(req, res) {
     })
     console.log(`[bot] Profil güncellendi. Streak: ${streak}, XP: +${xp}`)
 
-    // Coach yanıtı
-    let coachText = ''
+    // Coach yanıtı (Telegram mesajı + site raporu)
+    let telegramMsg = ''
+    let coachNote   = null
     try {
-      coachText = await getCoachReply(parsed, xp, streak)
+      const coach = await getCoachResponse(parsed, xp, streak, profile)
+      telegramMsg = coach.telegramMsg
+      coachNote   = coach.coachNote
+
+      // Supabase coach_notes tablosuna yaz
+      if (coachNote) {
+        await sbPost('coach_notes', {
+          profile_id: profile.id,
+          date:       today,
+          sections:   coachNote.sections || [],
+          xp_note:    coachNote.xp_note  || `+${xp} XP`,
+        })
+        console.log('[bot] Coach note Supabase\'e kaydedildi')
+      }
     } catch (e) {
       console.warn('[bot] Coach yanıtı alınamadı:', e.message)
     }
 
-    const reply = formatSummary(parsed, xp, streak, coachText)
+    const reply = formatSummary(parsed, xp, streak, telegramMsg)
     await sendTelegram(chatId, reply)
     console.log(`[bot] Cevap gönderildi`)
 

@@ -52,6 +52,20 @@ export async function insertWorkout(workout) {
   return data
 }
 
+// ── Coach Notes ──────────────────────────────────────────────────────────────
+
+export async function fetchLatestCoachNote() {
+  if (isMockMode) return null
+  const { data, error } = await supabase
+    .from('coach_notes')
+    .select('*')
+    .order('date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) { console.warn('[supabase] fetchLatestCoachNote:', error.message); return null }
+  return data
+}
+
 // ── Daily Logs ───────────────────────────────────────────────────────────────
 
 export async function fetchTodayLog(date) {
