@@ -1,66 +1,43 @@
-/**
- * Survival Engine — PR Fatigue + Armor + Injury
- * ------------------------------------------------
- * Gerçek bir yaralanma mekaniği. Sadece XP cezası değil; katman katman durumlar.
- *
- * Ana kavramlar:
- *   - fatigue   : 0-100 CNS yük seviyesi. Ağır antrenman biriktirir, dinlenme eritir.
- *   - armor     : 0-100 eklem/tendon sağlığı. Aşırı yük ile azalır, stretching ile geri gelir.
- *   - status    : 'healthy' | 'cns_overloaded' | 'tendon_alarm' | 'critical_wear' | 'injured'
- *   - injuryUntil: ISO date — o tarihe kadar XP alamaz, heavy antrenman yapamaz.
- *
- * Durum hiyerarşisi (en ağırdan hafife):
- *   injured (armor=0)              → XP = 0, uyarı: "YARALI — 3-7 gün recovery"
- *   critical_wear (armor < 20)     → XP x0.5, coach: kırmızı alarm
- *   tendon_alarm (armor < 50)      → XP x0.8, coach: sarı uyarı
- *   cns_overloaded (fatigue >= 75) → heavy XP x0.7, stretching XP x1.5
- *   healthy                        → normal
- */
-
-const HEAVY_TYPES = ['Push', 'Pull', 'Bacak', 'Parkour', 'Akrobasi']
-const RECOVERY_TYPES = ['Stretching', 'Yürüyüş', 'Yuruyus']
+import { normalizeSession } from './rules.js'
 
 const FATIGUE_PER_HEAVY = 25
-const FATIGUE_PR_BONUS = 15          // PR kırıldığında extra CNS yükü
-const FATIGUE_DECAY_REST = 15         // rest gününde fatigue düşüşü
-const FATIGUE_DECAY_RECOVERY = 20     // stretching/yürüyüş fatigue düşüşü
+const FATIGUE_PR_BONUS = 15
+const FATIGUE_DECAY_REST = 15
+const FATIGUE_DECAY_RECOVERY = 20
 
 const ARMOR_MAX = 100
-const ARMOR_DMG_OVERLOADED = 10       // CNS overloaded iken heavy yaparsan armor -10
-const ARMOR_DMG_DAILY_HEAVY = 4       // her heavy antrenman baseline wear
+const ARMOR_DMG_OVERLOADED = 10
+const ARMOR_DMG_DAILY_HEAVY = 4
 const ARMOR_REGEN_STRETCH = 12
 const ARMOR_REGEN_WALK = 6
-const ARMOR_REGEN_REST = 3            // rest gününde otomatik onarım
+const ARMOR_REGEN_REST = 3
 
 const INJURY_DAYS_RANGE = { min: 3, max: 7 }
 
-/**
- * Tek antrenman sonrası yeni armor/fatigue hesaplar.
- * @param {object} prev - { armor, fatigue, injuryUntil, consecutiveHeavy, lastPrDate }
- * @param {object} session - yeni antrenman { type, date, hasPr }
- * @param {object} classBuff - { armorRegen, fatigueDecay } (class-engine'den)
- */
 export function applySurvival(prev, session, classBuff = {}) {
-  const armorRegenMult = classBuff.armorRegen || 1.0
-  const fatigueDecayMult = classBuff.fatigueDecay || 1.0
+  const normalized = normalizeSession(session)
+  const armorRegenMult = classBuff.armorRegen || 1
+  const fatigueDecayMult = classBuff.fatigueDecay || 1
 
   let fatigue = prev.fatigue ?? 0
   let armor = prev.armor ?? ARMOR_MAX
   let consecutiveHeavy = prev.consecutiveHeavy ?? 0
   let injuryUntil = prev.injuryUntil || null
 
-  const isHeavy = HEAVY_TYPES.includes(session.type)
-  const isRecovery = RECOVERY_TYPES.includes(session.type)
+  const isRecovery = normalized.primaryCategory === 'recovery'
+  const isHeavy = normalized.primaryCategory === 'strength'
+    || normalized.primaryCategory === 'movement'
+    || (normalized.primaryCategory === 'endurance' && normalized.intensity === 'high')
 
-  // Injured — antrenman blokladı, state'i geri dön
-  if (injuryUntil && new Date(session.date) < new Date(injuryUntil)) {
+  if (injuryUntil && new Date(normalized.date) < new Date(injuryUntil)) {
     return {
-      armor, fatigue,
+      armor,
+      fatigue,
       consecutiveHeavy,
       injuryUntil,
       status: 'injured',
       xpMultiplier: 0,
-      warnings: [`⛔ YARALI — ${injuryUntil} tarihine kadar antrenman yasak. Sadece Stretching/Yürüyüş kabul.`],
+      warnings: [`YARALI - ${injuryUntil} tarihine kadar sadece recovery seanslari kabul.`],
       armorDelta: 0,
       fatigueDelta: 0,
     }
@@ -72,65 +49,58 @@ export function applySurvival(prev, session, classBuff = {}) {
 
   if (isHeavy) {
     consecutiveHeavy += 1
-
-    // CNS birikimi
     let fatigueAdd = FATIGUE_PER_HEAVY * fatigueDecayMult
-    if (session.hasPr) fatigueAdd += FATIGUE_PR_BONUS
-    fatigueDelta = fatigueAdd
+    if (normalized.primaryCategory === 'endurance') fatigueAdd *= 0.7
+    if (normalized.hasPr) fatigueAdd += FATIGUE_PR_BONUS
+    fatigueDelta = Math.round(fatigueAdd)
 
-    // 3+ ardışık heavy → CNS overload zorla
     if (consecutiveHeavy >= 3) {
       fatigueDelta += 10
-      warnings.push('⚠️ 3 gün üst üste ağır — CNS yorgun, dinlenme öner.')
+      warnings.push('3 gun ust uste agir yuk - CNS yorgunlugu artiyor.')
     }
 
-    // Armor wear
     armorDelta = -ARMOR_DMG_DAILY_HEAVY
     if (fatigue >= 75) {
       armorDelta -= ARMOR_DMG_OVERLOADED
-      warnings.push('🛑 CNS aşırı yüklüyken ağır antrenman yaptın — tendon aşınması!')
+      warnings.push('Yuksek fatigue ustune agir seans tendon stresini buyuttu.')
     }
   } else if (isRecovery) {
     consecutiveHeavy = 0
     fatigueDelta = -FATIGUE_DECAY_RECOVERY
-    const regenBase = session.type === 'Stretching' ? ARMOR_REGEN_STRETCH : ARMOR_REGEN_WALK
-    armorDelta = regenBase * armorRegenMult
+    const regenBase = normalized.type === 'Stretching' ? ARMOR_REGEN_STRETCH : ARMOR_REGEN_WALK
+    armorDelta = Math.round(regenBase * armorRegenMult)
   } else {
     consecutiveHeavy = 0
     fatigueDelta = -FATIGUE_DECAY_REST
-    armorDelta = ARMOR_REGEN_REST * armorRegenMult
+    armorDelta = Math.round(ARMOR_REGEN_REST * armorRegenMult)
   }
 
   fatigue = Math.max(0, Math.min(100, fatigue + fatigueDelta))
   armor = Math.max(0, Math.min(ARMOR_MAX, armor + armorDelta))
 
-  // Status hesapla
   let status = 'healthy'
-  let xpMultiplier = 1.0
+  let xpMultiplier = 1
 
   if (armor <= 0) {
     status = 'injured'
     xpMultiplier = 0
-    // Rastgele 3-7 gün yaralı
     const days = INJURY_DAYS_RANGE.min + Math.floor(Math.random() * (INJURY_DAYS_RANGE.max - INJURY_DAYS_RANGE.min + 1))
-    const until = new Date(session.date)
+    const until = new Date(normalized.date)
     until.setDate(until.getDate() + days)
     injuryUntil = until.toISOString().slice(0, 10)
-    warnings.push(`🚨 YARALANDIN — ${days} gün recovery zorunlu (${injuryUntil} tarihine kadar).`)
+    warnings.push(`YARALANMA riski gerceklesti - ${injuryUntil} tarihine kadar deload zorunlu.`)
   } else if (armor < 20) {
     status = 'critical_wear'
     xpMultiplier = 0.5
-    warnings.push('🔴 Critical Wear — armor %20 altı. XP yarıya indi, stretching öner.')
+    warnings.push('Critical wear - armor %20 altina dustu.')
   } else if (armor < 50) {
     status = 'tendon_alarm'
     xpMultiplier = 0.8
-    warnings.push('🟡 Tendon Alarm — armor %50 altı. XP -%20.')
+    warnings.push('Tendon alarmi - armor %50 altinda.')
   } else if (fatigue >= 75) {
     status = 'cns_overloaded'
-    // Heavy'de -%30, recovery'de +%50
     xpMultiplier = isHeavy ? 0.7 : 1.5
-    if (isHeavy) warnings.push('🧠 CNS Overloaded — heavy XP -%30.')
-    else warnings.push('🧠 CNS Overloaded + Recovery — stretching XP +%50!')
+    warnings.push(isHeavy ? 'CNS overloaded - agir seans verimi dusuyor.' : 'Recovery seansi overloaded durumu toparliyor.')
   }
 
   return {
@@ -146,25 +116,22 @@ export function applySurvival(prev, session, classBuff = {}) {
   }
 }
 
-/**
- * Status için renk kodu — UI bar'ları boyamak için.
- */
 export function statusColor(status) {
   return {
-    healthy:        '#22c55e',
+    healthy: '#22c55e',
     cns_overloaded: '#eab308',
-    tendon_alarm:   '#f97316',
-    critical_wear:  '#ef4444',
-    injured:        '#7f1d1d',
+    tendon_alarm: '#f97316',
+    critical_wear: '#ef4444',
+    injured: '#7f1d1d',
   }[status] || '#64748b'
 }
 
 export function statusLabel(status) {
   return {
-    healthy:        '🟢 Hazır',
-    cns_overloaded: '🧠 CNS Aşırı Yüklü',
-    tendon_alarm:   '🟡 Tendon Alarmı',
-    critical_wear:  '🔴 Kritik Aşınma',
-    injured:        '⛔ Yaralı',
+    healthy: 'Hazir',
+    cns_overloaded: 'CNS Yuklu',
+    tendon_alarm: 'Tendon Alarmi',
+    critical_wear: 'Kritik Asinma',
+    injured: 'Yarali',
   }[status] || 'Bilinmiyor'
 }

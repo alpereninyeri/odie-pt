@@ -3,6 +3,8 @@
  * Koçun skill_progress ipuçlarını da status'a etki ettirir.
  */
 
+import { normalizeSession } from './rules.js'
+
 function _hasExerciseWithReps(workouts, keywords, minReps) {
   for (const w of workouts) {
     for (const ex of (w.exercises || [])) {
@@ -70,6 +72,7 @@ const PROG_RULES = {
 
 export function updateSkills(skillsSeed, workouts, coachSkillProgress = []) {
   if (!Array.isArray(skillsSeed)) return skillsSeed
+  const normalizedWorkouts = (workouts || []).map(workout => normalizeSession(workout))
 
   // Koç ipuçlarını skill adına göre map'le
   const coachMap = {}
@@ -91,7 +94,7 @@ export function updateSkills(skillsSeed, workouts, coachSkillProgress = []) {
       const unlockFn = UNLOCK_RULES[item.name]
       if (unlockFn && item.status !== 'done') {
         try {
-          if (unlockFn(workouts)) {
+          if (unlockFn(normalizedWorkouts)) {
             return {
               ...item,
               status: 'done',
@@ -108,7 +111,7 @@ export function updateSkills(skillsSeed, workouts, coachSkillProgress = []) {
       const progFn = PROG_RULES[item.name]
       if (progFn && item.status === 'lock') {
         try {
-          if (progFn(workouts)) {
+          if (progFn(normalizedWorkouts)) {
             return { ...item, status: 'prog', desc, val: 'IN PROG' }
           }
         } catch {}

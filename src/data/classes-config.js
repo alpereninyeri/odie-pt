@@ -1,48 +1,33 @@
-/**
- * OdiePt Class Evolution — 10 özgün sınıf
- *
- * Her sınıfın bir "trigger" fonksiyonu var: son 10 antrenmanın dağılımına bakıp
- * uyup uymadığını söyler. Sıralama öncelik — ilk eşleşen kazanır.
- *
- * Passive buff sistemi:
- *   statMult: { str: 1.15 } → stat görsel değerinde +%15
- *   xpMult:   { Parkour: 1.3 } → o tür antrenmanda flat XP çarpanı
- *   armorRegen: 2.0 → armor recovery formülünde çarpan
- *   fatigueDecay: 0.75 → fatigue birikimi %25 daha yavaş
- *   hiddenDropBonus: 0.02 → hidden badge drop şansı +%2
- *   prBonus: 1.5 → PR flat bonus XP çarpanı
- *   streakShield: true → 1 günlük kaçırma streak'i kırmaz
- */
+import { normalizeSession } from './rules.js'
 
-const HEAVY = ['Push', 'Pull', 'Bacak']
-const MOVEMENT = ['Parkour', 'Akrobasi']
-const RECOVERY = ['Stretching', 'Yürüyüş', 'Yuruyus']
-const CORE_KEYWORDS = ['hollow', 'l-sit', 'lsit', 'plank', 'dragon', 'core', 'ab wheel', 'crunch', 'leg raise']
-
-function _pct(workouts, types) {
+function _pct(workouts, matcher) {
   if (!workouts.length) return 0
-  const hit = workouts.filter(w => types.includes(w.type)).length
-  return hit / workouts.length
+  return workouts.filter(matcher).length / workouts.length
 }
 
-function _hasCoreBlock(workouts) {
-  const coreHits = workouts.filter(w =>
-    (w.exercises || []).some(e =>
-      CORE_KEYWORDS.some(kw => (e.name || '').toLowerCase().includes(kw))
-    )
-  ).length
-  return coreHits / Math.max(1, workouts.length)
+function _hasTag(workout, tag) {
+  return workout.tags?.includes(tag)
 }
 
-function _uniqueTypes(workouts) {
-  return new Set(workouts.map(w => w.type)).size
+function _uniqueSignals(workouts) {
+  const signals = new Set()
+  for (const workout of workouts) {
+    signals.add(workout.type)
+    signals.add(workout.primaryCategory)
+    for (const tag of (workout.tags || [])) signals.add(tag)
+  }
+  return signals.size
+}
+
+function _coreShare(workouts) {
+  return _pct(workouts, workout => _hasTag(workout, 'core'))
 }
 
 function _nightSessions(workouts) {
-  return workouts.filter(w => {
-    if (!w.createdAt && !w.created_at) return false
-    const h = new Date(w.createdAt || w.created_at).getHours()
-    return h >= 22 || h < 6
+  return workouts.filter(workout => {
+    if (!workout.createdAt && !workout.created_at) return false
+    const hour = new Date(workout.createdAt || workout.created_at).getHours()
+    return hour >= 22 || hour < 6
   }).length
 }
 
@@ -50,181 +35,196 @@ export const CLASSES = [
   {
     id: 'golge_akrobat',
     name: 'Gölge Akrobat',
-    subName: 'Shadow Acrobat Sub-Class',
+    subName: 'Shadow Acrobat',
     icon: '🥷',
-    color: '#a855f7',
-    desc: 'Ninjamsı çok-disiplinli atlet. Güç, çeviklik ve akrobasinin kesişimi — karanlıkta sessiz, meydanda ölümcül.',
-    buff: 'STR +%10 · AGI +%15 · DEX +%15 · PR x1.3',
+    color: '#6d5efc',
+    desc: 'Kuvvet, çeviklik ve akrobasiyi aynı gövdede toplayan çok-sporlu ninja profilin.',
+    buff: 'STR +%10 · AGI +%15 · DEX +%15 · Movement XP x1.2',
     passive: {
       statMult: { str: 1.1, agi: 1.15, dex: 1.15 },
-      xpMult:   { Parkour: 1.2, Akrobasi: 1.2, Push: 1.1, Pull: 1.1 },
-      prBonus:  1.3,
+      xpMult: { Parkour: 1.2, Akrobasi: 1.2, Tırmanış: 1.15, Push: 1.05, Pull: 1.05 },
+      prBonus: 1.2,
     },
-    // Güç ağırlıklı ama akrobasi/parkour eksik değil + çeşitli
-    trigger: (ws) => {
-      const strengthPct = _pct(ws, ['Push','Pull','Shoulder'])
-      const movementPct = _pct(ws, ['Parkour','Akrobasi'])
-      const unique = _uniqueTypes(ws)
-      return strengthPct >= 0.4 && movementPct >= 0.1 && unique >= 4
-    },
+    trigger: workouts => _pct(workouts, workout => workout.primaryCategory === 'strength') >= 0.3
+      && _pct(workouts, workout => workout.primaryCategory === 'movement') >= 0.2
+      && _uniqueSignals(workouts) >= 8,
   },
   {
     id: 'gok_kartali',
     name: 'Gök Kartalı',
-    subName: 'Sky Eagle Sub-Class',
+    subName: 'Sky Eagle',
     icon: '🦅',
-    color: '#60a5fa',
-    desc: 'Parkour + Akrobasi kombosu. Havada yaşayan, yere korkarak inen.',
-    buff: 'AGI +%12 · DEX +%12 · Parkour XP x1.3',
+    color: '#4a90ff',
+    desc: 'Akrobasi ve parkour hattında havada rahat, inişte kontrollü hareket eden profil.',
+    buff: 'AGI +%12 · DEX +%12 · Movement XP x1.3',
     passive: {
       statMult: { agi: 1.12, dex: 1.12 },
-      xpMult:   { Parkour: 1.3, Akrobasi: 1.3 },
+      xpMult: { Parkour: 1.3, Akrobasi: 1.3 },
     },
-    trigger: (ws) => _pct(ws, MOVEMENT) >= 0.5 && _uniqueTypes(ws) >= 3,
+    trigger: workouts => _pct(workouts, workout => workout.primaryCategory === 'movement') >= 0.5,
   },
   {
     id: 'duvar_orucu',
     name: 'Duvar Örücü',
-    subName: 'Wall Weaver Sub-Class',
+    subName: 'Wall Weaver',
     icon: '🕷️',
-    color: '#a78bfa',
-    desc: 'Akrobasi uzmanı. Dikey dünyayı yatay gibi kullanır.',
-    buff: 'DEX +%20 · Akrobasi PR bonusu x1.5',
+    color: '#8a74ff',
+    desc: 'Akrobasi, dönüş ve duvar okuma odaklı, ince koordinasyonla öne çıkan profil.',
+    buff: 'DEX +%18 · Akrobasi XP x1.35',
     passive: {
-      statMult: { dex: 1.2 },
-      xpMult:   { Akrobasi: 1.35 },
-      prBonus:  1.5,
+      statMult: { dex: 1.18 },
+      xpMult: { Akrobasi: 1.35, Tırmanış: 1.1 },
     },
-    trigger: (ws) => _pct(ws, ['Akrobasi']) >= 0.4,
+    trigger: workouts => _pct(workouts, workout => _hasTag(workout, 'acrobatics')) >= 0.35,
   },
   {
     id: 'vinc_gezgini',
     name: 'Vinç Gezgini',
-    subName: 'Crane Walker Sub-Class',
+    subName: 'Crane Walker',
     icon: '🦉',
-    color: '#34d399',
-    desc: 'Saf parkour. Düşme korkusu yok, çatı onun sokağı.',
-    buff: 'AGI +%15 · Streak shield (1 gün kaçırsan kırılmaz)',
+    color: '#34c79a',
+    desc: 'Parkour, zemin okuma ve rota akışı baskın; şehir onun oyun alanı.',
+    buff: 'AGI +%15 · Parkour XP x1.25',
     passive: {
       statMult: { agi: 1.15 },
-      xpMult:   { Parkour: 1.25 },
+      xpMult: { Parkour: 1.25 },
       streakShield: true,
     },
-    trigger: (ws) => _pct(ws, ['Parkour']) >= 0.4,
+    trigger: workouts => _pct(workouts, workout => _hasTag(workout, 'parkour')) >= 0.4,
   },
   {
     id: 'ayi_pencesi',
     name: 'Ayı Pençesi',
-    subName: 'Bear Paw Sub-Class',
+    subName: 'Bear Paw',
     icon: '🐻',
-    color: '#f59e0b',
-    desc: 'Saf güç. Hacim kralı, yerden kaldırılamayan kütle.',
-    buff: 'STR +%20 · Push/Pull XP +%15 · Volume bonusu',
+    color: '#f4a026',
+    desc: 'Saf kuvvet, hacim ve güçlü itiş-çekiş bloklarıyla ilerleyen profil.',
+    buff: 'STR +%20 · Push/Pull XP x1.15',
     passive: {
       statMult: { str: 1.2 },
-      xpMult:   { Push: 1.15, Pull: 1.15 },
+      xpMult: { Push: 1.15, Pull: 1.15, Calisthenics: 1.1, Gym: 1.1 },
     },
-    trigger: (ws) => _pct(ws, ['Push', 'Pull']) >= 0.5,
+    trigger: workouts => _pct(workouts, workout => workout.primaryCategory === 'strength') >= 0.55,
   },
   {
     id: 'celik_omurga',
     name: 'Çelik Omurga',
-    subName: 'Steel Spine Sub-Class',
+    subName: 'Steel Spine',
     icon: '⛓️',
-    color: '#94a3b8',
-    desc: 'Bacak + denge. Kimse onu deviremez, kök salmış.',
-    buff: 'END +%20 · STA +%15 · Fatigue direnci',
+    color: '#7a8896',
+    desc: 'Alt vücut, yük taşıma ve dayanıklılık birlikte çalışan sağlam bir iskelet.',
+    buff: 'END +%18 · STA +%15 · Fatigue direnci',
     passive: {
-      statMult: { end: 1.2, sta: 1.15 },
-      fatigueDecay: 0.7,
+      statMult: { end: 1.18, sta: 1.15 },
+      fatigueDecay: 0.75,
     },
-    trigger: (ws) => _pct(ws, ['Bacak']) >= 0.3,
+    trigger: workouts => _pct(workouts, workout => _hasTag(workout, 'legs')) >= 0.4
+      && _pct(workouts, workout => workout.primaryCategory === 'endurance') >= 0.2,
   },
   {
     id: 'cekirdek_alevi',
     name: 'Çekirdek Alevi',
-    subName: 'Core Flame Sub-Class',
+    subName: 'Core Flame',
     icon: '🔥',
-    color: '#ef4444',
-    desc: 'Gövde içten yanıyor. Hareket merkezini kilitleyen usta.',
-    buff: 'CON +%30 · PR bonusu x1.5 · Core XP x1.4',
+    color: '#ff6b6b',
+    desc: 'Gövdeden güç üreten, body-tension ve hanging core ile kilitlenen profil.',
+    buff: 'CON +%28 · Core bonus XP x1.25',
     passive: {
-      statMult: { con: 1.3 },
-      xpMult:   { Custom: 1.2 },
-      prBonus:  1.5,
+      statMult: { con: 1.28 },
+      xpMult: { Calisthenics: 1.1, Custom: 1.15 },
+      prBonus: 1.2,
     },
-    trigger: (ws) => _hasCoreBlock(ws) >= 0.3,
+    trigger: workouts => _coreShare(workouts) >= 0.3,
   },
   {
     id: 'ruzgar_kosucusu',
-    name: 'Rüzgâr Koşucusu',
-    subName: 'Wind Runner Sub-Class',
-    icon: '🌪️',
-    color: '#22d3ee',
-    desc: 'Yürüyüş + parkour. Mesafe tanımaz, nefesi rüzgârdır.',
-    buff: 'STA +%25 · Yürüyüş XP x2 · Streak shield',
+    name: 'Rüzgar Koşucusu',
+    subName: 'Wind Runner',
+    icon: '🌬️',
+    color: '#3cc7ff',
+    desc: 'Yürüyüş, bisiklet, koşu ve parkour arasında mesafe ve akışı birleştiren profil.',
+    buff: 'STA +%20 · Endurance XP x1.2',
     passive: {
-      statMult: { sta: 1.25 },
-      xpMult:   { Yürüyüş: 2.0, Yuruyus: 2.0 },
+      statMult: { sta: 1.2 },
+      xpMult: { Yürüyüş: 1.2, Bisiklet: 1.2, Koşu: 1.2, Kayak: 1.1 },
       streakShield: true,
     },
-    trigger: (ws) => _pct(ws, ['Yürüyüş', 'Yuruyus', 'Parkour']) >= 0.5,
+    trigger: workouts => _pct(workouts, workout => workout.primaryCategory === 'endurance') >= 0.45,
   },
   {
     id: 'mermer_heykel',
     name: 'Mermer Heykel',
-    subName: 'Marble Statue Sub-Class',
+    subName: 'Marble Statue',
     icon: '🗿',
-    color: '#cbd5e1',
-    desc: 'Esneklik + iyileşme. Armor bar tükenmez, yaralanmaya bağışık.',
-    buff: 'Armor regen x2 · Fatigue birikimi %40 yavaş',
+    color: '#cfd6e4',
+    desc: 'Mobilite, esneklik ve toparlanma kalitesini yüksek tutan sabırlı profil.',
+    buff: 'Armor regen x2 · Fatigue gain x0.6',
     passive: {
-      statMult: { dex: 1.1, end: 1.1 },
-      armorRegen:   2.0,
+      statMult: { dex: 1.08, end: 1.08 },
+      armorRegen: 2.0,
       fatigueDecay: 0.6,
     },
-    trigger: (ws) => _pct(ws, ['Stretching']) >= 0.3,
+    trigger: workouts => _pct(workouts, workout => workout.primaryCategory === 'recovery') >= 0.3,
   },
   {
     id: 'golge_gezgini',
     name: 'Gölge Gezgini',
-    subName: 'Night Walker Sub-Class',
+    subName: 'Night Walker',
     icon: '🌙',
-    color: '#8b5cf6',
-    desc: 'Gece antrenmanı. Dünya uyurken çalışan sessiz avcı.',
-    buff: 'Hidden XP x1.5 · Hidden badge drop +%3',
+    color: '#7d6bff',
+    desc: 'Gece çalışan, sakin ve sessiz ama sürekliliği yüksek profil.',
+    buff: 'Hidden XP x1.3 · Hidden badge drop +%3',
     passive: {
-      statMult: { agi: 1.08, dex: 1.08 },
-      xpMult:   { Custom: 1.5 },
+      statMult: { agi: 1.06, dex: 1.06 },
+      xpMult: { Custom: 1.3 },
       hiddenDropBonus: 0.03,
     },
-    trigger: (ws) => _nightSessions(ws) >= 4,
+    trigger: workouts => _nightSessions(workouts) >= 4,
   },
   {
     id: 'merakli_ruh',
     name: 'Meraklı Ruh',
-    subName: 'Wanderer Sub-Class',
+    subName: 'Wanderer',
     icon: '🔮',
-    color: '#f472b6',
-    desc: 'Her şeyi dener. Uzmanlaşmaz ama her kapıyı açar.',
-    buff: 'Tüm statlar +%5 · Hidden drop +%2 · Tüm XP x1.1',
+    color: '#f57bb6',
+    desc: 'Her branştan beslenen, uzmanlık kadar çeşitliliğe de yatırım yapan profil.',
+    buff: 'Tüm statlar +%5 · Tüm XP x1.08',
     passive: {
       statMult: { str: 1.05, agi: 1.05, end: 1.05, dex: 1.05, con: 1.05, sta: 1.05 },
-      xpMult:   { Push: 1.1, Pull: 1.1, Bacak: 1.1, Parkour: 1.1, Akrobasi: 1.1, Shoulder: 1.1, Stretching: 1.1, Yürüyüş: 1.1, Yuruyus: 1.1, Custom: 1.1 },
+      xpMult: {
+        Push: 1.08,
+        Pull: 1.08,
+        Bacak: 1.08,
+        Parkour: 1.08,
+        Akrobasi: 1.08,
+        Yürüyüş: 1.08,
+        Stretching: 1.08,
+        Bisiklet: 1.08,
+        Kayak: 1.08,
+        Tırmanış: 1.08,
+        Calisthenics: 1.08,
+        Gym: 1.08,
+        Koşu: 1.08,
+        Custom: 1.08,
+      },
       hiddenDropBonus: 0.02,
     },
-    trigger: (ws) => _uniqueTypes(ws) >= 6,
+    trigger: workouts => _uniqueSignals(workouts) >= 12,
   },
 ]
 
 export const DEFAULT_CLASS = {
   id: 'cirak',
   name: 'Çırak',
-  subName: 'Awakening Sub-Class',
+  subName: 'Awakening',
   icon: '🥚',
-  color: '#64748b',
-  desc: 'Henüz yolunu bulmadın. İlk 10 antrenmandan sonra sınıfın belirir.',
-  buff: 'Henüz pasif yok — deseni oluştur',
+  color: '#7b8190',
+  desc: 'Desen oluşuyor. 10 antrenmanlık patern oturduğunda sınıf netleşecek.',
+  buff: 'Henüz pasif yok — desen oluşuyor',
   passive: {},
   trigger: () => true,
+}
+
+export function normalizeClassWorkouts(workouts = []) {
+  return workouts.map(workout => normalizeSession(workout))
 }

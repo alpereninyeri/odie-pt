@@ -1,226 +1,227 @@
-/**
- * Antrenman Giriş Formu — modal olarak açılır.
- * store.addWorkout() ile kaydeder.
- */
-
 import { store } from '../data/store.js'
 import { detectPRs } from '../data/pr-detector.js'
-import { openModal, closeModal } from './modal.js'
-import { showBadgeToasts, showXPToast, showPRToast } from './toast.js'
+import { getLocalDateString } from '../data/rules.js'
+import { closeModal, openModal } from './modal.js'
+import { showBadgeToasts, showPRToast, showXPToast } from './toast.js'
 
-const WORKOUT_TYPES = ['Push', 'Pull', 'Shoulder', 'Akrobasi', 'Parkour', 'Bacak', 'Yürüyüş', 'Stretching', 'Custom']
+const WORKOUT_TYPES = [
+  'Push',
+  'Pull',
+  'Shoulder',
+  'Bacak',
+  'Parkour',
+  'Akrobasi',
+  'Calisthenics',
+  'Gym',
+  'Yuruyus',
+  'Bisiklet',
+  'Kayak',
+  'Tirmanis',
+  'Kosu',
+  'Stretching',
+  'Custom',
+]
 
 export function openWorkoutForm() {
-  const today = new Date().toISOString().slice(0, 10)
-  openModal(_renderForm(today))
-  _bindForm()
+  openModal(renderForm(getLocalDateString()))
+  bindForm()
 }
 
-function _renderForm(date) {
-  const typeOptions = WORKOUT_TYPES.map(t =>
-    `<option value="${t}">${t}</option>`
-  ).join('')
-
+function renderForm(date) {
   return `
     <div class="modal-head">
-      <span style="font-size:22px">➕</span>
-      <div class="modal-head-title">Antrenman Ekle</div>
-      <button class="modal-close" data-close-modal aria-label="Kapat">✕</button>
+      <span style="font-size:22px">+</span>
+      <div class="modal-head-title">Yeni seans ekle</div>
+      <button class="modal-close" data-close-modal aria-label="Kapat">×</button>
     </div>
     <div class="modal-body">
       <form id="workout-form" autocomplete="off">
-
         <div class="wf-row">
           <label class="wf-label">Tarih</label>
           <input class="wf-input" type="date" id="wf-date" value="${date}" required>
         </div>
 
         <div class="wf-row">
-          <label class="wf-label">Antrenman Tipi</label>
-          <select class="wf-input wf-select" id="wf-type">${typeOptions}</select>
+          <label class="wf-label">Seans tipi</label>
+          <select class="wf-input wf-select" id="wf-type">
+            ${WORKOUT_TYPES.map(type => `<option value="${type}">${type}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="wf-set-row">
+          <div class="wf-row">
+            <label class="wf-label">Sure (dk)</label>
+            <input class="wf-input" type="number" id="wf-duration" min="1" max="720" placeholder="60" required>
+          </div>
+          <div class="wf-row">
+            <label class="wf-label">Mesafe km</label>
+            <input class="wf-input" type="number" id="wf-distance" min="0" step="0.1" placeholder="Opsiyonel">
+          </div>
+          <div class="wf-row">
+            <label class="wf-label">Yukselti m</label>
+            <input class="wf-input" type="number" id="wf-elevation" min="0" step="1" placeholder="Opsiyonel">
+          </div>
         </div>
 
         <div class="wf-row">
-          <label class="wf-label">Süre (dakika)</label>
-          <input class="wf-input" type="number" id="wf-duration" min="1" max="600" placeholder="60" required>
+          <label class="wf-label">Highlight</label>
+          <input class="wf-input" type="text" id="wf-highlight" placeholder="PR, teknik blok, set kalitesi...">
         </div>
 
         <div class="wf-row">
-          <label class="wf-label">Öne Çıkan Not (opsiyonel)</label>
-          <input class="wf-input" type="text" id="wf-highlight" placeholder="Bench 62.5kg PR, Barani deneme...">
+          <label class="wf-label">Notlar</label>
+          <textarea class="wf-input" id="wf-notes" rows="3" placeholder="Yorgunluk, zemin, denge, carry, teknik his..."></textarea>
         </div>
 
         <div class="wf-section-title">Egzersizler <span class="wf-optional">(opsiyonel)</span></div>
         <div id="wf-exercises"></div>
-        <button type="button" class="wf-add-ex" id="wf-add-exercise">+ Egzersiz Ekle</button>
+        <button type="button" class="wf-add-ex" id="wf-add-exercise">+ Egzersiz ekle</button>
 
         <div class="wf-volume-preview" id="wf-volume-preview" style="display:none">
-          Toplam Hacim: <strong id="wf-volume-val">0 kg</strong>
+          Toplam hacim: <strong id="wf-volume-val">0 kg</strong>
         </div>
 
         <div class="wf-actions">
-          <button type="submit" class="wf-submit" id="wf-submit">💾 KAYDET</button>
+          <button type="submit" class="wf-submit" id="wf-submit">Kaydet</button>
         </div>
       </form>
-    </div>`
+    </div>
+  `
 }
 
-function _bindForm() {
+function bindForm() {
   const form = document.getElementById('workout-form')
   if (!form) return
 
-  document.getElementById('wf-add-exercise')?.addEventListener('click', _addExerciseRow)
+  document.getElementById('wf-add-exercise')?.addEventListener('click', addExerciseRow)
+  form.addEventListener('input', updateVolumePreview)
 
-  form.addEventListener('input', _updateVolumePreview)
-
-  form.addEventListener('submit', async e => {
-    e.preventDefault()
-    const submitBtn = document.getElementById('wf-submit')
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ Kaydediliyor...' }
+  form.addEventListener('submit', async event => {
+    event.preventDefault()
+    const submit = document.getElementById('wf-submit')
+    if (submit) {
+      submit.disabled = true
+      submit.textContent = 'Kaydediliyor...'
+    }
 
     try {
-      await _saveWorkout()
+      await saveWorkout()
       closeModal()
-      // Panel'leri yenile
       window.__refreshActivePanel?.()
-    } catch (err) {
-      console.error('[workout-form] save error:', err)
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '💾 KAYDET' }
+    } catch (error) {
+      console.error('[workout-form] save error:', error)
+      if (submit) {
+        submit.disabled = false
+        submit.textContent = 'Kaydet'
+      }
     }
   })
 }
 
-function _addExerciseRow() {
+function addExerciseRow() {
   const container = document.getElementById('wf-exercises')
   if (!container) return
 
-  const idx = container.children.length
-  const div = document.createElement('div')
-  div.className = 'wf-ex-row'
-  div.dataset.exIdx = idx
-  div.innerHTML = `
-    <input class="wf-input wf-ex-name" type="text" placeholder="Egzersiz adı (örn: Bench Press)" list="ex-suggestions">
-    <div class="wf-sets-list" id="wf-sets-${idx}">
-      ${_setRowHtml(idx, 0)}
+  const index = container.children.length
+  const row = document.createElement('div')
+  row.className = 'wf-ex-row'
+  row.innerHTML = `
+    <input class="wf-input wf-ex-name" type="text" placeholder="Egzersiz adi">
+    <div class="wf-sets-list" id="wf-sets-${index}">
+      ${renderSetRow()}
     </div>
-    <button type="button" class="wf-add-set" data-ex="${idx}">+ Set</button>
-    <button type="button" class="wf-remove-ex" data-ex="${idx}">✕</button>
+    <button type="button" class="wf-add-set" data-ex="${index}">+ Set</button>
+    <button type="button" class="wf-remove-ex" data-ex="${index}">Sil</button>
   `
-  container.appendChild(div)
+  container.appendChild(row)
 
-  // Autocomplete listesi (önceki egzersizlerden)
-  if (!document.getElementById('ex-suggestions')) {
-    const dl = document.createElement('datalist')
-    dl.id = 'ex-suggestions'
-    const seen = store.getState()?.workouts?.flatMap(w =>
-      (w.exercises || []).map(e => e.name)
-    ) || []
-    ;[...new Set(seen)].forEach(name => {
-      const opt = document.createElement('option')
-      opt.value = name
-      dl.appendChild(opt)
-    })
-    document.body.appendChild(dl)
-  }
-
-  // Set ekle butonu
-  div.querySelector(`.wf-add-set`)?.addEventListener('click', () => {
-    const setsContainer = document.getElementById(`wf-sets-${idx}`)
-    if (!setsContainer) return
-    const setIdx = setsContainer.children.length
-    setsContainer.insertAdjacentHTML('beforeend', _setRowHtml(idx, setIdx))
-    _updateVolumePreview()
+  row.querySelector('.wf-add-set')?.addEventListener('click', () => {
+    document.getElementById(`wf-sets-${index}`)?.insertAdjacentHTML('beforeend', renderSetRow())
+    updateVolumePreview()
   })
 
-  // Egzersiz kaldır
-  div.querySelector(`.wf-remove-ex`)?.addEventListener('click', () => {
-    div.remove()
-    _updateVolumePreview()
+  row.querySelector('.wf-remove-ex')?.addEventListener('click', () => {
+    row.remove()
+    updateVolumePreview()
   })
 }
 
-function _setRowHtml(exIdx, setIdx) {
+function renderSetRow() {
   return `
-    <div class="wf-set-row" data-set="${setIdx}">
-      <input class="wf-input wf-set-reps"   type="number" min="1" placeholder="Tekrar" data-field="reps">
-      <input class="wf-input wf-set-weight" type="number" min="0" step="0.5" placeholder="kg (opsiyonel)" data-field="weight">
-      <input class="wf-input wf-set-dur"    type="number" min="1" placeholder="sn (süre) (opsiyonel)" data-field="dur">
-    </div>`
+    <div class="wf-set-row">
+      <input class="wf-input wf-set-reps" type="number" min="1" placeholder="Rep">
+      <input class="wf-input wf-set-weight" type="number" min="0" step="0.5" placeholder="kg">
+      <input class="wf-input wf-set-dur" type="number" min="1" placeholder="sn">
+    </div>
+  `
 }
 
-function _collectExercises() {
-  const exRows = document.querySelectorAll('.wf-ex-row')
-  return Array.from(exRows).map(row => {
-    const name = row.querySelector('.wf-ex-name')?.value?.trim() || ''
-    const setRows = row.querySelectorAll('.wf-set-row')
-    const sets = Array.from(setRows).map(sr => {
-      const reps    = parseInt(sr.querySelector('[data-field="reps"]')?.value)  || null
-      const weightKg = parseFloat(sr.querySelector('[data-field="weight"]')?.value) || null
-      const durationSec = parseInt(sr.querySelector('[data-field="dur"]')?.value) || null
-      const s = {}
-      if (reps)        s.reps = reps
-      if (weightKg)    s.weightKg = weightKg
-      if (durationSec) s.durationSec = durationSec
-      return s
-    }).filter(s => Object.keys(s).length > 0)
-    return name ? { name, sets } : null
+function collectExercises() {
+  return [...document.querySelectorAll('.wf-ex-row')].map(row => {
+    const name = row.querySelector('.wf-ex-name')?.value?.trim()
+    if (!name) return null
+
+    const sets = [...row.querySelectorAll('.wf-set-row')].map(setRow => {
+      const reps = Number(setRow.querySelector('.wf-set-reps')?.value) || null
+      const weightKg = Number(setRow.querySelector('.wf-set-weight')?.value) || null
+      const durationSec = Number(setRow.querySelector('.wf-set-dur')?.value) || null
+      if (!reps && !weightKg && !durationSec) return null
+      return { reps, weightKg, durationSec }
+    }).filter(Boolean)
+
+    return { name, sets }
   }).filter(Boolean)
 }
 
-function _updateVolumePreview() {
-  const exercises = _collectExercises()
-  const total = exercises.reduce((sum, ex) =>
-    sum + (ex.sets || []).reduce((s, set) =>
-      s + ((set.weightKg || 0) * (set.reps || 1)), 0
-    ), 0
-  )
+function updateVolumePreview() {
+  const exercises = collectExercises()
+  const totalVolume = exercises.reduce((sum, exercise) => (
+    sum + (exercise.sets || []).reduce((acc, set) => acc + ((set.weightKg || 0) * (set.reps || 1)), 0)
+  ), 0)
+
   const preview = document.getElementById('wf-volume-preview')
-  const valEl   = document.getElementById('wf-volume-val')
-  if (preview && valEl) {
-    preview.style.display = total > 0 ? 'block' : 'none'
-    valEl.textContent = `${total.toLocaleString('tr-TR')} kg`
-  }
+  const value = document.getElementById('wf-volume-val')
+  if (!preview || !value) return
+
+  preview.style.display = totalVolume > 0 ? 'block' : 'none'
+  value.textContent = `${totalVolume.toLocaleString('tr-TR')} kg`
 }
 
-async function _saveWorkout() {
-  const date     = document.getElementById('wf-date')?.value
-  const type     = document.getElementById('wf-type')?.value
-  const duration = parseInt(document.getElementById('wf-duration')?.value) || 0
-  const highlight = document.getElementById('wf-highlight')?.value?.trim() || ''
-  const exercises = _collectExercises()
-
-  const volumeKg = exercises.reduce((sum, ex) =>
-    sum + (ex.sets || []).reduce((s, set) =>
-      s + ((set.weightKg || 0) * (set.reps || 1)), 0
-    ), 0
-  )
-  const sets = exercises.reduce((sum, ex) => sum + (ex.sets || []).length, 0)
-
-  // PR kontrolü
-  const currentPrs = store.getState()?.prs || {}
-  const { hasPr, newPrs, updatedPrs } = detectPRs({ exercises }, currentPrs)
-  if (hasPr) store.set('prs', updatedPrs)
+async function saveWorkout() {
+  const exercises = collectExercises()
+  const volumeKg = exercises.reduce((sum, exercise) => (
+    sum + (exercise.sets || []).reduce((acc, set) => acc + ((set.weightKg || 0) * (set.reps || 1)), 0)
+  ), 0)
+  const sets = exercises.reduce((sum, exercise) => sum + (exercise.sets || []).length, 0)
 
   const session = {
-    date,
-    type,
-    durationMin: duration,
+    date: document.getElementById('wf-date')?.value,
+    type: document.getElementById('wf-type')?.value,
+    durationMin: Number(document.getElementById('wf-duration')?.value) || 0,
+    distanceKm: Number(document.getElementById('wf-distance')?.value) || 0,
+    elevationM: Number(document.getElementById('wf-elevation')?.value) || 0,
+    highlight: document.getElementById('wf-highlight')?.value?.trim() || '',
+    notes: document.getElementById('wf-notes')?.value?.trim() || '',
+    exercises,
     volumeKg,
     sets,
-    highlight,
-    exercises,
-    hasPr,
+    source: 'manual',
   }
 
-  const savedWorkout = await store.addWorkout(session)
+  const { hasPr, newPrs } = detectPRs(session, store.getState()?.prs || {})
+  session.hasPr = hasPr
 
-  // Toast'lar
-  showXPToast(savedWorkout.xpEarned, savedWorkout.xpMultiplier)
+  const workout = await store.addWorkout(session)
+  showXPToast(workout.xpEarned, workout.xpMultiplier)
 
   if (hasPr) {
-    Object.entries(newPrs).forEach(([name, pr]) => {
-      const val = pr.weightKg && pr.reps ? `${pr.weightKg}kg × ${pr.reps}` : pr.reps ? `${pr.reps} rep` : `${pr.durationSec}sn`
-      showPRToast(name, val)
+    Object.entries(newPrs).forEach(([exercise, pr]) => {
+      const value = pr.weightKg && pr.reps
+        ? `${pr.weightKg}kg x ${pr.reps}`
+        : pr.reps
+          ? `${pr.reps} rep`
+          : `${pr.durationSec}sn`
+      showPRToast(exercise, value)
     })
   }
 

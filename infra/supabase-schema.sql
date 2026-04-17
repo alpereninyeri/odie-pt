@@ -178,3 +178,36 @@ alter publication supabase_realtime add table workouts;
 -- ── Row Level Security (tek kullanıcı — basit RLS) ───────────────────────────
 -- Şu aşamada RLS devre dışı (tek kullanıcı, anon key yeterli)
 -- Gelecekte auth.uid() ile kısıtla
+
+-- OdiePt V2.1 - canonical rules + coach note alignment
+alter table profiles add column if not exists armor_current int not null default 100;
+alter table profiles add column if not exists fatigue_current int not null default 0;
+alter table profiles add column if not exists consecutive_heavy int not null default 0;
+alter table profiles add column if not exists injury_until date;
+alter table profiles add column if not exists survival_status text not null default 'healthy';
+alter table profiles add column if not exists class_id text default 'cirak';
+alter table profiles add column if not exists total_km numeric not null default 0;
+alter table profiles add column if not exists xp_total numeric not null default 0;
+
+alter table workouts add column if not exists notes text default '';
+alter table workouts add column if not exists primary_category text default 'mixed';
+alter table workouts add column if not exists tags jsonb not null default '[]';
+alter table workouts add column if not exists intensity text default 'moderate';
+alter table workouts add column if not exists source text default 'manual';
+alter table workouts add column if not exists distance_km numeric not null default 0;
+alter table workouts add column if not exists elevation_m numeric not null default 0;
+alter table workouts add column if not exists class_mult numeric not null default 1;
+alter table workouts add column if not exists survival_status text default 'healthy';
+alter table workouts add column if not exists stat_delta jsonb not null default '{}';
+
+alter table workouts drop constraint if exists workouts_type_check;
+alter table workouts add constraint workouts_type_check check (
+  type in (
+    'Push','Pull','Shoulder','Parkour','Akrobasi','Bacak','Yuruyus','Yürüyüş',
+    'Stretching','Bisiklet','Kayak','Tırmanış','Tirmanis','Calisthenics','Gym','Koşu','Kosu','Custom'
+  )
+);
+
+alter table coach_notes add column if not exists warnings jsonb not null default '[]';
+alter table coach_notes add column if not exists quest_hints jsonb not null default '[]';
+alter table coach_notes add column if not exists skill_progress jsonb not null default '[]';
