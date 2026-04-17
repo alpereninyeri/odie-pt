@@ -33,7 +33,9 @@
       "mcp__3b0a0b92-d8de-416c-a61e-93c44e401637__list_tables",
       "mcp__3b0a0b92-d8de-416c-a61e-93c44e401637__execute_sql",
       "Bash(node --check api/telegram.js)",
-      "Bash(node --check src/data/store.js)"
+      "Bash(node --check src/data/store.js)",
+      "mcp__3b0a0b92-d8de-416c-a61e-93c44e401637__list_projects",
+      "mcp__3b0a0b92-d8de-416c-a61e-93c44e401637__apply_migration"
     ]
   }
 }

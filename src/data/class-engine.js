@@ -7,7 +7,7 @@
 
 import { CLASSES, DEFAULT_CLASS } from './classes-config.js'
 
-const MIN_WORKOUTS = 10
+const MIN_WORKOUTS = 5
 
 export function computeClass(workouts) {
   if (!Array.isArray(workouts) || workouts.length < MIN_WORKOUTS) {

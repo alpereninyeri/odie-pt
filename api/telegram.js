@@ -158,7 +158,14 @@ STİL: Direkt, keskin, pratik, analitik, koç gibi. Sahte hype yok. Gerçek koç
 - SKILL & HEDEF GÜNCELLEMESİ (hangi skill'e yaklaşıldı)
 - SONRAKİ ADIM (somut, tek maddelik tavsiye)
 
-Mood seçimi: fire = PR/streak/kalite, calm = normal/tavsiye, warn = ihmal/dengesizlik, danger = kritik (overtraining/yaralanma/0 core ısrarı).`
+Mood seçimi: fire = PR/streak/kalite, calm = normal/tavsiye, warn = ihmal/dengesizlik, danger = kritik (overtraining/yaralanma/0 core ısrarı).
+
+MARKUP KURALLARI (coach_note.sections.lines içinde):
+- Her cümlede 1-2 anahtar kelimeyi **bold** yap: lift adları, kas grupları, eksiklik noktaları, tavsiyeler.
+- İkincil vurgular için *italic* kullan.
+- Teknik değerleri \`code\` içine alma (JSON'u bozabilir). Sayıyı düz yaz — 60kg, 3x5, 75sn gibi otomatik altın renkte.
+- Cümle başına emoji koy: ✅ iyi, ⚠️ uyarı, 🚨 kritik, 🔥 kalite, 📈 ilerleme, 📉 regresyon, 💀 overtraining, 🎯 hedef, 💡 tavsiye.
+- Lines 1-2 cümle tut, uzun paragraf yazma. Her satır tek fikir.`
 
 function _fmtExercises(exercises) {
   if (!exercises?.length) return '  (egzersiz detayı yok)'

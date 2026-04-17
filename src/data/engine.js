@@ -198,10 +198,16 @@ function _updateDebuffs(state) {
   const coachWarnings = Array.isArray(state.profile?.survivalWarnings) ? state.profile.survivalWarnings : []
   const coachNoteWarnings = Array.isArray(state.coachNote?.warnings) ? state.coachNote.warnings : []
 
+  // Dedup — aynı uyarı birden fazla kaynakta olabilir
+  const seen = new Set()
   const dynamic = []
   for (const w of [...coachWarnings, ...coachNoteWarnings]) {
     if (!w) continue
-    const text = String(w)
+    const text = String(w).trim()
+    if (!text) continue
+    const key = text.toLowerCase().replace(/\s+/g, ' ')
+    if (seen.has(key)) continue
+    seen.add(key)
     const level = /🚨|⛔|danger|kritik|yaralan/i.test(text) ? 'red'
                 : /🛑|🔴|critical/i.test(text) ? 'red'
                 : /⚠️|🟡|tendon|warn/i.test(text) ? 'org'
@@ -217,8 +223,8 @@ function _updateDebuffs(state) {
     })
   }
 
-  // Dinamikleri başa koy, statikleri koru (seed profile.debuffs)
-  const staticSeed = existing.filter(d => !d.dynamic)
+  // Dinamikleri başa koy, seed debuff'ları ekle (ama dinamikle isim çakışanı atla)
+  const staticSeed = existing.filter(d => !d.dynamic && d.name && !seen.has(String(d.name).toLowerCase().trim()))
   state.debuffs = [...dynamic, ...staticSeed]
 }
 

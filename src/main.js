@@ -27,6 +27,7 @@ store.init().then(() => {
 
   renderApp()
   initModal()
+  initHeader(store.getProfile())
   _initPanelForKey('stats')
 
   // Store değişikliklerinde header'ı yenile

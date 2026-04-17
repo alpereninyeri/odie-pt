@@ -5,7 +5,21 @@ let _token = 0
 function _cancelled(t) { return t !== _token }
 
 function _parseMarkup(text) {
-  return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  return String(text)
+    // **bold**
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // *italic* (tek yıldız, ama bold'dan sonra)
+    .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>')
+    // `code`
+    .replace(/`([^`]+?)`/g, '<code class="coach-code">$1</code>')
+    // Önemli sayılar: 60kg, 3x5, 27%, 75sn, 150m → gold renk
+    .replace(/(\b\d+(?:\.\d+)?(?:kg|sn|dk|%|m|km|x\d+|kcal|XP)\b|\b\d+x\d+\b)/gi,
+             '<span class="coach-num">$1</span>')
+    // Stat kısaltmaları (STR/AGI/END/DEX/CON/STA) → renkli
+    .replace(/\b(STR|AGI|END|DEX|CON|STA)\b/g, '<span class="coach-stat">$1</span>')
+    // ↑↓→ ok sembolleri → renkli
+    .replace(/([↑↗▲])/g, '<span class="coach-up">$1</span>')
+    .replace(/([↓↘▼])/g, '<span class="coach-down">$1</span>')
 }
 
 export function renderCoach(p) {
