@@ -76,7 +76,7 @@ function renderApp() {
           <div class="nav-brand-mark">${profile.avatar}</div>
           <div>
             <div class="nav-brand-title">OdiePt Nexus</div>
-            <div class="nav-brand-sub">dark raid interface</div>
+            <div class="nav-brand-sub">solo performance app</div>
           </div>
         </div>
 
@@ -135,13 +135,13 @@ function renderApp() {
 function pageTitle(tabKey, profile) {
   switch (tabKey) {
     case 'dashboard':
-      return `${profile.nick} command nexus`
+      return `${profile.nick} performance hub`
     case 'progress':
-      return 'Stat atlasi, denge ve talent ledger'
+      return 'Build, denge ve progression'
     case 'training':
-      return 'Quest board, field log ve raid gecmisi'
+      return 'Mission board, log ve session history'
     case 'coach':
-      return 'ODIE war room'
+      return 'ODIE command center'
     default:
       return profile.nick
   }
@@ -220,13 +220,13 @@ function renderDashboard(state, profile) {
             <span class="class-chip">${state.profile.classObj?.name || profile.class}</span>
           </div>
           <div class="hero-banner">
-            <span class="hero-banner-label">Raid Gate</span>
+            <span class="hero-banner-label">Current Focus</span>
             <strong>${state.profile.currentFocus || 'Hybrid discipline protocol'}</strong>
           </div>
           <h2>${profile.nick}</h2>
           <p>${state.profile.classObj?.desc || profile.subClass}. Parkour, bike, ski, calisthenics ve gym tek karakter sayfasinda ilerliyor.</p>
           <div class="hero-focus">
-            <span class="mini-label">Combat Directives</span>
+            <span class="mini-label">Build Tags</span>
             <div class="hero-sigil-row">
               ${heroSigils}
             </div>
@@ -236,17 +236,17 @@ function renderDashboard(state, profile) {
 
       <div class="hero-raids">
         <div class="hero-raid-item">
-          <span class="mini-label">Guild Tier</span>
+          <span class="mini-label">Rank</span>
           <strong>${profile.rank}</strong>
           <small>${state.profile.classObj?.name || profile.class}</small>
         </div>
         <div class="hero-raid-item">
-          <span class="mini-label">Streak Aura</span>
+          <span class="mini-label">Streak</span>
           <strong>${streak.current} gun</strong>
           <small>${streak.label || 'Yeni seri'}</small>
         </div>
         <div class="hero-raid-item">
-          <span class="mini-label">Vital Shield</span>
+          <span class="mini-label">Readiness</span>
           <strong>${readinessMetric?.val || '100/100'}</strong>
           <small>${state.profile.survivalStatus || 'healthy'}</small>
         </div>
@@ -304,7 +304,7 @@ function renderDashboard(state, profile) {
         <div class="section-top">
           <div>
             <div class="eyebrow">Combat State</div>
-            <h3>Bugun sahaya ne kadar hazirsin</h3>
+            <h3>Bugun ne kadar hazirsin</h3>
           </div>
           <span class="pill pill-emerald">${state.profile.survivalStatus || 'healthy'}</span>
         </div>
@@ -333,7 +333,7 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Aura Rings</div>
+            <div class="eyebrow">Daily Rings</div>
             <h3>Gunluk enerji halkalari</h3>
           </div>
           <button class="inline-link" data-tab="training">Training</button>
@@ -346,7 +346,7 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Threat Board</div>
+            <div class="eyebrow">Focus Board</div>
             <h3>Seni level atlatacak sonraki hedefler</h3>
           </div>
           <button class="inline-link" data-tab="progress">Progress</button>
@@ -359,7 +359,7 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card wide">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Field Journal</div>
+            <div class="eyebrow">Recent Log</div>
             <h3>Son seanslardan cikan temiz sinyaller</h3>
           </div>
           <button class="inline-link" data-tab="training">Tum gecmis</button>
@@ -385,8 +385,8 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card wide coach-preview">
         <div class="section-top">
           <div>
-            <div class="eyebrow">War Council</div>
-            <h3>ODIE'nin en kritik taktik notu</h3>
+            <div class="eyebrow">Coach Feed</div>
+            <h3>ODIE'nin en kritik notu</h3>
           </div>
           <button class="inline-link" data-tab="coach">Coach ekranini ac</button>
         </div>
@@ -532,7 +532,7 @@ function renderTraining(profile) {
     <section class="surface-stack">
       <div class="glass-card surface training-header">
         <div>
-          <div class="eyebrow">Quest Hall</div>
+          <div class="eyebrow">Mission Board</div>
           <h3>Gunluk log, quest board ve workout gecmisi</h3>
           <p>Recovery checklist, gorev akisi ve raid kaydi tek salonda.</p>
         </div>
@@ -558,9 +558,9 @@ function renderCoachPage(profile) {
     <section class="surface-stack">
       <div class="glass-card surface coach-intro">
         <div>
-          <div class="eyebrow">War Room</div>
-          <h3>Odie'nin daha sert ve daha temiz taktik masasi</h3>
-          <p>Arayuz tamamen dark, ton daha oyunsu, analiz akisi ise hala okunakli.</p>
+          <div class="eyebrow">Coach Feed</div>
+          <h3>ODIE'nin analiz ve yonlendirme paneli</h3>
+          <p>Daha temiz dark arayuz, daha net okuma ve daha sade kontrol hissi.</p>
         </div>
         <button class="inline-link" data-tab="training">Son seanslari ac</button>
       </div>
