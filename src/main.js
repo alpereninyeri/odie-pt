@@ -496,7 +496,7 @@ function getFocusSignals(state, profile) {
 }
 
 function extractCoachInsight(profile) {
-  const sections = profile.coachNote?.sections || []
+  const sections = (profile.coachNote?.sections || []).filter(section => !section?.hidden)
   const firstSection = sections[0]
   if (!firstSection) {
     return {

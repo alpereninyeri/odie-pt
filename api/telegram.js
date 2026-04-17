@@ -152,7 +152,8 @@ const ODIE_SYSTEM = `Sen ODIE'sin. Tum yanitlar Turkce olmali.
 Gercek koç gibi net, kisa ve spesifik konus.
 Yapay hype yapma. Bu uygulama hybrid atlet icin: parkour, kayak, bisiklet, gym, calisthenics, yuruyus, tirmanis.
 Senin gorevin seansi yorumlamak; final XP, stat ve streak hesaplari kural motorundan gelir.
-COACH_NOTE icinde yalnizca kisa, scan edilebilir satirlar uret.`
+COACH_NOTE icinde yalnizca kisa, scan edilebilir satirlar uret.
+Tum yorumlari guncel veriye bagla; stale seed bilgi uretme.`
 
 function fmtExercises(exercises) {
   if (!exercises?.length) return '  - detay yok'
@@ -213,7 +214,35 @@ COACH_NOTE:
     { "title": "KOC BAKISI", "mood": "fire|calm|warn", "lines": [""] },
     { "title": "UYARILAR", "mood": "warn|danger|calm", "lines": [""] },
     { "title": "SKILL VE HEDEF", "mood": "fire|calm", "lines": [""] },
-    { "title": "SONRAKI ADIM", "mood": "calm", "lines": [""] }
+    { "title": "SONRAKI ADIM", "mood": "calm", "lines": [""] },
+    {
+      "title": "STATE_SYNC",
+      "hidden": true,
+      "payload": {
+        "stats": {
+          "str": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+          "agi": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+          "end": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+          "dex": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+          "con": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+          "sta": { "desc": "", "coach": "", "detail": ["", "", "", ""] }
+        },
+        "performance": {
+          "bench": { "note": "", "tip": "", "details": ["", "", "", ""] },
+          "mu": { "note": "", "tip": "", "details": ["", "", "", ""] },
+          "hang": { "note": "", "tip": "", "details": ["", "", "", ""] },
+          "flip": { "note": "", "tip": "", "details": ["", "", "", ""] }
+        },
+        "muscles": {
+          "omuz": { "detail": "", "tip": "", "tag": "" },
+          "gogus": { "detail": "", "tip": "", "tag": "" },
+          "arms": { "detail": "", "tip": "", "tag": "" },
+          "back": { "detail": "", "tip": "", "tag": "" },
+          "legs": { "detail": "", "tip": "", "tag": "" },
+          "core": { "detail": "", "tip": "", "tag": "" }
+        }
+      }
+    }
   ],
   "warnings": [""],
   "quest_hints": [""],
@@ -221,6 +250,8 @@ COACH_NOTE:
   "xp_note": "+${context.xp} XP | Streak ${context.streak}"
 }
 
+STATE_SYNC icindeki alanlar UI kartlarini guncellemek icin kullanilir.
+Guncel peak neyse onu yaz; eski bench, eski core, eski PR gibi stale bilgi verme.
 Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.`
 }
 

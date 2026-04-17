@@ -2,11 +2,9 @@ let _onClose = null
 
 export function initModal() {
   const bg = document.getElementById('statModal')
-  // Backdrop tıklama — event delegation
   bg.addEventListener('click', e => {
     if (e.target === bg) closeModal()
   })
-  // Close butonu — data-close-modal ile markup'tan bağımsız tetikleme
   bg.addEventListener('click', e => {
     if (e.target.closest('[data-close-modal]')) closeModal()
   })
@@ -22,11 +20,12 @@ export function openModal(html) {
   document.getElementById('statModal').classList.add('open')
 }
 
-// Mini SVG bar chart for performance history
 function miniBarChart(data, color) {
   if (!data || !data.length) return ''
   const max = Math.max(...data.map(d => d.val)) || 1
-  const W = 220, H = 64, padX = 4
+  const W = 220
+  const H = 64
+  const padX = 4
   const count = data.length
   const barW = Math.floor((W - padX * (count - 1)) / count)
   const labelH = 14
@@ -38,21 +37,16 @@ function miniBarChart(data, color) {
     const y = chartH - bh - 14
     const isLast = i === count - 1
     return `
-      <rect x="${x}" y="${y}" width="${barW}" height="${bh}"
-        fill="${color}" opacity="${isLast ? 1 : 0.35}" rx="2"/>
-      <text x="${x + barW / 2}" y="${H - 2}" text-anchor="middle"
-        fill="var(--dim)" font-size="8" font-family="'Share Tech Mono',monospace">${d.date}</text>
-      <text x="${x + barW / 2}" y="${y - 3}" text-anchor="middle"
-        fill="${isLast ? color : 'var(--dim)'}" font-size="8"
-        font-family="'Share Tech Mono',monospace">${d.val}</text>
+      <rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="${color}" opacity="${isLast ? 1 : 0.35}" rx="2"/>
+      <text x="${x + barW / 2}" y="${H - 2}" text-anchor="middle" fill="var(--dim)" font-size="8" font-family="'Share Tech Mono',monospace">${d.date}</text>
+      <text x="${x + barW / 2}" y="${y - 3}" text-anchor="middle" fill="${isLast ? color : 'var(--dim)'}" font-size="8" font-family="'Share Tech Mono',monospace">${d.val}</text>
     `
   }).join('')
 
   return `
     <div class="modal-chart">
-      <div class="modal-chart-title">İlerleme Geçmişi</div>
-      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"
-        style="overflow:visible;display:block;margin:0 auto">${bars}</svg>
+      <div class="modal-chart-title">Ilerleme Gecmisi</div>
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;display:block;margin:0 auto">${bars}</svg>
     </div>`
 }
 
@@ -71,17 +65,17 @@ export function openStatModal(stat) {
       <div class="modal-stat-big" style="color:${stat.color}">
         ${stat.val}<span style="font-size:20px;color:var(--dim)">/100</span>
       </div>
-      ${stat.critical ? `<div style="text-align:center;margin-bottom:8px"><span style="background:var(--red);color:#fff;font-size:9px;padding:3px 10px;font-family:'Share Tech Mono',monospace;letter-spacing:2px">⚠ KRİTİK SEVİYE</span></div>` : ''}
+      ${stat.critical ? `<div style="text-align:center;margin-bottom:8px"><span style="background:var(--red);color:#fff;font-size:9px;padding:3px 10px;font-family:'Share Tech Mono',monospace;letter-spacing:2px">KRITIK SEVIYE</span></div>` : ''}
       <div class="modal-desc">${stat.desc}</div>
       <div class="modal-coach">${stat.coach}</div>
       <div class="modal-grid">
-        ${stat.detail.map(d => `
+        ${(stat.detail || []).map(d => `
           <div class="modal-item">
             <div class="modal-item-label">${d.label}</div>
             <div class="modal-item-val">${d.val}</div>
           </div>`).join('')}
       </div>
-      <div class="modal-tip">Koç Notu: Bu stat ${stat.label} skorunun temel bileşenleridir.</div>
+      <div class="modal-tip">Koc Notu: Bu stat ${stat.label} skorunun guncel bilesenlerini gosterir.</div>
     </div>`
   openModal(html)
 }
@@ -99,13 +93,13 @@ export function openPerfModal(perf) {
       <div class="modal-desc">${perf.note}</div>
       ${chart}
       <div class="modal-grid">
-        ${perf.details.map(d => `
+        ${(perf.details || []).map(d => `
           <div class="modal-item">
             <div class="modal-item-label">${d.label}</div>
             <div class="modal-item-val">${d.val}</div>
           </div>`).join('')}
       </div>
-      <div class="modal-tip">Koç Analizi: ${perf.tip}</div>
+      <div class="modal-tip">Koc Analizi: ${perf.tip}</div>
     </div>`
   openModal(html)
 }
@@ -138,7 +132,7 @@ export function openEpicVolumeModal(currentKg, tiers) {
     <div class="modal-body">
       <div class="epic-total">
         <div class="epic-total-val">${currentKg.toLocaleString('tr-TR')} kg</div>
-        <div class="epic-total-lbl">Toplam Kaldırılan Hacim</div>
+        <div class="epic-total-lbl">Toplam kaldirilan hacim</div>
       </div>
       <div class="epic-tier-list">${items}</div>
     </div>`
@@ -171,14 +165,19 @@ export function openClassModal(cls) {
       </div>
       <div class="modal-desc">${cls.desc}</div>
       <div class="modal-coach"><strong>Pasif:</strong> ${cls.buff}</div>
-      ${statItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">STAT ÇARPANI</div><div class="modal-grid">${statItems}</div>` : ''}
-      ${xpItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">XP ÇARPANI</div><div class="modal-grid">${xpItems}</div>` : ''}
-      <div class="modal-tip">Sınıfın son 10 antrenmana göre dinamik değişir. Deseni değiştirdikçe sınıf da değişir.</div>
+      ${statItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">STAT CARPANI</div><div class="modal-grid">${statItems}</div>` : ''}
+      ${xpItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">XP CARPANI</div><div class="modal-grid">${xpItems}</div>` : ''}
+      <div class="modal-tip">Sinif son 10 antrenmana gore dinamik degisir. Desen degistirdikce sinif da degisir.</div>
     </div>`
   openModal(html)
 }
 
 export function openAvatarModal(p) {
+  const criticalStat = (p.stats || []).find(stat => stat.critical)
+  const liveTip = criticalStat
+    ? `${criticalStat.label} su an en zayif halka. ${p.currentFocus || 'Siradaki seansi buna gore sec.'}`
+    : (p.currentFocus ? `Su an odak: ${p.currentFocus}.` : 'Hybrid denge korunuyor.')
+
   const html = `
     <div class="modal-head">
       <span style="font-size:22px">${p.avatar}</span>
@@ -195,9 +194,9 @@ export function openAvatarModal(p) {
         <div class="modal-item"><div class="modal-item-label">Toplam Seans</div><div class="modal-item-val">${p.sessions}</div></div>
         <div class="modal-item"><div class="modal-item-label">Toplam Hacim</div><div class="modal-item-val">${p.totalVolume}</div></div>
         <div class="modal-item"><div class="modal-item-label">Toplam Set</div><div class="modal-item-val">${p.totalSets}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Toplam Süre</div><div class="modal-item-val">${p.totalTime}</div></div>
+        <div class="modal-item"><div class="modal-item-label">Toplam Sure</div><div class="modal-item-val">${p.totalTime}</div></div>
       </div>
-      <div class="modal-tip">Core (karın/bel) bölgen alarm veriyor. Bugün antrenmanına ekle.</div>
+      <div class="modal-tip">${liveTip}</div>
     </div>`
   openModal(html)
 }

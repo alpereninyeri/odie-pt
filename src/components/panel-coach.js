@@ -1,40 +1,41 @@
-// Cancellation token: her initCoach çağrısında yeni token üretilir.
-// Tüm async adımlar token'ı kontrol eder — DOM yokken hiçbir şey çalışmaz.
+// Cancellation token: her initCoach cagrısında yeni token uretilir.
+// Tum async adimlar token'i kontrol eder; DOM yokken hicbir sey calismaz.
 let _token = 0
 
 function _cancelled(t) { return t !== _token }
 
+function _visibleSections(note) {
+  return (note?.sections || []).filter(section => !section?.hidden)
+}
+
 function _parseMarkup(text) {
   return String(text)
-    // **bold**
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // *italic* (tek yıldız, ama bold'dan sonra)
     .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>')
-    // `code`
     .replace(/`([^`]+?)`/g, '<code class="coach-code">$1</code>')
-    // Önemli sayılar: 60kg, 3x5, 27%, 75sn, 150m → gold renk
-    .replace(/(\b\d+(?:\.\d+)?(?:kg|sn|dk|%|m|km|x\d+|kcal|XP)\b|\b\d+x\d+\b)/gi,
-             '<span class="coach-num">$1</span>')
-    // Stat kısaltmaları (STR/AGI/END/DEX/CON/STA) → renkli
+    .replace(/(\b\d+(?:\.\d+)?(?:kg|sn|dk|%|m|km|x\d+|kcal|XP)\b|\b\d+x\d+\b)/gi, '<span class="coach-num">$1</span>')
     .replace(/\b(STR|AGI|END|DEX|CON|STA)\b/g, '<span class="coach-stat">$1</span>')
-    // ↑↓→ ok sembolleri → renkli
     .replace(/([↑↗▲])/g, '<span class="coach-up">$1</span>')
     .replace(/([↓↘▼])/g, '<span class="coach-down">$1</span>')
 }
 
 export function renderCoach(p) {
   const cn = p.coachNote || { date: '', xpNote: '', sections: [] }
-  if (!Array.isArray(cn.sections) || !cn.sections.length) {
+  const sections = _visibleSections(cn)
+  if (!sections.length) {
     return `
       <div class="coach-terminal" style="min-height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
         <div style="font-size:48px;opacity:.4">☠</div>
         <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:3px;opacity:.7">ODIE OFFLINE</div>
         <div style="font-size:11px;opacity:.5;max-width:280px;text-align:center;line-height:1.5">
-          Henüz koç raporu yok. Telegram'a bir antrenman yaz → ODIE analiz eder ve burada canlı rapor sunar.
+          Henuz coach raporu yok. Telegram'a bir antrenman yaz, ODIE analiz eder ve burada canli rapor sunar.
         </div>
       </div>`
   }
-  const shells = cn.sections.map((sec, i) => `
+
+  const warningCount = Array.isArray(cn.warnings) ? cn.warnings.length : 0
+  const questCount = Array.isArray(p.quests?.weekly) ? p.quests.weekly.filter(quest => !quest.done).length : 0
+  const shells = sections.map((sec, i) => `
     <div class="coach-section" id="coach-sec-${i}" data-mood="${sec.mood}">
       <div class="coach-sec-head">
         <span class="coach-sec-icon">${_moodIcon(sec.mood)}</span>
@@ -51,50 +52,66 @@ export function renderCoach(p) {
         <div class="coach-avatar">☠</div>
         <div class="coach-npc-info">
           <div class="coach-npc-name">ODIE</div>
-          <div class="coach-npc-sub">Personal Combat Coach // AI v2.1</div>
+          <div class="coach-npc-sub">Adaptive Performance Interpreter</div>
         </div>
         <div class="coach-meta">
           <div class="coach-date">${cn.date}</div>
           <div class="coach-session">SESSION #${p.sessions}</div>
         </div>
       </div>
+      <div class="coach-strip">
+        <span class="coach-pill">LIVE SYNC</span>
+        <span class="coach-pill">${warningCount} warning</span>
+        <span class="coach-pill">${questCount} active quest</span>
+      </div>
       <div class="coach-body" id="coach-body">
         <div class="coach-init-line" id="coach-init">
-          <span>ODIE yükleniyor</span><span class="coach-blink">_</span>
+          <span>ODIE yukleniyor</span><span class="coach-blink">_</span>
         </div>
         ${shells}
       </div>
       <div class="coach-footer">
-        <button class="coach-skip-btn" id="coach-skip">⚡ ATLA — HEPSİNİ GÖSTER</button>
+        <button class="coach-skip-btn" id="coach-skip">ATLA - HEPSINI GOSTER</button>
         <div class="coach-xp-badge">${cn.xpNote}</div>
       </div>
     </div>`
 }
 
 function _moodIcon(mood) {
-  return { fire: '🔥', warning: '⚠️', danger: '🔴', calm: '💬' }[mood] || '▶'
+  return { fire: '🔥', warning: '⚠️', warn: '⚠️', danger: '🔴', calm: '💬' }[mood] || '▶'
 }
 
 export function initCoach(p) {
-  if (!p?.coachNote?.sections?.length) return
-  // Her initCoach çağrısında token ilerler — önceki zincir otomatik iptal
-  const myToken = ++_token
+  const sections = _visibleSections(p?.coachNote)
+  if (!sections.length) return
 
+  const coachState = {
+    ...p,
+    coachNote: {
+      ...p.coachNote,
+      sections,
+    },
+  }
+
+  const myToken = ++_token
   const skipBtn = document.getElementById('coach-skip')
   if (skipBtn) {
     skipBtn.onclick = () => {
-      ++_token  // skip de zinciri iptal eder
-      _skipAll(p)
+      ++_token
+      _skipAll(coachState)
     }
   }
 
   setTimeout(() => {
     if (_cancelled(myToken)) return
     const initLine = document.getElementById('coach-init')
-    if (initLine) { initLine.style.transition = 'opacity .4s'; initLine.style.opacity = '0' }
+    if (initLine) {
+      initLine.style.transition = 'opacity .4s'
+      initLine.style.opacity = '0'
+    }
     setTimeout(() => {
       if (_cancelled(myToken)) return
-      _startTransmission(p, 0, myToken)
+      _startTransmission(coachState, 0, myToken)
     }, 400)
   }, 800)
 }
@@ -108,7 +125,7 @@ function _startTransmission(p, idx, token) {
     return
   }
 
-  const secEl  = document.getElementById(`coach-sec-${idx}`)
+  const secEl = document.getElementById(`coach-sec-${idx}`)
   const bodyEl = document.getElementById(`coach-sb-${idx}`)
   const statEl = document.getElementById(`coach-st-${idx}`)
   if (!secEl || !bodyEl) return
@@ -116,9 +133,12 @@ function _startTransmission(p, idx, token) {
   secEl.classList.add('active')
   if (statEl) statEl.textContent = 'YAYINDA'
 
-  _typewriterSection(cn.sections[idx].lines, bodyEl, token, () => {
+  _typewriterSection(cn.sections[idx].lines || [], bodyEl, token, () => {
     if (_cancelled(token)) return
-    if (statEl) { statEl.textContent = 'TAMAMLANDI'; statEl.classList.add('done') }
+    if (statEl) {
+      statEl.textContent = 'TAMAMLANDI'
+      statEl.classList.add('done')
+    }
     setTimeout(() => _startTransmission(p, idx + 1, token), 300)
   })
 }
@@ -157,6 +177,7 @@ function _typewriterSection(lines, containerEl, token, onDone) {
         setTimeout(typeLine, 70)
       }
     }
+
     typeChar()
   }
 
@@ -167,7 +188,10 @@ function _slicePlainWithMarkup(raw, n) {
   let plain = 0
   let i = 0
   while (i < raw.length && plain < n) {
-    if (raw[i] === '*' && raw[i + 1] === '*') { i += 2; continue }
+    if (raw[i] === '*' && raw[i + 1] === '*') {
+      i += 2
+      continue
+    }
     plain++
     i++
   }
@@ -179,13 +203,16 @@ function _skipAll(p) {
   if (initLine) initLine.style.display = 'none'
 
   p.coachNote.sections.forEach((sec, i) => {
-    const secEl  = document.getElementById(`coach-sec-${i}`)
+    const secEl = document.getElementById(`coach-sec-${i}`)
     const bodyEl = document.getElementById(`coach-sb-${i}`)
     const statEl = document.getElementById(`coach-st-${i}`)
     if (!secEl || !bodyEl) return
     secEl.classList.add('active')
-    bodyEl.innerHTML = sec.lines.map(l => `<div class="coach-line">${_parseMarkup(l)}</div>`).join('')
-    if (statEl) { statEl.textContent = 'TAMAMLANDI'; statEl.classList.add('done') }
+    bodyEl.innerHTML = (sec.lines || []).map(line => `<div class="coach-line">${_parseMarkup(line)}</div>`).join('')
+    if (statEl) {
+      statEl.textContent = 'TAMAMLANDI'
+      statEl.classList.add('done')
+    }
   })
 
   const skipBtn = document.getElementById('coach-skip')
