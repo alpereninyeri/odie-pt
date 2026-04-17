@@ -12,10 +12,10 @@ import { openWorkoutForm } from './components/workout-form.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 
 const tabs = [
-  { key: 'dashboard', label: 'Dashboard', icon: '◎' },
-  { key: 'progress', label: 'Progress', icon: '◔' },
-  { key: 'training', label: 'Training', icon: '▣' },
-  { key: 'coach', label: 'Coach', icon: '◈' },
+  { key: 'dashboard', label: 'Nexus', icon: '✦' },
+  { key: 'progress', label: 'Stats', icon: '◈' },
+  { key: 'training', label: 'Quest', icon: '⚔' },
+  { key: 'coach', label: 'ODIE', icon: '◉' },
 ]
 
 let activeTab = 'dashboard'
@@ -44,7 +44,7 @@ store.init().then(() => {
   store.subscribe('_coachUpdated', coachNote => {
     if (!coachNote) return
     showToast({
-      icon: '◈',
+      icon: '◉',
       title: 'ODIE raporu geldi',
       msg: coachNote.xp_note || 'Yeni antrenman analizi hazir',
       rarity: 'rare',
@@ -54,42 +54,31 @@ store.init().then(() => {
 })
 
 function initTheme() {
-  const saved = localStorage.getItem('odiept-theme') || 'light'
-  document.documentElement.setAttribute('data-theme', saved)
-}
-
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme') || 'light'
-  const next = current === 'dark' ? 'light' : 'dark'
-  document.documentElement.setAttribute('data-theme', next)
-  localStorage.setItem('odiept-theme', next)
-  renderApp()
+  document.documentElement.setAttribute('data-theme', 'dark')
+  localStorage.setItem('odiept-theme', 'dark')
 }
 
 function renderApp() {
   const state = store.getState()
   const profile = store.getProfile()
-  const theme = document.documentElement.getAttribute('data-theme') || 'light'
+  const mobileHud = renderMobileHud(state, profile)
 
   document.getElementById('app').innerHTML = `
     <div class="modal-bg" id="statModal">
       <div class="modal" id="modalContent"></div>
     </div>
 
+    ${mobileHud}
+
     <div class="app-shell">
       <aside class="app-nav glass-card">
         <div class="nav-brand">
           <div class="nav-brand-mark">${profile.avatar}</div>
           <div>
-            <div class="nav-brand-title">OdiePt V2</div>
-            <div class="nav-brand-sub">${profile.handle}</div>
+            <div class="nav-brand-title">OdiePt Nexus</div>
+            <div class="nav-brand-sub">dark raid interface</div>
           </div>
         </div>
-
-        <button class="theme-pill" data-action="toggle-theme" aria-label="Tema degistir">
-          <span>${theme === 'dark' ? 'Moon' : 'Light'}</span>
-          <strong>${theme === 'dark' ? 'Dark' : 'Light'}</strong>
-        </button>
 
         <button class="primary-button desktop-only" data-action="open-workout-form">
           <span>+</span>
@@ -110,7 +99,7 @@ function renderApp() {
       <main class="app-main">
         <header class="topbar">
           <div>
-            <div class="eyebrow">${tabs.find(tab => tab.key === activeTab)?.label || 'Dashboard'}</div>
+            <div class="eyebrow">${tabs.find(tab => tab.key === activeTab)?.label || 'Nexus'}</div>
             <h1 class="page-title">${pageTitle(activeTab, profile)}</h1>
           </div>
           <div class="topbar-actions">
@@ -146,16 +135,41 @@ function renderApp() {
 function pageTitle(tabKey, profile) {
   switch (tabKey) {
     case 'dashboard':
-      return `${profile.nick} performans ozeti`
+      return `${profile.nick} command nexus`
     case 'progress':
-      return 'Statlar, denge ve skill progression'
+      return 'Stat atlasi, denge ve talent ledger'
     case 'training':
-      return 'Gunluk takip, gorevler ve workout gecmisi'
+      return 'Quest board, field log ve raid gecmisi'
     case 'coach':
-      return 'ODIE analysis feed'
+      return 'ODIE war room'
     default:
       return profile.nick
   }
+}
+
+function renderMobileHud(state, profile) {
+  const xpCur = profile?.xp?.current ?? 0
+  const xpMax = profile?.xp?.max || 1
+  const pct = Math.max(0, Math.min(100, Math.round((xpCur / xpMax) * 100)))
+  const level = profile.level ?? '-'
+  const streak = state.profile?.streak?.current ?? 0
+  const readinessMetric = profile?.health?.metrics?.find?.(metric => metric.label === 'Readiness')
+  const readiness = readinessMetric ? String(readinessMetric.val).split('/')[0] : '100'
+
+  return `
+    <div class="mobile-hud">
+      <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${profile.avatar}</button>
+      <div class="mobile-hud-center">
+        <div class="mobile-hud-nick">${profile.nick} <span>| L${level}</span></div>
+        <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
+        <div class="mobile-hud-xptext">${xpCur.toLocaleString('tr-TR')} / ${xpMax.toLocaleString('tr-TR')} XP</div>
+      </div>
+      <div class="mobile-hud-stats">
+        <div class="mobile-hud-stat"><strong>${streak}</strong><small>STREAK</small></div>
+        <div class="mobile-hud-stat"><strong>${readiness}</strong><small>AURA</small></div>
+      </div>
+    </div>
+  `
 }
 
 function renderNavButton(tab, isActive, mobile = false) {
@@ -188,8 +202,9 @@ function renderDashboard(state, profile) {
   const highlights = (state.workouts || []).slice(0, 2)
   const coachInsight = extractCoachInsight(profile)
   const streak = state.profile.streak || { current: 0, label: '' }
-  const dashboardFocus = renderFocusItems(state, profile).slice(0, 2)
+  const dashboardFocus = renderFocusItems(state, profile).slice(0, 3)
   const quickStats = renderDashboardStats(profile)
+  const heroSigils = renderHeroSigils(state, profile)
 
   return `
     <section class="hero-card glass-card">
@@ -204,18 +219,24 @@ function renderDashboard(state, profile) {
             <span class="rank-capsule">${profile.rank}</span>
             <span class="class-chip">${state.profile.classObj?.name || profile.class}</span>
           </div>
+          <div class="hero-banner">
+            <span class="hero-banner-label">Raid Gate</span>
+            <strong>${state.profile.currentFocus || 'Hybrid discipline protocol'}</strong>
+          </div>
           <h2>${profile.nick}</h2>
-          <p>${state.profile.classObj?.desc || profile.subClass}</p>
+          <p>${state.profile.classObj?.desc || profile.subClass}. Parkour, bike, ski, calisthenics ve gym tek karakter sayfasinda ilerliyor.</p>
           <div class="hero-focus">
-            <span class="mini-label">Active Questline</span>
-            <strong>${state.profile.currentFocus || 'Hybrid denge'}</strong>
+            <span class="mini-label">Combat Directives</span>
+            <div class="hero-sigil-row">
+              ${heroSigils}
+            </div>
           </div>
         </div>
       </div>
 
       <div class="hero-raids">
         <div class="hero-raid-item">
-          <span class="mini-label">Guild Rank</span>
+          <span class="mini-label">Guild Tier</span>
           <strong>${profile.rank}</strong>
           <small>${state.profile.classObj?.name || profile.class}</small>
         </div>
@@ -225,7 +246,7 @@ function renderDashboard(state, profile) {
           <small>${streak.label || 'Yeni seri'}</small>
         </div>
         <div class="hero-raid-item">
-          <span class="mini-label">Readiness</span>
+          <span class="mini-label">Vital Shield</span>
           <strong>${readinessMetric?.val || '100/100'}</strong>
           <small>${state.profile.survivalStatus || 'healthy'}</small>
         </div>
@@ -269,7 +290,7 @@ function renderDashboard(state, profile) {
       <div class="section-top compact-top">
         <div>
           <div class="eyebrow">Character Sheet</div>
-          <h3>Core statlar acilista gorunsun</h3>
+          <h3>Ilk ekranda tum ana statlar gorunsun</h3>
         </div>
         <button class="inline-link" data-tab="progress">Tum progression</button>
       </div>
@@ -282,8 +303,8 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Battle Readiness</div>
-            <h3>Bugun raid'e ne kadar hazirsin</h3>
+            <div class="eyebrow">Combat State</div>
+            <h3>Bugun sahaya ne kadar hazirsin</h3>
           </div>
           <span class="pill pill-emerald">${state.profile.survivalStatus || 'healthy'}</span>
         </div>
@@ -291,7 +312,7 @@ function renderDashboard(state, profile) {
           <div class="readiness-score">${readinessMetric?.val || '100/100'}</div>
           <div class="readiness-copy">
             <div class="mini-label">Streak</div>
-            <strong>${streak.current} gun ${streak.label ? `· ${streak.label}` : ''}</strong>
+            <strong>${streak.current} gun ${streak.label ? `| ${streak.label}` : ''}</strong>
             <p>${readinessMetric?.sub || 'Armor ve fatigue dengesiyle hesaplanir.'}</p>
           </div>
         </div>
@@ -312,8 +333,8 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Daily Rings</div>
-            <h3>Gunun aktiflik halkalari</h3>
+            <div class="eyebrow">Aura Rings</div>
+            <h3>Gunluk enerji halkalari</h3>
           </div>
           <button class="inline-link" data-tab="training">Training</button>
         </div>
@@ -325,8 +346,8 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Quest Radar</div>
-            <h3>Bir sonraki net gorev</h3>
+            <div class="eyebrow">Threat Board</div>
+            <h3>Seni level atlatacak sonraki hedefler</h3>
           </div>
           <button class="inline-link" data-tab="progress">Progress</button>
         </div>
@@ -338,8 +359,8 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card wide">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Raid Log</div>
-            <h3>Son seanslardan net sinyaller</h3>
+            <div class="eyebrow">Field Journal</div>
+            <h3>Son seanslardan cikan temiz sinyaller</h3>
           </div>
           <button class="inline-link" data-tab="training">Tum gecmis</button>
         </div>
@@ -354,7 +375,7 @@ function renderDashboard(state, profile) {
               <div class="highlight-meta">
                 <span>${workout.durationMin || 0}dk</span>
                 <span>${workout.primaryCategory}</span>
-                <span>${(workout.tags || []).slice(0, 3).join(' · ') || 'hybrid'}</span>
+                <span>${(workout.tags || []).slice(0, 3).join(' | ') || 'hybrid'}</span>
               </div>
             </div>
           `).join('')}
@@ -364,8 +385,8 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card wide coach-preview">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Guild Intel</div>
-            <h3>Odie'den en kritik not</h3>
+            <div class="eyebrow">War Council</div>
+            <h3>ODIE'nin en kritik taktik notu</h3>
           </div>
           <button class="inline-link" data-tab="coach">Coach ekranini ac</button>
         </div>
@@ -392,6 +413,12 @@ function renderDashboardStats(profile) {
   `).join('')
 }
 
+function renderHeroSigils(state, profile) {
+  return getFocusSignals(state, profile).slice(0, 3).map(item => `
+    <span class="hero-sigil sigil-${item.tone || 'neutral'}">${item.short}</span>
+  `).join('')
+}
+
 function renderRingSummary(ring) {
   const pct = Math.max(0, Math.min(100, ring.pct || 0))
   return `
@@ -411,43 +438,58 @@ function renderRingSummary(ring) {
 }
 
 function renderFocusItems(state, profile) {
+  return getFocusSignals(state, profile).map(item => `
+    <div class="focus-item tone-${item.tone || 'neutral'}">
+      <span class="focus-kicker">${item.kicker}</span>
+      <strong>${item.title}</strong>
+      <p>${item.body}</p>
+    </div>
+  `)
+}
+
+function getFocusSignals(state, profile) {
   const items = []
   const criticalStat = profile.stats.find(stat => stat.critical)
+
   if (criticalStat) {
-    items.push(`
-      <div class="focus-item">
-        <strong>${criticalStat.label} kritik zayif halka</strong>
-        <p>${criticalStat.name} tarafini core veya denge bloklariyla destekle.</p>
-      </div>
-    `)
+    items.push({
+      kicker: 'Weak Link',
+      short: `${criticalStat.label} low`,
+      title: `${criticalStat.label} kritik zayif halka`,
+      body: `${criticalStat.name} tarafini core, denge ve kontrollu hacimle yukari cek.`,
+      tone: 'danger',
+    })
   }
 
   const weeklyQuest = profile.quests.weekly.find(quest => !quest.done && quest.progress < quest.total)
   if (weeklyQuest) {
-    items.push(`
-      <div class="focus-item">
-        <strong>${weeklyQuest.name}</strong>
-        <p>${weeklyQuest.progress} / ${weeklyQuest.total} ilerleme. ${weeklyQuest.desc}</p>
-      </div>
-    `)
+    items.push({
+      kicker: 'Main Quest',
+      short: weeklyQuest.name,
+      title: weeklyQuest.name,
+      body: `${weeklyQuest.progress} / ${weeklyQuest.total} ilerleme. ${weeklyQuest.desc}`,
+      tone: 'gold',
+    })
   }
 
   if (state.profile.survivalWarnings?.length) {
-    items.push(`
-      <div class="focus-item">
-        <strong>Recovery uyarisi</strong>
-        <p>${state.profile.survivalWarnings[0]}</p>
-      </div>
-    `)
+    items.push({
+      kicker: 'Recovery',
+      short: 'Recovery alert',
+      title: 'Recovery uyarisi',
+      body: state.profile.survivalWarnings[0],
+      tone: 'emerald',
+    })
   }
 
   if (!items.length) {
-    items.push(`
-      <div class="focus-item">
-        <strong>Desen korunuyor</strong>
-        <p>Hybrid dagilimi iyi gidiyor. Bir sonraki seansi planli sekilde sec.</p>
-      </div>
-    `)
+    items.push({
+      kicker: 'Rhythm',
+      short: 'Pattern stable',
+      title: 'Desen korunuyor',
+      body: 'Hybrid dagilim iyi gidiyor. Bir sonraki seansi planli sec ve ritmi bozma.',
+      tone: 'neutral',
+    })
   }
 
   return items.slice(0, 3)
@@ -490,9 +532,9 @@ function renderTraining(profile) {
     <section class="surface-stack">
       <div class="glass-card surface training-header">
         <div>
-          <div class="eyebrow">Training Flow</div>
-          <h3>Gunluk log + gorev + workout gecmisi</h3>
-          <p>Tek yerde hem recovery checklist hem de antrenman kaydi.</p>
+          <div class="eyebrow">Quest Hall</div>
+          <h3>Gunluk log, quest board ve workout gecmisi</h3>
+          <p>Recovery checklist, gorev akisi ve raid kaydi tek salonda.</p>
         </div>
         <button class="primary-button" data-action="open-workout-form">
           <span>+</span>
@@ -516,9 +558,9 @@ function renderCoachPage(profile) {
     <section class="surface-stack">
       <div class="glass-card surface coach-intro">
         <div>
-          <div class="eyebrow">Coach Feed</div>
-          <h3>Sinematik ama daha temiz analiz akisi</h3>
-          <p>Neon fazlaligini azalttik; icerik hala sert, arayuz daha premium.</p>
+          <div class="eyebrow">War Room</div>
+          <h3>Odie'nin daha sert ve daha temiz taktik masasi</h3>
+          <p>Arayuz tamamen dark, ton daha oyunsu, analiz akisi ise hala okunakli.</p>
         </div>
         <button class="inline-link" data-tab="training">Son seanslari ac</button>
       </div>
@@ -557,11 +599,6 @@ document.addEventListener('click', event => {
 
   const action = event.target.closest('[data-action]')?.dataset.action
   if (!action) return
-
-  if (action === 'toggle-theme') {
-    toggleTheme()
-    return
-  }
 
   if (action === 'open-workout-form') {
     openWorkoutForm()
