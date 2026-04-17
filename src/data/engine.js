@@ -1,173 +1,239 @@
 /**
  * Hesaplama motoru — her yeni antrenman sonrası state'i yeniden hesaplar.
  * store.js tarafından çağrılır.
+ *
+ * Sorumlulukları:
+ *  - Toplam metrikler (sessions, volume, sets, minutes)
+ *  - Level + XP max
+ *  - muscleBalance (hacim dağılımı)
+ *  - stats (profile.stats'ı state.stats array'ine enjekte et)
+ *  - performance (bench/MU/hang/parkour)
+ *  - quests (daily/weekly)
+ *  - skills (auto-unlock)
+ *  - debuffs (survival + coach warnings)
  */
 
-// Egzersiz → kas grubu eşleme (muscleBalance güncellemesi için)
+import { updatePerformance } from './performance-engine.js'
+import { updateQuests, appendCoachQuests } from './quest-engine.js'
+import { updateSkills } from './skill-engine.js'
+
+// Egzersiz → kas grubu eşleme
 const EXERCISE_MUSCLES = {
-  'Bench Press':     ['Göğüs', 'Triceps', 'Omuz'],
-  'Incline Press':   ['Göğüs', 'Omuz'],
-  'Dips':            ['Göğüs', 'Triceps'],
-  'Push-Up':         ['Göğüs', 'Triceps'],
-  'OHP':             ['Omuz', 'Triceps'],
-  'Lateral Raise':   ['Omuz'],
-  'Arnold Press':    ['Omuz'],
-  'Face Pull':       ['Üst Sırt', 'Omuz'],
-  'Pull-Up':         ['Lat', 'Biseps', 'Üst Sırt'],
-  'Muscle-Up':       ['Lat', 'Biseps', 'Göğüs'],
-  'Barbell Row':     ['Üst Sırt', 'Biseps', 'Lat'],
-  'Cable Row':       ['Üst Sırt', 'Biseps'],
-  'Dead Hang':       ['Lat', 'Biseps'],
-  'Curl':            ['Biseps'],
-  'Hammer Curl':     ['Biseps'],
-  'Tricep Extension':['Triceps'],
-  'Squat':           ['Bacak (Parkour)', 'Kalf'],
-  'Jump Squat':      ['Bacak (Parkour)'],
-  'Lunge':           ['Bacak (Parkour)'],
-  'Calf Raise':      ['Kalf'],
-  'Hollow Body':     ['Core'],
-  'L-Sit':           ['Core'],
-  'Plank':           ['Core'],
-  'Dragon Flag':     ['Core'],
-  'Ab Wheel':        ['Core'],
-  'Leg Raise':       ['Core'],
+  'Bench Press':        ['Göğüs', 'Triceps', 'Omuz'],
+  'Incline Press':      ['Göğüs', 'Omuz'],
+  'Chest Fly':          ['Göğüs'],
+  'Dips':               ['Göğüs', 'Triceps'],
+  'Push-Up':            ['Göğüs', 'Triceps'],
+  'OHP':                ['Omuz', 'Triceps'],
+  'Shoulder Press':     ['Omuz', 'Triceps'],
+  'Lateral Raise':      ['Omuz'],
+  'Arnold Press':       ['Omuz'],
+  'Face Pull':          ['Üst Sırt', 'Omuz'],
+  'Triceps Pushdown':   ['Triceps'],
+  'Tricep Extension':   ['Triceps'],
+  'Pull-Up':            ['Lat', 'Biseps', 'Üst Sırt'],
+  'Pulldown':           ['Lat', 'Biseps'],
+  'Lat Pulldown':       ['Lat', 'Biseps'],
+  'Muscle-Up':          ['Lat', 'Biseps', 'Göğüs'],
+  'Barbell Row':        ['Üst Sırt', 'Biseps', 'Lat'],
+  'Cable Row':          ['Üst Sırt', 'Biseps'],
+  'Seated Cable Row':   ['Üst Sırt', 'Biseps'],
+  'Seated Row':         ['Üst Sırt', 'Biseps'],
+  'Dead Hang':          ['Lat', 'Biseps'],
+  'Curl':               ['Biseps'],
+  'Hammer Curl':        ['Biseps'],
+  'Incline Curl':       ['Biseps'],
+  'Seated Incline Curl':['Biseps'],
+  'Squat':              ['Bacak (Parkour)', 'Kalf'],
+  'Jump Squat':         ['Bacak (Parkour)'],
+  'Lunge':              ['Bacak (Parkour)'],
+  'Leg Press':          ['Bacak (Parkour)'],
+  'Calf Raise':         ['Kalf'],
+  'Standing Calf Raise':['Kalf'],
+  'Hollow Body':        ['Core'],
+  'Hollow Rock':        ['Core'],
+  'L-Sit':              ['Core'],
+  'Plank':              ['Core'],
+  'Dragon Flag':        ['Core'],
+  'Ab Wheel':           ['Core'],
+  'Leg Raise':          ['Core'],
+  'Hanging Leg Raise':  ['Core'],
+  'Çakı':               ['Core'],
+  'Crunch':             ['Core'],
+  'V-Up':               ['Core'],
+  'Treadmill':          ['Kardiyo'],
 }
 
 /**
- * Ana hesaplama — yeni antrenman listesine göre tüm toplam değerleri güncelle.
- * state nesnesini doğrudan mutate eder (store.js zaten immutable değil).
+ * Ana hesaplama — tüm türetilmiş alanları güncelle.
  */
 export function recalculate(state) {
   const workouts = state.workouts || []
 
-  // Toplam istatistikler
+  // Toplam metrikler
   const totalSets    = workouts.reduce((s, w) => s + (w.sets || 0), 0)
   const totalVolumeKg = workouts.reduce((s, w) => s + (w.volumeKg || 0), 0)
   const totalMinutes  = workouts.reduce((s, w) => s + (w.durationMin || 0), 0)
   const sessions      = workouts.length
 
-  state.profile.sessions     = sessions
-  state.profile.totalSets    = totalSets
+  state.profile.sessions      = sessions
+  state.profile.totalSets     = totalSets
   state.profile.totalVolumeKg = totalVolumeKg
   state.profile.totalMinutes  = totalMinutes
   state.profile.totalVolume   = _formatVolume(totalVolumeKg)
   state.profile.totalTime     = _formatTime(totalMinutes)
 
-  // XP: store.addWorkout() zaten `xp.current += xpEarned` ile doğru tutar.
-  // Burada EZMEYİZ — sadece level ve max'ı güncelle.
+  // Level + XP max
   const xpPerLevel = 2000
   const levelBase  = 4
   const totalEarned = workouts.reduce((s, w) => s + (w.xpEarned || 0), 0)
   const newLevel = levelBase + Math.floor(totalEarned / xpPerLevel)
-  state.profile.level = Math.max(state.profile.level || levelBase, newLevel)
-  state.profile.xp.max = state.profile.level * xpPerLevel
+  state.profile.level   = Math.max(state.profile.level || levelBase, newLevel)
+  state.profile.xp.max  = state.profile.level * xpPerLevel
 
-  // Kas dengesi güncelle
+  // Türetilmiş paneller
   _updateMuscleBalance(state)
-
-  // Stat güncellemesi (basit formüller)
-  _updateStats(state)
+  _applyProfileStatsToArray(state)
+  _updatePerformance(state)
+  _updateQuests(state)
+  _updateSkills(state)
+  _updateDebuffs(state)
 }
 
+// ── Muscle Balance ───────────────────────────────────────────────────────────
+
 function _updateMuscleBalance(state) {
-  // Başlangıç değerleri (profile.js seed)
+  // Seed/tarihsel değerler (profile.js'ten) — bunların üzerine delta bin
   const baseBalance = {
-    'Omuz':           198.5,
-    'Göğüs':          169.5,
-    'Triceps':        163.5,
-    'Biseps':         156,
-    'Üst Sırt':       128.5,
-    'Lat':            108.5,
-    'Bacak (Parkour)': 45,
-    'Kalf':            36,
-    'Core':             0,
+    'Omuz':             198.5,
+    'Göğüs':            169.5,
+    'Triceps':          163.5,
+    'Biseps':           156,
+    'Üst Sırt':         128.5,
+    'Lat':              108.5,
+    'Bacak (Parkour)':   45,
+    'Kalf':              36,
+    'Core':               0,
+    'Kardiyo':            0,
   }
 
-  // Yeni antrenmanlardan gelen set sayıları.
-  // ID 'w' + timestamp formatı = store.addWorkout() ile eklenen.
-  // Supabase sync'te de aynı format kullanılıyor (_normalizeWorkout'a bak).
-  // baseBalance = seed/tarihsel değerler; delta = uygulama üzerinden eklenenler.
-  const newWorkouts = state.workouts.filter(w => {
-    if (!w.id) return false
-    const idStr = String(w.id)
-    // 'w123' formatı (mock) veya 'w1744...' formatı (yeni)
-    if (idStr.startsWith('w') && !isNaN(idStr.slice(1))) return true
-    // Supabase UUID'leri için: exercises var ama tarihsel seed'de değil
-    // Bunları da dahil et (delta biraz yüksek olabilir ama 0'dan iyidir)
-    return false
-  })
+  // Yeni eklenen antrenmanlar (hem local 'w...' hem Supabase UUID).
+  // Seed muscleBalance'ı oluşturan mock workouts'ları ÇIKAR (id w44-w53).
+  const SEED_IDS = new Set(['w44','w45','w46','w47','w48','w49','w50','w51','w52','w53'])
   const delta = {}
-  newWorkouts.forEach(w => {
-    ;(w.exercises || []).forEach(ex => {
+  workouts_loop:
+  for (const w of state.workouts) {
+    if (SEED_IDS.has(String(w.id))) continue workouts_loop
+    for (const ex of (w.exercises || [])) {
       const muscles = _findMuscles(ex.name)
-      const exSets = (ex.sets || []).length
-      muscles.forEach(m => { delta[m] = (delta[m] || 0) + exSets })
-    })
-  })
+      if (!muscles.length) continue
+      const exSets = Array.isArray(ex.sets) ? ex.sets.length : (typeof ex.sets === 'number' ? ex.sets : 1)
+      for (const m of muscles) delta[m] = (delta[m] || 0) + exSets
+    }
+  }
 
-  // muscleBalance array'ini güncelle
   if (state.muscleBalance) {
     state.muscleBalance = state.muscleBalance.map(m => ({
       ...m,
-      sets: (baseBalance[m.label] || 0) + (delta[m.label] || 0),
+      sets: Math.round(((baseBalance[m.label] ?? m.sets) + (delta[m.label] || 0)) * 10) / 10,
     }))
   }
 }
 
-function _updateStats(state) {
-  if (!state.stats || !state.workouts) return
-  const workouts = state.workouts
-
-  // Core egzersizleri olan seans sayısı
-  const coreSessions = workouts.filter(w =>
-    (w.exercises || []).some(e => _findMuscles(e.name).includes('Core'))
-  ).length
-
-  // Parkour + Akrobasi seans sayısı
-  const parkourSessions = workouts.filter(w =>
-    w.type === 'Parkour' || w.type === 'Akrobasi'
-  ).length
-
-  // Push seans sayısı
-  const pushSessions = workouts.filter(w => w.type === 'Push').length
-
-  // Ortalama seans süresi
-  const avgDuration = workouts.length > 0
-    ? workouts.reduce((s, w) => s + (w.durationMin || 0), 0) / workouts.length
-    : 0
-
-  // Stat'ları seed değerlerinden başlatıp deltayı ekle
-  const seed = { str: 78, agi: 77, end: 73, dex: 68, con: 12, sta: 63 }
-  const newPushBeyondSeed  = Math.max(0, pushSessions - 50)
-  const newParkourBeyondSeed = Math.max(0, parkourSessions - 5)
-  const newCoreBeyondSeed  = Math.max(0, coreSessions - 0)
-
-  state.stats = state.stats.map(s => {
-    let newVal = seed[s.key]
-    switch (s.key) {
-      case 'str': newVal = seed.str + Math.floor(newPushBeyondSeed  * 0.5); break
-      case 'agi': newVal = seed.agi + Math.floor(newParkourBeyondSeed * 2); break
-      case 'con': newVal = seed.con + Math.min(40, newCoreBeyondSeed * 4);  break
-      case 'end': newVal = seed.end + Math.floor(Math.max(0, avgDuration - 64) * 0.1); break
-    }
-    return { ...s, val: Math.min(100, newVal) }
-  })
-}
-
 function _findMuscles(exerciseName) {
+  if (!exerciseName) return []
   const lower = exerciseName.toLowerCase()
-  for (const [key, muscles] of Object.entries(EXERCISE_MUSCLES)) {
-    if (lower.includes(key.toLowerCase())) return muscles
+  // Anahtar kelimeler uzun → kısa sırayla eşleştir (Seated Cable Row > Cable Row > Row)
+  const keys = Object.keys(EXERCISE_MUSCLES).sort((a, b) => b.length - a.length)
+  for (const key of keys) {
+    if (lower.includes(key.toLowerCase())) return EXERCISE_MUSCLES[key]
   }
-  // Tip bazlı fallback
-  if (lower.includes('squat') || lower.includes('leg')) return ['Bacak (Parkour)']
-  if (lower.includes('core') || lower.includes('ab') || lower.includes('hollow')) return ['Core']
+  // Fallback
+  if (/squat|lunge|leg|kalf/.test(lower)) return ['Bacak (Parkour)']
+  if (/core|ab|hollow|plank|çakı/.test(lower)) return ['Core']
+  if (/treadmill|cardio|kardiyo/.test(lower)) return ['Kardiyo']
   return []
 }
 
+// ── Stats: profile.stats (object) → state.stats (array) ────────────────────
+
+function _applyProfileStatsToArray(state) {
+  const ps = state.profile?.stats
+  if (!ps || !Array.isArray(state.stats)) return
+  state.stats = state.stats.map(s => {
+    const val = Number(ps[s.key])
+    if (isFinite(val)) {
+      return { ...s, val: Math.max(0, Math.min(100, val)) }
+    }
+    return s
+  })
+}
+
+// ── Performans ───────────────────────────────────────────────────────────────
+
+function _updatePerformance(state) {
+  if (!Array.isArray(state.performance)) return
+  state.performance = updatePerformance(state.performance, state.workouts || [])
+}
+
+// ── Quests ───────────────────────────────────────────────────────────────────
+
+function _updateQuests(state) {
+  if (!state.quests) return
+  const updated = updateQuests(state.quests, state.workouts || [])
+  state.quests = appendCoachQuests(updated, state.coachQuestHints || [])
+}
+
+// ── Skills ───────────────────────────────────────────────────────────────────
+
+function _updateSkills(state) {
+  if (!Array.isArray(state.skills)) return
+  state.skills = updateSkills(state.skills, state.workouts || [], state.coachSkillProgress || [])
+}
+
+// ── Debuffs: survival + coach warnings → stats panelinde gösterilen uyarılar ─
+
+function _updateDebuffs(state) {
+  const existing = Array.isArray(state.debuffs) ? state.debuffs : []
+  const coachWarnings = Array.isArray(state.profile?.survivalWarnings) ? state.profile.survivalWarnings : []
+  const coachNoteWarnings = Array.isArray(state.coachNote?.warnings) ? state.coachNote.warnings : []
+
+  const dynamic = []
+  for (const w of [...coachWarnings, ...coachNoteWarnings]) {
+    if (!w) continue
+    const text = String(w)
+    const level = /🚨|⛔|danger|kritik|yaralan/i.test(text) ? 'red'
+                : /🛑|🔴|critical/i.test(text) ? 'red'
+                : /⚠️|🟡|tendon|warn/i.test(text) ? 'org'
+                : /🧠|🔵|cns/i.test(text) ? 'blu'
+                : 'org'
+    const icon = text.match(/^([\p{Emoji}\u2600-\u27BF])/u)?.[1] || '⚠️'
+    dynamic.push({
+      level,
+      icon,
+      name: _shortTitle(text),
+      desc: text,
+      dynamic: true,
+    })
+  }
+
+  // Dinamikleri başa koy, statikleri koru (seed profile.debuffs)
+  const staticSeed = existing.filter(d => !d.dynamic)
+  state.debuffs = [...dynamic, ...staticSeed]
+}
+
+function _shortTitle(text) {
+  // Emoji'yi at, ilk cümleyi uppercase yap
+  const clean = text.replace(/^[\p{Emoji}\u2600-\u27BF\s]+/u, '').trim()
+  const first = clean.split(/[.—–\-:]/)[0].trim()
+  return first.length > 40 ? first.slice(0, 40).toUpperCase() + '…' : first.toUpperCase()
+}
+
+// ── Format yardımcıları ──────────────────────────────────────────────────────
+
 function _formatVolume(kg) {
-  if (kg >= 1000) return `${Math.round(kg / 1000)}k kg`
-  return `${kg} kg`
+  if (kg >= 1000) return `${(kg / 1000).toFixed(kg >= 10000 ? 0 : 1)}k kg`
+  return `${Math.round(kg)} kg`
 }
 
 function _formatTime(minutes) {

@@ -52,6 +52,19 @@ store.init().then(() => {
       duration: 4500,
     })
   })
+
+  // Yeni koç raporu geldiğinde toast + aktif panel yenile
+  store.subscribe('_coachUpdated', (cn) => {
+    if (!cn) return
+    showToast({
+      icon: '☠',
+      title: 'ODIE RAPOR GÖNDERDİ',
+      msg: cn.xp_note || 'Yeni antrenman analizi hazır',
+      rarity: 'rare',
+      duration: 3500,
+    })
+    window.__refreshActivePanel?.()
+  })
 })
 
 // ── Theme ─────────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import { MOCK_STATE, XP_BASE, XP_BONUS, STREAK_TIERS } from './mock-state.js'
 import {
   supabase, isMockMode,
   fetchProfile, fetchWorkouts, updateProfile, insertWorkout,
-  subscribeToProfile, subscribeToWorkouts,
+  subscribeToProfile, subscribeToWorkouts, subscribeToCoachNotes,
   fetchLatestCoachNote,
 } from './supabase-client.js'
 import { recalculate } from './engine.js'
@@ -35,13 +35,21 @@ let _unsubSupabase = []
 // ── Subscriber yönetimi ──────────────────────────────────────────────────────
 
 function _notify(path) {
-  const parts = path.split('.')
   _subscribers.forEach((fns, key) => {
-    if (key === path || key === '*' || path.startsWith(key + '.')) {
-      fns.forEach(fn => {
-        try { fn(_get(_state, path)) } catch (e) { console.error('[store] subscriber error:', e) }
-      })
-    }
+    // path='*' → TÜM subscriber'lar tetiklenir (global refresh)
+    // path='profile' → 'profile', 'profile.xp' gibi alt yollar ve '*' tetiklenir
+    const isWildcardEvent = path === '*'
+    const matches =
+      isWildcardEvent ||
+      key === '*' ||
+      key === path ||
+      path.startsWith(key + '.') ||
+      key.startsWith(path + '.')
+    if (!matches) return
+    const value = key === '*' ? _state : _get(_state, key)
+    fns.forEach(fn => {
+      try { fn(value) } catch (e) { console.error('[store] subscriber error:', e) }
+    })
   })
 }
 
@@ -99,15 +107,33 @@ export const store = {
       _unsubSupabase.push(subscribeToProfile(profileRow => {
         _applySupabaseProfile(profileRow)
         _deriveMetaFields(_state)
+        recalculate(_state)
         _saveToLS()
         _notify('*')
       }))
-      _unsubSupabase.push(subscribeToWorkouts(workoutRow => {
+      _unsubSupabase.push(subscribeToWorkouts(async workoutRow => {
+        // Duplicate kontrolü — bazen aynı insert iki kez tetiklenir
+        const newId = String(workoutRow.id)
+        if (_state.workouts.some(w => String(w.id) === newId)) return
         _state.workouts.unshift(_normalizeWorkout(workoutRow))
         _deriveMetaFields(_state)
         recalculate(_state)
         _saveToLS()
         _notify('*')
+        // Yeni workout geldiğinde en taze koç notunu çek
+        try {
+          const cn = await fetchLatestCoachNote()
+          if (cn?.sections?.length) _applyCoachNote(cn)
+        } catch {}
+      }))
+      _unsubSupabase.push(subscribeToCoachNotes(coachRow => {
+        if (coachRow?.sections?.length) {
+          _applyCoachNote(coachRow)
+          recalculate(_state)
+          _saveToLS()
+          _notify('*')
+          this.set('_coachUpdated', coachRow)
+        }
       }))
     }
 
@@ -252,21 +278,7 @@ export const store = {
       _state.workouts = workoutRows.map(_normalizeWorkout)
     }
     if (coachNoteRow?.sections?.length) {
-      _state.coachNote = {
-        date:     coachNoteRow.date,
-        sections: coachNoteRow.sections,
-        xpNote:   coachNoteRow.xp_note || '',
-      }
-      // Koçun önerdiği quest/warning/skill bilgilerini state'e yansıt ki paneller güncellesin
-      if (Array.isArray(coachNoteRow.warnings)) {
-        _state.profile.survivalWarnings = coachNoteRow.warnings
-      }
-      if (Array.isArray(coachNoteRow.quest_hints)) {
-        _state.coachQuestHints = coachNoteRow.quest_hints
-      }
-      if (Array.isArray(coachNoteRow.skill_progress)) {
-        _state.coachSkillProgress = coachNoteRow.skill_progress
-      }
+      _applyCoachNote(coachNoteRow)
     }
     // Profil/workouts değişti → class, epic, geography, survival yeniden türet
     _deriveMetaFields(_state)
@@ -390,7 +402,7 @@ function _buildSeed() {
 function _mergeToProfile(state) {
   const p = state.profile
   return {
-    ...seedProfile,           // statik alanlar (stats detail, skills, muscles vb.)
+    ...seedProfile,           // statik fallback
     nick:        p.nick,
     handle:      p.handle,
     rank:        p.rank,
@@ -401,30 +413,44 @@ function _mergeToProfile(state) {
     level:       p.level,
     xp:          p.xp,
     sessions:    p.sessions,
-    totalVolume: p.totalVolume || `${Math.round(p.totalVolumeKg / 1000)}k kg`,
+    totalVolume: p.totalVolume || `${Math.round((p.totalVolumeKg || 0) / 1000)}k kg`,
     totalSets:   p.totalSets,
     totalTime:   p.totalTime,
     streak:      p.streak,
     globalStats: state.globalStats,
-    stats:       state.stats,
-    performance: state.performance,
-    debuffs:     state.debuffs,
-    muscleBalance: state.muscleBalance,
-    muscles:     state.muscles,
-    skills:      state.skills,
-    health:      state.health,
-    quests:      state.quests,
-    achievements: state.achievements,
-    workoutLog:  state.workouts.slice(0, 20).map(w => ({
-      date:      w.date,
-      type:      w.type,
-      duration:  `${w.durationMin}dk`,
-      volume:    w.volumeKg ? `${w.volumeKg.toLocaleString('tr-TR')} kg` : '—',
-      sets:      w.sets,
-      highlight: w.highlight,
-    })),
-    coachNote:   state.coachNote,
+    // Dinamik stats/performance/quests/skills/debuffs — engine.js günceller
+    stats:       state.stats || seedProfile.stats,
+    performance: state.performance || seedProfile.performance,
+    debuffs:     state.debuffs || seedProfile.debuffs,
+    muscleBalance: state.muscleBalance || seedProfile.muscleBalance,
+    muscles:     state.muscles || seedProfile.muscles,
+    skills:      state.skills || seedProfile.skills,
+    health:      state.health || seedProfile.health,
+    quests:      state.quests || seedProfile.quests,
+    achievements: state.achievements || seedProfile.achievements,
+    workoutLog:  _buildWorkoutLog(state.workouts || []),
+    // Koç notu — varsa Supabase'den gelen güncel olan, yoksa seed
+    coachNote:   state.coachNote || seedProfile.coachNote,
   }
+}
+
+function _buildWorkoutLog(workouts) {
+  return workouts.slice(0, 20).map(w => ({
+    date:      _formatShortDate(w.date),
+    type:      w.type,
+    duration:  w.durationMin ? `${w.durationMin}dk` : '—',
+    volume:    w.volumeKg ? `${Math.round(w.volumeKg).toLocaleString('tr-TR')} kg` : '—',
+    sets:      w.sets || '—',
+    highlight: w.highlight || '',
+  }))
+}
+
+function _formatShortDate(date) {
+  if (!date) return ''
+  const m = String(date).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return date
+  const months = ['Ock','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
+  return `${Number(m[3])} ${months[Number(m[2]) - 1]}`
 }
 
 function _applySupabaseProfile(row) {
@@ -452,7 +478,10 @@ function _applySupabaseProfile(row) {
 }
 
 function _normalizeWorkout(row) {
-  if (row.durationMin != null) return row  // zaten normalize edilmiş
+  if (row.durationMin != null) {
+    // Zaten normalize edilmiş — ama exercises set'lerini yine normalize et
+    return { ...row, exercises: _normalizeExercises(row.exercises) }
+  }
   return {
     id:           row.id,
     date:         row.date,
@@ -461,11 +490,65 @@ function _normalizeWorkout(row) {
     volumeKg:     row.volume_kg,
     sets:         row.sets,
     highlight:    row.highlight,
-    exercises:    row.exercises || [],
+    exercises:    _normalizeExercises(row.exercises || []),
     xpEarned:     row.xp_earned,
     xpMultiplier: row.xp_multiplier,
     hasPr:        row.has_pr || false,
   }
+}
+
+/**
+ * Exercise set şemasını tek standarda çevir: { reps, weightKg, durationSec, note }
+ * Hem snake_case (bot'tan) hem camelCase (mock'tan) ve eski tek-değer formatı destekler.
+ */
+function _normalizeExercises(exercises) {
+  if (!Array.isArray(exercises)) return []
+  return exercises.map(ex => {
+    if (!ex) return null
+    let sets = ex.sets
+    // Eski tekil format: sets=3, reps=5, weight_kg=60 → [{reps:5, weightKg:60} x 3]
+    if (typeof sets === 'number') {
+      const reps = Number(ex.reps) || 0
+      const wKg  = Number(ex.weightKg ?? ex.weight_kg) || 0
+      sets = Array.from({ length: sets }, () => ({ reps, weightKg: wKg }))
+    }
+    if (!Array.isArray(sets)) sets = []
+    sets = sets.map(s => ({
+      reps:        s.reps != null ? Number(s.reps) : null,
+      weightKg:    (s.weightKg ?? s.weight_kg) != null ? Number(s.weightKg ?? s.weight_kg) : null,
+      durationSec: (s.durationSec ?? s.duration_sec) != null ? Number(s.durationSec ?? s.duration_sec) : null,
+      note:        s.note || '',
+    }))
+    return { name: ex.name || '', sets }
+  }).filter(Boolean)
+}
+
+/**
+ * Supabase'den gelen coach_note row'unu state'e uygula.
+ */
+function _applyCoachNote(row) {
+  if (!_state || !row) return
+  _state.coachNote = {
+    date:     _formatCoachDate(row.date),
+    sections: row.sections || [],
+    xpNote:   row.xp_note || '',
+    warnings: row.warnings || [],
+  }
+  // Profile warnings → survival warnings'e enjekte (debuffs paneli için)
+  if (Array.isArray(row.warnings)) {
+    _state.profile.survivalWarnings = row.warnings
+  }
+  if (Array.isArray(row.quest_hints))     _state.coachQuestHints = row.quest_hints
+  if (Array.isArray(row.skill_progress)) _state.coachSkillProgress = row.skill_progress
+}
+
+function _formatCoachDate(isoDate) {
+  if (!isoDate) return ''
+  const m = String(isoDate).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return isoDate
+  const months = ['Ock','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
+  const [_, y, mo, d] = m
+  return `${Number(d)} ${months[Number(mo) - 1]} ${y}`
 }
 
 function _toSupabaseWorkout(w, state) {

@@ -107,3 +107,14 @@ export function subscribeToWorkouts(onInsert) {
     .subscribe()
   return () => supabase.removeChannel(channel)
 }
+
+export function subscribeToCoachNotes(onInsert) {
+  if (isMockMode) return () => {}
+  const channel = supabase
+    .channel('odiept-coach-notes')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'coach_notes' }, payload => {
+      onInsert(payload.new)
+    })
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}

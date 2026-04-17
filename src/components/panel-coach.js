@@ -9,7 +9,17 @@ function _parseMarkup(text) {
 }
 
 export function renderCoach(p) {
-  const cn = p.coachNote
+  const cn = p.coachNote || { date: '', xpNote: '', sections: [] }
+  if (!Array.isArray(cn.sections) || !cn.sections.length) {
+    return `
+      <div class="coach-terminal" style="min-height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+        <div style="font-size:48px;opacity:.4">☠</div>
+        <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:3px;opacity:.7">ODIE OFFLINE</div>
+        <div style="font-size:11px;opacity:.5;max-width:280px;text-align:center;line-height:1.5">
+          Henüz koç raporu yok. Telegram'a bir antrenman yaz → ODIE analiz eder ve burada canlı rapor sunar.
+        </div>
+      </div>`
+  }
   const shells = cn.sections.map((sec, i) => `
     <div class="coach-section" id="coach-sec-${i}" data-mood="${sec.mood}">
       <div class="coach-sec-head">
@@ -52,6 +62,7 @@ function _moodIcon(mood) {
 }
 
 export function initCoach(p) {
+  if (!p?.coachNote?.sections?.length) return
   // Her initCoach çağrısında token ilerler — önceki zincir otomatik iptal
   const myToken = ++_token
 

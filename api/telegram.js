@@ -540,10 +540,13 @@ export default async function handler(req, res) {
       // Supabase coach_notes tablosuna yaz
       if (coachNote) {
         await sbPost('coach_notes', {
-          profile_id: profile.id,
-          date:       today,
-          sections:   coachNote.sections || [],
-          xp_note:    coachNote.xp_note  || `+${xp} XP`,
+          profile_id:     profile.id,
+          date:           today,
+          sections:       coachNote.sections       || [],
+          xp_note:        coachNote.xp_note        || `+${xp} XP`,
+          warnings:       coachNote.warnings       || [],
+          quest_hints:    coachNote.quest_hints    || [],
+          skill_progress: coachNote.skill_progress || [],
         })
         console.log('[bot] Coach note Supabase\'e kaydedildi')
 
