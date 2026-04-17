@@ -110,6 +110,74 @@ export function openPerfModal(perf) {
   openModal(html)
 }
 
+export function openEpicVolumeModal(currentKg, tiers) {
+  const items = tiers.map(t => {
+    const achieved = currentKg >= t.kg
+    const pct = Math.min(100, Math.round((currentKg / t.kg) * 100))
+    return `
+      <div class="epic-tier ${achieved ? 'done' : ''}">
+        <div class="epic-tier-icon">${t.icon}</div>
+        <div class="epic-tier-body">
+          <div class="epic-tier-head">
+            <span class="epic-tier-name">${t.name}</span>
+            <span class="epic-tier-kg">${t.kg.toLocaleString('tr-TR')} kg</span>
+          </div>
+          <div class="epic-tier-msg">${t.msg}</div>
+          ${!achieved ? `<div class="epic-tier-bar"><div class="epic-tier-fill" style="width:${pct}%"></div></div>` : ''}
+        </div>
+        <div class="epic-tier-badge">${achieved ? '✓' : '🔒'}</div>
+      </div>`
+  }).join('')
+
+  const html = `
+    <div class="modal-head">
+      <span style="font-size:22px">⚖️</span>
+      <div class="modal-head-title">EPIC VOLUME RAIDER</div>
+      ${_closeBtn()}
+    </div>
+    <div class="modal-body">
+      <div class="epic-total">
+        <div class="epic-total-val">${currentKg.toLocaleString('tr-TR')} kg</div>
+        <div class="epic-total-lbl">Toplam Kaldırılan Hacim</div>
+      </div>
+      <div class="epic-tier-list">${items}</div>
+    </div>`
+  openModal(html)
+}
+
+export function openClassModal(cls) {
+  const passive = cls.passive || {}
+  const statMult = passive.statMult || {}
+  const xpMult = passive.xpMult || {}
+
+  const statItems = Object.entries(statMult)
+    .map(([k, v]) => `<div class="modal-item"><div class="modal-item-label">${k.toUpperCase()}</div><div class="modal-item-val">x${v.toFixed(2)}</div></div>`)
+    .join('')
+  const xpItems = Object.entries(xpMult)
+    .map(([k, v]) => `<div class="modal-item"><div class="modal-item-label">${k}</div><div class="modal-item-val">x${v.toFixed(2)}</div></div>`)
+    .join('')
+
+  const html = `
+    <div class="modal-head">
+      <span style="font-size:28px">${cls.icon}</span>
+      <div class="modal-head-title">${cls.name}</div>
+      ${_closeBtn()}
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;padding:8px 0 16px">
+        <div style="font-size:72px;margin-bottom:8px">${cls.icon}</div>
+        <div style="font-family:'Cinzel',serif;font-size:18px;color:${cls.color};margin-bottom:4px">${cls.name}</div>
+        <div style="font-size:11px;color:var(--dim);letter-spacing:.5px">${cls.subName || ''}</div>
+      </div>
+      <div class="modal-desc">${cls.desc}</div>
+      <div class="modal-coach"><strong>Pasif:</strong> ${cls.buff}</div>
+      ${statItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">STAT ÇARPANI</div><div class="modal-grid">${statItems}</div>` : ''}
+      ${xpItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">XP ÇARPANI</div><div class="modal-grid">${xpItems}</div>` : ''}
+      <div class="modal-tip">Sınıfın son 10 antrenmana göre dinamik değişir. Deseni değiştirdikçe sınıf da değişir.</div>
+    </div>`
+  openModal(html)
+}
+
 export function openAvatarModal(p) {
   const html = `
     <div class="modal-head">

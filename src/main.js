@@ -9,7 +9,7 @@ import { renderQuests, initQuests } from './components/panel-quests.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
 import { initModal, closeModal } from './components/modal.js'
 import { openWorkoutForm } from './components/workout-form.js'
-import { renderStatusWidget } from './components/status-widget.js'
+import { renderStatusWidget, initStatusWidget } from './components/status-widget.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { checkStreakIntact } from './data/streak-engine.js'
 
@@ -139,6 +139,7 @@ function _initPanelForKey(key) {
   switch (key) {
     case 'stats':
       initStats(p)
+      initStatusWidget()
       break
     case 'muscles': initMuscles(); break
     case 'skills':  initSkills();  break

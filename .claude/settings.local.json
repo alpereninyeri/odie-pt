@@ -15,7 +15,25 @@
       "Bash(git init:*)",
       "Bash(git branch:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s 'https://shntvcwfvteitqwccvfeo.supabase.co/rest/v1/profiles?select=id,nick,level,xp_current&limit=1' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudHZjd2Z2dGVpdHF3Y2N2ZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNjc3NzksImV4cCI6MjA5MTc0Mzc3OX0.pHaRqxZoBG69JIwI-mJLgtTipzPvREXG1dGo2FtsyLI' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudHZjd2Z2dGVpdHF3Y2N2ZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNjc3NzksImV4cCI6MjA5MTc0Mzc3OX0.pHaRqxZoBG69JIwI-mJLgtTipzPvREXG1dGo2FtsyLI')",
+      "Bash(curl -sk 'https://shntvcwfvteitqwccvfeo.supabase.co/rest/v1/profiles?select=id,nick,level,xp_current&limit=1' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudHZjd2Z2dGVpdHF3Y2N2ZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNjc3NzksImV4cCI6MjA5MTc0Mzc3OX0.pHaRqxZoBG69JIwI-mJLgtTipzPvREXG1dGo2FtsyLI' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudHZjd2Z2dGVpdHF3Y2N2ZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNjc3NzksImV4cCI6MjA5MTc0Mzc3OX0.pHaRqxZoBG69JIwI-mJLgtTipzPvREXG1dGo2FtsyLI')",
+      "Bash(curl -sk 'https://hntvcwfvteitqwccvfeo.supabase.co/rest/v1/profiles?select=id,nick,level,xp_current&limit=1' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudHZjd2Z2dGVpdHF3Y2N2ZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNjc3NzksImV4cCI6MjA5MTc0Mzc3OX0.pHaRqxZoBG69JIwI-mJLgtTipzPvREXG1dGo2FtsyLI' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhudHZjd2Z2dGVpdHF3Y2N2ZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNjc3NzksImV4cCI6MjA5MTc0Mzc3OX0.pHaRqxZoBG69JIwI-mJLgtTipzPvREXG1dGo2FtsyLI')",
+      "Bash(node -e \"try { JSON.parse\\(require\\('fs'\\).readFileSync\\('C:/Users/PC/OdiePt/infra/n8n-workflow.json','utf8'\\)\\); console.log\\('OK'\\); } catch\\(e\\) { console.log\\(e.message\\); }\")",
+      "Bash(node -e \"try { JSON.parse\\(require\\('fs'\\).readFileSync\\('C:/Users/PC/OdiePt/infra/n8n-workflow.json','utf8'\\)\\); console.log\\('JSON gecerli'\\); } catch\\(e\\) { console.log\\('HATA:', e.message\\); }\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('C:/Users/PC/OdiePt/infra/n8n-workflow.json','utf8'\\)\\); console.log\\('OK'\\)\")",
+      "Bash(dir C:\\\\Users\\\\PC\\\\OdiePt)",
+      "Bash(wc -l /c/Users/PC/OdiePt/src/components/*.js)",
+      "mcp__f0f19f55-a340-4dd4-afc1-2e7bd94da7d5__list_teams",
+      "mcp__f0f19f55-a340-4dd4-afc1-2e7bd94da7d5__list_projects",
+      "mcp__f0f19f55-a340-4dd4-afc1-2e7bd94da7d5__get_runtime_logs",
+      "WebFetch(domain:ai.google.dev)",
+      "mcp__3b0a0b92-d8de-416c-a61e-93c44e401637__list_tables",
+      "mcp__3b0a0b92-d8de-416c-a61e-93c44e401637__execute_sql",
+      "Bash(node --check api/telegram.js)",
+      "Bash(node --check src/data/store.js)"
     ]
   }
 }

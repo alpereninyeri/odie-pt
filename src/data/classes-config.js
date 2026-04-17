@@ -48,6 +48,27 @@ function _nightSessions(workouts) {
 
 export const CLASSES = [
   {
+    id: 'golge_akrobat',
+    name: 'Gölge Akrobat',
+    subName: 'Shadow Acrobat Sub-Class',
+    icon: '🥷',
+    color: '#a855f7',
+    desc: 'Ninjamsı çok-disiplinli atlet. Güç, çeviklik ve akrobasinin kesişimi — karanlıkta sessiz, meydanda ölümcül.',
+    buff: 'STR +%10 · AGI +%15 · DEX +%15 · PR x1.3',
+    passive: {
+      statMult: { str: 1.1, agi: 1.15, dex: 1.15 },
+      xpMult:   { Parkour: 1.2, Akrobasi: 1.2, Push: 1.1, Pull: 1.1 },
+      prBonus:  1.3,
+    },
+    // Güç ağırlıklı ama akrobasi/parkour eksik değil + çeşitli
+    trigger: (ws) => {
+      const strengthPct = _pct(ws, ['Push','Pull','Shoulder'])
+      const movementPct = _pct(ws, ['Parkour','Akrobasi'])
+      const unique = _uniqueTypes(ws)
+      return strengthPct >= 0.4 && movementPct >= 0.1 && unique >= 4
+    },
+  },
+  {
     id: 'gok_kartali',
     name: 'Gök Kartalı',
     subName: 'Sky Eagle Sub-Class',

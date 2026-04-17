@@ -551,3 +551,157 @@ body::before { content:''; position:fixed; inset:0; background:radial-gradient(e
   background:linear-gradient(90deg,#f59e0b,#ef4444);
   transition:width .4s ease;
 }
+
+/* ── Status Widget: click affordance + mobile ──────────────────────────── */
+.status-class { cursor:pointer; transition:transform .15s, box-shadow .15s; }
+.status-class:hover { transform:translateY(-1px); }
+.status-class:active { transform:translateY(0); }
+.status-class-chev {
+  font-size:24px; color:var(--class-color,#64748b); opacity:.6;
+  font-family:'Share Tech Mono',monospace;
+}
+.status-epic { cursor:pointer; transition:transform .15s, border-color .15s; }
+.status-epic:hover { border-color:rgba(255,255,255,.2); }
+.status-epic:active { transform:scale(.995); }
+.status-epic-chev { float:right; opacity:.5; }
+
+/* ── Epic Tier Modal List ──────────────────────────────────────────────── */
+.epic-total {
+  text-align:center; padding:10px 0 18px;
+  border-bottom:1px solid rgba(255,255,255,.08); margin-bottom:14px;
+}
+.epic-total-val {
+  font-family:'Cinzel',serif; font-size:36px; font-weight:900; color:var(--gold);
+  text-shadow:0 0 30px var(--glow-gold-s);
+}
+.epic-total-lbl {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:var(--dim); letter-spacing:2px; text-transform:uppercase; margin-top:4px;
+}
+.epic-tier-list { display:flex; flex-direction:column; gap:8px; }
+.epic-tier {
+  display:flex; gap:12px; align-items:center; padding:10px 12px;
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06);
+  border-radius:10px; transition:all .2s;
+}
+.epic-tier.done {
+  background:linear-gradient(90deg, rgba(34,197,94,.1), transparent);
+  border-color:rgba(34,197,94,.3);
+}
+.epic-tier-icon { font-size:26px; line-height:1; flex-shrink:0; }
+.epic-tier-body { flex:1; min-width:0; }
+.epic-tier-head {
+  display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+  margin-bottom:2px;
+}
+.epic-tier-name {
+  font-family:'Share Tech Mono',monospace; font-size:12px;
+  font-weight:700; letter-spacing:.5px;
+}
+.epic-tier.done .epic-tier-name { color:#4ade80; }
+.epic-tier-kg {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:var(--dim); white-space:nowrap;
+}
+.epic-tier-msg { font-size:10px; opacity:.65; line-height:1.4; }
+.epic-tier-bar {
+  height:3px; border-radius:2px; overflow:hidden;
+  background:rgba(255,255,255,.08); margin-top:5px;
+}
+.epic-tier-fill {
+  height:100%;
+  background:linear-gradient(90deg,#f59e0b,#ef4444);
+}
+.epic-tier-badge {
+  font-size:16px; flex-shrink:0; opacity:.5;
+}
+.epic-tier.done .epic-tier-badge { color:#4ade80; opacity:1; }
+
+/* ── Mobile optimizations (≤600px) ─────────────────────────────────────── */
+@media (max-width:600px) {
+  .wrap { padding:12px 10px 90px; }
+  .header { padding:20px 0 16px; }
+  .avatar { width:64px; height:64px; font-size:32px; }
+  .nick { letter-spacing:2px; }
+  .xpbar { padding:8px 12px; }
+  .gstats { grid-template-columns:repeat(2,1fr); gap:5px; margin-bottom:14px; }
+  .gstat { padding:8px 6px; }
+  .gstat-val { font-size:15px; }
+  .gstat-lbl { font-size:8px; }
+
+  .tabs { margin:18px -10px 0; padding:0 10px; }
+  .tab { padding:10px 12px; font-size:10px; letter-spacing:1.5px; min-height:44px; }
+
+  .panel { padding:16px 0; }
+  .stt-grid { grid-template-columns:repeat(2,1fr); gap:6px; }
+  .stt { padding:11px 8px; min-height:58px; }
+
+  /* Status widget mobile */
+  .status-class { padding:12px; gap:10px; }
+  .status-class-icon { font-size:36px; }
+  .status-class-name { font-size:16px; }
+  .status-class-sub { font-size:9px; }
+  .status-class-buff { font-size:10px; }
+  .status-class-chev { font-size:20px; }
+  .status-epic { padding:10px 12px; }
+  .status-epic-icon { font-size:28px; }
+  .status-epic-name { font-size:12px; }
+  .status-epic-msg { font-size:9px; }
+
+  /* Modal mobile */
+  .modal { width:94%; max-width:94%; max-height:88vh; border-radius:14px; }
+  .modal-head { padding:14px 16px; }
+  .modal-head-title { font-size:13px; }
+  .modal-body { padding:16px 14px; }
+  .modal-stat-big { font-size:42px; }
+  .modal-grid { grid-template-columns:1fr 1fr; gap:6px; }
+  .modal-item { padding:8px 10px; }
+  .modal-close {
+    font-size:22px; padding:8px 12px;
+    min-width:40px; min-height:40px; /* Touch target */
+  }
+
+  /* Epic tier list mobile */
+  .epic-total-val { font-size:28px; }
+  .epic-tier { padding:9px 10px; gap:10px; }
+  .epic-tier-icon { font-size:22px; }
+  .epic-tier-name { font-size:11px; }
+  .epic-tier-kg { font-size:9px; }
+  .epic-tier-msg { font-size:9px; }
+
+  /* FABs — touch targets 48px min */
+  .workout-fab, .coach-fab {
+    width:52px; height:52px; font-size:22px;
+    bottom:20px;
+  }
+  .workout-fab { right:20px; }
+  .coach-fab { left:20px; }
+
+  /* Theme toggle — daha küçük */
+  .theme-toggle { padding:6px 10px; font-size:12px; }
+  .theme-toggle-label { display:none; }
+
+  /* Form inputs — 16px minimum font-size (iOS zoom önler) */
+  input, select, textarea, button { font-size:16px !important; }
+  .tab { font-size:10px !important; }
+  .stt-lbl, .modal-item-label, .gstat-lbl, .sec { font-size:9px !important; }
+}
+
+/* ── Extra small (≤380px) ──────────────────────────────────────────────── */
+@media (max-width:380px) {
+  .wrap { padding:10px 8px 90px; }
+  .stt-grid { grid-template-columns:repeat(2,1fr); }
+  .gstats { grid-template-columns:repeat(2,1fr); }
+  .tab { padding:9px 10px; }
+  .modal-body { padding:14px 12px; }
+}
+
+/* ── Touch targets: butonları minimum 44px yap ─────────────────────────── */
+button, .tab, [data-action], [data-tab] { min-height:44px; }
+.modal-close { min-width:44px; min-height:44px; }
+
+/* ── iOS Safari bottom safe area ───────────────────────────────────────── */
+@supports (padding:max(0px)) {
+  .wrap { padding-bottom:max(80px, env(safe-area-inset-bottom) + 80px); }
+  .workout-fab, .coach-fab { bottom:max(20px, env(safe-area-inset-bottom) + 4px); }
+}
