@@ -1,6 +1,6 @@
 import './style.css'
 import { store } from './data/store.js'
-import { formatMonthShort, getLocalDateString } from './data/rules.js'
+import { formatMonthShort } from './data/rules.js'
 import { renderStats, initStats } from './components/panel-stats.js'
 import { renderMuscles, initMuscles } from './components/panel-muscles.js'
 import { renderSkills, initSkills } from './components/panel-skills.js'
@@ -19,7 +19,6 @@ const tabs = [
 ]
 
 let activeTab = 'dashboard'
-let renderQueued = false
 
 injectToastStyles()
 initTheme()
@@ -27,7 +26,9 @@ initTheme()
 store.init().then(() => {
   renderApp()
 
-  store.subscribe('*', scheduleRender)
+  store.subscribe('*', () => {
+    renderApp()
+  })
 
   store.subscribe('_classChanged', classObj => {
     if (!classObj?.id) return
@@ -55,15 +56,6 @@ store.init().then(() => {
 function initTheme() {
   document.documentElement.setAttribute('data-theme', 'dark')
   localStorage.setItem('odiept-theme', 'dark')
-}
-
-function scheduleRender() {
-  if (renderQueued) return
-  renderQueued = true
-  requestAnimationFrame(() => {
-    renderQueued = false
-    renderApp()
-  })
 }
 
 function renderApp() {
@@ -194,11 +186,11 @@ function renderPage(tabKey, state, profile) {
     case 'dashboard':
       return renderDashboard(state, profile)
     case 'progress':
-      return renderProgress(state, profile)
+      return renderProgress(profile)
     case 'training':
-      return renderTraining(state, profile)
+      return renderTraining(profile)
     case 'coach':
-      return renderCoachPage(state, profile)
+      return renderCoachPage(profile)
     default:
       return ''
   }
@@ -519,41 +511,9 @@ function extractCoachInsight(profile) {
   }
 }
 
-function renderProgress(state, profile) {
-  const strongest = [...(profile.stats || [])].sort((left, right) => right.val - left.val)[0]
-  const weakest = [...(profile.stats || [])].sort((left, right) => left.val - right.val)[0]
-  const latestWorkout = state.workouts?.[0]
-  const buildLabel = state.profile.classObj?.name || profile.class
-
+function renderProgress(profile) {
   return `
     <section class="surface-stack">
-      <div class="glass-card surface progress-brief">
-        <div class="section-top compact-top">
-          <div>
-            <div class="eyebrow">Build Decode</div>
-            <h3>Karakterin hangi yone aciliyor</h3>
-          </div>
-          <span class="pill">${buildLabel}</span>
-        </div>
-        <div class="progress-brief-grid">
-          <article class="brief-card tone-emerald">
-            <span class="brief-kicker">Strongest Axis</span>
-            <strong>${strongest?.label || '--'} ${String(strongest?.val || 0).padStart(2, '0')}</strong>
-            <p>${strongest?.name || 'Stat verisi yok'} hattin su an karakteri en cok tasiyan kolon.</p>
-          </article>
-          <article class="brief-card tone-danger">
-            <span class="brief-kicker">Pressure Point</span>
-            <strong>${weakest?.label || '--'} ${String(weakest?.val || 0).padStart(2, '0')}</strong>
-            <p>${weakest?.name || 'Eksik alan yok'} toparlandiginda tum build daha net akacak.</p>
-          </article>
-          <article class="brief-card tone-neutral">
-            <span class="brief-kicker">Latest Adaptation</span>
-            <strong>${latestWorkout?.type || 'No session'}</strong>
-            <p>${latestWorkout ? `${latestWorkout.primaryCategory} tarafinda ${(latestWorkout.tags || []).slice(0, 3).join(' | ') || 'hybrid'} izi birakti.` : 'Yeni seans geldikce burada en son adaptasyon okunur.'}</p>
-          </article>
-        </div>
-      </div>
-
       <div class="glass-card surface" id="panel-stats">
         ${renderStats(profile)}
       </div>
@@ -567,12 +527,7 @@ function renderProgress(state, profile) {
   `
 }
 
-function renderTraining(state, profile) {
-  const today = state.dailyLogs?.find(log => log.date === getLocalDateString())
-  const openDaily = (profile.quests?.daily || []).filter(quest => !(quest.done || quest.progress >= quest.total))
-  const openWeekly = (profile.quests?.weekly || []).filter(quest => !(quest.done || quest.progress >= quest.total))
-  const latestWorkout = state.workouts?.[0]
-
+function renderTraining(profile) {
   return `
     <section class="surface-stack">
       <div class="glass-card surface training-header">
@@ -587,33 +542,6 @@ function renderTraining(state, profile) {
         </button>
       </div>
 
-      <div class="glass-card surface training-intel">
-        <div class="section-top compact-top">
-          <div>
-            <div class="eyebrow">Ops Board</div>
-            <h3>Bugunun quest ve recovery panosu</h3>
-          </div>
-          <button class="inline-link" data-tab="progress">Build State</button>
-        </div>
-        <div class="intel-grid">
-          <article class="brief-card tone-neutral">
-            <span class="brief-kicker">Today Status</span>
-            <strong>${Math.round(((today?.sleepHours || 0) / 8 * 100 + (today?.steps || 0) / 12000 * 100) / 2 || 0)}%</strong>
-            <p>Uyku ${today?.sleepHours || 0}h, adim ${(today?.steps || 0).toLocaleString('tr-TR')}. Recovery panosu burada daha hizli okunuyor.</p>
-          </article>
-          <article class="brief-card tone-gold">
-            <span class="brief-kicker">Quest Pressure</span>
-            <strong>${openDaily.length} daily | ${openWeekly.length} weekly</strong>
-            <p>${openDaily[0]?.name || openWeekly[0]?.name || 'Acik gorev kalmadi'} su an en net tamamlanabilir hedef gibi duruyor.</p>
-          </article>
-          <article class="brief-card tone-emerald">
-            <span class="brief-kicker">Last Field Log</span>
-            <strong>${latestWorkout?.type || 'No session'}</strong>
-            <p>${latestWorkout?.highlight || 'Yeni seans kaydi geldikce burada kisa yorum gosterilecek.'}</p>
-          </article>
-        </div>
-      </div>
-
       <div class="glass-card surface">
         ${renderDailyChecklist()}
       </div>
@@ -625,14 +553,14 @@ function renderTraining(state, profile) {
   `
 }
 
-function renderCoachPage(state, profile) {
+function renderCoachPage(profile) {
   return `
     <section class="surface-stack">
       <div class="glass-card surface coach-intro">
         <div>
           <div class="eyebrow">War Room</div>
           <h3>Odie'nin daha sert ve daha temiz taktik masasi</h3>
-          <p>${state.profile.currentFocus || 'Hybrid discipline'} ekseninde son yorumlar, recovery uyarilari ve sonraki protocol burada toplanir.</p>
+          <p>Arayuz tamamen dark, ton daha oyunsu, analiz akisi ise hala okunakli.</p>
         </div>
         <button class="inline-link" data-tab="training">Son seanslari ac</button>
       </div>
