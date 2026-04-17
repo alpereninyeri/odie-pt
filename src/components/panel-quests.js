@@ -2,6 +2,9 @@ let activeQuestTab = 'daily'
 
 export function renderQuests(p) {
   return `
+    <div class="quest-ops">
+      ${renderQuestOps(p)}
+    </div>
     <div id="quest-section">
       ${renderQuestSection(p)}
     </div>
@@ -15,32 +18,61 @@ export function renderQuests(p) {
     </div>`
 }
 
+function renderQuestOps(p) {
+  const daily = p.quests.daily || []
+  const weekly = p.quests.weekly || []
+  const urgent = [...daily, ...weekly].filter(quest => quest.urgent && !(quest.done || quest.progress >= quest.total)).length
+  const done = [...daily, ...weekly].filter(quest => quest.done || quest.progress >= quest.total).length
+  const nextQuest = [...daily, ...weekly].find(quest => !(quest.done || quest.progress >= quest.total))
+  const rewardCount = [...daily, ...weekly].reduce((sum, quest) => sum + (Number(String(quest.reward || '').replace(/[^\d]/g, '')) || 0), 0)
+
+  return `
+    <div class="progress-brief-grid">
+      <article class="brief-card tone-gold">
+        <span class="brief-kicker">Next Objective</span>
+        <strong>${nextQuest?.name || 'Quest temiz'}</strong>
+        <p>${nextQuest?.desc || 'Açık görev kalmadığında yeni loop burada görünür.'}</p>
+      </article>
+      <article class="brief-card tone-danger">
+        <span class="brief-kicker">Pressure</span>
+        <strong>${urgent} urgent</strong>
+        <p>${done} görev tamamlanmış durumda. Kalan board buradan hızlı okunuyor.</p>
+      </article>
+      <article class="brief-card tone-emerald">
+        <span class="brief-kicker">Board Value</span>
+        <strong>${rewardCount} XP</strong>
+        <p>Günlük ve haftalık board üzerindeki toplam görünür ödül havuzu.</p>
+      </article>
+    </div>
+  `
+}
+
 function renderQuestSection(p) {
   const daily = p.quests.daily
   const weekly = p.quests.weekly
   const items = activeQuestTab === 'daily' ? daily : weekly
 
-  const questItems = items.map(q => {
-    const pct = Math.min(100, Math.round((q.progress / q.total) * 100))
-    const isDone = q.done || q.progress >= q.total
+  const questItems = items.map(quest => {
+    const pct = Math.min(100, Math.round((quest.progress / quest.total) * 100))
+    const isDone = quest.done || quest.progress >= quest.total
     return `
-      <div class="qitem ${q.urgent && !isDone ? 'urgent' : ''} ${isDone ? 'done' : ''}">
+      <div class="qitem ${quest.urgent && !isDone ? 'urgent' : ''} ${isDone ? 'done' : ''}">
         <div class="qcheck ${isDone ? 'done' : ''}">${isDone ? '✓' : ''}</div>
-        <div class="qico">${q.icon}</div>
+        <div class="qico">${quest.icon}</div>
         <div class="qinfo">
-          <div class="qname">${q.name}${q.urgent && !isDone ? ' <span class="nbadge">URGENT</span>' : ''}</div>
-          <div class="qdesc">${q.desc}</div>
+          <div class="qname">${quest.name}${quest.urgent && !isDone ? ' <span class="nbadge">URGENT</span>' : ''}</div>
+          <div class="qdesc">${quest.desc}</div>
           <div class="qprog-track">
             <div class="qprog-fill ${isDone ? '' : pct < 30 ? 'red' : ''}" style="width:${pct}%"></div>
           </div>
-          <div class="qprog-txt">${q.progress} / ${q.total} ${isDone ? '— TAMAMLANDI ✓' : `(${pct}%)`}</div>
+          <div class="qprog-txt">${quest.progress} / ${quest.total} ${isDone ? '— TAMAMLANDI ✓' : `(${pct}%)`}</div>
         </div>
-        <div class="qreward">${q.reward}</div>
+        <div class="qreward">${quest.reward}</div>
       </div>`
   }).join('')
 
-  const dailyDone = daily.filter(q => q.done || q.progress >= q.total).length
-  const weeklyDone = weekly.filter(q => q.done || q.progress >= q.total).length
+  const dailyDone = daily.filter(quest => quest.done || quest.progress >= quest.total).length
+  const weeklyDone = weekly.filter(quest => quest.done || quest.progress >= quest.total).length
 
   return `
     <div class="sec">Görevler</div>
@@ -56,26 +88,26 @@ function renderQuestSection(p) {
 }
 
 function renderAchievements(p) {
-  const cards = p.achievements.map(a => `
-    <div class="ach ${a.unlocked ? 'unlocked' : ''}">
-      <div class="ach-icon">${a.icon}</div>
-      <div class="ach-name">${a.name}</div>
-      <div class="ach-desc">${a.desc}</div>
-      ${a.unlocked
-        ? `<div class="ach-date">${a.date}</div>`
-        : `<div class="ach-req">${a.req}</div>`}
+  const cards = p.achievements.map(achievement => `
+    <div class="ach ${achievement.unlocked ? 'unlocked' : ''}">
+      <div class="ach-icon">${achievement.icon}</div>
+      <div class="ach-name">${achievement.name}</div>
+      <div class="ach-desc">${achievement.desc}</div>
+      ${achievement.unlocked
+        ? `<div class="ach-date">${achievement.date}</div>`
+        : `<div class="ach-req">${achievement.req}</div>`}
     </div>`).join('')
   return `<div class="ach-grid">${cards}</div>`
 }
 
 function renderLog(p) {
-  const rows = p.workoutLog.map(w => `
+  const rows = p.workoutLog.map(workout => `
     <tr>
-      <td class="log-date">${w.date}</td>
-      <td class="log-type">${w.type}</td>
-      <td class="log-dur">${w.duration}</td>
-      <td class="log-vol">${w.volume}</td>
-      <td class="log-hl">${w.highlight}</td>
+      <td class="log-date">${workout.date}</td>
+      <td class="log-type">${workout.type}</td>
+      <td class="log-dur">${workout.duration}</td>
+      <td class="log-vol">${workout.volume}</td>
+      <td class="log-hl">${workout.highlight}</td>
     </tr>`).join('')
 
   return `
@@ -96,12 +128,12 @@ function renderLog(p) {
 export function initQuests(p) {
   const section = document.getElementById('quest-section')
   if (!section) return
-  // Her render'da eski handler'ı kaldır, yenisini bağla
+
   section.removeEventListener('click', section._questsHandler)
-  section._questsHandler = e => {
-    const btn = e.target.closest('[data-qtab]')
-    if (!btn) return
-    activeQuestTab = btn.dataset.qtab
+  section._questsHandler = event => {
+    const button = event.target.closest('[data-qtab]')
+    if (!button) return
+    activeQuestTab = button.dataset.qtab
     section.innerHTML = renderQuestSection(p)
   }
   section.addEventListener('click', section._questsHandler)
