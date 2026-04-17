@@ -185,12 +185,18 @@ function renderPage(tabKey, state, profile) {
 function renderDashboard(state, profile) {
   const readinessMetric = profile.health.metrics.find(metric => metric.label === 'Readiness')
   const rings = profile.health.rings || []
-  const highlights = (state.workouts || []).slice(0, 3)
+  const highlights = (state.workouts || []).slice(0, 2)
   const coachInsight = extractCoachInsight(profile)
   const streak = state.profile.streak || { current: 0, label: '' }
+  const dashboardFocus = renderFocusItems(state, profile).slice(0, 2)
+  const quickStats = renderDashboardStats(profile)
 
   return `
     <section class="hero-card glass-card">
+      <div class="hero-ornaments">
+        <span class="hero-ornament orb"></span>
+        <span class="hero-ornament crest"></span>
+      </div>
       <div class="hero-main">
         <button class="hero-avatar" data-action="open-avatar" aria-label="Profili ac">${profile.avatar}</button>
         <div class="hero-copy">
@@ -201,9 +207,27 @@ function renderDashboard(state, profile) {
           <h2>${profile.nick}</h2>
           <p>${state.profile.classObj?.desc || profile.subClass}</p>
           <div class="hero-focus">
-            <span class="mini-label">Current Focus</span>
+            <span class="mini-label">Active Questline</span>
             <strong>${state.profile.currentFocus || 'Hybrid denge'}</strong>
           </div>
+        </div>
+      </div>
+
+      <div class="hero-raids">
+        <div class="hero-raid-item">
+          <span class="mini-label">Guild Rank</span>
+          <strong>${profile.rank}</strong>
+          <small>${state.profile.classObj?.name || profile.class}</small>
+        </div>
+        <div class="hero-raid-item">
+          <span class="mini-label">Streak Aura</span>
+          <strong>${streak.current} gun</strong>
+          <small>${streak.label || 'Yeni seri'}</small>
+        </div>
+        <div class="hero-raid-item">
+          <span class="mini-label">Readiness</span>
+          <strong>${readinessMetric?.val || '100/100'}</strong>
+          <small>${state.profile.survivalStatus || 'healthy'}</small>
         </div>
       </div>
 
@@ -241,12 +265,25 @@ function renderDashboard(state, profile) {
       </div>
     </section>
 
+    <section class="stat-hud glass-card">
+      <div class="section-top compact-top">
+        <div>
+          <div class="eyebrow">Character Sheet</div>
+          <h3>Core statlar acilista gorunsun</h3>
+        </div>
+        <button class="inline-link" data-tab="progress">Tum progression</button>
+      </div>
+      <div class="stat-hud-grid">
+        ${quickStats}
+      </div>
+    </section>
+
     <section class="dashboard-grid">
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Readiness</div>
-            <h3>Bugun ne kadar hazirsin</h3>
+            <div class="eyebrow">Battle Readiness</div>
+            <h3>Bugun raid'e ne kadar hazirsin</h3>
           </div>
           <span class="pill pill-emerald">${state.profile.survivalStatus || 'healthy'}</span>
         </div>
@@ -275,8 +312,8 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Rings</div>
-            <h3>Aktivite halkalari</h3>
+            <div class="eyebrow">Daily Rings</div>
+            <h3>Gunun aktiflik halkalari</h3>
           </div>
           <button class="inline-link" data-tab="training">Training</button>
         </div>
@@ -288,20 +325,20 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Next Focus</div>
-            <h3>Bir sonraki net hamle</h3>
+            <div class="eyebrow">Quest Radar</div>
+            <h3>Bir sonraki net gorev</h3>
           </div>
           <button class="inline-link" data-tab="progress">Progress</button>
         </div>
         <div class="focus-list">
-          ${renderFocusItems(state, profile).join('')}
+          ${dashboardFocus.join('')}
         </div>
       </article>
 
       <article class="glass-card dashboard-card wide">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Recent Highlights</div>
+            <div class="eyebrow">Raid Log</div>
             <h3>Son seanslardan net sinyaller</h3>
           </div>
           <button class="inline-link" data-tab="training">Tum gecmis</button>
@@ -327,8 +364,8 @@ function renderDashboard(state, profile) {
       <article class="glass-card dashboard-card wide coach-preview">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Coach Insight</div>
-            <h3>Son yorumdan cikmis en kritik not</h3>
+            <div class="eyebrow">Guild Intel</div>
+            <h3>Odie'den en kritik not</h3>
           </div>
           <button class="inline-link" data-tab="coach">Coach ekranini ac</button>
         </div>
@@ -342,6 +379,17 @@ function renderDashboard(state, profile) {
       </article>
     </section>
   `
+}
+
+function renderDashboardStats(profile) {
+  return (profile.stats || []).map(stat => `
+    <button class="stat-hud-item ${stat.critical ? 'critical' : ''}" data-tab="progress" aria-label="${stat.name} detayini ac">
+      <span class="stat-hud-icon">${stat.icon || stat.label}</span>
+      <span class="stat-hud-key">${stat.label}</span>
+      <strong>${String(stat.val).padStart(2, '0')}</strong>
+      <small>${stat.name}</small>
+    </button>
+  `).join('')
 }
 
 function renderRingSummary(ring) {
