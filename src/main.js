@@ -482,13 +482,13 @@ function renderBuildOS(state, profile, semantic) {
   const liveClass = state.profile.classObj || {}
 
   return `
-    <article class="glass-card tactical-card build-identity-card">
+    <article class="tactical-card os-panel build-identity-card">
       <div class="section-top">
         <div>
           <div class="eyebrow">Build Identity</div>
-          <h3>Tactical OS profile</h3>
+          <h3>Build profile</h3>
         </div>
-        <span class="pill pill-emerald">V3 LIVE</span>
+        <span class="pill pill-emerald">LIVE</span>
       </div>
       <div class="build-identity-head">
         <div class="build-identity-icon">${liveClass.icon || '◈'}</div>
@@ -519,7 +519,7 @@ function renderBuildOS(state, profile, semantic) {
       </div>
     </article>
 
-    <article class="glass-card tactical-card">
+    <article class="tactical-card os-panel">
       <div class="section-top">
         <div>
           <div class="eyebrow">Mastery Lanes</div>
@@ -541,7 +541,7 @@ function renderBuildOS(state, profile, semantic) {
       </div>
     </article>
 
-    <article class="glass-card tactical-card">
+    <article class="tactical-card os-panel">
       <div class="section-top">
         <div>
           <div class="eyebrow">Chain Integrity</div>
@@ -559,7 +559,7 @@ function renderBuildOS(state, profile, semantic) {
       </div>
     </article>
 
-    <article class="glass-card tactical-card">
+    <article class="tactical-card os-panel">
       <div class="section-top">
         <div>
           <div class="eyebrow">Gap Board</div>

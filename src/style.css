@@ -2889,3 +2889,321 @@ body::after {
   .build-identity-icon { width:48px; height:48px; border-radius:14px; font-size:1.5rem; }
   .ops-mini-card strong, .chain-card strong { font-size:1.05rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   V3.1 CLEAN GAMIFIED OVERRIDE
+   fixes overflow + swaps the theme to a cleaner arena-ops look
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme="dark"] {
+  --bg:#0a0f18;
+  --bg2:#0f1722;
+  --bg3:#141f2c;
+  --bg4:#182637;
+  --bg5:#223247;
+  --txt:#f5f7fb;
+  --dim:#98a5ba;
+  --gold:#ffb85c;
+  --gold2:#ffd17f;
+  --gold3:#9f6d2c;
+  --red:#ff6f7d;
+  --grn:#57d7a8;
+  --blu:#69b7ff;
+  --org:#ff9367;
+  --pur:#8f9bff;
+  --brd:rgba(130,165,220,.14);
+  --brdg:rgba(130,165,220,.24);
+  --glow-gold:rgba(255,184,92,.14);
+  --glow-gold-s:rgba(255,184,92,.06);
+  --glow-gold-xs:rgba(255,184,92,.03);
+}
+
+body {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(105,183,255,.14), transparent 26%),
+    radial-gradient(circle at 86% 10%, rgba(87,215,168,.1), transparent 22%),
+    linear-gradient(180deg, #0d1420 0%, #090e16 48%, #070b12 100%);
+}
+
+body::after {
+  opacity:.16;
+}
+
+.glass-card, .glass-subtle, .surface, .coach-shell, .hero-card, .dashboard-card, .os-panel {
+  background:linear-gradient(180deg, rgba(20,30,43,.92), rgba(14,22,34,.92));
+  border:1px solid rgba(130,165,220,.13);
+  box-shadow:0 12px 32px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+.hero-card {
+  background:
+    radial-gradient(circle at top right, rgba(105,183,255,.08), transparent 24%),
+    linear-gradient(180deg, rgba(19,31,46,.96), rgba(13,21,33,.96));
+}
+
+.app-nav,
+.mobile-hud,
+.bottom-tabs {
+  background:linear-gradient(180deg, rgba(15,22,34,.94), rgba(11,17,28,.94));
+  border-color:rgba(130,165,220,.12);
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
+}
+
+.primary-button,
+.primary-fab {
+  background:linear-gradient(135deg, #5bc6ff, #4ed8a7);
+  border:1px solid rgba(255,255,255,.14);
+  color:#051019;
+  box-shadow:0 10px 26px rgba(55,145,235,.18);
+}
+
+.inline-link,
+.avatar-chip,
+.nav-button,
+.bottom-tab,
+.qtab {
+  background:rgba(255,255,255,.03);
+  border-color:rgba(130,165,220,.12);
+}
+
+.nav-button.active,
+.bottom-tab.active,
+.qtab.active {
+  background:linear-gradient(135deg, rgba(105,183,255,.14), rgba(87,215,168,.08));
+  border-color:rgba(105,183,255,.24);
+}
+
+.os-panel,
+.lane-card,
+.chain-card,
+.gap-item,
+.skill-branch-card,
+.quest-card,
+.raid-log-card,
+.trophy-card,
+.ops-mini-card,
+.next-node-card {
+  min-width:0;
+}
+
+.build-identity-head,
+.quest-card-head,
+.skill-branch-head,
+.skill-node-top,
+.raid-log-top,
+.lane-head {
+  flex-wrap:wrap;
+}
+
+.build-identity-head > div,
+.gap-item > div,
+.quest-card-title,
+.quest-card-title > div,
+.skill-branch-head > div,
+.skill-node-copy,
+.raid-log-card,
+.trophy-card,
+.ops-mini-card,
+.lane-card,
+.chain-card {
+  min-width:0;
+}
+
+.build-identity-head p,
+.gap-item p,
+.quest-card p,
+.skill-node p,
+.trophy-card p,
+.raid-log-card p,
+.next-node-card p,
+.lane-card small,
+.chain-card small,
+.ops-mini-card small,
+.skill-branch-signal,
+.quest-progress span {
+  margin:0;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+.build-identity-head strong,
+.gap-item strong,
+.quest-card-title strong,
+.skill-node-top strong,
+.raid-log-top strong,
+.lane-head strong,
+.chain-card strong,
+.trophy-card strong {
+  display:block;
+  line-height:1.15;
+  overflow-wrap:anywhere;
+}
+
+.signal-chip,
+.ready-chip,
+.quest-state,
+.skill-node-label,
+.skill-node-val {
+  white-space:normal;
+}
+
+.ops-mini-grid,
+.campaign-summary-grid,
+.campaign-ops-grid {
+  grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.lane-grid {
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.chain-grid {
+  grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.skill-branch-grid {
+  grid-template-columns:repeat(auto-fit, minmax(290px, 1fr));
+}
+
+.quest-card-grid {
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.trophy-grid {
+  grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.raid-log-list {
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.tactical-os-grid,
+.progress-command-grid {
+  align-items:start;
+}
+
+.os-panel {
+  padding:14px;
+  border-radius:16px;
+}
+
+.lane-card,
+.chain-card,
+.quest-card,
+.raid-log-card,
+.trophy-card,
+.skill-branch-card,
+.ops-mini-card,
+.gap-item,
+.next-node-card {
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(130,165,220,.11);
+}
+
+.chain-card.high { box-shadow:inset 0 0 0 1px rgba(87,215,168,.12); }
+.chain-card.mid { box-shadow:inset 0 0 0 1px rgba(255,184,92,.12); }
+.chain-card.low { box-shadow:inset 0 0 0 1px rgba(255,111,125,.14); }
+
+.lane-fill.tone-emerald { background:linear-gradient(90deg, #51d8ae, #8ff3d0); }
+.lane-fill.tone-gold,
+.quest-progress-fill { background:linear-gradient(90deg, #ffb85c, #ffd27f); }
+.lane-fill.tone-cobalt { background:linear-gradient(90deg, #69b7ff, #9ed3ff); }
+.lane-fill.tone-violet { background:linear-gradient(90deg, #8f9bff, #c2c9ff); }
+
+.gap-mark {
+  background:linear-gradient(135deg, #ff9367, #ffb85c);
+}
+
+.trophy-card {
+  min-height:136px;
+}
+
+.quest-card-title {
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.quest-state {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:64px;
+}
+
+.page-title,
+.hero-copy h2,
+.section-top h3,
+.build-identity-head strong,
+.lane-head strong,
+.chain-card strong,
+.skill-branch-title,
+.skill-node-top strong,
+.quest-card-title strong,
+.raid-log-top strong,
+.trophy-card strong,
+.nav-brand-title {
+  font-family:'Rajdhani',sans-serif;
+  letter-spacing:.01em;
+}
+
+.mobile-hud-nick,
+.class-chip,
+.rank-capsule,
+.hero-banner strong,
+.hero-raid-item strong,
+.identity-metric strong,
+.stat-hud-item strong {
+  font-family:'Rajdhani',sans-serif;
+}
+
+.qtab {
+  min-width:0;
+  padding:10px 12px;
+}
+
+@media (max-width: 760px) {
+  .tactical-os-grid,
+  .progress-command-grid,
+  .campaign-summary-grid,
+  .campaign-ops-grid,
+  .ready-row {
+    display:grid;
+    grid-template-columns:1fr;
+    grid-auto-flow:row;
+    overflow:visible;
+    padding-bottom:0;
+  }
+
+  .dashboard-grid {
+    grid-auto-columns:minmax(88%, 1fr);
+  }
+
+  .hero-card,
+  .surface,
+  .os-panel {
+    border-radius:14px;
+  }
+
+  .skill-branch-grid,
+  .quest-card-grid,
+  .chain-grid,
+  .lane-grid,
+  .raid-log-list,
+  .trophy-grid {
+    grid-template-columns:1fr;
+  }
+
+  .campaign-toggle {
+    position:static;
+    background:transparent;
+    backdrop-filter:none;
+    padding:0;
+  }
+
+  .qtab {
+    font-size:.72rem;
+  }
+}
