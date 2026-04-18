@@ -157,6 +157,17 @@ function _normalizeProfileSeed() {
   }
 }
 
+function _normalizeBodyMetrics(input = {}) {
+  const weightKg = Number(input.weightKg ?? input.weight_kg)
+  const heightCm = Number(input.heightCm ?? input.height_cm)
+  return {
+    weightKg: Number.isFinite(weightKg) && weightKg > 0 ? Math.round(weightKg * 10) / 10 : null,
+    heightCm: Number.isFinite(heightCm) && heightCm > 0 ? Math.round(heightCm) : null,
+    updatedAt: input.updatedAt || input.updated_at || null,
+    note: input.note || '',
+  }
+}
+
 function _normalizeWorkoutRow(row = {}) {
   const normalized = normalizeSession({
     id: row.id,
@@ -253,6 +264,7 @@ function _normalizeProfileRow(row = {}) {
     epicGeography: null,
     currentFocus: '',
     lastUpdated: row.last_updated || new Date().toISOString(),
+    bodyMetrics: _normalizeBodyMetrics(row.body_metrics || {}),
   }
 }
 
@@ -278,6 +290,7 @@ function _buildSeed() {
     coachNote: _clone(seedProfile.coachNote || { date: '', sections: [], xpNote: '', warnings: [] }),
     coachQuestHints: [],
     coachSkillProgress: [],
+    bodyMetrics: _normalizeBodyMetrics(seedProfile.bodyMetrics || {}),
   }
 }
 
@@ -408,10 +421,12 @@ function _applyCoachNote(row) {
 
 function _applySupabaseProfile(row) {
   if (!_state || !row) return
+  const normalizedProfile = _normalizeProfileRow(row)
   _state.profile = {
     ..._state.profile,
-    ..._normalizeProfileRow(row),
+    ...normalizedProfile,
   }
+  _state.bodyMetrics = normalizedProfile.bodyMetrics || _state.bodyMetrics
 }
 
 function _unlockEarnedBadges(emit = false) {
@@ -469,7 +484,10 @@ function _hydrateState(state) {
     coachNote: _clone(state?.coachNote || seed.coachNote),
     coachQuestHints: _clone(state?.coachQuestHints || []),
     coachSkillProgress: _clone(state?.coachSkillProgress || []),
+    bodyMetrics: _clone(state?.bodyMetrics || seed.bodyMetrics || {}),
   }
+
+  merged.bodyMetrics = _normalizeBodyMetrics(merged.bodyMetrics)
 
   const xp = _normalizeXpModel(merged.profile.xp, merged.profile.level)
   merged.profile.level = xp.level
@@ -517,7 +535,7 @@ function _toSupabaseWorkout(workout) {
   }
 }
 
-function _toSupabaseProfile(profile) {
+function _toSupabaseProfile(profile, bodyMetrics = null) {
   return {
     nick: profile.nick,
     handle: profile.handle,
@@ -545,6 +563,7 @@ function _toSupabaseProfile(profile) {
     injury_until: profile.injuryUntil || null,
     survival_status: profile.survivalStatus || 'healthy',
     class_id: profile.classId || null,
+    body_metrics: _normalizeBodyMetrics(bodyMetrics || {}),
   }
 }
 
@@ -557,6 +576,7 @@ function _maybeRefreshPath(path) {
     'profile.armor',
     'profile.fatigue',
     'profile.survivalWarnings',
+    'bodyMetrics',
     'coachNote',
     'coachQuestHints',
     'coachSkillProgress',
@@ -594,6 +614,7 @@ function _mergeToProfile(state) {
     workoutLog: state.workoutLog,
     coachNote: state.coachNote,
     currentFocus: profile.currentFocus,
+    bodyMetrics: state.bodyMetrics,
   }
 }
 
@@ -749,7 +770,7 @@ export const store = {
     if (!isMockMode) {
       const inserted = await insertWorkout(_toSupabaseWorkout(workout))
       if (inserted?.id) workout.id = inserted.id
-      await updateProfile(_toSupabaseProfile(_state.profile))
+      await updateProfile(_toSupabaseProfile(_state.profile, _state.bodyMetrics))
     }
 
     _saveToLS()

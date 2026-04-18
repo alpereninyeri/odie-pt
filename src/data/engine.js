@@ -249,81 +249,41 @@ function _updateHealthAndGlobalStats(state) {
     return values.reduce((sum, value) => sum + value, 0) / values.length
   }
 
-  const avgSteps = Math.round(avg(recentLogs.map(log => Number(log.steps) || 0), 0))
-  const avgSleep = Math.round(avg(recentLogs.map(log => Number(log.sleepHours) || 0), 0) * 10) / 10
-  const avgWaterMl = Math.round(avg(recentLogs.map(log => Number(log.waterMl) || 0), 0))
   const avgDuration = Math.round(avg(workouts.slice(0, 10).map(workout => Number(workout.durationMin) || 0), 0))
   const monthWorkoutDays = new Set(workouts.filter(workout => normalizeDateString(workout.date).startsWith(todayMonth)).map(workout => normalizeDateString(workout.date)))
-  const monthMovementDays = new Set([
-    ...workouts
-      .filter(workout => normalizeDateString(workout.date).startsWith(todayMonth) && (workout.primaryCategory === 'movement' || workout.primaryCategory === 'endurance' || workout.durationMin >= 40))
-      .map(workout => normalizeDateString(workout.date)),
-    ...(state.dailyLogs || [])
-      .filter(log => normalizeDateString(log.date).startsWith(todayMonth) && (Number(log.steps) || 0) >= 8000)
-      .map(log => normalizeDateString(log.date)),
-  ])
   const totalKm = Math.round((Number(state.profile.totalKm) || 0) * 10) / 10
   const recoveryScore = Math.max(0, Math.min(100, Math.round(((state.profile.armor ?? 100) - (state.profile.fatigue ?? 0)) + 20)))
-  const seedMetrics = state.health?.metrics || []
-  const staticWeight = seedMetrics.find(metric => metric.label === 'Kilo') || { icon: '⚖️', label: 'Kilo', val: '74 kg', sub: 'Stabil', color: 'var(--emerald)' }
-  const staticBmi = seedMetrics.find(metric => metric.label === 'BMI') || { icon: '📏', label: 'BMI', val: '23.4', sub: '178cm / 74kg', color: 'var(--dim)' }
+  const bm = state.bodyMetrics || {}
+  const weightKg = Number(bm.weightKg) || 0
+  const heightCm = Number(bm.heightCm) || 0
+  const bmi = weightKg && heightCm ? Math.round((weightKg / ((heightCm / 100) ** 2)) * 10) / 10 : null
+  const staticWeight = weightKg
+    ? { icon: '⚖️', label: 'Kilo', val: `${weightKg} kg`, sub: heightCm ? `${heightCm}cm` : 'Manuel giriş', color: 'var(--emerald)' }
+    : { icon: '⚖️', label: 'Kilo', val: '—', sub: 'Telegram: "kilom 72"', color: 'var(--dim)' }
+  const staticBmi = bmi !== null
+    ? { icon: '📏', label: 'BMI', val: String(bmi), sub: `${weightKg}kg / ${heightCm}cm`, color: 'var(--dim)' }
+    : { icon: '📏', label: 'BMI', val: '—', sub: 'Kilo ve boy gerekli', color: 'var(--dim)' }
+
+  const weeklyWorkouts = workouts.filter(workout =>
+    normalizeDateString(workout.date) >= normalizeDateString(getLocalDateString(new Date(Date.now() - (6 * 86400000))))
+  ).length
 
   state.globalStats = [
-    { val: avgSteps.toLocaleString('tr-TR'), label: 'Ort. Adım/Gün' },
     { val: `${avgDuration || 0}dk`, label: 'Ort. Seans' },
-    { val: `${monthWorkoutDays.size}/${daysInMonth}`, label: 'Egzersiz Halkası' },
-    { val: `${monthMovementDays.size}/${daysInMonth}`, label: 'Hareket Halkası', red: monthMovementDays.size < Math.round(daysInMonth * 0.55) },
+    { val: `${monthWorkoutDays.size}/${daysInMonth}`, label: 'Bu Ay Seans' },
+    { val: String(weeklyWorkouts), label: 'Son 7 Gün' },
+    { val: `${totalKm.toLocaleString('tr-TR')} km`, label: 'Outdoor Toplam' },
   ]
 
   const healthWarnings = []
-  if (avgSleep && avgSleep < 7) {
-    healthWarnings.push({ color: 'var(--amber)', icon: '😴', name: 'UYKU BORCU', desc: `${avgSleep} saat ortalama. Recovery ve koordinasyon aşağı çekiliyor.` })
-  }
-  if (avgWaterMl && avgWaterMl < 2200) {
-    healthWarnings.push({ color: 'var(--cobalt)', icon: '💧', name: 'HİDRASYON DÜŞÜK', desc: `${Math.round(avgWaterMl / 100) / 10}L ortalama. Performans ve toparlanma için artır.` })
-  }
-  if (monthMovementDays.size < Math.round(daysInMonth * 0.5)) {
-    healthWarnings.push({ color: 'var(--coral)', icon: '🔥', name: 'HAREKET HALKASI GERİDE', desc: `Bu ay ${monthMovementDays.size}/${daysInMonth}. Gün içi hareket tekrar yükselmeli.` })
-  }
   if (state.profile?.survivalWarnings?.length) {
-    for (const warning of state.profile.survivalWarnings.slice(0, 2)) {
+    for (const warning of state.profile.survivalWarnings.slice(0, 3)) {
       healthWarnings.push({ color: 'var(--coral)', icon: '🛡️', name: 'RECOVERY UYARISI', desc: warning })
     }
   }
 
   state.health = {
-    rings: [
-      {
-        name: 'Egzersiz',
-        icon: '🏃',
-        current: monthWorkoutDays.size,
-        max: daysInMonth,
-        unit: 'gün',
-        color: 'var(--emerald)',
-        pct: Math.round((monthWorkoutDays.size / Math.max(1, daysInMonth)) * 100),
-      },
-      {
-        name: 'Hareket',
-        icon: '🔥',
-        current: monthMovementDays.size,
-        max: daysInMonth,
-        unit: 'gün',
-        color: 'var(--amber)',
-        pct: Math.round((monthMovementDays.size / Math.max(1, daysInMonth)) * 100),
-      },
-      {
-        name: 'Adım',
-        icon: '👟',
-        current: avgSteps,
-        max: 12000,
-        unit: '/gün avg',
-        color: 'var(--cobalt)',
-        pct: Math.min(100, Math.round((avgSteps / 12000) * 100)),
-      },
-    ],
     metrics: [
-      { icon: '😴', label: 'Uyku', val: `${avgSleep || 0} saat`, sub: 'Son 7 gün ort.', color: 'var(--amber)' },
-      { icon: '💧', label: 'Günlük Su', val: `${Math.round(avgWaterMl / 100) / 10} L`, sub: 'Son 7 gün ort.', color: 'var(--cobalt)' },
       { icon: '⏱️', label: 'Ortalama Seans', val: `${avgDuration || 0} dk`, sub: 'Son 10 antrenman', color: 'var(--mist-strong)' },
       { icon: '🛡️', label: 'Readiness', val: `${recoveryScore}/100`, sub: `${state.profile.survivalStatus || 'healthy'}`, color: 'var(--emerald)' },
       { icon: '🗺️', label: 'Toplam Mesafe', val: `${totalKm.toLocaleString('tr-TR')} km`, sub: 'Tahmini outdoor toplam', color: 'var(--cobalt)' },

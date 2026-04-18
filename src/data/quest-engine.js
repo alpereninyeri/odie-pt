@@ -14,21 +14,21 @@ function todayLog(dailyLogs = [], today = getLocalDateString()) {
   return dailyLogs.find(log => normalizeDateString(log.date) === today) || { waterMl: 0, sleepHours: 0, steps: 0 }
 }
 
-function updateDailyQuest(quest, dayProfile, todayDailyLog) {
+function updateDailyQuest(quest, dayProfile, todayDailyLog, todaySessions) {
   switch (quest.name) {
     case 'Core Aktivasyon': {
       const progress = dayProfile.counts?.core ? 1 : 0
       return { ...quest, progress, done: progress >= 1, desc: progress ? 'Bugun trunk activation sinyali alindi.' : quest.desc }
     }
-    case 'Adım Hedefi':
-    case 'Adim Hedefi':
-      return { ...quest, progress: todayDailyLog.steps || 0, done: (todayDailyLog.steps || 0) >= quest.total }
-    case 'Hidrasyon': {
-      const liters = Math.round((((todayDailyLog.waterMl || 0) / 1000) * 10)) / 10
-      return { ...quest, progress: liters, done: liters >= quest.total }
+    case 'Günlük Antrenman':
+    case 'Gunluk Antrenman': {
+      const progress = todaySessions.length > 0 ? 1 : 0
+      return { ...quest, progress, done: progress >= 1, desc: progress ? `Bugun ${todaySessions[0]?.type || 'seans'} tamamlandi.` : quest.desc }
     }
-    case 'Uyku Kalitesi':
-      return { ...quest, progress: todayDailyLog.sleepHours || 0, done: (todayDailyLog.sleepHours || 0) >= quest.total }
+    case 'Mobility Aktivasyon': {
+      const progress = dayProfile.counts?.mobility > 0 ? 1 : 0
+      return { ...quest, progress, done: progress >= 1, desc: progress ? 'Bugun mobility/recovery blogu alindi.' : quest.desc }
+    }
     default:
       return quest
   }
@@ -97,7 +97,7 @@ export function updateQuests(questsSeed, workouts = [], dailyLogs = [], today = 
   const weekProfile = buildSemanticProfile(thisWeek, dailyLogs)
 
   return {
-    daily: (questsSeed.daily || []).map(quest => updateDailyQuest(quest, dayProfile, todayDailyLog)),
+    daily: (questsSeed.daily || []).map(quest => updateDailyQuest(quest, dayProfile, todayDailyLog, todaySessions)),
     weekly: (questsSeed.weekly || []).map(quest => updateWeeklyQuest(quest, weekProfile, thisWeek)),
   }
 }

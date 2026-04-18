@@ -186,6 +186,7 @@ alter table profiles add column if not exists consecutive_heavy int not null def
 alter table profiles add column if not exists injury_until date;
 alter table profiles add column if not exists survival_status text not null default 'healthy';
 alter table profiles add column if not exists class_id text default 'cirak';
+alter table profiles add column if not exists body_metrics jsonb not null default '{}'::jsonb;
 alter table profiles add column if not exists total_km numeric not null default 0;
 alter table profiles add column if not exists xp_total numeric not null default 0;
 

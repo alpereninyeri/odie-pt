@@ -98,6 +98,8 @@ function summarizeRecovery(dailyLogs = [], survival = {}, today = getLocalDateSt
     armor: Number(survival.armor) || 0,
     fatigue: Number(survival.fatigue) || 0,
     status: survival.status || 'healthy',
+    xpMultiplier: Number(survival.xpMultiplier) || 1,
+    xpReason: survival.xpReason || '',
     warnings: survival.warnings || [],
   }
 }

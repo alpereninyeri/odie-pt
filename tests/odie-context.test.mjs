@@ -39,6 +39,7 @@ test('buildOdieContext includes recovery, prs, and visible coach memory', () => 
 
   assert.equal(context.athlete.className, 'Hybrid')
   assert.equal(context.recovery.status, 'strained')
+  assert.equal(context.recovery.xpMultiplier, 1)
   assert.equal(context.recentPrs[0].value, '65kg x5')
   assert.equal(context.coachMemory[0].title, 'SEANS ANALIZI')
   assert.ok(Array.isArray(context.questPressure))

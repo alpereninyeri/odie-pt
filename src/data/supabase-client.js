@@ -39,7 +39,13 @@ async function _resolveProfileId() {
 }
 
 function _isMissingColumnError(error) {
-  return /column .* does not exist/i.test(error?.message || '')
+  const message = String(error?.message || error || '')
+  return (
+    /column .* does not exist/i.test(message) ||
+    /could not find .* column .* schema cache/i.test(message) ||
+    /schema cache/i.test(message) ||
+    /PGRST204/i.test(message)
+  )
 }
 
 function _normalizeLegacyType(type = 'Custom') {

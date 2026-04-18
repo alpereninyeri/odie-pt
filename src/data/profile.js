@@ -13,6 +13,8 @@ export const profile = {
   totalSets: 1000,
   totalTime: '45h 53min',
 
+  bodyMetrics: { weightKg: 72, heightCm: 172, updatedAt: '2026-04-18' },
+
   globalStats: [
     { val: '12.292', label: 'Ort. Adım/Gün' },
     { val: '64dk', label: 'Ort. Egzersiz' },
@@ -245,32 +247,21 @@ export const profile = {
   ],
 
   health: {
-    rings: [
-      { name: 'Egzersiz', icon: '🏃', current: 26, max: 31, unit: 'gün', color: 'var(--grn)', pct: 84 },
-      { name: 'Hareket',  icon: '🔥', current: 17, max: 31, unit: 'gün', color: 'var(--org)', pct: 55 },
-      { name: 'Adım',     icon: '👟', current: 12292, max: 15000, unit: '/gün avg', color: 'var(--gold)', pct: 82 },
-    ],
     metrics: [
-      { icon: '💤', label: 'Uyku',          val: '6.8 saat',  sub: 'Hedef: 8 saat',    color: 'var(--org)' },
-      { icon: '💧', label: 'Günlük Su',     val: '1.8 L',     sub: 'Hedef: 2.5 L',     color: 'var(--blu)' },
-      { icon: '❤️', label: 'Dinlenme HR',   val: '62 bpm',    sub: 'Sağlıklı aralık',  color: 'var(--red)' },
-      { icon: '🌡️', label: 'Aktif Kalori', val: '420 kcal',  sub: 'Hedef: 650 kcal',  color: 'var(--org)' },
-      { icon: '⚖️', label: 'Kilo',          val: '74 kg',     sub: 'Stabil',            color: 'var(--grn)' },
-      { icon: '📏', label: 'BMI',           val: '23.4',      sub: '178cm / 74kg',      color: 'var(--dim)' },
+      { icon: '⏱️', label: 'Ortalama Seans', val: '64 dk',    sub: 'Son 10 antrenman',       color: 'var(--dim)' },
+      { icon: '🛡️', label: 'Readiness',      val: '85/100',   sub: 'healthy',                 color: 'var(--grn)' },
+      { icon: '🗺️', label: 'Toplam Mesafe',  val: '0 km',     sub: 'Tahmini outdoor toplam', color: 'var(--cobalt)' },
+      { icon: '⚖️', label: 'Kilo',           val: '72 kg',    sub: '172cm / Güncellendi',     color: 'var(--grn)' },
+      { icon: '📏', label: 'BMI',            val: '24.3',     sub: '72kg / 172cm',             color: 'var(--dim)' },
     ],
-    warnings: [
-      { color: 'var(--org)', icon: '😴', name: 'UYKU EKSİKLİĞİ',    desc: '6.8 saat ortalama. Recovery %15 düşük. Kas büyümesi yavaşlıyor.' },
-      { color: 'var(--blu)', icon: '💧', name: 'DEHİDRASYON RİSKİ', desc: '1.8L yeterli değil. Egzersiz performansı olumsuz etkileniyor.' },
-      { color: 'var(--org)', icon: '🔥', name: 'AKTİF KALORİ AÇIĞI', desc: '420/650 kcal. Hareket halkası tutarsız, gün içi oturuş fazla.' },
-    ],
+    warnings: [],
   },
 
   quests: {
     daily: [
-      { icon: '🔥', name: 'Core Aktivasyon',  desc: '3×20sn Hollow Body + 3×10sn L-Sit',   reward: '+50 XP', done: true,  progress: 1,      total: 1 },
-      { icon: '🚶', name: 'Adım Hedefi',      desc: 'Bugün 12.000 adım tamamla',            reward: '+20 XP', done: true,  progress: 12292,   total: 12000 },
-      { icon: '💧', name: 'Hidrasyon',         desc: '2.5 litre su iç',                     reward: '+15 XP', done: false, progress: 1.8,     total: 2.5 },
-      { icon: '😴', name: 'Uyku Kalitesi',    desc: 'Bugün 8 saat uyu',                    reward: '+30 XP', done: false, progress: 0,       total: 8 },
+      { icon: '🔥', name: 'Core Aktivasyon',    desc: '3×20sn Hollow Body + 3×10sn L-Sit',   reward: '+50 XP', done: true,  progress: 1, total: 1 },
+      { icon: '🏋️', name: 'Günlük Antrenman',  desc: 'Bugün en az 1 seans yap',              reward: '+30 XP', done: false, progress: 0, total: 1 },
+      { icon: '🧘', name: 'Mobility Aktivasyon', desc: 'Bugün mobility/stretching seansı',   reward: '+20 XP', done: false, progress: 0, total: 1 },
     ],
     weekly: [
       { icon: '🦵', name: 'Bacak Günü',            desc: 'Bu hafta en az 1 bacak antrenmanı',    reward: '+150 XP', done: true,  progress: 1, total: 1 },

@@ -37,6 +37,7 @@ function buildState() {
     coachNote: clone(seedProfile.coachNote),
     coachQuestHints: [],
     coachSkillProgress: [],
+    bodyMetrics: { weightKg: 73, heightCm: 178, updatedAt: '2026-04-18' },
   }
 }
 
@@ -81,4 +82,15 @@ test('hidden coach payload can override performance card copy', () => {
   const bench = state.performance.find(item => item.key === 'bench')
   assert.equal(bench.note, 'Gemini bench override')
   assert.equal(bench.tip, 'Gemini tip')
+})
+
+test('health metrics derive kilo and bmi from bodyMetrics instead of static fallback', () => {
+  const state = buildState()
+  recalculate(state)
+
+  const kilo = state.health.metrics.find(item => item.label === 'Kilo')
+  const bmi = state.health.metrics.find(item => item.label === 'BMI')
+
+  assert.equal(kilo.val, '73 kg')
+  assert.equal(bmi.val, '23')
 })

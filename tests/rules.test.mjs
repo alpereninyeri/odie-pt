@@ -82,18 +82,28 @@ test('manual and telegram normalization lead to same deterministic output', () =
   )
 })
 
-test('streak tolerates one empty day and breaks after two full missed days', () => {
+test('streak allows adjacent days only and breaks after one empty day', () => {
   const workouts = [
     { date: '2026-04-10' },
+    { date: '2026-04-11' },
     { date: '2026-04-12' },
-    { date: '2026-04-14' },
   ]
 
-  const streak = computeStreakInfo(workouts, '2026-04-14')
+  const streak = computeStreakInfo(workouts, '2026-04-12')
   assert.equal(streak.current, 3)
 
-  const broken = computeStreakInfo([{ date: '2026-04-10' }, { date: '2026-04-13' }], '2026-04-13')
+  const broken = computeStreakInfo([{ date: '2026-04-10' }, { date: '2026-04-12' }], '2026-04-12')
   assert.equal(broken.current, 1)
+})
+
+test('normalizeSession keeps startedAt when present', () => {
+  const session = normalizeSession({
+    type: 'Push',
+    date: '2026-04-18',
+    startedAt: '2026-04-18T10:30:00.000Z',
+  })
+
+  assert.equal(session.startedAt, '2026-04-18T10:30:00.000Z')
 })
 
 test('istanbul local date helper respects local boundary', () => {

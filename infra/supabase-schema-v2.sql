@@ -12,6 +12,7 @@ alter table profiles add column if not exists survival_status   text not null de
 
 -- Class Evolution
 alter table profiles add column if not exists class_id          text not null default 'cirak';
+alter table profiles add column if not exists body_metrics      jsonb not null default '{}'::jsonb;
 alter table profiles add column if not exists class_locked_at   timestamptz;
 
 -- Epic progress (hesaplanabilir ama cache için)

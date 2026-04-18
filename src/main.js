@@ -7,7 +7,6 @@ import { renderMuscles, initMuscles } from './components/panel-muscles.js'
 import { renderSkills, initSkills } from './components/panel-skills.js'
 import { renderQuests, initQuests } from './components/panel-quests.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
-import { renderDailyChecklist, initDailyChecklist } from './components/daily-checklist.js'
 import { initModal, closeModal, openAvatarModal } from './components/modal.js'
 import { openWorkoutForm } from './components/workout-form.js'
 import { injectToastStyles, showToast } from './components/toast.js'
@@ -155,7 +154,7 @@ function renderMobileHud(state, profile) {
   const level = profile.level ?? '-'
   const streak = state.profile?.streak?.current ?? 0
   const readinessMetric = profile?.health?.metrics?.find?.(metric => metric.label === 'Readiness')
-  const readiness = readinessMetric ? String(readinessMetric.val).split('/')[0] : '100'
+  const readiness = readinessMetric ? String(readinessMetric.val).split('/')[0] : (state.profile?.survivalStatus ? 'LIVE' : '-')
 
   return `
     <div class="mobile-hud">
@@ -167,7 +166,7 @@ function renderMobileHud(state, profile) {
       </div>
       <div class="mobile-hud-stats">
         <div class="mobile-hud-stat"><strong>${streak}</strong><small>STREAK</small></div>
-        <div class="mobile-hud-stat"><strong>${readiness}</strong><small>AURA</small></div>
+        <div class="mobile-hud-stat"><strong>${readiness}</strong><small>READY</small></div>
       </div>
     </div>
   `
@@ -200,7 +199,6 @@ function renderPage(tabKey, state, profile) {
 
 function renderDashboard(state, profile, semantic) {
   const readinessMetric = profile.health.metrics.find(metric => metric.label === 'Readiness')
-  const rings = profile.health.rings || []
   const highlights = (state.workouts || []).slice(0, 2)
   const coachInsight = extractCoachInsight(profile)
   const streak = state.profile.streak || { current: 0, label: '' }
@@ -340,19 +338,6 @@ function renderDashboard(state, profile, semantic) {
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Daily Rings</div>
-            <h3>Gunluk enerji halkalari</h3>
-          </div>
-          <button class="inline-link" data-tab="training">Training</button>
-        </div>
-        <div class="ring-stack">
-          ${rings.map(renderRingSummary).join('')}
-        </div>
-      </article>
-
-      <article class="glass-card dashboard-card">
-        <div class="section-top">
-          <div>
             <div class="eyebrow">Focus Board</div>
             <h3>Seni level atlatacak sonraki hedefler</h3>
           </div>
@@ -433,23 +418,6 @@ function renderHeroSigils(state, profile, semantic) {
   `).join('')
 }
 
-function renderRingSummary(ring) {
-  const pct = Math.max(0, Math.min(100, ring.pct || 0))
-  return `
-    <div class="ring-summary">
-      <div class="ring-visual" style="--ring-pct:${pct}%;--ring-color:${ring.color}">
-        <span>${ring.icon}</span>
-      </div>
-      <div class="ring-copy">
-        <div class="ring-head">
-          <strong>${ring.name}</strong>
-          <span>%${pct}</span>
-        </div>
-        <p>${ring.current.toLocaleString('tr-TR')} / ${ring.max.toLocaleString('tr-TR')} ${ring.unit}</p>
-      </div>
-    </div>
-  `
-}
 
 function renderFocusItems(state, profile) {
   return getFocusSignals(state, profile).map(item => `
@@ -731,10 +699,6 @@ function renderTraining(state, profile, semantic) {
         </div>
       </div>
 
-      <div class="glass-card surface">
-        ${renderDailyChecklist()}
-      </div>
-
       <div class="glass-card surface" id="panel-training">
         ${renderQuests(profile, semantic)}
       </div>
@@ -768,7 +732,6 @@ function initActivePage(tabKey, profile) {
       initSkills()
       break
     case 'training':
-      initDailyChecklist()
       initQuests(profile)
       break
     case 'coach':

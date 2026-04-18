@@ -487,11 +487,13 @@ export function normalizeSession(session = {}, { source = 'manual', now = new Da
   const exercises = normalizeExercises(session.exercises || [])
   const type = normalizeType(session.type)
   const date = normalizeDateString(session.date, getLocalDateString(now))
+  const startedAt = session.startedAt || session.started_at || session.createdAt || session.created_at || now.toISOString()
   const normalized = {
     ...session,
     type,
     date,
     source: session.source || source,
+    startedAt,
     createdAt: session.createdAt || session.created_at || now.toISOString(),
     durationMin: Number(session.durationMin ?? session.duration_min) || 0,
     volumeKg: Number(session.volumeKg ?? session.volume_kg) || 0,
@@ -639,14 +641,14 @@ export function computeStreakInfo(workoutsOrDates = [], newDate) {
 
   let current = 1
   for (let index = dates.length - 2; index >= 0; index -= 1) {
-    if (_dayDiff(dates[index], dates[index + 1]) <= 2) current += 1
+    if (_dayDiff(dates[index], dates[index + 1]) <= 1) current += 1
     else break
   }
 
   let max = 1
   let running = 1
   for (let index = 1; index < dates.length; index += 1) {
-    if (_dayDiff(dates[index - 1], dates[index]) <= 2) running += 1
+    if (_dayDiff(dates[index - 1], dates[index]) <= 1) running += 1
     else running = 1
     if (running > max) max = running
   }
@@ -663,7 +665,7 @@ export function computeStreakInfo(workoutsOrDates = [], newDate) {
 export function checkStreakHealth(streak, today = getLocalDateString()) {
   if (!streak?.lastWorkoutDate) return streak
   const gap = _dayDiff(streak.lastWorkoutDate, today)
-  if (gap > 2) {
+  if (gap > 1) {
     return { ...streak, current: 0, multiplier: 1, label: '' }
   }
   return streak

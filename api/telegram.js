@@ -52,7 +52,13 @@ async function sbPatch(table, filter, body) {
 }
 
 function isMissingColumnError(error) {
-  return /column .* does not exist/i.test(error?.message || '')
+  const message = String(error?.message || error || '')
+  return (
+    /column .* does not exist/i.test(message) ||
+    /could not find .* column .* schema cache/i.test(message) ||
+    /schema cache/i.test(message) ||
+    /PGRST204/i.test(message)
+  )
 }
 
 function normalizeLegacyType(type = 'Custom') {
@@ -157,6 +163,146 @@ Senin gorevin seansi yorumlamak; final XP, stat ve streak hesaplari kural motoru
 COACH_NOTE icinde yalnizca kisa, scan edilebilir satirlar uret.
 Tum yorumlari guncel veriye bagla; stale seed bilgi uretme.`
 
+const PARSE_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    type: { type: 'STRING' },
+    duration_min: { type: 'NUMBER' },
+    distance_km: { type: 'NUMBER' },
+    elevation_m: { type: 'NUMBER' },
+    tags: { type: 'ARRAY', items: { type: 'STRING' } },
+    exercises: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING' },
+          sets: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                reps: { type: 'NUMBER', nullable: true },
+                weight_kg: { type: 'NUMBER', nullable: true },
+                duration_sec: { type: 'NUMBER', nullable: true },
+                note: { type: 'STRING' },
+              },
+            },
+          },
+        },
+      },
+    },
+    volume_kg: { type: 'NUMBER' },
+    total_sets: { type: 'NUMBER' },
+    highlight: { type: 'STRING' },
+    has_pr: { type: 'BOOLEAN' },
+    notes: { type: 'STRING' },
+  },
+}
+
+const COACH_NOTE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    telegram_msg: { type: 'STRING' },
+    coach_note: {
+      type: 'OBJECT',
+      properties: {
+        sections: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              title: { type: 'STRING' },
+              mood: { type: 'STRING' },
+              lines: { type: 'ARRAY', items: { type: 'STRING' } },
+            },
+          },
+        },
+        warnings: { type: 'ARRAY', items: { type: 'STRING' } },
+        quest_hints: { type: 'ARRAY', items: { type: 'STRING' } },
+        skill_progress: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              name: { type: 'STRING' },
+              note: { type: 'STRING', nullable: true },
+            },
+          },
+        },
+        xp_note: { type: 'STRING' },
+      },
+    },
+  },
+}
+
+const STATE_SYNC_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    bodyMetrics: {
+      type: 'OBJECT',
+      nullable: true,
+      properties: {
+        weightKg: { type: 'NUMBER', nullable: true },
+        heightCm: { type: 'NUMBER', nullable: true },
+        note: { type: 'STRING', nullable: true },
+      },
+    },
+    stats: { type: 'OBJECT', nullable: true },
+    performance: { type: 'OBJECT', nullable: true },
+    muscles: { type: 'OBJECT', nullable: true },
+    skills: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING' },
+          status: { type: 'STRING', nullable: true },
+          note: { type: 'STRING', nullable: true },
+        },
+      },
+    },
+    chains: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING' },
+          status: { type: 'STRING', nullable: true },
+          note: { type: 'STRING', nullable: true },
+        },
+      },
+    },
+    goals: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING' },
+          target: { type: 'STRING', nullable: true },
+          deadline: { type: 'STRING', nullable: true },
+          progress: { type: 'STRING', nullable: true },
+        },
+      },
+    },
+    quest_hints: { type: 'ARRAY', items: { type: 'STRING' } },
+    skill_progress: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING' },
+          note: { type: 'STRING', nullable: true },
+          status: { type: 'STRING', nullable: true },
+        },
+      },
+    },
+    warnings: { type: 'ARRAY', items: { type: 'STRING' } },
+  },
+}
+
+const coachCache = new Map()
+
 function fmtExercises(exercises) {
   if (!exercises?.length) return '  - detay yok'
   return exercises.map(exercise => {
@@ -198,7 +344,7 @@ Baglam:
 - Streak: ${context.streak} gun
 - XP: +${context.xp}
 - Class: ${context.className}
-- Class reason: ${odie.athlete?.classReason || '-'}
+- Class reason: ${context.odie?.athlete?.classReason || '-'}
 - Statlar: STR ${context.stats.str} · AGI ${context.stats.agi} · END ${context.stats.end} · DEX ${context.stats.dex} · CON ${context.stats.con} · STA ${context.stats.sta}
 
 Son antrenmanlar:
@@ -290,6 +436,7 @@ async function callGeminiWithModel(prompt, {
   temperature = 0.2,
   model = 'gemini-2.5-flash',
   responseMimeType = '',
+  responseSchema = null,
 } = {}) {
   const key = process.env.GEMINI_API_KEY
   if (!key) throw new Error('GEMINI_API_KEY eksik')
@@ -299,6 +446,7 @@ async function callGeminiWithModel(prompt, {
     generationConfig: { temperature, maxOutputTokens: maxTokens },
   }
   if (responseMimeType) body.generationConfig.responseMimeType = responseMimeType
+  if (responseSchema) body.generationConfig.responseSchema = responseSchema
   if (system) body.system_instruction = { parts: [{ text: system }] }
 
   const response = await fetch(
@@ -368,6 +516,7 @@ Baglam:
 - En zayif stat: ${weakest?.key || '-'} ${weakest?.val ?? ''}
 - En guclu stat: ${strongest?.key || '-'} ${strongest?.val ?? ''}
 - Recovery: armor ${recovery.armor ?? '-'} / fatigue ${recovery.fatigue ?? '-'} / status ${recovery.status || '-'}
+- Survival XP: x${recovery.xpMultiplier ?? 1}
 - Son 7 gun: uyku ${recovery.avgSleep ?? 0}s · su ${recovery.avgWaterL ?? 0}L · adim ${recovery.avgSteps ?? 0}
 - Disiplin mix: ${disciplineMix}
 
@@ -447,15 +596,94 @@ Guncel peak neyse onu yaz; eski bench, eski core, eski PR gibi stale bilgi verme
 Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.`
 }
 
+function buildStateSyncPrompt(parsed, context, coachNote) {
+  const sections = (coachNote?.sections || [])
+    .filter(section => !section?.hidden)
+    .map(section => `- ${section.title}: ${(section.lines || []).join(' ')}`)
+    .join('\n') || '- not yok'
+
+  return `Asagidaki seans ve koç notundan yalnizca STATE_SYNC JSON'u cikar.
+Sayisal karar uydurma, sadece metinden ve baglamdan emin oldugun sync alanlarini doldur.
+BMI hesaplama. Kullanici kilo/boy belirttiyse bodyMetrics'e yaz; BMI'yi bos birak.
+
+Seans:
+- Tip: ${parsed.type}
+- Sure: ${parsed.duration_min || 0}
+- Mesafe: ${parsed.distance_km || 0}
+- Highlight: ${parsed.highlight || '-'}
+- Notlar: ${parsed.notes || '-'}
+
+Baglam:
+- Class: ${context.className}
+- XP: +${context.xp}
+- Streak: ${context.streak}
+- Body metrics: kilo ${context.bodyMetrics?.weightKg || '-'} / boy ${context.bodyMetrics?.heightCm || '-'}
+- Recovery status: ${context.odie?.recovery?.status || '-'}
+- Recovery xp multiplier: ${context.odie?.recovery?.xpMultiplier ?? 1}
+- Focus gaps: ${(context.odie?.focusGaps || []).join(' | ') || '-'}
+
+Coach note:
+${sections}
+
+Sadece JSON don.`
+}
+
+function parseJsonText(raw = '') {
+  return JSON.parse(String(raw).replace(/```json\n?|\n?```/g, '').trim())
+}
+
+function mergeStateSyncIntoCoachNote(coachNote, stateSync, xp, streak) {
+  const safeNote = coachNote || { sections: [] }
+  const visibleSections = (safeNote.sections || []).filter(section => !section?.hidden)
+  return {
+    ...safeNote,
+    sections: [
+      ...visibleSections,
+      {
+        title: 'STATE_SYNC',
+        hidden: true,
+        payload: stateSync || {},
+      },
+    ],
+    warnings: Array.isArray(safeNote.warnings) ? safeNote.warnings : [],
+    quest_hints: Array.isArray(safeNote.quest_hints) ? safeNote.quest_hints : [],
+    skill_progress: Array.isArray(safeNote.skill_progress) ? safeNote.skill_progress : [],
+    xp_note: safeNote.xp_note || `+${xp} XP | Streak ${streak}`,
+  }
+}
+
+function clampBodyMetricsPatch(current, incoming) {
+  if (!incoming || typeof incoming !== 'object') return null
+  const currentWeight = Number(current?.weightKg) || 0
+  const nextWeight = Number(incoming.weightKg)
+  const nextHeight = Number(incoming.heightCm)
+  const patch = {}
+
+  if (Number.isFinite(nextWeight) && nextWeight > 0) {
+    if (!currentWeight || Math.abs(nextWeight - currentWeight) <= 3) {
+      patch.weightKg = Math.round(nextWeight * 10) / 10
+    } else {
+      console.warn('[bot] dropped bodyMetrics.weightKg delta > 3kg:', currentWeight, '->', nextWeight)
+    }
+  }
+
+  if (Number.isFinite(nextHeight) && nextHeight > 0 && nextHeight <= 260) {
+    patch.heightCm = Math.round(nextHeight)
+  }
+
+  if (incoming.note) patch.note = String(incoming.note).trim()
+  return Object.keys(patch).length ? patch : null
+}
+
 async function parseWithGemini(text) {
   const raw = await callGeminiWithModel(buildParsePrompt(text), {
     maxTokens: 1600,
     temperature: 0.1,
     model: process.env.GEMINI_PARSE_MODEL || 'gemini-2.5-flash-lite',
     responseMimeType: 'application/json',
+    responseSchema: PARSE_RESPONSE_SCHEMA,
   })
-  const clean = raw.replace(/```json\n?|\n?```/g, '').trim()
-  const parsed = JSON.parse(clean)
+  const parsed = parseJsonText(raw)
 
   parsed.total_sets = Array.isArray(parsed.exercises)
     ? parsed.exercises.reduce((sum, exercise) => sum + ((exercise.sets || []).length || 0), 0)
@@ -470,21 +698,45 @@ async function parseWithGemini(text) {
 }
 
 async function getCoachResponse(parsed, context) {
+  const cacheKey = JSON.stringify({
+    parsed,
+    streak: context.streak,
+    xp: context.xp,
+    className: context.className,
+    recovery: context.odie?.recovery,
+  })
+  const cached = coachCache.get(cacheKey)
+  if (cached && (Date.now() - cached.at) < 300000) return cached.value
+
   const raw = await callGeminiWithModel(buildCoachPromptV2(parsed, context), {
     system: ODIE_SYSTEM,
     maxTokens: 2000,
     temperature: 0.72,
     model: process.env.GEMINI_COACH_MODEL || 'gemini-2.5-flash',
     responseMimeType: 'application/json',
+    responseSchema: COACH_NOTE_SCHEMA,
   })
-  const clean = raw.replace(/```json\n?|\n?```/g, '').trim()
-  const parsedResponse = JSON.parse(clean)
-  const coachNote = parsedResponse?.coach_note || null
+  const parsedResponse = parseJsonText(raw)
+  const draftCoachNote = parsedResponse?.coach_note || null
 
-  return {
+  const syncRaw = await callGeminiWithModel(buildStateSyncPrompt(parsed, context, draftCoachNote), {
+    system: `${ODIE_SYSTEM}\nYalnizca structured state sync cikar. Abartma ve emin olmadigin alani bos birak.`,
+    maxTokens: 1200,
+    temperature: 0.15,
+    model: process.env.GEMINI_SYNC_MODEL || process.env.GEMINI_COACH_MODEL || 'gemini-2.5-flash',
+    responseMimeType: 'application/json',
+    responseSchema: STATE_SYNC_SCHEMA,
+  })
+  const stateSync = parseJsonText(syncRaw)
+  const coachNote = mergeStateSyncIntoCoachNote(draftCoachNote, stateSync, context.xp, context.streak)
+
+  const value = {
     telegramMsg: String(parsedResponse?.telegram_msg || '').trim(),
     coachNote,
+    stateSync,
   }
+  coachCache.set(cacheKey, { at: Date.now(), value })
+  return value
 }
 
 async function sendTelegram(chatId, text) {
@@ -545,6 +797,18 @@ function normalizeCoachNoteRow(row = null) {
     quest_hints: Array.isArray(row.quest_hints) ? row.quest_hints : [],
     skill_progress: Array.isArray(row.skill_progress) ? row.skill_progress : [],
   }
+}
+
+function extractDirectBodyMetrics(text = '') {
+  const normalized = String(text || '').toLocaleLowerCase('tr-TR')
+  const weightMatch = normalized.match(/(?:kilom|kilo|weight)\s*(?:=|:)?\s*(\d+(?:[.,]\d+)?)/)
+  const heightMatch = normalized.match(/(?:boyum|boy|height)\s*(?:=|:)?\s*(\d+(?:[.,]\d+)?)/)
+  const patch = {}
+
+  if (weightMatch) patch.weightKg = Math.round(Number(weightMatch[1].replace(',', '.')) * 10) / 10
+  if (heightMatch) patch.heightCm = Math.round(Number(heightMatch[1].replace(',', '.')))
+
+  return Object.keys(patch).length ? patch : null
 }
 
 function buildCurrentPrs(workouts) {
@@ -619,6 +883,30 @@ export default async function handler(req, res) {
   }
 
   try {
+    const directBodyMetrics = extractDirectBodyMetrics(text)
+    if (directBodyMetrics) {
+      const profile = await resolveProfile()
+      if (!profile) throw new Error('Profil bulunamadi')
+
+      const nextBodyMetrics = {
+        ...(profile.body_metrics || {}),
+        ...directBodyMetrics,
+        updated_at: new Date().toISOString(),
+      }
+
+      try {
+        await sbPatch('profiles', `id=eq.${profile.id}`, { body_metrics: nextBodyMetrics, last_updated: new Date().toISOString() })
+      } catch (error) {
+        if (!isMissingColumnError(error)) throw error
+      }
+
+      const bits = []
+      if (nextBodyMetrics.weightKg) bits.push(`Kilo ${nextBodyMetrics.weightKg}kg`)
+      if (nextBodyMetrics.heightCm) bits.push(`Boy ${nextBodyMetrics.heightCm}cm`)
+      await sendTelegram(chatId, `<b>Vital signs guncellendi</b>\n${bits.join(' | ')}`)
+      return res.status(200).json({ ok: true, bodyMetrics: nextBodyMetrics })
+    }
+
     const parsed = await parseWithGemini(text)
     const today = getLocalDateString()
     const profile = await resolveProfile()
@@ -702,6 +990,7 @@ export default async function handler(req, res) {
 
     let telegramMsg = ''
     let coachNote = null
+    let stateSync = null
     let odie = null
     try {
       odie = buildOdieContext({
@@ -723,10 +1012,12 @@ export default async function handler(req, res) {
         className: nextClass.name,
         stats: nextStats,
         recentWorkouts: workouts,
+        bodyMetrics: profile.body_metrics || {},
         odie,
       })
       telegramMsg = coach.telegramMsg
       coachNote = coach.coachNote
+      stateSync = coach.stateSync || null
     } catch (error) {
       console.warn('[bot] coach generation failed:', error.message)
       const fallback = buildFallbackCoachResponse(parsedForCoach, {
@@ -735,6 +1026,7 @@ export default async function handler(req, res) {
         className: nextClass.name,
         stats: nextStats,
         recentWorkouts: workouts,
+        bodyMetrics: profile.body_metrics || {},
         odie: odie || buildOdieContext({
           profile,
           workouts,
@@ -751,7 +1043,10 @@ export default async function handler(req, res) {
       })
       telegramMsg = fallback.telegramMsg
       coachNote = fallback.coachNote
+      stateSync = fallback.coachNote?.sections?.find(section => section?.hidden && section?.payload)?.payload || null
     }
+
+    const nextBodyMetrics = clampBodyMetricsPatch(profile.body_metrics || {}, stateSync?.bodyMetrics)
 
     const workoutPayload = {
       profile_id: profile.id,
@@ -810,6 +1105,13 @@ export default async function handler(req, res) {
       class_id: nextClass.id,
       class: nextClass.name,
       sub_class: nextClass.subName,
+      body_metrics: nextBodyMetrics
+        ? {
+          ...(profile.body_metrics || {}),
+          ...nextBodyMetrics,
+          updated_at: new Date().toISOString(),
+        }
+        : (profile.body_metrics || null),
       last_updated: new Date().toISOString(),
     }
 
@@ -827,9 +1129,9 @@ export default async function handler(req, res) {
         date: today,
         sections: coachNote.sections || [],
         xp_note: coachNote.xp_note || `+${xpInfo.xpEarned} XP`,
-        warnings: coachNote.warnings || survival.warnings || [],
-        quest_hints: coachNote.quest_hints || [],
-        skill_progress: coachNote.skill_progress || [],
+        warnings: coachNote.warnings || stateSync?.warnings || survival.warnings || [],
+        quest_hints: coachNote.quest_hints?.length ? coachNote.quest_hints : (stateSync?.quest_hints || []),
+        skill_progress: coachNote.skill_progress?.length ? coachNote.skill_progress : (stateSync?.skill_progress || []),
       }
       try {
         await sbPost('coach_notes', coachPayload)
