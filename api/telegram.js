@@ -1161,15 +1161,29 @@ async function getCoachResponse(parsed, context) {
   return value
 }
 
-async function sendTelegram(chatId, text) {
+async function sendTelegram(chatId, text, replyMarkup = null) {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN eksik')
 
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    }),
   })
+}
+
+function buildSiteButtonMarkup() {
+  const url = process.env.ODIEPT_APP_URL || 'https://odie-pt.vercel.app'
+  return {
+    inline_keyboard: [[
+      { text: 'OdiePt Ac', url },
+    ]],
+  }
 }
 
 function normalizeWorkoutRow(row) {
@@ -1347,7 +1361,20 @@ export default async function handler(req, res) {
   if (allowedChatId && chatId !== allowedChatId) return res.status(200).json({ ok: true })
 
   if (text === '/start') {
-    await sendTelegram(chatId, `OdiePt aktif, ${firstName}.\nAntrenmani Turkce yazman yeterli.`)
+    await sendTelegram(
+      chatId,
+      `OdiePt aktif, ${firstName}.\nAntrenmani Turkce yazman yeterli.\n\nSiteyi acmak icin alttaki tusa basabilirsin.`,
+      buildSiteButtonMarkup(),
+    )
+    return res.status(200).json({ ok: true })
+  }
+
+  if (['/app', '/site', '/panel'].includes(text.toLocaleLowerCase('tr-TR'))) {
+    await sendTelegram(
+      chatId,
+      '<b>OdiePt panel hazir</b>\nAlttaki tusla siteyi acabilirsin.',
+      buildSiteButtonMarkup(),
+    )
     return res.status(200).json({ ok: true })
   }
 
