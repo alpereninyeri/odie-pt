@@ -1,107 +1,169 @@
 let activeQuestTab = 'daily'
 
-export function renderQuests(p) {
-  return `
-    <div id="quest-section">
-      ${renderQuestSection(p)}
-    </div>
-    <div style="margin-top:32px">
-      <div class="sec">Başarılar</div>
-      ${renderAchievements(p)}
-    </div>
-    <div style="margin-top:32px">
-      <div class="sec">Antrenman Geçmişi</div>
-      ${renderLog(p)}
-    </div>`
+function progressPct(item) {
+  return Math.min(100, Math.round((Number(item.progress) / Math.max(1, Number(item.total) || 1)) * 100))
 }
 
-function renderQuestSection(p) {
-  const daily = p.quests.daily
-  const weekly = p.quests.weekly
-  const items = activeQuestTab === 'daily' ? daily : weekly
+function isDone(item) {
+  return item.done || Number(item.progress) >= Number(item.total)
+}
 
-  const questItems = items.map(q => {
-    const pct = Math.min(100, Math.round((q.progress / q.total) * 100))
-    const isDone = q.done || q.progress >= q.total
-    return `
-      <div class="qitem ${q.urgent && !isDone ? 'urgent' : ''} ${isDone ? 'done' : ''}">
-        <div class="qcheck ${isDone ? 'done' : ''}">${isDone ? '✓' : ''}</div>
-        <div class="qico">${q.icon}</div>
-        <div class="qinfo">
-          <div class="qname">${q.name}${q.urgent && !isDone ? ' <span class="nbadge">URGENT</span>' : ''}</div>
-          <div class="qdesc">${q.desc}</div>
-          <div class="qprog-track">
-            <div class="qprog-fill ${isDone ? '' : pct < 30 ? 'red' : ''}" style="width:${pct}%"></div>
-          </div>
-          <div class="qprog-txt">${q.progress} / ${q.total} ${isDone ? '— TAMAMLANDI ✓' : `(${pct}%)`}</div>
-        </div>
-        <div class="qreward">${q.reward}</div>
-      </div>`
-  }).join('')
-
-  const dailyDone = daily.filter(q => q.done || q.progress >= q.total).length
-  const weeklyDone = weekly.filter(q => q.done || q.progress >= q.total).length
-
+function renderQuestCard(quest) {
+  const pct = progressPct(quest)
+  const done = isDone(quest)
   return `
-    <div class="sec">Görevler</div>
-    <div class="quest-tabs">
-      <button class="qtab ${activeQuestTab === 'daily' ? 'active' : ''}" data-qtab="daily">
-        Günlük (${dailyDone}/${daily.length})
-      </button>
-      <button class="qtab ${activeQuestTab === 'weekly' ? 'active' : ''}" data-qtab="weekly">
-        Haftalık (${weeklyDone}/${weekly.length})
-      </button>
+    <div class="quest-card ${done ? 'done' : ''} ${quest.urgent && !done ? 'urgent' : ''}">
+      <div class="quest-card-head">
+        <div class="quest-card-title">
+          <span class="quest-icon">${quest.icon}</span>
+          <div>
+            <strong>${quest.name}</strong>
+            <small>${quest.reward}</small>
+          </div>
+        </div>
+        <span class="quest-state">${done ? 'CLEAR' : `${pct}%`}</span>
+      </div>
+      <p>${quest.desc}</p>
+      <div class="quest-progress">
+        <div class="quest-progress-track"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
+        <span>${quest.progress} / ${quest.total}</span>
+      </div>
     </div>
-    <div id="quest-list">${questItems}</div>`
+  `
 }
 
 function renderAchievements(p) {
-  const cards = p.achievements.map(a => `
-    <div class="ach ${a.unlocked ? 'unlocked' : ''}">
-      <div class="ach-icon">${a.icon}</div>
-      <div class="ach-name">${a.name}</div>
-      <div class="ach-desc">${a.desc}</div>
-      ${a.unlocked
-        ? `<div class="ach-date">${a.date}</div>`
-        : `<div class="ach-req">${a.req}</div>`}
-    </div>`).join('')
-  return `<div class="ach-grid">${cards}</div>`
+  return `
+    <div class="trophy-grid">
+      ${p.achievements.map(item => `
+        <div class="trophy-card ${item.unlocked ? 'unlocked' : ''}">
+          <div class="trophy-icon">${item.icon}</div>
+          <strong>${item.name}</strong>
+          <p>${item.desc}</p>
+          <small>${item.unlocked ? item.date : item.req}</small>
+        </div>
+      `).join('')}
+    </div>
+  `
 }
 
-function renderLog(p) {
-  const rows = p.workoutLog.map(w => `
-    <tr>
-      <td class="log-date">${w.date}</td>
-      <td class="log-type">${w.type}</td>
-      <td class="log-dur">${w.duration}</td>
-      <td class="log-vol">${w.volume}</td>
-      <td class="log-hl">${w.highlight}</td>
-    </tr>`).join('')
+function renderRaidLog(p) {
+  return `
+    <div class="raid-log-list">
+      ${p.workoutLog.map(item => `
+        <div class="raid-log-card">
+          <div class="raid-log-top">
+            <strong>${item.type}</strong>
+            <span>${item.date}</span>
+          </div>
+          <div class="raid-log-meta">
+            <span>${item.duration}</span>
+            <span>${item.volume}</span>
+          </div>
+          <p>${item.highlight}</p>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderQuestSection(p) {
+  const daily = p.quests.daily || []
+  const weekly = p.quests.weekly || []
+  const items = activeQuestTab === 'daily' ? daily : weekly
+  const dailyDone = daily.filter(isDone).length
+  const weeklyDone = weekly.filter(isDone).length
 
   return `
-    <table class="log-table">
-      <thead>
-        <tr>
-          <th>Tarih</th>
-          <th>Antrenman</th>
-          <th>Süre</th>
-          <th>Hacim</th>
-          <th>Öne Çıkan</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>`
+    <div class="campaign-toggle">
+      <button class="qtab ${activeQuestTab === 'daily' ? 'active' : ''}" data-qtab="daily">Daily ${dailyDone}/${daily.length}</button>
+      <button class="qtab ${activeQuestTab === 'weekly' ? 'active' : ''}" data-qtab="weekly">Weekly ${weeklyDone}/${weekly.length}</button>
+    </div>
+    <div class="quest-card-grid">
+      ${items.map(renderQuestCard).join('')}
+    </div>
+  `
+}
+
+export function renderQuests(p, semantic = {}) {
+  const daily = p.quests.daily || []
+  const weekly = p.quests.weekly || []
+  const openObjectives = [...daily, ...weekly].filter(item => !isDone(item)).length
+
+  return `
+    <div id="quest-section">
+      <div class="sec">Campaign Board</div>
+      <div class="campaign-summary-grid">
+        <div class="ops-mini-card">
+          <span class="mini-label">Open Objectives</span>
+          <strong>${openObjectives}</strong>
+          <small>active board load</small>
+        </div>
+        <div class="ops-mini-card">
+          <span class="mini-label">Leg Pressure</span>
+          <strong>${semantic.counts?.legs || 0}</strong>
+          <small>lower chain hits</small>
+        </div>
+        <div class="ops-mini-card">
+          <span class="mini-label">Core Pressure</span>
+          <strong>${semantic.counts?.core || 0}</strong>
+          <small>trunk signal</small>
+        </div>
+        <div class="ops-mini-card">
+          <span class="mini-label">Mobility Ops</span>
+          <strong>${semantic.counts?.mobility || 0}</strong>
+          <small>recovery branch</small>
+        </div>
+      </div>
+      ${renderQuestSection(p)}
+    </div>
+
+    <div class="training-subsection">
+      <div class="sec">Achievement Sheet</div>
+      ${renderAchievements(p)}
+    </div>
+
+    <div class="training-subsection">
+      <div class="sec">Raid Log</div>
+      ${renderRaidLog(p)}
+    </div>
+  `
 }
 
 export function initQuests(p) {
   const section = document.getElementById('quest-section')
   if (!section) return
   section.removeEventListener('click', section._questsHandler)
-  section._questsHandler = e => {
-    const btn = e.target.closest('[data-qtab]')
-    if (!btn) return
-    activeQuestTab = btn.dataset.qtab
-    section.innerHTML = renderQuestSection(p)
+  section._questsHandler = event => {
+    const button = event.target.closest('[data-qtab]')
+    if (!button) return
+    activeQuestTab = button.dataset.qtab
+    section.innerHTML = `
+      <div class="sec">Campaign Board</div>
+      <div class="campaign-summary-grid">
+        <div class="ops-mini-card">
+          <span class="mini-label">Open Objectives</span>
+          <strong>${[...p.quests.daily, ...p.quests.weekly].filter(item => !isDone(item)).length}</strong>
+          <small>active board load</small>
+        </div>
+        <div class="ops-mini-card">
+          <span class="mini-label">Daily Clear</span>
+          <strong>${p.quests.daily.filter(isDone).length}/${p.quests.daily.length}</strong>
+          <small>today</small>
+        </div>
+        <div class="ops-mini-card">
+          <span class="mini-label">Weekly Clear</span>
+          <strong>${p.quests.weekly.filter(isDone).length}/${p.quests.weekly.length}</strong>
+          <small>cycle</small>
+        </div>
+        <div class="ops-mini-card">
+          <span class="mini-label">Campaign Mode</span>
+          <strong>${activeQuestTab === 'daily' ? 'Daily' : 'Weekly'}</strong>
+          <small>active tab</small>
+        </div>
+      </div>
+      ${renderQuestSection(p)}
+    `
   }
   section.addEventListener('click', section._questsHandler)
 }

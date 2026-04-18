@@ -2544,3 +2544,348 @@ body::after {
     font-size:.74rem;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   V3 TACTICAL PERFORMANCE OS
+   mobile-first dark control room + semantic progression surfaces
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme="dark"] {
+  --bg:#050912;
+  --bg2:#09111d;
+  --bg3:#0d1726;
+  --bg4:#122033;
+  --bg5:#18283f;
+  --txt:#edf4ff;
+  --dim:#90a4c2;
+  --gold:#ffbf66;
+  --gold2:#ffd892;
+  --gold3:#8e6230;
+  --red:#ff6f6f;
+  --grn:#46d7a4;
+  --blu:#5da9ff;
+  --org:#ff9966;
+  --pur:#8f7dff;
+  --brd:rgba(120,170,255,.14);
+  --brdg:rgba(120,170,255,.28);
+  --glow-gold:rgba(255,191,102,.18);
+  --glow-gold-s:rgba(255,191,102,.08);
+  --glow-gold-xs:rgba(255,191,102,.04);
+  --glow-red:rgba(255,111,111,.2);
+  --glow-red-s:rgba(255,111,111,.08);
+  --glow-grn:rgba(70,215,164,.18);
+  --glow-grn-s:rgba(70,215,164,.08);
+  --card:rgba(12,21,34,.78);
+  --card-2:rgba(15,25,39,.86);
+  --border:rgba(126,164,221,.16);
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(93,169,255,.16), transparent 28%),
+    radial-gradient(circle at 88% 8%, rgba(70,215,164,.12), transparent 24%),
+    linear-gradient(180deg, #08111d 0%, #04070d 72%, #02040a 100%);
+  color:var(--txt);
+  font-family:'Rajdhani',sans-serif;
+}
+
+body::before {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.02), transparent 25%),
+    radial-gradient(circle at 50% -20%, rgba(93,169,255,.12), transparent 55%);
+}
+
+body::after {
+  background:
+    linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+  background-size: 100% 28px, 28px 100%;
+  opacity:.28;
+  mix-blend-mode:normal;
+}
+
+.glass-card, .glass-subtle, .surface, .coach-shell, .hero-card, .dashboard-card {
+  background:linear-gradient(180deg, rgba(14,24,38,.9), rgba(9,16,27,.9));
+  border:1px solid rgba(123,168,232,.16);
+  box-shadow:0 18px 60px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
+  backdrop-filter:blur(20px);
+}
+
+.app-nav {
+  background:linear-gradient(180deg, rgba(11,18,29,.96), rgba(7,13,22,.94));
+  border-color:rgba(100,154,230,.16);
+}
+
+.primary-button,
+.primary-fab {
+  background:linear-gradient(135deg, rgba(70,215,164,.95), rgba(93,169,255,.92));
+  color:#021019;
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 12px 32px rgba(29,109,214,.18), inset 0 1px 0 rgba(255,255,255,.24);
+}
+
+.nav-button.active,
+.bottom-tab.active {
+  background:linear-gradient(135deg, rgba(93,169,255,.18), rgba(70,215,164,.12));
+  color:var(--txt);
+  border-color:rgba(93,169,255,.26);
+}
+
+.hero-card {
+  background:
+    radial-gradient(circle at top right, rgba(93,169,255,.1), transparent 26%),
+    linear-gradient(180deg, rgba(12,21,34,.96), rgba(8,14,24,.94));
+}
+
+.class-chip { color:var(--grn); }
+.rank-capsule { color:var(--gold); }
+.pill-emerald { color:var(--grn); }
+
+.tactical-os-grid,
+.progress-command-grid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:14px;
+}
+
+.tactical-card,
+.tactical-surface {
+  position:relative;
+  overflow:hidden;
+}
+
+.tactical-card::before,
+.tactical-surface::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg, rgba(255,255,255,.035), transparent 28%);
+  pointer-events:none;
+}
+
+.build-identity-card { display:flex; flex-direction:column; gap:14px; }
+.build-identity-head { display:flex; gap:14px; align-items:flex-start; }
+.build-identity-icon {
+  width:58px; height:58px; border-radius:18px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, rgba(93,169,255,.18), rgba(70,215,164,.12));
+  border:1px solid rgba(93,169,255,.22); font-size:1.9rem; box-shadow:0 10px 30px rgba(0,0,0,.24);
+}
+
+.signal-chip-row, .ready-row { display:flex; flex-wrap:wrap; gap:8px; }
+.signal-chip, .ready-chip {
+  display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px;
+  background:rgba(255,255,255,.045); border:1px solid rgba(123,168,232,.14);
+  font-family:'JetBrains Mono',monospace; font-size:.76rem;
+}
+.ready-chip span { color:var(--dim); font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; }
+.ready-chip strong { color:var(--txt); font-size:.78rem; }
+
+.ops-mini-grid, .campaign-summary-grid, .campaign-ops-grid {
+  display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px;
+}
+.ops-mini-card {
+  padding:12px; border-radius:16px; background:rgba(255,255,255,.04);
+  border:1px solid rgba(123,168,232,.14); display:flex; flex-direction:column; gap:4px;
+}
+.ops-mini-card strong { font-size:1.25rem; color:var(--txt); }
+.ops-mini-card small { color:var(--dim); }
+
+.lane-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+.lane-card, .chain-card, .quest-card, .raid-log-card, .trophy-card, .skill-branch-card {
+  border-radius:16px; background:rgba(255,255,255,.04); border:1px solid rgba(123,168,232,.14);
+}
+.lane-card { padding:12px; }
+.lane-head, .quest-card-head, .raid-log-top, .skill-branch-head {
+  display:flex; justify-content:space-between; gap:10px; align-items:flex-start;
+}
+.lane-head span, .quest-state, .skill-branch-meta strong {
+  color:var(--gold); font-family:'JetBrains Mono',monospace;
+}
+.lane-card small, .chain-card small, .skill-branch-signal, .quest-card-title small, .raid-log-meta span, .trophy-card small {
+  color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:.72rem;
+}
+.lane-track, .quest-progress-track { height:6px; border-radius:999px; overflow:hidden; margin:10px 0 8px; background:rgba(255,255,255,.06); }
+.lane-fill.tone-emerald { background:linear-gradient(90deg, rgba(70,215,164,.65), rgba(126,255,214,.95)); }
+.lane-fill.tone-gold, .quest-progress-fill { background:linear-gradient(90deg, rgba(255,191,102,.7), rgba(255,220,130,.96)); }
+.lane-fill.tone-cobalt { background:linear-gradient(90deg, rgba(93,169,255,.7), rgba(151,204,255,.95)); }
+.lane-fill.tone-violet { background:linear-gradient(90deg, rgba(143,125,255,.68), rgba(188,176,255,.94)); }
+.chain-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+.chain-card { padding:12px; display:flex; flex-direction:column; gap:4px; }
+.chain-card.high { box-shadow:inset 0 0 0 1px rgba(70,215,164,.12); }
+.chain-card.mid { box-shadow:inset 0 0 0 1px rgba(255,191,102,.12); }
+.chain-card.low { box-shadow:inset 0 0 0 1px rgba(255,111,111,.14); }
+
+.gap-list { display:flex; flex-direction:column; gap:10px; }
+.gap-item {
+  display:flex; gap:12px; padding:12px; border-radius:16px; background:rgba(255,255,255,.04);
+  border:1px solid rgba(123,168,232,.12);
+}
+.gap-mark {
+  width:10px; height:10px; border-radius:999px; margin-top:8px; flex-shrink:0;
+  background:linear-gradient(135deg, var(--org), var(--gold)); box-shadow:0 0 12px rgba(255,191,102,.35);
+}
+
+.skill-branch-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+.skill-branch-card { padding:14px; display:flex; flex-direction:column; gap:12px; }
+.skill-branch-card.tone-emerald { box-shadow:inset 0 0 0 1px rgba(70,215,164,.09); }
+.skill-branch-card.tone-gold { box-shadow:inset 0 0 0 1px rgba(255,191,102,.09); }
+.skill-branch-card.tone-violet { box-shadow:inset 0 0 0 1px rgba(143,125,255,.1); }
+.skill-branch-card.tone-danger { box-shadow:inset 0 0 0 1px rgba(255,111,111,.12); }
+.skill-branch-meta { text-align:right; display:flex; flex-direction:column; gap:2px; }
+.skill-branch-meta small { color:var(--dim); font-size:.7rem; }
+.next-node-card {
+  padding:10px 12px; border-radius:14px; background:linear-gradient(135deg, rgba(93,169,255,.08), rgba(70,215,164,.05));
+  border:1px solid rgba(93,169,255,.14);
+}
+.next-node-card strong { display:block; margin:4px 0; }
+.skill-node-list { display:flex; flex-direction:column; gap:8px; }
+.skill-node {
+  display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-radius:14px;
+  background:rgba(255,255,255,.03); border:1px solid rgba(123,168,232,.1);
+}
+.skill-node.locked { opacity:.72; }
+.skill-node-status {
+  width:32px; height:32px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.skill-node-copy { flex:1; min-width:0; }
+.skill-node-top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px; }
+.skill-node-label, .skill-node-val { font-family:'JetBrains Mono',monospace; font-size:.72rem; }
+.skill-node-req { margin-top:6px; color:var(--org); font-family:'JetBrains Mono',monospace; font-size:.7rem; }
+
+.campaign-toggle, .quest-card-grid, .training-subsection { display:flex; flex-direction:column; gap:12px; }
+.campaign-toggle { flex-direction:row; margin-top:14px; }
+.quest-card-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); }
+.quest-card { padding:14px; display:flex; flex-direction:column; gap:10px; }
+.quest-card.done { opacity:.76; }
+.quest-card.urgent { box-shadow:inset 0 0 0 1px rgba(255,111,111,.12); }
+.quest-card-title { display:flex; gap:10px; align-items:center; }
+.quest-icon { font-size:1.3rem; }
+.quest-state {
+  font-size:.76rem; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.04); border:1px solid rgba(255,191,102,.16);
+}
+.quest-progress { display:flex; flex-direction:column; gap:6px; }
+.quest-progress span { color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:.72rem; }
+
+.trophy-grid { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; }
+.trophy-card { padding:12px; min-height:148px; display:flex; flex-direction:column; gap:6px; }
+.trophy-card.unlocked { box-shadow:inset 0 0 0 1px rgba(255,191,102,.12); }
+.trophy-icon { font-size:1.55rem; }
+
+.raid-log-list { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+.raid-log-card { padding:14px; display:flex; flex-direction:column; gap:8px; }
+.raid-log-meta { display:flex; gap:10px; flex-wrap:wrap; }
+.training-ops { padding-top:18px; }
+.surface-stack { gap:14px; }
+
+@media (max-width: 900px) {
+  .tactical-os-grid,
+  .progress-command-grid,
+  .skill-branch-grid,
+  .quest-card-grid,
+  .raid-log-list,
+  .trophy-grid,
+  .chain-grid,
+  .lane-grid,
+  .ops-mini-grid,
+  .campaign-summary-grid,
+  .campaign-ops-grid { grid-template-columns:1fr; }
+}
+
+@media (max-width: 760px) {
+  .page-content,
+  .surface-stack { gap:12px; }
+
+  .tactical-os-grid,
+  .progress-command-grid,
+  .campaign-summary-grid,
+  .campaign-ops-grid,
+  .ready-row {
+    display:grid;
+    grid-auto-flow:column;
+    grid-auto-columns:minmax(82%, 1fr);
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scroll-snap-type:x proximity;
+    gap:10px;
+    padding-bottom:2px;
+  }
+
+  .tactical-os-grid > *,
+  .progress-command-grid > *,
+  .campaign-summary-grid > *,
+  .campaign-ops-grid > *,
+  .ready-row > * { scroll-snap-align:start; }
+
+  .dashboard-grid {
+    display:grid;
+    grid-auto-flow:column;
+    grid-auto-columns:minmax(86%, 1fr);
+    overflow-x:auto;
+    scroll-snap-type:x proximity;
+    gap:10px;
+    padding-bottom:4px;
+  }
+  .dashboard-grid > * { scroll-snap-align:start; }
+
+  .hero-stats,
+  .hero-raids {
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    gap:8px;
+  }
+
+  .identity-metric,
+  .hero-raid-item {
+    padding:10px 11px;
+    border-radius:14px;
+    background:rgba(255,255,255,.035);
+    border:1px solid rgba(123,168,232,.12);
+  }
+
+  .campaign-toggle {
+    position:sticky;
+    top:0;
+    z-index:3;
+    padding:4px 0;
+    background:linear-gradient(180deg, rgba(6,10,16,.96), rgba(6,10,16,.68));
+    backdrop-filter:blur(12px);
+  }
+
+  .qtab {
+    flex:1;
+    justify-content:center;
+    font-size:.72rem;
+    letter-spacing:.1em;
+  }
+
+  .mobile-hud {
+    background:linear-gradient(180deg, rgba(6,11,18,.88), rgba(8,15,24,.78));
+    border:1px solid rgba(123,168,232,.12);
+    box-shadow:0 12px 32px rgba(0,0,0,.22);
+  }
+
+  .bottom-tabs {
+    background:rgba(7,12,20,.9);
+    border:1px solid rgba(123,168,232,.12);
+    backdrop-filter:blur(24px);
+  }
+
+  .primary-fab {
+    bottom:max(82px, env(safe-area-inset-bottom) + 72px);
+    width:58px;
+    height:58px;
+    font-size:1.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tactical-os-grid,
+  .progress-command-grid,
+  .campaign-summary-grid,
+  .campaign-ops-grid { grid-auto-columns:minmax(88%, 1fr); }
+
+  .build-identity-head { gap:10px; }
+  .build-identity-icon { width:48px; height:48px; border-radius:14px; font-size:1.5rem; }
+  .ops-mini-card strong, .chain-card strong { font-size:1.05rem; }
+}

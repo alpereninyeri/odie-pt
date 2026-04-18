@@ -1,4 +1,6 @@
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from '../src/data/class-engine.js'
+import { buildOdieContext } from '../src/data/odie-context.js'
+import { buildFallbackCoachResponse } from '../src/data/odie-fallback.js'
 import { detectPRs } from '../src/data/pr-detector.js'
 import {
   applyStatDelta,
@@ -196,6 +198,7 @@ Baglam:
 - Streak: ${context.streak} gun
 - XP: +${context.xp}
 - Class: ${context.className}
+- Class reason: ${odie.athlete?.classReason || '-'}
 - Statlar: STR ${context.stats.str} · AGI ${context.stats.agi} · END ${context.stats.end} · DEX ${context.stats.dex} · CON ${context.stats.con} · STA ${context.stats.sta}
 
 Son antrenmanlar:
@@ -252,7 +255,8 @@ COACH_NOTE:
 
 STATE_SYNC icindeki alanlar UI kartlarini guncellemek icin kullanilir.
 Guncel peak neyse onu yaz; eski bench, eski core, eski PR gibi stale bilgi verme.
-Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.`
+Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.
+Yorumlarinda trend, gap ve sonraki adim iliskisini kur; sadece seansi ozetleme.`
 }
 
 async function callGemini(prompt, { system = '', maxTokens = 1200, temperature = 0.2 } = {}) {
@@ -280,8 +284,176 @@ async function callGemini(prompt, { system = '', maxTokens = 1200, temperature =
   return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 }
 
+async function callGeminiWithModel(prompt, {
+  system = '',
+  maxTokens = 1200,
+  temperature = 0.2,
+  model = 'gemini-2.5-flash',
+  responseMimeType = '',
+} = {}) {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) throw new Error('GEMINI_API_KEY eksik')
+
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { temperature, maxOutputTokens: maxTokens },
+  }
+  if (responseMimeType) body.generationConfig.responseMimeType = responseMimeType
+  if (system) body.system_instruction = { parts: [{ text: system }] }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  )
+
+  if (!response.ok) throw new Error(await response.text())
+  const data = await response.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+}
+
+function buildCoachPromptV2(parsed, context) {
+  const odie = context.odie || {}
+  const statSpread = odie.stats?.spread || context.stats || {}
+  const weakest = odie.stats?.weakest
+  const strongest = odie.stats?.strongest
+  const recovery = odie.recovery || {}
+  const questPressure = (odie.questPressure || [])
+    .map(quest => `- ${quest.name}: ${quest.progress}/${quest.total} · ${quest.reward} · ${quest.desc}`)
+    .join('\n') || '- aktif baski yok'
+  const skillPressure = (odie.skillPressure || [])
+    .map(skill => `- ${skill.branch} · ${skill.name} · ${skill.status}${skill.req ? ` · ${skill.req}` : ''}`)
+    .join('\n') || '- skill baskisi yok'
+  const recentPrs = (odie.recentPrs || [])
+    .map(pr => `- ${pr.name}: ${pr.value} · ${pr.date}`)
+    .join('\n') || '- son PR sinyali yok'
+  const performance = (odie.performance || [])
+    .map(item => `- ${item.name}: ${item.val} · ${item.trend} · ${item.note}`)
+    .join('\n') || '- performans karti yok'
+  const coachMemory = (odie.coachMemory || [])
+    .map(item => `- ${item.title}: ${(item.lines || []).join(' ')}`)
+    .join('\n') || '- onceki koc hafizasi yok'
+  const disciplineMix = Object.entries(odie.disciplineMix || {})
+    .map(([key, value]) => `${key}:${value}`)
+    .join(' · ') || 'karisik'
+  const trendSignals = (odie.loadProfile?.trendSignals || [])
+    .map(signal => `- ${signal}`)
+    .join('\n') || '- son blok trend sinyali zayif'
+  const focusGaps = (odie.focusGaps || [])
+    .map(item => `- ${item}`)
+    .join('\n') || '- acik gap gorunmuyor'
+
+  return `Yeni seans:
+- Tip: ${parsed.type}
+- Sure: ${parsed.duration_min || 0} dk
+- Mesafe: ${parsed.distance_km || 0} km
+- Yukselti: ${parsed.elevation_m || 0} m
+- Toplam set: ${parsed.total_sets || 0}
+- Hacim: ${parsed.volume_kg || 0} kg
+- PR: ${parsed.has_pr ? 'evet' : 'hayir'}
+- Highlight: ${parsed.highlight || '-'}
+- Notlar: ${parsed.notes || '-'}
+
+Egzersizler:
+${fmtExercises(parsed.exercises)}
+
+Baglam:
+- Streak: ${context.streak} gun
+- XP: +${context.xp}
+- Class: ${context.className}
+- Statlar: STR ${statSpread.str} · AGI ${statSpread.agi} · END ${statSpread.end} · DEX ${statSpread.dex} · CON ${statSpread.con} · STA ${statSpread.sta}
+- En zayif stat: ${weakest?.key || '-'} ${weakest?.val ?? ''}
+- En guclu stat: ${strongest?.key || '-'} ${strongest?.val ?? ''}
+- Recovery: armor ${recovery.armor ?? '-'} / fatigue ${recovery.fatigue ?? '-'} / status ${recovery.status || '-'}
+- Son 7 gun: uyku ${recovery.avgSleep ?? 0}s · su ${recovery.avgWaterL ?? 0}L · adim ${recovery.avgSteps ?? 0}
+- Disiplin mix: ${disciplineMix}
+
+Trend sinyalleri:
+${trendSignals}
+
+Gap analizi:
+${focusGaps}
+
+Son antrenmanlar:
+${fmtRecentWorkouts(context.recentWorkouts)}
+
+Son PR'ler:
+${recentPrs}
+
+Performans ozeti:
+${performance}
+
+Quest baskisi:
+${questPressure}
+
+Skill baskisi:
+${skillPressure}
+
+Onceki koc hafizasi:
+${coachMemory}
+
+Asagidaki JSON disinda hicbir sey yazma:
+{
+  "telegram_msg": "2-3 cumle, bir sayi veya teknik gozlem icersin.",
+  "coach_note": {
+    "sections": [
+      { "title": "SEANS ANALIZI", "mood": "fire|calm|warn|danger", "lines": ["", ""] },
+      { "title": "PERFORMANS METRIKLERI", "mood": "fire|calm|warn", "lines": [""] },
+      { "title": "KOC BAKISI", "mood": "fire|calm|warn", "lines": [""] },
+      { "title": "UYARILAR", "mood": "warn|danger|calm", "lines": [""] },
+      { "title": "SKILL VE HEDEF", "mood": "fire|calm", "lines": [""] },
+      { "title": "SONRAKI ADIM", "mood": "calm", "lines": [""] },
+      {
+        "title": "STATE_SYNC",
+        "hidden": true,
+        "payload": {
+          "stats": {
+            "str": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+            "agi": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+            "end": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+            "dex": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+            "con": { "desc": "", "coach": "", "detail": ["", "", "", ""] },
+            "sta": { "desc": "", "coach": "", "detail": ["", "", "", ""] }
+          },
+          "performance": {
+            "bench": { "note": "", "tip": "", "details": ["", "", "", ""] },
+            "mu": { "note": "", "tip": "", "details": ["", "", "", ""] },
+            "hang": { "note": "", "tip": "", "details": ["", "", "", ""] },
+            "flip": { "note": "", "tip": "", "details": ["", "", "", ""] }
+          },
+          "muscles": {
+            "omuz": { "detail": "", "tip": "", "tag": "" },
+            "gogus": { "detail": "", "tip": "", "tag": "" },
+            "arms": { "detail": "", "tip": "", "tag": "" },
+            "back": { "detail": "", "tip": "", "tag": "" },
+            "legs": { "detail": "", "tip": "", "tag": "" },
+            "core": { "detail": "", "tip": "", "tag": "" }
+          }
+        }
+      }
+    ],
+    "warnings": [""],
+    "quest_hints": [""],
+    "skill_progress": [{ "name": "", "note": "" }],
+    "xp_note": "+${context.xp} XP | Streak ${context.streak}"
+  }
+}
+
+STATE_SYNC icindeki alanlar UI kartlarini guncellemek icin kullanilir.
+Guncel peak neyse onu yaz; eski bench, eski core, eski PR gibi stale bilgi verme.
+Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.`
+}
+
 async function parseWithGemini(text) {
-  const raw = await callGemini(buildParsePrompt(text), { maxTokens: 1600, temperature: 0.1 })
+  const raw = await callGeminiWithModel(buildParsePrompt(text), {
+    maxTokens: 1600,
+    temperature: 0.1,
+    model: process.env.GEMINI_PARSE_MODEL || 'gemini-2.5-flash-lite',
+    responseMimeType: 'application/json',
+  })
   const clean = raw.replace(/```json\n?|\n?```/g, '').trim()
   const parsed = JSON.parse(clean)
 
@@ -298,21 +470,19 @@ async function parseWithGemini(text) {
 }
 
 async function getCoachResponse(parsed, context) {
-  const raw = await callGemini(
-    buildCoachPrompt(parsed, context),
-    { system: ODIE_SYSTEM, maxTokens: 1400, temperature: 0.72 },
-  )
-
-  const telegramMatch = raw.match(/TELEGRAM_MSG:\s*([\s\S]*?)(?=COACH_NOTE:|$)/i)
-  const coachMatch = raw.match(/COACH_NOTE:\s*([\s\S]*)/i)
-
-  let coachNote = null
-  if (coachMatch?.[1]) {
-    coachNote = JSON.parse(coachMatch[1].replace(/```json\n?|\n?```/g, '').trim())
-  }
+  const raw = await callGeminiWithModel(buildCoachPromptV2(parsed, context), {
+    system: ODIE_SYSTEM,
+    maxTokens: 2000,
+    temperature: 0.72,
+    model: process.env.GEMINI_COACH_MODEL || 'gemini-2.5-flash',
+    responseMimeType: 'application/json',
+  })
+  const clean = raw.replace(/```json\n?|\n?```/g, '').trim()
+  const parsedResponse = JSON.parse(clean)
+  const coachNote = parsedResponse?.coach_note || null
 
   return {
-    telegramMsg: telegramMatch?.[1]?.trim() || raw.trim(),
+    telegramMsg: String(parsedResponse?.telegram_msg || '').trim(),
     coachNote,
   }
 }
@@ -353,6 +523,27 @@ function normalizeWorkoutRow(row) {
     ...normalized,
     xpEarned: Number(row.xp_earned) || 0,
     xpMultiplier: Number(row.xp_multiplier) || 1,
+  }
+}
+
+function normalizeDailyLogRow(row = {}) {
+  return {
+    date: row.date,
+    waterMl: Number(row.waterMl ?? row.water_ml) || 0,
+    sleepHours: Number(row.sleepHours ?? row.sleep_hours) || 0,
+    steps: Number(row.steps) || 0,
+    mood: Number(row.mood) || 0,
+  }
+}
+
+function normalizeCoachNoteRow(row = null) {
+  if (!row) return null
+  return {
+    ...row,
+    sections: Array.isArray(row.sections) ? row.sections : [],
+    warnings: Array.isArray(row.warnings) ? row.warnings : [],
+    quest_hints: Array.isArray(row.quest_hints) ? row.quest_hints : [],
+    skill_progress: Array.isArray(row.skill_progress) ? row.skill_progress : [],
   }
 }
 
@@ -433,8 +624,14 @@ export default async function handler(req, res) {
     const profile = await resolveProfile()
     if (!profile) throw new Error('Profil bulunamadi')
 
-    const workoutRows = await sbGet(`workouts?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=60`)
+    const [workoutRows, dailyLogRows, coachRows] = await Promise.all([
+      sbGet(`workouts?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=60`),
+      sbGet(`daily_logs?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=14`),
+      sbGet(`coach_notes?select=*&profile_id=eq.${profile.id}&order=date.desc,created_at.desc&limit=1`),
+    ])
     const workouts = (workoutRows || []).map(row => normalizeWorkoutRow(row))
+    const dailyLogs = (dailyLogRows || []).map(row => normalizeDailyLogRow(row))
+    const latestCoachNote = normalizeCoachNoteRow((coachRows || [])[0] || null)
     const currentPrs = buildCurrentPrs(workouts)
 
     const draftSession = normalizeSession({
@@ -505,18 +702,55 @@ export default async function handler(req, res) {
 
     let telegramMsg = ''
     let coachNote = null
+    let odie = null
     try {
+      odie = buildOdieContext({
+        profile,
+        workouts,
+        dailyLogs,
+        prs: currentPrs,
+        coachNote: latestCoachNote,
+        nextStats,
+        nextClass,
+        session,
+        streak: streak.current,
+        xpEarned: xpInfo.xpEarned,
+        survival,
+      })
       const coach = await getCoachResponse(parsedForCoach, {
         xp: xpInfo.xpEarned,
         streak: streak.current,
         className: nextClass.name,
         stats: nextStats,
         recentWorkouts: workouts,
+        odie,
       })
       telegramMsg = coach.telegramMsg
       coachNote = coach.coachNote
     } catch (error) {
       console.warn('[bot] coach generation failed:', error.message)
+      const fallback = buildFallbackCoachResponse(parsedForCoach, {
+        xp: xpInfo.xpEarned,
+        streak: streak.current,
+        className: nextClass.name,
+        stats: nextStats,
+        recentWorkouts: workouts,
+        odie: odie || buildOdieContext({
+          profile,
+          workouts,
+          dailyLogs,
+          prs: currentPrs,
+          coachNote: latestCoachNote,
+          nextStats,
+          nextClass,
+          session,
+          streak: streak.current,
+          xpEarned: xpInfo.xpEarned,
+          survival,
+        }),
+      })
+      telegramMsg = fallback.telegramMsg
+      coachNote = fallback.coachNote
     }
 
     const workoutPayload = {
@@ -587,7 +821,7 @@ export default async function handler(req, res) {
     }
 
     if (coachNote) {
-      await sbPost('coach_notes', {
+      const coachPayload = {
         profile_id: profile.id,
         workout_id: workoutId,
         date: today,
@@ -596,7 +830,19 @@ export default async function handler(req, res) {
         warnings: coachNote.warnings || survival.warnings || [],
         quest_hints: coachNote.quest_hints || [],
         skill_progress: coachNote.skill_progress || [],
-      })
+      }
+      try {
+        await sbPost('coach_notes', coachPayload)
+      } catch (error) {
+        if (!isMissingColumnError(error)) throw error
+        await sbPost('coach_notes', {
+          profile_id: profile.id,
+          workout_id: workoutId,
+          date: today,
+          sections: coachPayload.sections,
+          xp_note: coachPayload.xp_note,
+        })
+      }
     }
 
     const reply = formatSummary(session, xpInfo.xpEarned, streak.current, telegramMsg)

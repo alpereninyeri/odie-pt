@@ -1,6 +1,7 @@
 import './style.css'
 import { store } from './data/store.js'
 import { formatMonthShort } from './data/rules.js'
+import { buildSemanticProfile } from './data/semantic-profile.js'
 import { renderStats, initStats } from './components/panel-stats.js'
 import { renderMuscles, initMuscles } from './components/panel-muscles.js'
 import { renderSkills, initSkills } from './components/panel-skills.js'
@@ -182,13 +183,14 @@ function renderNavButton(tab, isActive, mobile = false) {
 }
 
 function renderPage(tabKey, state, profile) {
+  const semantic = buildSemanticProfile(state.workouts || [], state.dailyLogs || [])
   switch (tabKey) {
     case 'dashboard':
-      return renderDashboard(state, profile)
+      return renderDashboard(state, profile, semantic)
     case 'progress':
-      return renderProgress(profile)
+      return renderProgress(state, profile, semantic)
     case 'training':
-      return renderTraining(profile)
+      return renderTraining(state, profile, semantic)
     case 'coach':
       return renderCoachPage(profile)
     default:
@@ -196,7 +198,7 @@ function renderPage(tabKey, state, profile) {
   }
 }
 
-function renderDashboard(state, profile) {
+function renderDashboard(state, profile, semantic) {
   const readinessMetric = profile.health.metrics.find(metric => metric.label === 'Readiness')
   const rings = profile.health.rings || []
   const highlights = (state.workouts || []).slice(0, 2)
@@ -204,7 +206,8 @@ function renderDashboard(state, profile) {
   const streak = state.profile.streak || { current: 0, label: '' }
   const dashboardFocus = renderFocusItems(state, profile).slice(0, 3)
   const quickStats = renderDashboardStats(profile)
-  const heroSigils = renderHeroSigils(state, profile)
+  const heroSigils = renderHeroSigils(state, profile, semantic)
+  const buildOS = renderBuildOS(state, profile, semantic)
 
   return `
     <section class="hero-card glass-card">
@@ -224,7 +227,7 @@ function renderDashboard(state, profile) {
             <strong>${state.profile.currentFocus || 'Hybrid discipline protocol'}</strong>
           </div>
           <h2>${profile.nick}</h2>
-          <p>${state.profile.classObj?.desc || profile.subClass}. Parkour, bike, ski, calisthenics ve gym tek karakter sayfasinda ilerliyor.</p>
+          <p>${state.profile.classObj?.reason || state.profile.classObj?.desc || profile.subClass}. Parkour, bike, ski, calisthenics ve gym tek karakter sayfasinda ilerliyor.</p>
           <div class="hero-focus">
             <span class="mini-label">Build Tags</span>
             <div class="hero-sigil-row">
@@ -297,6 +300,10 @@ function renderDashboard(state, profile) {
       <div class="stat-hud-grid">
         ${quickStats}
       </div>
+    </section>
+
+    <section class="tactical-os-grid">
+      ${buildOS}
     </section>
 
     <section class="dashboard-grid">
@@ -413,8 +420,15 @@ function renderDashboardStats(profile) {
   `).join('')
 }
 
-function renderHeroSigils(state, profile) {
-  return getFocusSignals(state, profile).slice(0, 3).map(item => `
+function renderHeroSigils(state, profile, semantic) {
+  const semanticSigils = [
+    semantic.shares?.movement >= 0.25 ? { short: 'MOTION', tone: 'emerald' } : null,
+    semantic.shares?.strength >= 0.25 ? { short: 'POWER', tone: 'gold' } : null,
+    semantic.shares?.endurance >= 0.2 ? { short: 'ENGINE', tone: 'neutral' } : null,
+    semantic.chains?.trunkControl >= 3 ? { short: 'CORE LINK', tone: 'danger' } : null,
+  ].filter(Boolean)
+
+  return [...semanticSigils, ...getFocusSignals(state, profile)].slice(0, 3).map(item => `
     <span class="hero-sigil sigil-${item.tone || 'neutral'}">${item.short}</span>
   `).join('')
 }
@@ -445,6 +459,143 @@ function renderFocusItems(state, profile) {
       <p>${item.body}</p>
     </div>
   `)
+}
+
+function renderBuildOS(state, profile, semantic) {
+  const lanes = [
+    { label: 'Strength', value: Math.round((semantic.shares?.strength || 0) * 100), tone: 'gold', hint: `${semantic.counts?.strength || 0} strength block` },
+    { label: 'Movement', value: Math.round((semantic.shares?.movement || 0) * 100), tone: 'emerald', hint: `${semantic.counts?.parkour || 0} parkour · ${semantic.counts?.acrobatics || 0} acro` },
+    { label: 'Endurance', value: Math.round((semantic.shares?.endurance || 0) * 100), tone: 'cobalt', hint: `${semantic.counts?.locomotion || 0} locomotion session` },
+    { label: 'Recovery', value: Math.round((semantic.shares?.recovery || 0) * 100), tone: 'violet', hint: `${Math.round((semantic.recoveryDiscipline || 0) * 100)}% discipline` },
+  ]
+
+  const chains = [
+    { label: 'Upper Chain', value: semantic.chains?.upperStrength || 0, sub: 'push + pull pressure' },
+    { label: 'Lower Power', value: semantic.chains?.lowerPower || 0, sub: 'legs + parkour + explosive' },
+    { label: 'Trunk Control', value: semantic.chains?.trunkControl || 0, sub: 'core + carry + climb' },
+    { label: 'Aerial Control', value: semantic.chains?.aerialControl || 0, sub: 'acro + balance line' },
+    { label: 'Grip Control', value: semantic.chains?.gripControl || 0, sub: 'hang + climb + pull' },
+    { label: 'Mobility Base', value: semantic.chains?.mobilityBase || 0, sub: 'recovery + mobility' },
+  ]
+
+  const focusGaps = buildFocusGaps(semantic)
+  const liveClass = state.profile.classObj || {}
+
+  return `
+    <article class="glass-card tactical-card build-identity-card">
+      <div class="section-top">
+        <div>
+          <div class="eyebrow">Build Identity</div>
+          <h3>Tactical OS profile</h3>
+        </div>
+        <span class="pill pill-emerald">V3 LIVE</span>
+      </div>
+      <div class="build-identity-head">
+        <div class="build-identity-icon">${liveClass.icon || '◈'}</div>
+        <div>
+          <strong>${liveClass.name || profile.class}</strong>
+          <p>${liveClass.reason || 'Build identity semantic profile uzerinden guncellenir.'}</p>
+        </div>
+      </div>
+      <div class="signal-chip-row">
+        ${(liveClass.signals || []).slice(0, 3).map(signal => `<span class="signal-chip">${signal}</span>`).join('')}
+      </div>
+      <div class="ops-mini-grid">
+        <div class="ops-mini-card">
+          <span class="mini-label">Hybrid Score</span>
+          <strong>${semantic.hybridScore || 0}</strong>
+          <small>${semantic.variety || 0} signal</small>
+        </div>
+        <div class="ops-mini-card">
+          <span class="mini-label">Runner Up</span>
+          <strong>${liveClass.runnerUp?.name || 'None'}</strong>
+          <small>${liveClass.runnerUp?.score ? `score ${liveClass.runnerUp.score.toFixed(1)}` : 'class lock stable'}</small>
+        </div>
+        <div class="ops-mini-card">
+          <span class="mini-label">Recovery Discipline</span>
+          <strong>${Math.round((semantic.recoveryDiscipline || 0) * 100)}%</strong>
+          <small>sleep + water + steps</small>
+        </div>
+      </div>
+    </article>
+
+    <article class="glass-card tactical-card">
+      <div class="section-top">
+        <div>
+          <div class="eyebrow">Mastery Lanes</div>
+          <h3>Discipline pressure map</h3>
+        </div>
+        <button class="inline-link" data-tab="training">Campaign</button>
+      </div>
+      <div class="lane-grid">
+        ${lanes.map(lane => `
+          <div class="lane-card tone-${lane.tone}">
+            <div class="lane-head">
+              <strong>${lane.label}</strong>
+              <span>${lane.value}%</span>
+            </div>
+            <div class="lane-track"><div class="lane-fill tone-${lane.tone}" style="width:${Math.max(8, lane.value)}%"></div></div>
+            <small>${lane.hint}</small>
+          </div>
+        `).join('')}
+      </div>
+    </article>
+
+    <article class="glass-card tactical-card">
+      <div class="section-top">
+        <div>
+          <div class="eyebrow">Chain Integrity</div>
+          <h3>Weak link detector</h3>
+        </div>
+      </div>
+      <div class="chain-grid">
+        ${chains.map(chain => `
+          <div class="chain-card ${chain.value <= 1 ? 'low' : chain.value <= 2 ? 'mid' : 'high'}">
+            <span class="mini-label">${chain.label}</span>
+            <strong>${chain.value}</strong>
+            <small>${chain.sub}</small>
+          </div>
+        `).join('')}
+      </div>
+    </article>
+
+    <article class="glass-card tactical-card">
+      <div class="section-top">
+        <div>
+          <div class="eyebrow">Gap Board</div>
+          <h3>Close these gaps next</h3>
+        </div>
+      </div>
+      <div class="gap-list">
+        ${focusGaps.map(item => `
+          <div class="gap-item">
+            <span class="gap-mark"></span>
+            <div>
+              <strong>${item.title}</strong>
+              <p>${item.body}</p>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </article>
+  `
+}
+
+function buildFocusGaps(semantic) {
+  const items = []
+  if ((semantic.chains?.trunkControl || 0) < 2) {
+    items.push({ title: 'Trunk control dusuk', body: 'Core, carry veya climb sinyali ekle; aerial ve parkour kalitesi buradan destek alir.' })
+  }
+  if ((semantic.counts?.mobility || 0) < 2) {
+    items.push({ title: 'Mobility hattı ince', body: 'Recovery ve acro progression icin haftalik en az 2 mobility touch iyi olur.' })
+  }
+  if ((semantic.counts?.legs || 0) < 2) {
+    items.push({ title: 'Lower chain frekansi dusuk', body: 'Parkour, bike veya direct leg session sayisi artarsa build daha dengeli acilir.' })
+  }
+  if (!items.length) {
+    items.push({ title: 'Build dengesi iyi', body: 'Simdilik buyuk bir acik yok; siradaki unlock veya quest baskisina gore blok sec.' })
+  }
+  return items.slice(0, 3)
 }
 
 function getFocusSignals(state, profile) {
@@ -511,9 +662,22 @@ function extractCoachInsight(profile) {
   }
 }
 
-function renderProgress(profile) {
+function renderProgress(state, profile, semantic) {
   return `
     <section class="surface-stack">
+      <div class="glass-card surface tactical-surface">
+        <div class="section-top">
+          <div>
+            <div class="eyebrow">Build Console</div>
+            <h3>Progression, mastery lanes ve unlock baskisi</h3>
+            <p>Stats ve muscles artik semantic build kimligiyle birlikte okunuyor.</p>
+          </div>
+          <button class="inline-link" data-tab="training">Mission board</button>
+        </div>
+        <div class="progress-command-grid">
+          ${renderBuildOS(state, profile, semantic)}
+        </div>
+      </div>
       <div class="glass-card surface" id="panel-stats">
         ${renderStats(profile)}
       </div>
@@ -521,20 +685,20 @@ function renderProgress(profile) {
         ${renderMuscles(profile)}
       </div>
       <div class="glass-card surface" id="panel-skills">
-        ${renderSkills(profile)}
+        ${renderSkills(profile, semantic)}
       </div>
     </section>
   `
 }
 
-function renderTraining(profile) {
+function renderTraining(state, profile, semantic) {
   return `
     <section class="surface-stack">
       <div class="glass-card surface training-header">
         <div>
-          <div class="eyebrow">Mission Board</div>
-          <h3>Gunluk log, quest board ve workout gecmisi</h3>
-          <p>Recovery checklist, gorev akisi ve raid kaydi tek salonda.</p>
+          <div class="eyebrow">Campaign Board</div>
+          <h3>Mission board, recovery ops ve raid log</h3>
+          <p>Webapp hissi veren kompakt tactical salonda bugunun checklist'i ve haftalik baski tek akista.</p>
         </div>
         <button class="primary-button" data-action="open-workout-form">
           <span>+</span>
@@ -542,12 +706,37 @@ function renderTraining(profile) {
         </button>
       </div>
 
+      <div class="glass-card surface tactical-surface training-ops">
+        <div class="campaign-ops-grid">
+          <div class="ops-mini-card">
+            <span class="mini-label">Active Quests</span>
+            <strong>${[...profile.quests.daily, ...profile.quests.weekly].filter(quest => !quest.done).length}</strong>
+            <small>open objective</small>
+          </div>
+          <div class="ops-mini-card">
+            <span class="mini-label">Recovery Discipline</span>
+            <strong>${Math.round((semantic.recoveryDiscipline || 0) * 100)}%</strong>
+            <small>7 day compliance</small>
+          </div>
+          <div class="ops-mini-card">
+            <span class="mini-label">Outdoor Pressure</span>
+            <strong>${semantic.counts?.outdoor || 0}</strong>
+            <small>recent outdoor block</small>
+          </div>
+          <div class="ops-mini-card">
+            <span class="mini-label">Aerial Line</span>
+            <strong>${semantic.chains?.aerialControl || 0}</strong>
+            <small>flip + balance signal</small>
+          </div>
+        </div>
+      </div>
+
       <div class="glass-card surface">
         ${renderDailyChecklist()}
       </div>
 
       <div class="glass-card surface" id="panel-training">
-        ${renderQuests(profile)}
+        ${renderQuests(profile, semantic)}
       </div>
     </section>
   `

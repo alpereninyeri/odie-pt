@@ -143,6 +143,7 @@ export function openClassModal(cls) {
   const passive = cls.passive || {}
   const statMult = passive.statMult || {}
   const xpMult = passive.xpMult || {}
+  const signals = Array.isArray(cls.signals) ? cls.signals.slice(0, 3) : []
 
   const statItems = Object.entries(statMult)
     .map(([k, v]) => `<div class="modal-item"><div class="modal-item-label">${k.toUpperCase()}</div><div class="modal-item-val">x${v.toFixed(2)}</div></div>`)
@@ -165,6 +166,8 @@ export function openClassModal(cls) {
       </div>
       <div class="modal-desc">${cls.desc}</div>
       <div class="modal-coach"><strong>Pasif:</strong> ${cls.buff}</div>
+      ${cls.reason ? `<div class="modal-coach"><strong>Neden bu sinif:</strong> ${cls.reason}</div>` : ''}
+      ${signals.length ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">SEMANTIC SIGNALS</div><div class="modal-grid">${signals.map(signal => `<div class="modal-item"><div class="modal-item-label">Signal</div><div class="modal-item-val">${signal}</div></div>`).join('')}</div>` : ''}
       ${statItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">STAT CARPANI</div><div class="modal-grid">${statItems}</div>` : ''}
       ${xpItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">XP CARPANI</div><div class="modal-grid">${xpItems}</div>` : ''}
       <div class="modal-tip">Sinif son 10 antrenmana gore dinamik degisir. Desen degistirdikce sinif da degisir.</div>
