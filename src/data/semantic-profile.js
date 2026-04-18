@@ -38,9 +38,16 @@ function workoutText(workout) {
     workout.highlight,
     workout.notes,
     ...(workout.tags || []),
+    ...(workout.blocks || []).map(block => `${block.kind} ${block.label}`),
     ...(workout.exercises || []).map(exercise => exercise.name),
     ...(workout.exercises || []).flatMap(exercise => (exercise.sets || []).map(set => set.note || '')),
   ].join(' '))
+}
+
+function countBlocks(workouts = [], kind) {
+  return workouts.reduce((sum, workout) => (
+    sum + (workout.blocks || []).filter(block => block.kind === kind).length
+  ), 0)
 }
 
 function maxMetric(workouts = [], patterns = [], metric = 'reps') {
@@ -147,16 +154,23 @@ export function buildSemanticProfile(workouts = [], dailyLogs = []) {
     outdoor: countSessions(normalized, workout => ['parkour', 'walking', 'cycling', 'ski', 'climbing'].some(tag => (workout.tags || []).includes(tag))),
     calisthenics: countSessions(normalized, workout => (workout.tags || []).includes('calisthenics')),
     gym: countSessions(normalized, workout => (workout.tags || []).includes('gym')),
+    strengthBlocks: countBlocks(normalized, 'strength'),
+    locomotionBlocks: countBlocks(normalized, 'locomotion'),
+    coreBlocks: countBlocks(normalized, 'core'),
+    mobilityBlocks: countBlocks(normalized, 'mobility'),
+    explosiveBlocks: countBlocks(normalized, 'explosive'),
+    recoveryBlocks: countBlocks(normalized, 'recovery'),
+    skillBlocks: countBlocks(normalized, 'skill'),
   }
 
   const chains = {
     upperStrength: counts.push + counts.pull,
-    lowerPower: counts.legs + counts.parkour + counts.explosive,
-    trunkControl: counts.core + counts.carry + counts.climbing,
-    aerialControl: counts.acrobatics + counts.balance,
+    lowerPower: counts.legs + counts.parkour + counts.explosive + counts.explosiveBlocks,
+    trunkControl: counts.core + counts.coreBlocks + counts.carry + counts.climbing,
+    aerialControl: counts.acrobatics + counts.balance + counts.skillBlocks,
     landingControl: normalized.filter((workout, index) => hasPattern(texts[index], [...PATTERN_GROUPS.landing, ...PATTERN_GROUPS.roll, ...PATTERN_GROUPS.diveRoll, ...PATTERN_GROUPS.roundOff])).length,
-    mobilityBase: counts.mobility + counts.recovery,
-    enduranceBase: counts.endurance + counts.locomotion,
+    mobilityBase: counts.mobility + counts.mobilityBlocks + counts.recovery + counts.recoveryBlocks,
+    enduranceBase: counts.endurance + counts.locomotion + counts.locomotionBlocks,
     gripControl: counts.grip + counts.climbing,
   }
 

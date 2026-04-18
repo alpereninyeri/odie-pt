@@ -55,20 +55,7 @@ const EXERCISE_MUSCLES = {
   'Pallof Press': ['Core'],
 }
 
-const BASE_BALANCE = {
-  Omuz: 198.5,
-  Göğüs: 169.5,
-  Triceps: 163.5,
-  Biseps: 156,
-  'Üst Sırt': 128.5,
-  Lat: 108.5,
-  'Bacak (Parkour)': 45,
-  Kalf: 36,
-  Core: 0,
-  Kardiyo: 0,
-}
-
-const SEED_IDS = new Set(['w44', 'w45', 'w46', 'w47', 'w48', 'w49', 'w50', 'w51', 'w52', 'w53'])
+const MUSCLE_BUCKETS = ['Omuz', 'Göğüs', 'Triceps', 'Biseps', 'Üst Sırt', 'Lat', 'Bacak (Parkour)', 'Kalf', 'Core', 'Kardiyo']
 
 export function recalculate(state) {
   const workouts = (state.workouts || []).map(workout => normalizeSession(workout))
@@ -107,10 +94,8 @@ export function recalculate(state) {
 }
 
 function _updateMuscleBalance(state) {
-  const delta = {}
+  const delta = Object.fromEntries(MUSCLE_BUCKETS.map(label => [label, 0]))
   for (const workout of state.workouts || []) {
-    if (SEED_IDS.has(String(workout.id))) continue
-
     if (Array.isArray(workout.exercises) && workout.exercises.length) {
       for (const exercise of workout.exercises) {
         const muscles = _findMuscles(exercise.name)
@@ -136,7 +121,7 @@ function _updateMuscleBalance(state) {
 
   state.muscleBalance = (state.muscleBalance || []).map(item => ({
     ...item,
-    sets: Math.round(((BASE_BALANCE[item.label] ?? item.sets) + (delta[item.label] || 0)) * 10) / 10,
+    sets: Math.round((delta[item.label] || 0) * 10) / 10,
     critical: false,
   }))
 
@@ -205,13 +190,13 @@ function _updateMuscleCards(state) {
 }
 
 function _rankFromSets(sets = 0) {
-  if (sets >= 180) return 'S'
-  if (sets >= 140) return 'A'
-  if (sets >= 100) return 'B+'
-  if (sets >= 60) return 'B-'
-  if (sets >= 30) return 'C'
-  if (sets >= 12) return 'D+'
-  if (sets >= 6) return 'E+'
+  if (sets >= 90) return 'S'
+  if (sets >= 60) return 'A'
+  if (sets >= 40) return 'B+'
+  if (sets >= 25) return 'B-'
+  if (sets >= 15) return 'C'
+  if (sets >= 8) return 'D+'
+  if (sets >= 4) return 'E+'
   return 'F'
 }
 
@@ -257,6 +242,23 @@ function _updateHealthAndGlobalStats(state) {
   const weightKg = Number(bm.weightKg) || 0
   const heightCm = Number(bm.heightCm) || 0
   const bmi = weightKg && heightCm ? Math.round((weightKg / ((heightCm / 100) ** 2)) * 10) / 10 : null
+  const enoughRecoveryLogs = recentLogs.filter(log => (Number(log.sleepHours) || 0) > 0 || (Number(log.waterMl) || 0) > 0 || (Number(log.steps) || 0) > 0).length
+  const hasTrainingLoad = workouts.length >= 3
+  const readinessSource = enoughRecoveryLogs >= 4
+    ? 'daily_logs + training_load'
+    : hasTrainingLoad
+      ? 'training_load_only'
+      : 'limited_data'
+  const readinessConfidence = enoughRecoveryLogs >= 4
+    ? 'high'
+    : hasTrainingLoad
+      ? 'medium'
+      : 'low'
+  const readinessReason = enoughRecoveryLogs >= 4
+    ? 'Son 7 günde yeterli uyku/su/adım logu var.'
+    : hasTrainingLoad
+      ? 'Yük verisi var ama recovery logu zayıf; skor tahmini.'
+      : 'Hem günlük recovery verisi hem de yük örneği düşük.'
   const staticWeight = weightKg
     ? { icon: '⚖️', label: 'Kilo', val: `${weightKg} kg`, sub: heightCm ? `${heightCm}cm` : 'Manuel giriş', color: 'var(--emerald)' }
     : { icon: '⚖️', label: 'Kilo', val: '—', sub: 'Telegram: "kilom 72"', color: 'var(--dim)' }
@@ -285,12 +287,18 @@ function _updateHealthAndGlobalStats(state) {
   state.health = {
     metrics: [
       { icon: '⏱️', label: 'Ortalama Seans', val: `${avgDuration || 0} dk`, sub: 'Son 10 antrenman', color: 'var(--mist-strong)' },
-      { icon: '🛡️', label: 'Readiness', val: `${recoveryScore}/100`, sub: `${state.profile.survivalStatus || 'healthy'}`, color: 'var(--emerald)' },
+      { icon: '🛡️', label: 'Readiness', val: `${recoveryScore}/100`, sub: `${state.profile.survivalStatus || 'healthy'} · ${readinessSource}`, color: 'var(--emerald)' },
       { icon: '🗺️', label: 'Toplam Mesafe', val: `${totalKm.toLocaleString('tr-TR')} km`, sub: 'Tahmini outdoor toplam', color: 'var(--cobalt)' },
       staticWeight,
       staticBmi,
     ],
     warnings: healthWarnings.slice(0, 4),
+    readiness: {
+      score: recoveryScore,
+      confidence: readinessConfidence,
+      source: readinessSource,
+      reason: readinessReason,
+    },
   }
 }
 

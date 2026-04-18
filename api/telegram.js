@@ -89,6 +89,115 @@ function toLegacyWorkoutPayload(workout) {
   }
 }
 
+function extractIncomingText(message = {}) {
+  if (message?.text) return String(message.text).trim()
+  const webData = message?.web_app_data?.data
+  if (!webData) return ''
+
+  try {
+    const parsed = JSON.parse(String(webData))
+    if (parsed?.type === 'workout_text' && parsed?.text) return String(parsed.text).trim()
+  } catch {}
+
+  return ''
+}
+
+const TR_MONTHS = {
+  oca: 1,
+  ocak: 1,
+  sub: 2,
+  subat: 2,
+  mart: 3,
+  mar: 3,
+  nis: 4,
+  nisan: 4,
+  may: 5,
+  mayis: 5,
+  haz: 6,
+  haziran: 6,
+  tem: 7,
+  temmuz: 7,
+  agu: 8,
+  agustos: 8,
+  eyl: 9,
+  eylul: 9,
+  eki: 10,
+  ekim: 10,
+  kas: 11,
+  kasim: 11,
+  ara: 12,
+  aralik: 12,
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  apr: 4,
+  april: 4,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  dec: 12,
+  december: 12,
+}
+
+function normalizeMonthToken(value = '') {
+  return String(value || '')
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+}
+
+function padDatePart(value) {
+  return String(value).padStart(2, '0')
+}
+
+function buildIsoDate(year, month, day, fallback = getLocalDateString()) {
+  const y = Number(year)
+  const m = Number(month)
+  const d = Number(day)
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return fallback
+  if (m < 1 || m > 12 || d < 1 || d > 31) return fallback
+  return `${y}-${padDatePart(m)}-${padDatePart(d)}`
+}
+
+export function extractWorkoutDate(text = '', fallback = getLocalDateString()) {
+  const raw = String(text || '').trim()
+  if (!raw) return fallback
+
+  const numericDate = raw.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b/)
+  if (numericDate) {
+    const [, day, month, yearRaw] = numericDate
+    const year = Number(yearRaw) < 100 ? 2000 + Number(yearRaw) : Number(yearRaw)
+    return buildIsoDate(year, month, day, fallback)
+  }
+
+  const monthFirst = raw.match(/\b([A-Za-zÇĞİÖŞÜçğıöşü]{3,})\s+(\d{1,2}),?\s+(\d{4})\b/)
+  if (monthFirst) {
+    const [, monthName, day, year] = monthFirst
+    const month = TR_MONTHS[normalizeMonthToken(monthName)]
+    if (month) return buildIsoDate(year, month, day, fallback)
+  }
+
+  const dayFirst = raw.match(/\b(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşü]{3,})\s+(\d{4})\b/)
+  if (dayFirst) {
+    const [, day, monthName, year] = dayFirst
+    const month = TR_MONTHS[normalizeMonthToken(monthName)]
+    if (month) return buildIsoDate(year, month, day, fallback)
+  }
+
+  return fallback
+}
+
 function toLegacyProfilePatch(patch) {
   return {
     class: patch.class,
@@ -1082,6 +1191,7 @@ function normalizeWorkoutRow(row) {
     intensity: row.intensity,
     distanceKm: row.distance_km,
     elevationM: row.elevation_m,
+    blocks: row.blocks || [],
   }, { source: row.source || 'telegram' })
 
   return {
@@ -1188,6 +1298,20 @@ function toSupabaseExercises(exercises) {
   }))
 }
 
+function toSupabaseBlocks(blocks = []) {
+  return (blocks || []).map(block => ({
+    kind: block.kind,
+    label: block.label,
+    tags: block.tags || [],
+    sets: block.sets || 0,
+    reps: block.reps,
+    volume_kg: block.volumeKg || 0,
+    duration_min: block.durationMin || 0,
+    distance_km: block.distanceKm || 0,
+    source: block.source || 'session',
+  }))
+}
+
 function formatSummary(session, xp, streak, coachText) {
   const lines = [
     `<b>${session.type} seansi kaydedildi</b>`,
@@ -1212,10 +1336,11 @@ export default async function handler(req, res) {
 
   const update = req.body
   const message = update?.message
-  if (!message?.text) return res.status(200).json({ ok: true })
+  if (!message?.text && !message?.web_app_data?.data) return res.status(200).json({ ok: true })
 
   const chatId = String(message.chat.id)
-  const text = message.text.trim()
+  const text = extractIncomingText(message)
+  if (!text) return res.status(200).json({ ok: true })
   const firstName = message.from?.first_name || 'sporcu'
   const allowedChatId = process.env.TELEGRAM_CHAT_ID
 
@@ -1258,6 +1383,7 @@ export default async function handler(req, res) {
 
     const parsed = await parseWithGemini(text)
     const today = getLocalDateString()
+    const sessionDate = extractWorkoutDate(text, today)
     const profile = await resolveProfile()
     if (!profile) throw new Error('Profil bulunamadi')
 
@@ -1272,7 +1398,7 @@ export default async function handler(req, res) {
     const currentPrs = buildCurrentPrs(workouts)
 
     const draftSession = normalizeSession({
-      date: today,
+      date: sessionDate,
       type: parsed.type,
       durationMin: parsed.duration_min,
       distanceKm: parsed.distance_km,
@@ -1305,13 +1431,13 @@ export default async function handler(req, res) {
       fatigueDecay: classFatigueDecay(currentClass),
     })
 
-    const streak = computeStreakInfo(workouts, today)
+    const streak = computeStreakInfo(workouts, sessionDate)
     const xpInfo = computeSessionXp(session, {
       streakDays: streak.current,
       classMultiplier: classXpMult(currentClass, session.type),
       survivalMultiplier: survival.xpMultiplier,
       prBonusMultiplier: currentClass?.passive?.prBonus || 1,
-      doubleSession: workouts.some(workout => normalizeDateString(workout.date) === today),
+      doubleSession: workouts.some(workout => normalizeDateString(workout.date) === sessionDate),
     })
     const statDelta = computeSessionStatDelta(session)
     const nextStats = applyStatDelta(profile.stats || {}, statDelta)
@@ -1416,6 +1542,7 @@ export default async function handler(req, res) {
       primary_category: session.primaryCategory,
       tags: session.tags,
       intensity: session.intensity,
+      blocks: toSupabaseBlocks(session.blocks),
       source: session.source,
       distance_km: session.distanceKm,
       elevation_m: session.elevationM,
@@ -1448,7 +1575,7 @@ export default async function handler(req, res) {
       stats: nextStats,
       streak_current: streak.current,
       streak_max: Math.max(Number(profile.streak_max) || 0, streak.max),
-      last_workout_date: today,
+      last_workout_date: sessionDate,
       armor_current: survival.armor,
       fatigue_current: survival.fatigue,
       consecutive_heavy: survival.consecutiveHeavy,
@@ -1478,7 +1605,7 @@ export default async function handler(req, res) {
       const coachPayload = {
         profile_id: profile.id,
         workout_id: workoutId,
-        date: today,
+        date: sessionDate,
         sections: coachNote.sections || [],
         xp_note: coachNote.xp_note || `+${xpInfo.xpEarned} XP`,
         warnings: coachNote.warnings || stateSync?.warnings || survival.warnings || [],
@@ -1492,7 +1619,7 @@ export default async function handler(req, res) {
         await sbPost('coach_notes', {
           profile_id: profile.id,
           workout_id: workoutId,
-          date: today,
+          date: sessionDate,
           sections: coachPayload.sections,
           xp_note: coachPayload.xp_note,
         })

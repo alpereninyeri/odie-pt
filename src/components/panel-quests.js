@@ -61,6 +61,11 @@ function renderRaidLog(p) {
             <span>${item.volume}</span>
           </div>
           <p>${item.highlight}</p>
+          ${(item.blocks || []).length ? `
+            <div class="raid-log-blocks">
+              ${(item.blocks || []).map(block => `<span class="raid-block-chip">${block}</span>`).join('')}
+            </div>
+          ` : ''}
         </div>
       `).join('')}
     </div>

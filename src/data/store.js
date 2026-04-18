@@ -30,8 +30,8 @@ import {
 } from './rules.js'
 import { applySurvival } from './survival-engine.js'
 
-const LS_KEY = 'odiept-state-v5'
-const CURRENT_VERSION = 5
+const LS_KEY = 'odiept-state-v6'
+const CURRENT_VERSION = 6
 const XP_PER_LEVEL = 2000
 
 let _state = null
@@ -157,6 +157,68 @@ function _normalizeProfileSeed() {
   }
 }
 
+function _buildSeedStats() {
+  return (seedProfile.stats || []).map(stat => ({
+    ...stat,
+    val: 0,
+    critical: false,
+    desc: 'Canli veri geldikce otomatik guncellenir.',
+    coach: 'Anlamli yorum icin yeni seans veya sync bekleniyor.',
+    detail: Array.isArray(stat.detail)
+      ? stat.detail.map(item => ({ ...item, val: '-' }))
+      : [],
+  }))
+}
+
+function _buildSeedPerformance() {
+  return (seedProfile.performance || []).map(item => ({
+    ...item,
+    val: '—',
+    note: 'Henuz canli performans sinyali yok.',
+    trend: 'Bekleniyor',
+    trendColor: 'var(--dim)',
+    tip: 'Yeni workout geldikce peak ve trend burada toplanir.',
+    details: Array.isArray(item.details)
+      ? item.details.map(detail => ({ ...detail, val: '-' }))
+      : [],
+    history: [],
+  }))
+}
+
+function _buildSeedMuscles() {
+  return (seedProfile.muscles || []).map(item => ({
+    ...item,
+    sets: '0',
+    rank: 'F',
+    tag: 'Awaiting Data',
+    tagClass: 'tw',
+    detail: 'Bolgesel analiz yeni workout history geldikce sifirdan hesaplanir.',
+    tip: 'Tek egzersiz degil, tum bloklar burada toplanacak.',
+  }))
+}
+
+function _buildSeedHealth() {
+  return {
+    metrics: [],
+    warnings: [],
+    readiness: {
+      score: null,
+      confidence: 'low',
+      source: 'setup',
+      reason: 'Henüz günlük log ve yeterli yük verisi yok.',
+    },
+  }
+}
+
+function _buildSeedCoachNote() {
+  return {
+    date: '',
+    xpNote: '',
+    sections: [],
+    warnings: [],
+  }
+}
+
 function _normalizeBodyMetrics(input = {}) {
   const weightKg = Number(input.weightKg ?? input.weight_kg)
   const heightCm = Number(input.heightCm ?? input.height_cm)
@@ -187,6 +249,7 @@ function _normalizeWorkoutRow(row = {}) {
     tags: row.tags || [],
     primaryCategory: row.primaryCategory ?? row.primary_category,
     intensity: row.intensity,
+    blocks: row.blocks || [],
   }, { source: row.source || 'manual' })
 
   return {
@@ -276,18 +339,18 @@ function _buildSeed() {
     dailyLogs: (MOCK_STATE.dailyLogs || []).map(log => _normalizeDailyLog(log)),
     prs: {},
     badges: _clone(MOCK_STATE.badges || []),
-    globalStats: _clone(seedProfile.globalStats || MOCK_STATE.globalStats || []),
-    stats: _clone(seedProfile.stats || []),
-    performance: _clone(seedProfile.performance || []),
-    debuffs: _clone(seedProfile.debuffs || []),
+    globalStats: [],
+    stats: _buildSeedStats(),
+    performance: _buildSeedPerformance(),
+    debuffs: [],
     muscleBalance: _clone(seedProfile.muscleBalance || []),
-    muscles: _clone(seedProfile.muscles || []),
+    muscles: _buildSeedMuscles(),
     skills: _clone(seedProfile.skills || []),
-    health: _clone(seedProfile.health || {}),
+    health: _buildSeedHealth(),
     quests: _clone(seedProfile.quests || {}),
     achievements: _clone(seedProfile.achievements || []),
-    workoutLog: _clone(seedProfile.workoutLog || []),
-    coachNote: _clone(seedProfile.coachNote || { date: '', sections: [], xpNote: '', warnings: [] }),
+    workoutLog: [],
+    coachNote: _buildSeedCoachNote(),
     coachQuestHints: [],
     coachSkillProgress: [],
     bodyMetrics: _normalizeBodyMetrics(seedProfile.bodyMetrics || {}),
@@ -330,6 +393,7 @@ function _buildWorkoutLog(workouts = []) {
     volume: workout.volumeKg ? `${Math.round(workout.volumeKg).toLocaleString('tr-TR')} kg` : '-',
     sets: workout.sets || '-',
     highlight: workout.highlight || '',
+    blocks: (workout.blocks || []).map(block => block.kind).slice(0, 4),
   }))
 }
 
@@ -525,6 +589,7 @@ function _toSupabaseWorkout(workout) {
     primary_category: workout.primaryCategory,
     tags: workout.tags || [],
     intensity: workout.intensity,
+    blocks: workout.blocks || [],
     source: workout.source || 'manual',
     distance_km: workout.distanceKm || 0,
     elevation_m: workout.elevationM || 0,

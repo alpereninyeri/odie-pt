@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { extractDirectBodyMetrics, isBodyMetricsOnlyMessage, parseStructuredWorkoutText } from '../api/telegram.js'
+import { extractDirectBodyMetrics, extractWorkoutDate, isBodyMetricsOnlyMessage, parseStructuredWorkoutText } from '../api/telegram.js'
 
 test('extractDirectBodyMetrics reads kilo and boy from plain text', () => {
   const patch = extractDirectBodyMetrics('guncel kilo 72.4 boy 172')
@@ -103,4 +103,14 @@ güncel kilo 72.4 boy 172
   assert.match(parsed.highlight, /70kg x 5/i)
   assert.equal(parsed.exercises[0].name, 'Yürüme')
   assert.equal(parsed.exercises.find(ex => /leg raise/i.test(ex.name))?.sets.length, 3)
+})
+
+test('extractWorkoutDate reads Turkish header date from workout text', () => {
+  const text = `
+Push - Core - Kalf
+Cumartesi, Nis 18, 2026, 5:15pm
+Toplam sure 2 saat
+`
+
+  assert.equal(extractWorkoutDate(text, '2026-04-19'), '2026-04-18')
 })

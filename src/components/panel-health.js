@@ -1,5 +1,5 @@
 export function renderHealth(p) {
-  const { metrics, warnings } = p.health
+  const { metrics, warnings, readiness } = p.health
 
   const metricCards = metrics.map(m => `
     <div class="hcard" style="--hc:${m.color}">
@@ -21,8 +21,24 @@ export function renderHealth(p) {
     ? `<div class="sec">Sağlık Uyarıları</div>${warningRows}`
     : ''
 
+  const readinessSection = readiness
+    ? `
+      <div class="readiness-card readiness-${readiness.confidence || 'low'}">
+        <div class="readiness-head">
+          <div>
+            <div class="mini-label">Recovery Confidence</div>
+            <strong>${String(readiness.confidence || 'low').toUpperCase()}</strong>
+          </div>
+          <span class="readiness-source">${readiness.source || 'limited_data'}</span>
+        </div>
+        <p>${readiness.reason || 'Recovery güven notu yok.'}</p>
+      </div>
+    `
+    : ''
+
   return `
     <div class="sec">Vücut & Sağlık Metrikleri</div>
+    ${readinessSection}
     <div class="health-grid">${metricCards}</div>
     ${warningsSection}`
 }

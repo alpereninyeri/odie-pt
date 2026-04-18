@@ -7,9 +7,11 @@ import { renderMuscles, initMuscles } from './components/panel-muscles.js'
 import { renderSkills, initSkills } from './components/panel-skills.js'
 import { renderQuests, initQuests } from './components/panel-quests.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
+import { renderHealth } from './components/panel-health.js'
 import { initModal, closeModal, openAvatarModal } from './components/modal.js'
 import { openWorkoutForm } from './components/workout-form.js'
 import { injectToastStyles, showToast } from './components/toast.js'
+import { initTelegramMiniApp, isTelegramMiniAppAvailable, sendMiniWorkoutText, triggerMiniHaptic } from './data/telegram-webapp.js'
 
 const tabs = [
   { key: 'dashboard', label: 'Nexus', icon: '✦' },
@@ -22,6 +24,7 @@ let activeTab = 'dashboard'
 
 injectToastStyles()
 initTheme()
+initTelegramMiniApp()
 
 store.init().then(() => {
   renderApp()
@@ -158,6 +161,8 @@ function renderMobileHud(state, profile) {
   const pct = Math.max(0, Math.min(100, Math.round((xpCur / xpMax) * 100)))
   const level = profile.level ?? '-'
   const streak = state.profile?.streak?.current ?? 0
+  const readiness = state.health?.readiness?.score
+  const readinessText = Number.isFinite(readiness) ? readiness : '—'
 
   return `
     <div class="mobile-hud">
@@ -169,13 +174,14 @@ function renderMobileHud(state, profile) {
       </div>
       <div class="mobile-hud-stats">
         <div class="mobile-hud-stat"><strong>${streak}</strong><small>STREAK</small></div>
+        <div class="mobile-hud-stat"><strong>${readinessText}</strong><small>RDY</small></div>
       </div>
     </div>
   `
 }
 
 function renderNavButton(tab, isActive, mobile = false) {
-  const icon = mobile ? tab.label.slice(0, 1) : tab.label.slice(0, 1)
+  const icon = tab.icon || tab.label.slice(0, 1)
   return `
     <button class="${mobile ? 'bottom-tab' : 'nav-button'} ${isActive ? 'active' : ''}" data-tab="${tab.key}">
       <span class="nav-icon">${icon}</span>
@@ -363,6 +369,17 @@ function renderDashboard(state, profile, semantic) {
             <p>${coachInsight.body}</p>
           </div>
         </div>
+      </article>
+
+      <article class="glass-card dashboard-card">
+        <div class="section-top">
+          <div>
+            <div class="eyebrow">Vital Signs</div>
+            <h3>Recovery ve beden sinyali</h3>
+          </div>
+          <button class="inline-link" data-tab="training">Training</button>
+        </div>
+        ${renderHealth(profile)}
       </article>
     </section>
 
@@ -730,10 +747,36 @@ function renderTraining(state, profile, semantic) {
         </div>
       </div>
 
+      ${renderMiniAppConsole()}
+
       <div class="glass-card surface" id="panel-training">
         ${renderQuests(profile, semantic)}
       </div>
     </section>
+  `
+}
+
+function renderMiniAppConsole() {
+  if (!isTelegramMiniAppAvailable()) return ''
+  return `
+    <div class="glass-card surface miniapp-console">
+      <div class="section-top">
+        <div>
+          <div class="eyebrow">Mini App Capture</div>
+          <h3>Text'i buradan bota gonder</h3>
+          <p>Uzun workout logunu yapistir, bot chat'e service data olarak dussun ve ayni parser hattindan gecsin.</p>
+        </div>
+        <span class="pill pill-emerald">TG MINI APP</span>
+      </div>
+      <textarea id="mini-workout-text" class="mini-workout-text" rows="8" placeholder="Push - Core - Kalf&#10;Toplam sure 2 saat&#10;Bench Press&#10;Set 1: 65 kg x 8"></textarea>
+      <div class="miniapp-console-actions">
+        <button class="primary-button" data-action="send-mini-log">
+          <span>↗</span>
+          <strong>Bot'a Gonder</strong>
+        </button>
+        <small>Telegram icinde acikken sendData kullanilir.</small>
+      </div>
+    </div>
   `
 }
 
@@ -790,5 +833,41 @@ document.addEventListener('click', event => {
 
   if (action === 'open-avatar') {
     openAvatarModal(store.getProfile())
+    return
+  }
+
+  if (action === 'send-mini-log') {
+    const textarea = document.getElementById('mini-workout-text')
+    const text = textarea?.value?.trim() || ''
+    if (!text) {
+      showToast({
+        icon: '⚠',
+        title: 'Workout text bos',
+        msg: 'Gonderebilmek icin once bir seans metni yapistir.',
+        rarity: 'common',
+      })
+      return
+    }
+
+    const sent = sendMiniWorkoutText(text)
+    if (sent) {
+      triggerMiniHaptic('success')
+      if (textarea) textarea.value = ''
+      showToast({
+        icon: '◉',
+        title: 'Bot kanalina gonderildi',
+        msg: 'Mini App veriyi Telegram bot akışına aktardi.',
+        rarity: 'rare',
+        duration: 2600,
+      })
+      return
+    }
+
+    showToast({
+      icon: '⚠',
+      title: 'Telegram Mini App aktif degil',
+      msg: 'Bu panel Telegram icinden acildiginda calisir.',
+      rarity: 'common',
+    })
   }
 })

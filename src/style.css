@@ -4190,3 +4190,465 @@ button {
     grid-template-columns:1fr !important;
   }
 }
+
+/* ==========================================================================
+   V4 FINAL OVERRIDE
+   Single dark, readable, mobile-first glass layer for blocks + readiness
+   ========================================================================== */
+
+:root,
+[data-theme="dark"],
+[data-theme="light"] {
+  --neon:#39ff14;
+  --neon2:#7c3aed;
+  --neon-dim:#1da112;
+  --bg:#04060a;
+  --bg2:#080b14;
+  --bg3:#0e1320;
+  --bg4:#141a2a;
+  --bg5:#1b2335;
+  --txt:#d8e8d4;
+  --dim:#6a7a78;
+  --gold:var(--neon);
+  --gold2:#87ff72;
+  --gold3:#1da112;
+  --grn:var(--neon);
+  --pur:var(--neon2);
+  --red:#ff4d6d;
+  --blu:#5eb1ff;
+  --brd:rgba(102,128,171,.18);
+  --brdg:rgba(57,255,20,.24);
+  --glow-gold:rgba(57,255,20,.18);
+  --glow-gold-s:rgba(57,255,20,.09);
+  --glow-gold-xs:rgba(57,255,20,.06);
+  --mist-strong:#a8c0ff;
+  --emerald:#7bf8a7;
+  --cobalt:#7ea8ff;
+  --coral:#ff7185;
+  --overlay:rgba(1,3,8,.76);
+  --glass-fill:linear-gradient(180deg, rgba(14,19,32,.88), rgba(7,10,17,.94));
+  --glass-border:rgba(111,143,199,.16);
+  --glass-inner:inset 0 0 0 1px rgba(57,255,20,.08);
+}
+
+html,
+body {
+  min-height:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  overscroll-behavior:none;
+  background:#04060a !important;
+}
+
+html {
+  scrollbar-gutter:stable both-edges;
+}
+
+body {
+  font-family:'Manrope',sans-serif !important;
+  color:var(--txt) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(57,255,20,.08), transparent 26%),
+    radial-gradient(circle at 88% 8%, rgba(124,58,237,.12), transparent 24%),
+    linear-gradient(180deg, #04060a, #070b12 55%, #05070c) !important;
+}
+
+body::before {
+  background:
+    radial-gradient(ellipse 80% 56% at 50% -10%, rgba(57,255,20,.08) 0%, transparent 70%) !important;
+}
+
+body::after {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.015), transparent 24%, transparent 76%, rgba(57,255,20,.03)),
+    repeating-linear-gradient(180deg, transparent 0 2px, rgba(0,0,0,.06) 2px 3px) !important;
+  opacity:.28;
+  mix-blend-mode:normal !important;
+}
+
+.wrap,
+.app-shell,
+.app-main,
+.page-content,
+.surface-stack,
+.dashboard-grid,
+.tactical-os-grid,
+.progress-command-grid,
+.quest-card-grid,
+.raid-log-list,
+.trophy-grid,
+.lane-grid,
+.chain-grid {
+  min-width:0;
+}
+
+.glass-card,
+.glass-subtle,
+.surface,
+.dashboard-card,
+.coach-shell,
+.hero-card,
+.modal,
+.app-nav,
+.mobile-hud,
+.bottom-tabs,
+.quest-card,
+.raid-log-card,
+.trophy-card,
+.ops-mini-card,
+.lane-card,
+.chain-card,
+.skill-branch-card,
+.next-node-card,
+.gap-item,
+.hcard,
+.dbf,
+.sbranch,
+.balance-wrap {
+  background:var(--glass-fill) !important;
+  border:1px solid var(--glass-border) !important;
+  box-shadow:0 18px 48px rgba(0,0,0,.34), var(--glass-inner) !important;
+  backdrop-filter:blur(12px) saturate(160%);
+  -webkit-backdrop-filter:blur(12px) saturate(160%);
+}
+
+.page-title,
+.section-top h3,
+.hero-copy h2,
+.nav-brand-title,
+.quest-card-title strong,
+.raid-log-top strong,
+.trophy-card strong,
+.mname,
+.pname,
+.stt-val,
+.readiness-score,
+.hval,
+.modal-head-title,
+.nick,
+.skill-summary-val {
+  font-family:'Manrope',sans-serif !important;
+  letter-spacing:-.02em !important;
+  text-shadow:none !important;
+  color:#f3fbf0 !important;
+}
+
+.eyebrow,
+.mini-label,
+.mobile-hud-xptext,
+.mobile-hud-stat small,
+.quest-progress span,
+.quest-state,
+.raid-log-meta span,
+.hsub,
+.hlbl,
+.dbf-desc,
+.pnote,
+.lane-card small,
+.chain-card small,
+.skill-branch-signal,
+.quest-card p,
+.raid-log-card p,
+.trophy-card p,
+.hero-copy p,
+.training-header p,
+.coach-intro p {
+  color:var(--dim) !important;
+}
+
+.primary-button,
+.primary-fab,
+.bottom-tab-action {
+  background:linear-gradient(135deg, rgba(57,255,20,.94), rgba(124,58,237,.92)) !important;
+  color:#051009 !important;
+  border:1px solid rgba(125,255,156,.22) !important;
+  box-shadow:0 14px 30px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+.mobile-hud {
+  position:sticky !important;
+  top:0 !important;
+  z-index:90;
+  padding:calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px !important;
+  margin:0 10px 8px;
+  border-radius:18px !important;
+}
+
+.mobile-hud-avatar {
+  width:40px !important;
+  height:40px !important;
+  border-radius:12px !important;
+}
+
+.mobile-hud-center {
+  min-width:0;
+}
+
+.mobile-hud-nick {
+  font-family:'Manrope',sans-serif !important;
+  font-size:.84rem !important;
+  font-weight:800 !important;
+}
+
+.mobile-hud-xpbar {
+  height:5px !important;
+  border-radius:999px !important;
+  background:rgba(255,255,255,.08) !important;
+}
+
+.mobile-hud-xpfill {
+  background:linear-gradient(90deg, rgba(57,255,20,.92), rgba(124,58,237,.88)) !important;
+  box-shadow:0 0 12px rgba(57,255,20,.18);
+}
+
+.mobile-hud-stats {
+  display:flex;
+  gap:6px !important;
+  margin-left:auto;
+}
+
+.mobile-hud-stat {
+  min-width:48px !important;
+  padding:6px 8px !important;
+  border-radius:12px !important;
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(111,143,199,.14) !important;
+}
+
+.mobile-hud-stat strong {
+  color:#eff8ee !important;
+  font-family:'Manrope',sans-serif !important;
+}
+
+.bottom-tabs {
+  display:grid !important;
+  grid-template-columns:repeat(5, minmax(0, 1fr));
+  align-items:center;
+  gap:4px;
+  left:12px !important;
+  right:12px !important;
+  bottom:10px !important;
+  padding:10px !important;
+  border-radius:22px !important;
+  z-index:92;
+  mask-image:linear-gradient(to top, #000 72%, transparent 100%);
+  -webkit-mask-image:linear-gradient(to top, #000 72%, transparent 100%);
+}
+
+.bottom-tab,
+.nav-button {
+  min-width:0;
+}
+
+.bottom-tab {
+  min-height:52px;
+  border-radius:16px !important;
+  gap:4px;
+}
+
+.bottom-tab span:last-child {
+  font-size:.7rem;
+}
+
+.nav-icon {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  min-height:28px;
+  border-radius:10px;
+  background:rgba(255,255,255,.04);
+}
+
+.bottom-tab.active .nav-icon,
+.nav-button.active .nav-icon {
+  background:rgba(57,255,20,.14);
+  color:#f1fff0;
+}
+
+.miniapp-console {
+  display:grid;
+  gap:14px;
+}
+
+.mini-workout-text {
+  width:100%;
+  resize:vertical;
+  min-height:180px;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(111,143,199,.16);
+  border-radius:16px;
+  color:var(--txt);
+  padding:14px 16px;
+  line-height:1.55;
+  font:500 .92rem/1.55 'JetBrains Mono', monospace;
+}
+
+.mini-workout-text:focus {
+  outline:none;
+  border-color:rgba(57,255,20,.35);
+  box-shadow:0 0 0 3px rgba(57,255,20,.08);
+}
+
+.miniapp-console-actions {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.miniapp-console-actions small {
+  color:var(--dim);
+}
+
+.readiness-card {
+  display:grid;
+  gap:10px;
+  padding:14px 16px;
+  margin-bottom:14px;
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+  border:1px solid rgba(111,143,199,.14);
+}
+
+.readiness-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.readiness-source {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(111,143,199,.14);
+  color:#eff8ee;
+  font:600 .72rem/1 'JetBrains Mono', monospace;
+}
+
+.readiness-high {
+  box-shadow:0 0 0 1px rgba(57,255,20,.1) inset;
+}
+
+.readiness-medium {
+  box-shadow:0 0 0 1px rgba(94,177,255,.12) inset;
+}
+
+.readiness-low {
+  box-shadow:0 0 0 1px rgba(255,77,109,.12) inset;
+}
+
+.raid-log-blocks {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.raid-block-chip {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  background:rgba(57,255,20,.08);
+  border:1px solid rgba(57,255,20,.16);
+  color:#dfffd6;
+  font:600 .68rem/1 'JetBrains Mono', monospace;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+
+.quest-card,
+.raid-log-card,
+.trophy-card,
+.ops-mini-card,
+.lane-card,
+.chain-card,
+.skill-branch-card,
+.next-node-card,
+.gap-item {
+  min-width:0;
+  overflow:hidden;
+}
+
+.quest-card *,
+.raid-log-card *,
+.trophy-card *,
+.ops-mini-card *,
+.lane-card *,
+.chain-card *,
+.skill-branch-card *,
+.next-node-card *,
+.gap-item * {
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+.quest-card-grid,
+.raid-log-list {
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)) !important;
+}
+
+.modal-bg.open {
+  align-items:flex-end;
+}
+
+.modal {
+  width:min(100%, 560px) !important;
+}
+
+@media (max-width: 900px) {
+  .modal {
+    width:100% !important;
+    max-width:none !important;
+    max-height:88vh !important;
+    align-self:flex-end;
+    border-radius:20px 20px 0 0 !important;
+    animation:modalSlideUp .22s ease;
+  }
+
+  .topbar .primary-button.mobile-inline {
+    display:none !important;
+  }
+
+  .hero-card,
+  .surface,
+  .dashboard-card,
+  .quest-card,
+  .raid-log-card,
+  .trophy-card,
+  .ops-mini-card,
+  .lane-card,
+  .chain-card,
+  .skill-branch-card,
+  .next-node-card,
+  .gap-item {
+    border-radius:18px !important;
+  }
+
+  .quest-card-grid,
+  .raid-log-list,
+  .trophy-grid,
+  .lane-grid,
+  .chain-grid,
+  .campaign-summary-grid,
+  .dashboard-grid,
+  .progress-command-grid,
+  .tactical-os-grid {
+    grid-template-columns:1fr !important;
+  }
+
+  .mini-workout-text {
+    min-height:160px;
+  }
+}
+
+@keyframes modalSlideUp {
+  from { transform:translateY(24px); opacity:0; }
+  to { transform:translateY(0); opacity:1; }
+}

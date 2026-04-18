@@ -46,6 +46,17 @@ export const CANONICAL_TAGS = [
   'endurance',
 ]
 
+export const SESSION_BLOCK_KINDS = [
+  'strength',
+  'locomotion',
+  'core',
+  'mobility',
+  'explosive',
+  'recovery',
+  'skill',
+  'mixed',
+]
+
 export const PRIMARY_CATEGORIES = ['strength', 'movement', 'endurance', 'recovery', 'mixed']
 export const INTENSITY_LEVELS = ['low', 'moderate', 'high']
 
@@ -225,6 +236,11 @@ const DISTANCE_RATES = {
   Koşu: 9,
 }
 
+function _number(value) {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+
 function _uniq(arr) {
   return [...new Set(arr.filter(Boolean))]
 }
@@ -244,6 +260,18 @@ function _hasKeyword(text, keywords) {
 
 function _countSetsFromRaw(exercises = []) {
   return exercises.reduce((sum, ex) => sum + (Array.isArray(ex.sets) ? ex.sets.length : (Number(ex.sets) || 0)), 0)
+}
+
+function _sumSetSeconds(sets = []) {
+  return (sets || []).reduce((sum, set) => sum + (_number(set?.durationSec ?? set?.duration_sec)), 0)
+}
+
+function _sumSetLoad(sets = []) {
+  return (sets || []).reduce((sum, set) => sum + ((_number(set?.weightKg ?? set?.weight_kg)) * (_number(set?.reps))), 0)
+}
+
+function _firstNonEmpty(values = []) {
+  return values.find(Boolean) || ''
 }
 
 export function getLocalDateString(date = new Date(), timeZone = ISTANBUL_TIME_ZONE) {
@@ -332,6 +360,179 @@ export function normalizeExercises(exercises = []) {
       }
     })
     .filter(Boolean)
+}
+
+function inferBlockKind({ name = '', tags = [], type = 'Custom', sets = [] } = {}) {
+  const normalizedName = normalizeText(name)
+  const tagSet = new Set(tags || [])
+
+  if (_hasKeyword(normalizedName, CORE_EXERCISE_KEYWORDS) || tagSet.has('core')) return 'core'
+  if (_hasKeyword(normalizedName, MOBILITY_KEYWORDS) || tagSet.has('mobility')) return 'mobility'
+  if (_hasKeyword(normalizedName, EXPLOSIVE_KEYWORDS) || tagSet.has('explosive')) return 'explosive'
+  if (_hasKeyword(normalizedName, BALANCE_KEYWORDS) || tagSet.has('acrobatics') || tagSet.has('parkour')) return 'skill'
+  if (_hasKeyword(normalizedName, ['walk', 'yuruy', 'koşu', 'kosu', 'run', 'bike', 'bisiklet', 'treadmill', 'kayak']) || tagSet.has('walking') || tagSet.has('cycling') || tagSet.has('ski') || tagSet.has('endurance')) {
+    return 'locomotion'
+  }
+  if (_hasKeyword(normalizedName, ['sauna', 'recovery', 'cooldown']) || tagSet.has('recovery')) return 'recovery'
+  if (_hasKeyword(normalizedName, [...PUSH_KEYWORDS, ...PULL_KEYWORDS, ...LEG_KEYWORDS]) || tagSet.has('push') || tagSet.has('pull') || tagSet.has('legs') || tagSet.has('gym') || tagSet.has('calisthenics')) {
+    return 'strength'
+  }
+  if (type === 'Stretching') return 'mobility'
+  if (type === 'Parkour' || type === 'Akrobasi' || type === 'Tırmanış') return 'skill'
+  if (type === 'Yürüyüş' || type === 'Yuruyus' || type === 'Bisiklet' || type === 'Kayak' || type === 'Koşu') return 'locomotion'
+  if (sets.length && (_sumSetLoad(sets) > 0 || _countSetsFromRaw([{ sets }]) >= 2)) return 'strength'
+  return 'mixed'
+}
+
+function buildExerciseBlock(exercise = {}, session = {}) {
+  const sets = normalizeExercises([exercise])[0]?.sets || []
+  const type = normalizeType(session.type)
+  const sessionTags = session.tags || inferTags(session)
+  const blockTags = _uniq([
+    ...sessionTags,
+    ...inferTags({
+      ...session,
+      type,
+      exercises: [{ name: exercise.name, sets }],
+      tags: sessionTags,
+      highlight: '',
+      notes: '',
+    }),
+  ])
+  const kind = inferBlockKind({
+    name: exercise.name,
+    tags: blockTags,
+    type,
+    sets,
+  })
+  return {
+    kind,
+    label: String(exercise.name || kind).trim() || kind,
+    tags: blockTags.filter(tag => CANONICAL_TAGS.includes(tag)).slice(0, 6),
+    sets: sets.length,
+    reps: sets.reduce((sum, set) => sum + (_number(set.reps)), 0) || null,
+    volumeKg: Math.round(_sumSetLoad(sets)),
+    durationMin: Math.round(_sumSetSeconds(sets) / 60) || 0,
+    distanceKm: 0,
+    source: 'exercise',
+  }
+}
+
+function buildFallbackBlocks(normalized = {}) {
+  const tagSet = new Set(normalized.tags || [])
+  const blocks = []
+
+  const locomotionBlock = (tagSet.has('walking') || tagSet.has('cycling') || tagSet.has('ski') || normalized.primaryCategory === 'endurance')
+    ? {
+      kind: 'locomotion',
+      label: normalized.type,
+      tags: normalized.tags.filter(tag => ['walking', 'cycling', 'ski', 'endurance', 'terrain'].includes(tag)),
+      sets: 0,
+      reps: null,
+      volumeKg: 0,
+      durationMin: normalized.durationMin || 0,
+      distanceKm: normalized.distanceKm || 0,
+      source: 'session',
+    }
+    : null
+  if (locomotionBlock) blocks.push(locomotionBlock)
+
+  if (tagSet.has('push') || tagSet.has('pull') || tagSet.has('legs') || normalized.primaryCategory === 'strength') {
+    blocks.push({
+      kind: 'strength',
+      label: normalized.type,
+      tags: normalized.tags.filter(tag => ['push', 'pull', 'legs', 'gym', 'calisthenics'].includes(tag)),
+      sets: normalized.sets || 0,
+      reps: null,
+      volumeKg: normalized.volumeKg || 0,
+      durationMin: normalized.durationMin || 0,
+      distanceKm: 0,
+      source: 'session',
+    })
+  }
+
+  if (tagSet.has('core')) {
+    blocks.push({
+      kind: 'core',
+      label: 'Core Block',
+      tags: normalized.tags.filter(tag => ['core', 'carry', 'terrain'].includes(tag)),
+      sets: 0,
+      reps: null,
+      volumeKg: 0,
+      durationMin: 0,
+      distanceKm: 0,
+      source: 'session',
+    })
+  }
+
+  if (tagSet.has('mobility') || normalized.primaryCategory === 'recovery') {
+    blocks.push({
+      kind: 'mobility',
+      label: normalized.type === 'Stretching' ? 'Mobility' : normalized.type,
+      tags: normalized.tags.filter(tag => ['mobility', 'recovery'].includes(tag)),
+      sets: 0,
+      reps: null,
+      volumeKg: 0,
+      durationMin: normalized.primaryCategory === 'recovery' ? (normalized.durationMin || 0) : 0,
+      distanceKm: 0,
+      source: 'session',
+    })
+  }
+
+  if (tagSet.has('explosive') || tagSet.has('parkour') || tagSet.has('acrobatics')) {
+    blocks.push({
+      kind: tagSet.has('explosive') ? 'explosive' : 'skill',
+      label: _firstNonEmpty([normalized.highlight, normalized.type, 'Movement Block']),
+      tags: normalized.tags.filter(tag => ['explosive', 'parkour', 'acrobatics', 'balance'].includes(tag)),
+      sets: 0,
+      reps: null,
+      volumeKg: 0,
+      durationMin: 0,
+      distanceKm: 0,
+      source: 'session',
+    })
+  }
+
+  return blocks
+}
+
+export function deriveSessionBlocks(session = {}) {
+  const normalized = {
+    ...session,
+    type: normalizeType(session.type),
+    tags: session.tags || inferTags(session),
+    distanceKm: Number(session.distanceKm ?? session.distance_km) || 0,
+    durationMin: Number(session.durationMin ?? session.duration_min) || 0,
+    volumeKg: Number(session.volumeKg ?? session.volume_kg) || 0,
+    sets: Number(session.sets) || _countSetsFromRaw(session.exercises || []),
+    exercises: normalizeExercises(session.exercises || []),
+    highlight: session.highlight || '',
+    notes: session.notes || '',
+  }
+
+  const exerciseBlocks = normalized.exercises.map(exercise => buildExerciseBlock(exercise, normalized))
+    .filter(block => block.label && SESSION_BLOCK_KINDS.includes(block.kind))
+
+  const fallbackBlocks = buildFallbackBlocks(normalized)
+  const combined = [...exerciseBlocks]
+
+  for (const block of fallbackBlocks) {
+    const exists = combined.some(item => item.kind === block.kind && item.label === block.label)
+    if (!exists) combined.push(block)
+  }
+
+  return combined.map((block, index) => ({
+    id: `${block.kind}-${index}`,
+    kind: block.kind,
+    label: block.label,
+    tags: _uniq((block.tags || []).map(normalizeTag)).filter(tag => CANONICAL_TAGS.includes(tag)),
+    sets: Number(block.sets) || 0,
+    reps: block.reps != null ? Number(block.reps) : null,
+    volumeKg: Number(block.volumeKg) || 0,
+    durationMin: Number(block.durationMin) || 0,
+    distanceKm: Number(block.distanceKm) || 0,
+    source: block.source || 'session',
+  }))
 }
 
 export function countAllSets(sessionOrExercises) {
@@ -509,6 +710,9 @@ export function normalizeSession(session = {}, { source = 'manual', now = new Da
   const primaryCategory = inferPrimaryCategory({ ...normalized, tags })
   const intensity = inferIntensity({ ...normalized, tags, primaryCategory })
   const distanceKm = estimateDistanceKm({ ...normalized, tags })
+  const blocks = Array.isArray(session.blocks) && session.blocks.length
+    ? deriveSessionBlocks({ ...normalized, tags, distanceKm, blocks: session.blocks })
+    : deriveSessionBlocks({ ...normalized, tags, distanceKm })
 
   return {
     ...normalized,
@@ -516,6 +720,7 @@ export function normalizeSession(session = {}, { source = 'manual', now = new Da
     primaryCategory,
     intensity,
     distanceKm,
+    blocks,
   }
 }
 
