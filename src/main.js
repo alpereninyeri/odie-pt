@@ -9,9 +9,8 @@ import { renderQuests, initQuests } from './components/panel-quests.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
 import { renderHealth } from './components/panel-health.js'
 import { initModal, closeModal, openAvatarModal } from './components/modal.js'
-import { openWorkoutForm } from './components/workout-form.js'
 import { injectToastStyles, showToast } from './components/toast.js'
-import { initTelegramMiniApp, isTelegramMiniAppAvailable, sendMiniWorkoutText, triggerMiniHaptic } from './data/telegram-webapp.js'
+import { initTelegramMiniApp } from './data/telegram-webapp.js'
 
 const tabs = [
   { key: 'dashboard', label: 'Nexus', icon: '✦' },
@@ -83,11 +82,6 @@ function renderApp() {
           </div>
         </div>
 
-        <button class="primary-button desktop-only" data-action="open-workout-form">
-          <span>+</span>
-          <strong>Antrenman Ekle</strong>
-        </button>
-
         <nav class="nav-list">
           ${tabs.map(tab => renderNavButton(tab, activeTab === tab.key)).join('')}
         </nav>
@@ -110,10 +104,6 @@ function renderApp() {
               <span class="avatar-chip-icon">${profile.avatar}</span>
               <span>${profile.nick}</span>
             </button>
-            <button class="primary-button mobile-inline" data-action="open-workout-form">
-              <span>+</span>
-              <strong>Kayit</strong>
-            </button>
           </div>
         </header>
 
@@ -126,10 +116,6 @@ function renderApp() {
     <nav class="bottom-tabs glass-card">
       ${renderNavButton(tabs[0], activeTab === tabs[0].key, true)}
       ${renderNavButton(tabs[1], activeTab === tabs[1].key, true)}
-      <button class="bottom-tab bottom-tab-action" data-action="open-workout-form" aria-label="Antrenman ekle">
-        <span class="nav-icon">+</span>
-        <span>Add</span>
-      </button>
       ${renderNavButton(tabs[2], activeTab === tabs[2].key, true)}
       ${renderNavButton(tabs[3], activeTab === tabs[3].key, true)}
     </nav>
@@ -716,10 +702,6 @@ function renderTraining(state, profile, semantic) {
           <h3>Mission board, recovery ops ve raid log</h3>
           <p>Webapp hissi veren kompakt tactical salonda bugunun checklist'i ve haftalik baski tek akista.</p>
         </div>
-        <button class="primary-button" data-action="open-workout-form">
-          <span>+</span>
-          <strong>Yeni Seans</strong>
-        </button>
       </div>
 
       <div class="glass-card surface tactical-surface training-ops">
@@ -747,36 +729,10 @@ function renderTraining(state, profile, semantic) {
         </div>
       </div>
 
-      ${renderMiniAppConsole()}
-
       <div class="glass-card surface" id="panel-training">
         ${renderQuests(profile, semantic)}
       </div>
     </section>
-  `
-}
-
-function renderMiniAppConsole() {
-  if (!isTelegramMiniAppAvailable()) return ''
-  return `
-    <div class="glass-card surface miniapp-console">
-      <div class="section-top">
-        <div>
-          <div class="eyebrow">Mini App Capture</div>
-          <h3>Text'i buradan bota gonder</h3>
-          <p>Uzun workout logunu yapistir, bot chat'e service data olarak dussun ve ayni parser hattindan gecsin.</p>
-        </div>
-        <span class="pill pill-emerald">TG MINI APP</span>
-      </div>
-      <textarea id="mini-workout-text" class="mini-workout-text" rows="8" placeholder="Push - Core - Kalf&#10;Toplam sure 2 saat&#10;Bench Press&#10;Set 1: 65 kg x 8"></textarea>
-      <div class="miniapp-console-actions">
-        <button class="primary-button" data-action="send-mini-log">
-          <span>↗</span>
-          <strong>Bot'a Gonder</strong>
-        </button>
-        <small>Telegram icinde acikken sendData kullanilir.</small>
-      </div>
-    </div>
   `
 }
 
@@ -826,48 +782,9 @@ document.addEventListener('click', event => {
   const action = event.target.closest('[data-action]')?.dataset.action
   if (!action) return
 
-  if (action === 'open-workout-form') {
-    openWorkoutForm()
-    return
-  }
-
   if (action === 'open-avatar') {
     openAvatarModal(store.getProfile())
     return
   }
 
-  if (action === 'send-mini-log') {
-    const textarea = document.getElementById('mini-workout-text')
-    const text = textarea?.value?.trim() || ''
-    if (!text) {
-      showToast({
-        icon: '⚠',
-        title: 'Workout text bos',
-        msg: 'Gonderebilmek icin once bir seans metni yapistir.',
-        rarity: 'common',
-      })
-      return
-    }
-
-    const sent = sendMiniWorkoutText(text)
-    if (sent) {
-      triggerMiniHaptic('success')
-      if (textarea) textarea.value = ''
-      showToast({
-        icon: '◉',
-        title: 'Bot kanalina gonderildi',
-        msg: 'Mini App veriyi Telegram bot akışına aktardi.',
-        rarity: 'rare',
-        duration: 2600,
-      })
-      return
-    }
-
-    showToast({
-      icon: '⚠',
-      title: 'Telegram Mini App aktif degil',
-      msg: 'Bu panel Telegram icinden acildiginda calisir.',
-      rarity: 'common',
-    })
-  }
 })
