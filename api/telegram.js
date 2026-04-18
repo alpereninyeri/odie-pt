@@ -675,26 +675,339 @@ function clampBodyMetricsPatch(current, incoming) {
   return Object.keys(patch).length ? patch : null
 }
 
+function normalizeLooseText(value = '') {
+  return String(value || '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .trim()
+}
+
+function parseMinutesFromText(text = '') {
+  const raw = String(text || '')
+  const normalized = normalizeLooseText(raw).replace(/dakika/g, 'dk').replace(/minute/g, 'min')
+  let minutes = 0
+
+  const hourMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:saat|hr|hour)/)
+  if (hourMatch) minutes += Math.round(Number(hourMatch[1].replace(',', '.')) * 60)
+
+  const minuteMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:dk|min)\b/)
+  if (minuteMatch) minutes += Math.round(Number(minuteMatch[1].replace(',', '.')))
+
+  const secondMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:sn|sec|saniye)\b/)
+  if (!minutes && secondMatch) minutes += Math.round(Number(secondMatch[1].replace(',', '.')) / 60)
+
+  return minutes
+}
+
+function parseDurationSecondsFromText(text = '') {
+  const raw = String(text || '')
+  const normalized = normalizeLooseText(raw).replace(/dakika/g, 'dk').replace(/minute/g, 'min')
+  let seconds = 0
+
+  const hourMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:saat|hr|hour)/)
+  if (hourMatch) seconds += Math.round(Number(hourMatch[1].replace(',', '.')) * 3600)
+
+  const minuteMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:dk|min)\b/)
+  if (minuteMatch) seconds += Math.round(Number(minuteMatch[1].replace(',', '.')) * 60)
+
+  const secondMatch = normalized.match(/(\d+(?:[.,]\d+)?)\s*(?:sn|sec|saniye)\b/)
+  if (secondMatch) seconds += Math.round(Number(secondMatch[1].replace(',', '.')))
+
+  return seconds || null
+}
+
+function parseDistanceKmFromText(text = '') {
+  const match = String(text || '').match(/(\d+(?:[.,]\d+)?)\s*km\b/i)
+  return match ? Number(match[1].replace(',', '.')) : 0
+}
+
+function inferTypeFromText(text = '') {
+  const normalized = normalizeLooseText(text)
+  if (!normalized) return 'Custom'
+  if (normalized.includes('push')) return 'Push'
+  if (normalized.includes('pull')) return 'Pull'
+  if (normalized.includes('shoulder')) return 'Shoulder'
+  if (normalized.includes('bacak') || normalized.includes('leg day')) return 'Bacak'
+  if (normalized.includes('parkour')) return 'Parkour'
+  if (normalized.includes('akrobasi') || normalized.includes('acro')) return 'Akrobasi'
+  if (normalized.includes('yuruyus') || normalized.includes('yurume') || normalized.includes('walk')) return 'Yuruyus'
+  if (normalized.includes('stretch') || normalized.includes('esneme') || normalized.includes('mobility')) return 'Stretching'
+  if (normalized.includes('bisiklet') || normalized.includes('cycling') || normalized.includes('bike')) return 'Bisiklet'
+  if (normalized.includes('kayak') || normalized.includes('ski')) return 'Kayak'
+  if (normalized.includes('tirman') || normalized.includes('climb')) return 'Tirmanis'
+  if (normalized.includes('kosu') || normalized.includes('run')) return 'Kosu'
+  if (normalized.includes('calisthenics')) return 'Calisthenics'
+  if (normalized.includes('gym')) return 'Gym'
+  return 'Custom'
+}
+
+function inferExerciseTags(name = '', fallbackType = 'Custom') {
+  const normalized = normalizeLooseText(name)
+  const tags = new Set()
+  if (fallbackType === 'Push') tags.add('push')
+  if (fallbackType === 'Pull') tags.add('pull')
+  if (fallbackType === 'Bacak') tags.add('legs')
+  if (fallbackType === 'Parkour') tags.add('parkour')
+
+  if (/(bench|press|dip|triceps|lateral raise|shoulder press)/.test(normalized)) tags.add('push')
+  if (/(pull|row|curl|dead hang|lat)/.test(normalized)) tags.add('pull')
+  if (/(leg raise|plank|hollow|ab wheel|core|caki|cak[ıi])/.test(normalized)) tags.add('core')
+  if (/(calf|squat|lunge|leg|box jump|jump)/.test(normalized)) tags.add('legs')
+  if (/(stretch|esneme|mobility)/.test(normalized)) tags.add('mobility')
+  if (/(walk|yuruy|kosu|run|treadmill)/.test(normalized)) tags.add('walking')
+  if (/(sauna|recovery)/.test(normalized)) tags.add('recovery')
+  if (/(jump|explosive)/.test(normalized)) tags.add('explosive')
+
+  return [...tags]
+}
+
+function parseStructuredSetLine(line = '') {
+  const raw = String(line || '').trim()
+  const payload = raw.replace(/^set\s*\d+\s*:\s*/i, '').trim()
+  if (!payload) return null
+
+  const weightMatch = payload.match(/(\d+(?:[.,]\d+)?)\s*kg\b/i)
+  const repsMatch = payload.match(/x\s*(\d+)\b/i) || payload.match(/(\d+)\s*(?:tekrar|rep)\b/i)
+  const durationSec = parseDurationSecondsFromText(payload)
+  const distanceKm = parseDistanceKmFromText(payload)
+  const noteMatch = payload.match(/\(([^)]+)\)/)
+
+  const noteParts = []
+  if (distanceKm) noteParts.push(`${distanceKm} km`)
+  if (noteMatch?.[1]) noteParts.push(noteMatch[1].trim())
+
+  return {
+    reps: repsMatch ? Number(repsMatch[1]) : null,
+    weight_kg: weightMatch ? Number(weightMatch[1].replace(',', '.')) : 0,
+    duration_sec: durationSec,
+    note: noteParts.join(' | '),
+    distanceKm,
+  }
+}
+
+function parseInlineExerciseLine(line = '', fallbackType = 'Custom') {
+  const raw = String(line || '').trim()
+  if (!raw || /^set\s*\d+/i.test(raw) || /^(cumartesi|pazar|pazartesi|sali|salı|carsamba|çarşamba|persembe|cuma)/i.test(normalizeLooseText(raw))) {
+    return null
+  }
+
+  const durationSec = parseDurationSecondsFromText(raw)
+  const distanceKm = parseDistanceKmFromText(raw)
+  if (!durationSec && !distanceKm) return null
+
+  let name = raw
+    .replace(/(\d+(?:[.,]\d+)?)\s*km\b/ig, '')
+    .replace(/(\d+(?:[.,]\d+)?)\s*(?:saat|hr|hour|dk|min|sn|sec|saniye)\b/ig, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[-–]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!name || /^\d/.test(name)) {
+    const inferredType = inferTypeFromText(raw)
+    if (inferredType === 'Yuruyus') name = 'Yuruyus'
+    else if (inferredType === 'Kosu') name = 'Kosu'
+    else if (inferredType === 'Stretching') name = 'Esneme'
+    else if (inferredType === 'Bisiklet') name = 'Bisiklet'
+    else name = fallbackType === 'Custom' ? 'Accessory' : fallbackType
+  }
+
+  return {
+    name,
+    sets: [{
+      reps: null,
+      weight_kg: 0,
+      duration_sec: durationSec,
+      note: raw,
+    }],
+    distanceKm,
+    tags: inferExerciseTags(name, fallbackType),
+  }
+}
+
+export function parseStructuredWorkoutText(text = '') {
+  const rawLines = String(text || '')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+
+  const headerLine = rawLines.find(line => !/^(cumartesi|pazar|pazartesi|sali|salı|carsamba|çarşamba|persembe|cuma)/i.test(normalizeLooseText(line))) || ''
+  const type = inferTypeFromText(headerLine || rawLines[0] || '')
+  const tags = new Set(inferExerciseTags(headerLine, type))
+  const exercises = []
+  const notes = []
+  let durationMin = 0
+  let distanceKm = 0
+  let highlight = ''
+  let hasExplicitDuration = false
+  let currentExercise = null
+
+  for (const line of rawLines) {
+    const normalized = normalizeLooseText(line)
+
+    if (!normalized || /^guncel kilo\b/.test(normalized) || /^kilom\b/.test(normalized) || /^boyum\b/.test(normalized)) continue
+    if (/^(cumartesi|pazar|pazartesi|sali|salı|carsamba|çarşamba|persembe|cuma)/i.test(normalized)) continue
+
+    if (/^toplam sure\b|^toplam sure:|^toplam süre\b|^toplam süre:/i.test(normalized)) {
+      durationMin = parseMinutesFromText(line)
+      hasExplicitDuration = durationMin > 0
+      continue
+    }
+
+    const setMatch = line.match(/^set\s*\d+\s*:/i)
+    if (setMatch && currentExercise) {
+      const parsedSet = parseStructuredSetLine(line)
+      if (parsedSet) {
+        currentExercise.sets.push({
+          reps: parsedSet.reps,
+          weight_kg: parsedSet.weight_kg,
+          duration_sec: parsedSet.duration_sec,
+          note: parsedSet.note,
+        })
+        distanceKm += parsedSet.distanceKm || 0
+      }
+      continue
+    }
+
+    const looksLikeBareTimedSet = currentExercise
+      && !/[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(line.replace(/(?:min|dk|sn|sec|km|saat|hr|hour|\d|[.,\-()])/gi, ''))
+      && (parseDurationSecondsFromText(line) || parseDistanceKmFromText(line))
+    if (looksLikeBareTimedSet) {
+      currentExercise.sets.push({
+        reps: null,
+        weight_kg: 0,
+        duration_sec: parseDurationSecondsFromText(line),
+        note: line,
+      })
+      distanceKm += parseDistanceKmFromText(line) || 0
+      continue
+    }
+
+    const inlineExercise = parseInlineExerciseLine(line, type)
+    if (inlineExercise && !/^toplam /.test(normalized)) {
+      exercises.push({ name: inlineExercise.name, sets: [...inlineExercise.sets] })
+      currentExercise = exercises[exercises.length - 1]
+      if (!hasExplicitDuration) {
+        durationMin += inlineExercise.sets.reduce((sum, set) => sum + Math.round((Number(set.duration_sec) || 0) / 60), 0)
+      }
+      distanceKm += inlineExercise.distanceKm || 0
+      for (const tag of inlineExercise.tags || []) tags.add(tag)
+      continue
+    }
+
+    if (/^(set|not|note)\b/i.test(normalized)) {
+      notes.push(line)
+      continue
+    }
+
+    currentExercise = { name: line, sets: [] }
+    exercises.push(currentExercise)
+    for (const tag of inferExerciseTags(line, type)) tags.add(tag)
+  }
+
+  const cleanedExercises = exercises.filter(exercise => exercise.name && exercise.sets.length)
+  const totalSets = cleanedExercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
+  const volumeKg = Math.round(cleanedExercises.reduce((sum, exercise) => (
+    sum + exercise.sets.reduce((acc, set) => acc + ((Number(set.weight_kg) || 0) * (Number(set.reps) || 0)), 0)
+  ), 0))
+
+  let bestHighlight = null
+  for (const exercise of cleanedExercises) {
+    const topSet = exercise.sets.reduce((best, set) => {
+      const weight = Number(set.weight_kg) || 0
+      const reps = Number(set.reps) || 0
+      const duration = Number(set.duration_sec) || 0
+      const score = (weight * 1000) + (reps * 10) + Math.round(duration / 60)
+      if (!best || score > best.score) {
+        return {
+          score,
+          text: reps
+            ? `${exercise.name} ${weight ? `${weight}kg x ${reps}` : `${reps} tekrar`}`
+            : exercise.name,
+        }
+      }
+      return best
+    }, null)
+    if (topSet?.text && (!bestHighlight || topSet.score > bestHighlight.score)) {
+      bestHighlight = topSet
+    }
+  }
+  if (bestHighlight?.score > 0) {
+    highlight = bestHighlight.text
+  } else if (cleanedExercises[0]?.name) {
+    highlight = cleanedExercises[0].name
+  }
+
+  return {
+    type,
+    duration_min: durationMin,
+    distance_km: Math.round(distanceKm * 100) / 100,
+    elevation_m: 0,
+    tags: [...tags],
+    exercises: cleanedExercises,
+    volume_kg: volumeKg,
+    total_sets: totalSets,
+    highlight,
+    has_pr: /\bpr\b|personal record|rekor/i.test(text),
+    notes: notes.join(' | '),
+  }
+}
+
+function mergeParsedWorkout(heuristic, parsed) {
+  const next = { ...(parsed || {}) }
+
+  if ((Number(heuristic?.total_sets) || 0) > (Number(parsed?.total_sets) || 0)) {
+    next.exercises = heuristic.exercises
+    next.total_sets = heuristic.total_sets
+    next.volume_kg = heuristic.volume_kg
+  }
+
+  if ((Number(heuristic?.duration_min) || 0) > (Number(parsed?.duration_min) || 0)) {
+    next.duration_min = heuristic.duration_min
+  }
+
+  if ((Number(heuristic?.distance_km) || 0) > (Number(parsed?.distance_km) || 0)) {
+    next.distance_km = heuristic.distance_km
+  }
+
+  if (!parsed?.type || parsed.type === 'Custom') next.type = heuristic?.type || parsed?.type || 'Custom'
+  if (!parsed?.highlight && heuristic?.highlight) next.highlight = heuristic.highlight
+  next.tags = [...new Set([...(parsed?.tags || []), ...(heuristic?.tags || [])])]
+  next.has_pr = Boolean(parsed?.has_pr || heuristic?.has_pr)
+  next.notes = [parsed?.notes, heuristic?.notes].filter(Boolean).join(' | ')
+
+  return next
+}
+
 async function parseWithGemini(text) {
-  const raw = await callGeminiWithModel(buildParsePrompt(text), {
-    maxTokens: 1600,
-    temperature: 0.1,
-    model: process.env.GEMINI_PARSE_MODEL || 'gemini-2.5-flash-lite',
-    responseMimeType: 'application/json',
-    responseSchema: PARSE_RESPONSE_SCHEMA,
-  })
-  const parsed = parseJsonText(raw)
+  const heuristic = parseStructuredWorkoutText(text)
 
-  parsed.total_sets = Array.isArray(parsed.exercises)
-    ? parsed.exercises.reduce((sum, exercise) => sum + ((exercise.sets || []).length || 0), 0)
-    : 0
-  parsed.volume_kg = Array.isArray(parsed.exercises)
-    ? Math.round(parsed.exercises.reduce((sum, exercise) => (
-      sum + (exercise.sets || []).reduce((acc, set) => acc + ((Number(set.weight_kg) || 0) * (Number(set.reps) || 0)), 0)
-    ), 0))
-    : 0
+  try {
+    const raw = await callGeminiWithModel(buildParsePrompt(text), {
+      maxTokens: 1600,
+      temperature: 0.1,
+      model: process.env.GEMINI_PARSE_MODEL || 'gemini-2.5-flash-lite',
+      responseMimeType: 'application/json',
+      responseSchema: PARSE_RESPONSE_SCHEMA,
+    })
+    const parsed = parseJsonText(raw)
 
-  return parsed
+    parsed.total_sets = Array.isArray(parsed.exercises)
+      ? parsed.exercises.reduce((sum, exercise) => sum + ((exercise.sets || []).length || 0), 0)
+      : 0
+    parsed.volume_kg = Array.isArray(parsed.exercises)
+      ? Math.round(parsed.exercises.reduce((sum, exercise) => (
+        sum + (exercise.sets || []).reduce((acc, set) => acc + ((Number(set.weight_kg) || 0) * (Number(set.reps) || 0)), 0)
+      ), 0))
+      : 0
+
+    return mergeParsedWorkout(heuristic, parsed)
+  } catch (error) {
+    console.warn('[bot] Gemini parse failed, using structured fallback:', error?.message || error)
+    return heuristic
+  }
 }
 
 async function getCoachResponse(parsed, context) {
