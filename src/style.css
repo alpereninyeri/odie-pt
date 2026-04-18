@@ -3753,3 +3753,215 @@ body {
 .trophy-card p {
   color:#9aabca !important;
 }
+
+/* NOCTURNE CYBER GLASS */
+:root,
+[data-theme="dark"] {
+  --bg:#04060a;
+  --bg2:#080b14;
+  --bg3:#0d1220;
+  --bg4:#11182a;
+  --bg5:#172138;
+  --txt:#dbe7da;
+  --dim:#73807b;
+  --gold:#39ff14;
+  --gold2:#7c3aed;
+  --gold3:#1da112;
+  --grn:#39ff14;
+  --blu:#5eb1ff;
+  --pur:#7c3aed;
+  --red:#ff4d6d;
+  --org:#d1ff6a;
+  --brd:rgba(57,255,20,.14);
+  --brdg:rgba(57,255,20,.28);
+  --overlay:rgba(2,4,8,.82);
+}
+
+body {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(57,255,20,.09), transparent 20%),
+    radial-gradient(circle at 82% 14%, rgba(124,58,237,.14), transparent 21%),
+    radial-gradient(circle at 50% 120%, rgba(94,177,255,.08), transparent 30%),
+    linear-gradient(180deg, #020306 0%, #060912 38%, #0a0d16 100%) !important;
+}
+
+body::after {
+  display:block !important;
+  opacity:.18 !important;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 2px,
+      rgba(0,0,0,.12) 2px 3px
+    ) !important;
+  mix-blend-mode:soft-light;
+}
+
+.mobile-hud,
+.bottom-tabs,
+.app-nav,
+.glass-card,
+.glass-subtle,
+.surface,
+.dashboard-card,
+.coach-shell,
+.hero-card,
+.os-panel,
+.lane-card,
+.chain-card,
+.quest-card,
+.skill-branch-card,
+.trophy-card,
+.raid-log-card,
+.ops-mini-card,
+.next-node-card,
+.gap-item {
+  background:
+    linear-gradient(180deg, rgba(10,14,24,.76), rgba(6,9,16,.92)) !important;
+  border:1px solid rgba(57,255,20,.12) !important;
+  box-shadow:
+    0 18px 42px rgba(0,0,0,.34),
+    inset 0 0 0 1px rgba(57,255,20,.06),
+    inset 0 1px 0 rgba(255,255,255,.04) !important;
+  backdrop-filter:blur(14px) saturate(155%);
+  -webkit-backdrop-filter:blur(14px) saturate(155%);
+}
+
+.hero-card {
+  background:
+    radial-gradient(circle at top left, rgba(57,255,20,.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(124,58,237,.10), transparent 24%),
+    linear-gradient(180deg, rgba(12,17,28,.82), rgba(6,9,16,.95)) !important;
+}
+
+.mobile-hud,
+.bottom-tabs,
+.app-nav {
+  border-color:rgba(124,58,237,.18) !important;
+}
+
+.mobile-hud {
+  background:
+    linear-gradient(180deg, rgba(8,12,20,.9), rgba(5,8,14,.96)) !important;
+}
+
+.bottom-tabs {
+  background:
+    linear-gradient(180deg, rgba(9,12,21,.88), rgba(4,7,12,.97)) !important;
+}
+
+.primary-button,
+.primary-fab {
+  background:
+    linear-gradient(135deg, rgba(57,255,20,.92), rgba(124,58,237,.92)) !important;
+  color:#041008 !important;
+  border:1px solid rgba(255,255,255,.08) !important;
+  box-shadow:
+    0 14px 30px rgba(57,255,20,.14),
+    0 0 26px rgba(124,58,237,.12),
+    inset 0 1px 0 rgba(255,255,255,.24) !important;
+}
+
+.nav-button,
+.bottom-tab,
+.avatar-chip,
+.qtab,
+.inline-link {
+  background:rgba(255,255,255,.02) !important;
+  border:1px solid rgba(124,58,237,.12) !important;
+}
+
+.nav-button.active,
+.bottom-tab.active,
+.qtab.active {
+  background:
+    linear-gradient(180deg, rgba(57,255,20,.12), rgba(124,58,237,.14)) !important;
+  border-color:rgba(57,255,20,.24) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 0 18px rgba(57,255,20,.08) !important;
+}
+
+.nav-icon,
+.rank-capsule,
+.class-chip,
+.pill,
+.hero-sigil,
+.signal-chip,
+.quest-state,
+.tag,
+.tf,
+.ts,
+.tw {
+  box-shadow:none !important;
+}
+
+.mobile-hud-xpbar,
+.progress-bar,
+.track,
+.lane-track,
+.qprog-track,
+.quest-progress-track {
+  background:rgba(255,255,255,.05) !important;
+}
+
+.mobile-hud-xpfill,
+.progress-bar-fill,
+.lane-fill.tone-emerald,
+.lane-fill.tone-cobalt,
+.lane-fill.tone-gold,
+.lane-fill.tone-violet,
+.qprog-fill,
+.quest-progress-fill {
+  background:
+    linear-gradient(90deg, rgba(57,255,20,.94), rgba(124,58,237,.96)) !important;
+  box-shadow:
+    0 0 18px rgba(57,255,20,.18),
+    0 0 10px rgba(124,58,237,.14) !important;
+}
+
+.page-title,
+.hero-copy h2,
+.section-top h3,
+.nav-brand-title,
+.modal-head-title {
+  color:#f1fff1 !important;
+  text-shadow:0 0 18px rgba(57,255,20,.06);
+}
+
+.eyebrow,
+.mini-label,
+.nav-brand-sub,
+.mobile-hud-xptext,
+.mobile-hud-stat small,
+.quest-progress span,
+.skill-branch-signal,
+.lane-card small,
+.chain-card small,
+.quest-card p,
+.raid-log-card p,
+.trophy-card p,
+.hero-copy p {
+  color:#7d8b86 !important;
+}
+
+.hero-banner strong,
+.identity-metric strong,
+.hero-raid-item strong,
+.stat-hud-item strong,
+.ops-mini-card strong,
+.lane-head span,
+.qreward,
+.modal-tip,
+.toast-sub {
+  color:#caffb7 !important;
+}
+
+.chain-card.low,
+.gap-mark {
+  box-shadow:0 0 0 1px rgba(255,77,109,.16) inset !important;
+}
+
+.chain-card.high {
+  box-shadow:0 0 0 1px rgba(57,255,20,.16) inset !important;
+}
