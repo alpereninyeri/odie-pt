@@ -799,7 +799,7 @@ function normalizeCoachNoteRow(row = null) {
   }
 }
 
-function extractDirectBodyMetrics(text = '') {
+export function extractDirectBodyMetrics(text = '') {
   const normalized = String(text || '').toLocaleLowerCase('tr-TR')
   const weightMatch = normalized.match(/(?:kilom|kilo|weight)\s*(?:=|:)?\s*(\d+(?:[.,]\d+)?)/)
   const heightMatch = normalized.match(/(?:boyum|boy|height)\s*(?:=|:)?\s*(\d+(?:[.,]\d+)?)/)
@@ -809,6 +809,42 @@ function extractDirectBodyMetrics(text = '') {
   if (heightMatch) patch.heightCm = Math.round(Number(heightMatch[1].replace(',', '.')))
 
   return Object.keys(patch).length ? patch : null
+}
+
+export function isBodyMetricsOnlyMessage(text = '') {
+  const normalized = String(text || '').toLocaleLowerCase('tr-TR')
+  const hasBodyMetrics = Boolean(extractDirectBodyMetrics(text))
+  if (!hasBodyMetrics) return false
+
+  const workoutSignals = [
+    'set ',
+    'set1',
+    'set 1',
+    'toplam sure',
+    'toplam süre',
+    'bench',
+    'press',
+    'raise',
+    'dip',
+    'extension',
+    'leg raise',
+    'box jump',
+    'yurume',
+    'yürüme',
+    'kosu',
+    'koşu',
+    'sauna',
+    'km',
+    'dk',
+    'tekrar',
+    'x ',
+    'push',
+    'pull',
+    'core',
+    'kalf',
+  ]
+
+  return !workoutSignals.some(signal => normalized.includes(signal))
 }
 
 function buildCurrentPrs(workouts) {
@@ -884,7 +920,7 @@ export default async function handler(req, res) {
 
   try {
     const directBodyMetrics = extractDirectBodyMetrics(text)
-    if (directBodyMetrics) {
+    if (directBodyMetrics && isBodyMetricsOnlyMessage(text)) {
       const profile = await resolveProfile()
       if (!profile) throw new Error('Profil bulunamadi')
 
@@ -1046,7 +1082,10 @@ export default async function handler(req, res) {
       stateSync = fallback.coachNote?.sections?.find(section => section?.hidden && section?.payload)?.payload || null
     }
 
-    const nextBodyMetrics = clampBodyMetricsPatch(profile.body_metrics || {}, stateSync?.bodyMetrics)
+    const nextBodyMetrics = clampBodyMetricsPatch(
+      profile.body_metrics || {},
+      directBodyMetrics || stateSync?.bodyMetrics,
+    )
 
     const workoutPayload = {
       profile_id: profile.id,
