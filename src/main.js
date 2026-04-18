@@ -121,10 +121,15 @@ function renderApp() {
     </div>
 
     <nav class="bottom-tabs glass-card">
-      ${tabs.map(tab => renderNavButton(tab, activeTab === tab.key, true)).join('')}
+      ${renderNavButton(tabs[0], activeTab === tabs[0].key, true)}
+      ${renderNavButton(tabs[1], activeTab === tabs[1].key, true)}
+      <button class="bottom-tab bottom-tab-action" data-action="open-workout-form" aria-label="Antrenman ekle">
+        <span class="nav-icon">+</span>
+        <span>Add</span>
+      </button>
+      ${renderNavButton(tabs[2], activeTab === tabs[2].key, true)}
+      ${renderNavButton(tabs[3], activeTab === tabs[3].key, true)}
     </nav>
-
-    <button class="primary-fab" data-action="open-workout-form" aria-label="Antrenman ekle">+</button>
   `
 
   initModal()
@@ -153,8 +158,6 @@ function renderMobileHud(state, profile) {
   const pct = Math.max(0, Math.min(100, Math.round((xpCur / xpMax) * 100)))
   const level = profile.level ?? '-'
   const streak = state.profile?.streak?.current ?? 0
-  const readinessMetric = profile?.health?.metrics?.find?.(metric => metric.label === 'Readiness')
-  const readiness = readinessMetric ? String(readinessMetric.val).split('/')[0] : (state.profile?.survivalStatus ? 'LIVE' : '-')
 
   return `
     <div class="mobile-hud">
@@ -166,16 +169,16 @@ function renderMobileHud(state, profile) {
       </div>
       <div class="mobile-hud-stats">
         <div class="mobile-hud-stat"><strong>${streak}</strong><small>STREAK</small></div>
-        <div class="mobile-hud-stat"><strong>${readiness}</strong><small>READY</small></div>
       </div>
     </div>
   `
 }
 
 function renderNavButton(tab, isActive, mobile = false) {
+  const icon = mobile ? tab.label.slice(0, 1) : tab.label.slice(0, 1)
   return `
     <button class="${mobile ? 'bottom-tab' : 'nav-button'} ${isActive ? 'active' : ''}" data-tab="${tab.key}">
-      <span class="nav-icon">${tab.icon}</span>
+      <span class="nav-icon">${icon}</span>
       <span>${tab.label}</span>
     </button>
   `
@@ -198,16 +201,34 @@ function renderPage(tabKey, state, profile) {
 }
 
 function renderDashboard(state, profile, semantic) {
-  const readinessMetric = profile.health.metrics.find(metric => metric.label === 'Readiness')
+  const latestWorkout = (state.workouts || [])[0] || null
   const highlights = (state.workouts || []).slice(0, 2)
   const coachInsight = extractCoachInsight(profile)
   const streak = state.profile.streak || { current: 0, label: '' }
   const dashboardFocus = renderFocusItems(state, profile).slice(0, 3)
-  const quickStats = renderDashboardStats(profile)
+  const quickStats = renderDashboardStats(profile, latestWorkout)
   const heroSigils = renderHeroSigils(state, profile, semantic)
   const buildOS = renderBuildOS(state, profile, semantic)
+  const workoutTicker = renderWorkoutTicker(latestWorkout, coachInsight, dashboardFocus[0])
 
   return `
+    <section class="mission-ticker glass-card">
+      ${workoutTicker}
+    </section>
+
+    <section class="stat-hud glass-card compact-stat-hud">
+      <div class="section-top compact-top">
+        <div>
+          <div class="eyebrow">Live Stats</div>
+          <h3>Son seansa gore buff ve focus</h3>
+        </div>
+        <button class="inline-link" data-tab="progress">Tum progression</button>
+      </div>
+      <div class="stat-hud-grid">
+        ${quickStats}
+      </div>
+    </section>
+
     <section class="hero-card glass-card">
       <div class="hero-ornaments">
         <span class="hero-ornament orb"></span>
@@ -247,9 +268,9 @@ function renderDashboard(state, profile, semantic) {
           <small>${streak.label || 'Yeni seri'}</small>
         </div>
         <div class="hero-raid-item">
-          <span class="mini-label">Readiness</span>
-          <strong>${readinessMetric?.val || '100/100'}</strong>
-          <small>${state.profile.survivalStatus || 'healthy'}</small>
+          <span class="mini-label">Last Run</span>
+          <strong>${latestWorkout?.type || 'No run'}</strong>
+          <small>${latestWorkout ? formatMonthShort(latestWorkout.date) : 'Yeni seans bekliyor'}</small>
         </div>
       </div>
 
@@ -287,54 +308,7 @@ function renderDashboard(state, profile, semantic) {
       </div>
     </section>
 
-    <section class="stat-hud glass-card">
-      <div class="section-top compact-top">
-        <div>
-          <div class="eyebrow">Character Sheet</div>
-          <h3>Ilk ekranda tum ana statlar gorunsun</h3>
-        </div>
-        <button class="inline-link" data-tab="progress">Tum progression</button>
-      </div>
-      <div class="stat-hud-grid">
-        ${quickStats}
-      </div>
-    </section>
-
-    <section class="tactical-os-grid">
-      ${buildOS}
-    </section>
-
     <section class="dashboard-grid">
-      <article class="glass-card dashboard-card">
-        <div class="section-top">
-          <div>
-            <div class="eyebrow">Combat State</div>
-            <h3>Bugun ne kadar hazirsin</h3>
-          </div>
-          <span class="pill pill-emerald">${state.profile.survivalStatus || 'healthy'}</span>
-        </div>
-        <div class="readiness-row">
-          <div class="readiness-score">${readinessMetric?.val || '100/100'}</div>
-          <div class="readiness-copy">
-            <div class="mini-label">Streak</div>
-            <strong>${streak.current} gun ${streak.label ? `| ${streak.label}` : ''}</strong>
-            <p>${readinessMetric?.sub || 'Armor ve fatigue dengesiyle hesaplanir.'}</p>
-          </div>
-        </div>
-        <div class="readiness-bars">
-          <div class="micro-bar">
-            <span>Armor</span>
-            <div class="track"><div class="fill emerald" style="width:${Math.max(0, Math.min(100, state.profile.armor || 0))}%"></div></div>
-            <strong>${state.profile.armor || 0}</strong>
-          </div>
-          <div class="micro-bar">
-            <span>Fatigue</span>
-            <div class="track"><div class="fill amber" style="width:${Math.max(0, Math.min(100, state.profile.fatigue || 0))}%"></div></div>
-            <strong>${state.profile.fatigue || 0}</strong>
-          </div>
-        </div>
-      </article>
-
       <article class="glass-card dashboard-card">
         <div class="section-top">
           <div>
@@ -391,18 +365,75 @@ function renderDashboard(state, profile, semantic) {
         </div>
       </article>
     </section>
+
+    <section class="tactical-os-grid">
+      ${buildOS}
+    </section>
   `
 }
 
-function renderDashboardStats(profile) {
+function renderDashboardStats(profile, latestWorkout) {
+  const statDelta = latestWorkout?.statDelta || {}
   return (profile.stats || []).map(stat => `
     <button class="stat-hud-item ${stat.critical ? 'critical' : ''}" data-tab="progress" aria-label="${stat.name} detayini ac">
       <span class="stat-hud-icon">${stat.icon || stat.label}</span>
       <span class="stat-hud-key">${stat.label}</span>
       <strong>${String(stat.val).padStart(2, '0')}</strong>
-      <small>${stat.name}</small>
+      <span class="stat-hud-chip ${dashboardStatChipClass(stat, statDelta)}">${dashboardStatChipLabel(stat, statDelta)}</span>
+      <small>${dashboardStatHint(stat, statDelta)}</small>
     </button>
   `).join('')
+}
+
+function dashboardStatChipLabel(stat, statDelta) {
+  const delta = Number(statDelta?.[stat.key]) || 0
+  if (delta > 0) return `+${delta}`
+  if (stat.critical) return 'FOCUS'
+  return 'HOLD'
+}
+
+function dashboardStatChipClass(stat, statDelta) {
+  const delta = Number(statDelta?.[stat.key]) || 0
+  if (delta > 0) return 'up'
+  if (stat.critical) return 'focus'
+  return 'hold'
+}
+
+function dashboardStatHint(stat, statDelta) {
+  const delta = Number(statDelta?.[stat.key]) || 0
+  if (delta > 0) return 'son seans buff'
+  if (stat.critical) return 'bu kisma odaklan'
+  return 'dengeyi koru'
+}
+
+function renderWorkoutTicker(latestWorkout, coachInsight, topFocusCard = '') {
+  const focusTitle = extractTextContent(topFocusCard, 'strong') || 'Siradaki blok secimi'
+  const focusBody = extractTextContent(topFocusCard, 'p') || coachInsight.body || 'Hybrid ritmi koru ve bir sonraki seansi planli sec.'
+  const workoutNote = latestWorkout
+    ? `${formatMonthShort(latestWorkout.date)} · ${latestWorkout.type} · ${latestWorkout.highlight || 'Kisa not yok'}`
+    : 'Son workout kaydi yok. Yeni seans girdiginde burada canli not akacak.'
+  const meta = latestWorkout
+    ? `${latestWorkout.durationMin || 0}dk · ${latestWorkout.primaryCategory || 'hybrid'} · ${((latestWorkout.tags || []).slice(0, 2).join(' / ')) || 'signal'}`
+    : 'Yeni seans bekleniyor'
+  const line = `SON RUN · ${workoutNote} · ${meta} · NEXT FOCUS · ${focusTitle} · ${focusBody}`
+
+  return `
+    <div class="mission-ticker-head">
+      <span class="mini-label">Session Feed</span>
+      <strong>Canli antrenman notu</strong>
+    </div>
+    <div class="mission-ticker-marquee">
+      <div class="mission-ticker-track">
+        <span>${line}</span>
+        <span>${line}</span>
+      </div>
+    </div>
+  `
+}
+
+function extractTextContent(html = '', tag = 'p') {
+  const match = String(html).match(new RegExp(`<${tag}[^>]*>(.*?)<\\/${tag}>`, 'i'))
+  return match?.[1]?.replace(/<[^>]+>/g, '').trim() || ''
 }
 
 function renderHeroSigils(state, profile, semantic) {
