@@ -389,6 +389,31 @@ export function normalizeBlocks(blocks = []) {
     .filter(Boolean)
 }
 
+export function summarizeBlockMix(blocks = []) {
+  const normalized = normalizeBlocks(blocks)
+  const totals = normalized.reduce((acc, block) => {
+    const kind = block.kind || 'mixed'
+    const weight = Math.max(
+      1,
+      (Number(block.sets) || 0) * 0.8
+      + (Number(block.durationMin) || 0) / 20
+      + (Number(block.distanceKm) || 0) * 0.8
+      + (Number(block.volumeKg) || 0) / 2500,
+    )
+    acc[kind] = (acc[kind] || 0) + weight
+    return acc
+  }, {})
+
+  const totalWeight = Object.values(totals).reduce((sum, value) => sum + Number(value || 0), 0)
+  return Object.entries(totals)
+    .sort((left, right) => right[1] - left[1])
+    .map(([kind, weight]) => ({
+      kind,
+      weight: Math.round(weight * 10) / 10,
+      percent: totalWeight ? Math.round((weight / totalWeight) * 100) : 0,
+    }))
+}
+
 function mergeBlocks(...collections) {
   const merged = []
 
@@ -432,6 +457,9 @@ function inferBlockKind({ name = '', tags = [], type = 'Custom', sets = [] } = {
     return 'locomotion'
   }
   if (_hasKeyword(normalizedName, ['sauna', 'recovery', 'cooldown']) || tagSet.has('recovery')) return 'recovery'
+  if ((tagSet.has('parkour') || tagSet.has('acrobatics')) && !(tagSet.has('push') || tagSet.has('pull') || tagSet.has('gym') || tagSet.has('carry') || tagSet.has('calisthenics'))) {
+    return tagSet.has('explosive') ? 'explosive' : 'skill'
+  }
   if (_hasKeyword(normalizedName, [...PUSH_KEYWORDS, ...PULL_KEYWORDS, ...LEG_KEYWORDS]) || tagSet.has('push') || tagSet.has('pull') || tagSet.has('legs') || tagSet.has('gym') || tagSet.has('calisthenics')) {
     return 'strength'
   }
@@ -840,6 +868,11 @@ export function normalizeSession(session = {}, { source = 'manual', now = new Da
     intensity,
     distanceKm,
     blocks,
+    blockMix: summarizeBlockMix(blocks),
+    confidence: session.confidence || null,
+    chains: Array.isArray(session.chains) ? session.chains : [],
+    missingChains: Array.isArray(session.missingChains) ? session.missingChains : [],
+    riskSignals: Array.isArray(session.riskSignals) ? session.riskSignals : [],
   }
 }
 

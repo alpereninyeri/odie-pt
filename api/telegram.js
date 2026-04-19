@@ -451,6 +451,21 @@ function fmtEvidence(evidence = []) {
   return evidence.slice(0, 6).map(item => `- ${item}`).join('\n')
 }
 
+function fmtBlockMix(blockMix = []) {
+  if (!blockMix?.length) return '- blok agirligi yok'
+  return blockMix.map(item => `- ${item.kind}: ${item.percent}%`).join('\n')
+}
+
+function fmtChains(chains = []) {
+  if (!chains?.length) return '- zincir sinyali yok'
+  return chains.map(chain => `- ${chain.name}: ${chain.status}${chain.reason ? ` · ${chain.reason}` : ''}`).join('\n')
+}
+
+function fmtList(items = [], empty = '- yok') {
+  if (!items?.length) return empty
+  return items.map(item => `- ${item}`).join('\n')
+}
+
 function buildCoachPrompt(parsed, context) {
   return `Yeni seans:
 - Tip: ${parsed.type}
@@ -620,7 +635,12 @@ function buildCoachPromptV2(parsed, context) {
     .map(item => `- ${item}`)
     .join('\n') || '- acik gap gorunmuyor'
   const blockSummary = fmtBlocks(parsed.blocks || [])
+  const blockMixSummary = fmtBlockMix(parsed.block_mix || [])
   const evidenceSummary = fmtEvidence(parsed.evidence || [])
+  const chainSummary = fmtChains(parsed.chains || [])
+  const missingChainSummary = fmtList(parsed.missing_chains || [], '- eksik zincir yok')
+  const riskSummary = fmtList(parsed.risk_signals || [], '- akut risk sinyali yok')
+  const confidence = parsed.confidence || {}
 
   return `Yeni seans:
 - Tip: ${parsed.type}
@@ -636,8 +656,20 @@ function buildCoachPromptV2(parsed, context) {
 Bloklar:
 ${blockSummary}
 
+Blok agirligi:
+${blockMixSummary}
+
 Kanit:
 ${evidenceSummary}
+
+Yuklenen zincirler:
+${chainSummary}
+
+Eksik zincirler:
+${missingChainSummary}
+
+Risk sinyalleri:
+${riskSummary}
 
 Egzersizler:
 ${fmtExercises(parsed.exercises)}
@@ -653,6 +685,7 @@ Baglam:
 - Survival XP: x${recovery.xpMultiplier ?? 1}
 - Son 7 gun: uyku ${recovery.avgSleep ?? 0}s · su ${recovery.avgWaterL ?? 0}L · adim ${recovery.avgSteps ?? 0}
 - Disiplin mix: ${disciplineMix}
+- Parse confidence: ${confidence.level || 'unknown'} ${confidence.score != null ? `(${confidence.score}/100)` : ''}
 
 Trend sinyalleri:
 ${trendSignals}
@@ -682,18 +715,21 @@ Kurallar:
 - Her yorum satirini yukaridaki kanit veya bloklardan en az birine bagla.
 - Bugunku seans ile global performansi karistirma; global bilgi kullanirsan bunu acikca genel trend gibi yaz.
 - Kanitta gecmeyen hareketi, PR'i, beceriyi veya kasi bugun yapilmis gibi anlatma.
+- Ana ekseni block agirligina gore sec.
+- Eksik halka ve sonraki odagi varsa missing zincir veya focus gap uzerinden kur.
+- Parkour ve custom hareket seanslarinda gym dili yerine teknik, landing, reactive legs ve trunk tension dili kullan.
 
 Asagidaki JSON disinda hicbir sey yazma:
 {
-  "telegram_msg": "2-3 cumle, bir sayi veya teknik gozlem icersin.",
+  "telegram_msg": "2-4 cumle. Sirayla ana eksen, kanit, eksik halka veya sonraki odak olsun.",
   "coach_note": {
     "sections": [
-      { "title": "SEANS ANALIZI", "mood": "fire|calm|warn|danger", "lines": ["", ""] },
-      { "title": "PERFORMANS METRIKLERI", "mood": "fire|calm|warn", "lines": [""] },
-      { "title": "KOC BAKISI", "mood": "fire|calm|warn", "lines": [""] },
-      { "title": "UYARILAR", "mood": "warn|danger|calm", "lines": [""] },
-      { "title": "SKILL VE HEDEF", "mood": "fire|calm", "lines": [""] },
-      { "title": "SONRAKI ADIM", "mood": "calm", "lines": [""] },
+      { "title": "ANA EKSEN", "mood": "fire|calm|warn|danger", "lines": [""] },
+      { "title": "KANIT", "mood": "calm|warn", "lines": ["", ""] },
+      { "title": "YUKLENEN ZINCIRLER", "mood": "fire|calm|warn", "lines": [""] },
+      { "title": "EKSIK HALKA", "mood": "warn|danger|calm", "lines": [""] },
+      { "title": "RISK VE RECOVERY", "mood": "warn|danger|calm", "lines": [""] },
+      { "title": "SONRAKI ODAK", "mood": "calm|fire", "lines": [""] },
       {
         "title": "STATE_SYNC",
         "hidden": true,
@@ -734,8 +770,8 @@ STATE_SYNC icindeki alanlar UI kartlarini guncellemek icin kullanilir.
 Guncel peak neyse onu yaz; eski bench, eski core, eski PR gibi stale bilgi verme.
 Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.
 Asla kanitta gecmeyen lift, PR veya beceri uydurma.
-Bu seans dogrudan bench, muscle-up, hang veya benzeri bir olcum icermiyorsa PERFORMANS METRIKLERI bolumunde bunlari yazma.
-SEANS ANALIZI ve PERFORMANS METRIKLERI satirlarini once bu seansin bloklari ve kanit satirlarina bagla, sonra uzun donem trendi ekle.`
+Bu seans dogrudan bench, muscle-up, hang veya benzeri bir olcum icermiyorsa performansi genel trend olarak ayir.
+ANA EKSEN ve KANIT satirlarini bu seansin bloklari, block agirligi ve kanit satirlarina bagla.`
 }
 
 function buildStateSyncPrompt(parsed, context, coachNote) {
@@ -755,7 +791,12 @@ Seans:
 - Highlight: ${parsed.highlight || '-'}
 - Notlar: ${parsed.notes || '-'}
 - Bloklar: ${(parsed.blocks || []).map(block => `${block.kind}:${block.label}`).join(' | ') || '-'}
+- Blok agirligi: ${(parsed.block_mix || []).map(item => `${item.kind}:${item.percent}%`).join(' | ') || '-'}
 - Kanit: ${(parsed.evidence || []).join(' | ') || '-'}
+- Zincirler: ${(parsed.chains || []).map(item => `${item.name}:${item.status}`).join(' | ') || '-'}
+- Eksik zincirler: ${(parsed.missing_chains || []).join(' | ') || '-'}
+- Risk sinyalleri: ${(parsed.risk_signals || []).join(' | ') || '-'}
+- Parse confidence: ${parsed.confidence?.level || '-'} ${parsed.confidence?.score != null ? `(${parsed.confidence.score}/100)` : ''}
 
 Baglam:
 - Class: ${context.className}
@@ -773,6 +814,7 @@ Kurallar:
 - Bugun seans kanitinda gecmeyen hareketi, beceriyi veya performans metricini sync'e yazma.
 - Global trendi ancak baglamda acik bir sureklilik varsa kullan; bugunku seans gibi yazma.
 - Body metrics yalnizca kullanici metninde acik kilo/boy guncellemesi varsa dolsun.
+- Parkour ve custom teknik seanslarda landing, reactive legs, balance, trunk tension gibi semantic ifadeleri tercih et.
 
 Sadece JSON don.`
 }
@@ -1113,8 +1155,13 @@ export function parseStructuredWorkoutText(text = '') {
     has_pr: /\bpr\b|personal record|rekor/i.test(text),
     notes: notes.join(' | '),
     blocks: atomic.blocks || [],
+    block_mix: atomic.blockMix || [],
     evidence: atomic.evidence || [],
     facts: atomic.facts || [],
+    confidence: atomic.confidence || null,
+    chains: atomic.chains || [],
+    missing_chains: atomic.missingChains || [],
+    risk_signals: atomic.riskSignals || [],
   }
 }
 
@@ -1139,8 +1186,13 @@ function mergeParsedWorkout(heuristic, parsed) {
   if (!parsed?.highlight && heuristic?.highlight) next.highlight = heuristic.highlight
   next.tags = [...new Set([...(parsed?.tags || []), ...(heuristic?.tags || [])])]
   next.blocks = [...(heuristic?.blocks || []), ...(parsed?.blocks || [])]
+  next.block_mix = (heuristic?.block_mix || []).length ? heuristic.block_mix : (parsed?.block_mix || [])
   next.evidence = [...new Set([...(heuristic?.evidence || []), ...(parsed?.evidence || [])])]
   next.facts = [...(heuristic?.facts || []), ...(parsed?.facts || [])]
+  next.confidence = heuristic?.confidence || parsed?.confidence || null
+  next.chains = (heuristic?.chains || []).length ? heuristic.chains : (parsed?.chains || [])
+  next.missing_chains = (heuristic?.missing_chains || []).length ? heuristic.missing_chains : (parsed?.missing_chains || [])
+  next.risk_signals = (heuristic?.risk_signals || []).length ? heuristic.risk_signals : (parsed?.risk_signals || [])
   next.has_pr = Boolean(parsed?.has_pr || heuristic?.has_pr)
   next.notes = [parsed?.notes, heuristic?.notes].filter(Boolean).join(' | ')
 

@@ -23,8 +23,15 @@ test('golden sample: outdoor walk + parkour drill becomes block-first parkour se
   assert.ok(parsed.tags.includes('terrain'))
   assert.ok(parsed.tags.includes('explosive'))
   assert.deepEqual(new Set(parsed.blocks.map(block => block.kind)), new Set(['locomotion', 'skill', 'explosive']))
+  assert.equal(parsed.block_mix[0]?.kind, 'skill')
+  assert.ok(parsed.block_mix.some(item => item.kind === 'locomotion'))
+  assert.ok(parsed.confidence?.score >= 70)
+  assert.equal(parsed.confidence?.level, 'high')
   assert.ok(parsed.evidence.some(line => /6\.7 km/i.test(line)))
   assert.ok(parsed.evidence.some(line => /parkour vault/i.test(line)))
+  assert.ok(parsed.chains.some(chain => /vault chain/i.test(chain.name)))
+  assert.ok(parsed.chains.some(chain => /reactive legs/i.test(chain.name)))
+  assert.ok(parsed.missing_chains.includes('direct trunk chain'))
   assert.equal(session.primaryCategory, 'movement')
   assert.equal(delta.str, 0)
   assert.ok(delta.agi >= 2)
@@ -86,6 +93,22 @@ bridge hold
   assert.ok(kinds.has('mobility'))
 })
 
+test('golden sample: parkour ontology expands tic tac wall run and cat leap semantics', () => {
+  const parsed = parseStructuredWorkoutText(`
+Parkour flow
+40 dk tic tac ve wall run line
+(cat leap, underbar ve stick landing)
+`)
+
+  assert.equal(parsed.type, 'Parkour')
+  assert.ok(parsed.tags.includes('parkour'))
+  assert.ok(parsed.tags.includes('explosive'))
+  assert.ok(parsed.tags.includes('balance'))
+  assert.ok(parsed.chains.some(chain => /vault chain/i.test(chain.name)))
+  assert.ok(parsed.chains.some(chain => /landing chain/i.test(chain.name)))
+  assert.ok(parsed.risk_signals.some(signal => /landing/i.test(signal)))
+})
+
 test('golden sample: fallback ODIE output cites evidence instead of generic strongest-stat talk', () => {
   const parsed = parseStructuredWorkoutText(`
 19 nisan 2026
@@ -111,9 +134,11 @@ test('golden sample: fallback ODIE output cites evidence instead of generic stro
     },
   })
 
-  assert.match(fallback.telegramMsg, /ana bloklar/i)
+  assert.match(fallback.telegramMsg, /Ana eksen/i)
   assert.match(fallback.telegramMsg, /ana kanit/i)
   assert.doesNotMatch(fallback.telegramMsg, /En guclu kolon/i)
-  assert.match(fallback.coachNote.sections[0].lines[1], /Okunan ana bloklar/i)
-  assert.match(fallback.coachNote.sections[0].lines[2], /Kanit:/i)
+  assert.equal(fallback.coachNote.sections[0].title, 'ANA EKSEN')
+  assert.equal(fallback.coachNote.sections[1].title, 'KANIT')
+  assert.equal(fallback.coachNote.sections[2].title, 'YUKLENEN ZINCIRLER')
+  assert.match(fallback.coachNote.sections[1].lines[1], /Parse confidence/i)
 })

@@ -96,6 +96,96 @@ function factToBlock(fact) {
   }
 }
 
+function factWeightScore(fact = {}) {
+  const signalScore = (fact.signals || []).reduce((sum, signal) => sum + Number(signal.score || 0), 0)
+  const durationScore = Math.min(5, (Number(fact.durationMin) || 0) / 20)
+  const distanceScore = Math.min(5, (Number(fact.distanceKm) || 0) * 0.8)
+  const drillBonus = fact.kind === 'drill' ? 1.2 : 0
+  return Math.max(1, signalScore + durationScore + distanceScore + drillBonus)
+}
+
+function buildBlockMix(facts = []) {
+  const totals = facts.reduce((acc, fact) => {
+    const kind = fact.blockKind || 'mixed'
+    acc[kind] = (acc[kind] || 0) + factWeightScore(fact)
+    return acc
+  }, {})
+
+  const totalWeight = Object.values(totals).reduce((sum, value) => sum + Number(value || 0), 0)
+  return Object.entries(totals)
+    .sort((left, right) => right[1] - left[1])
+    .map(([kind, weight]) => ({
+      kind,
+      weight: Math.round(weight * 10) / 10,
+      percent: totalWeight ? Math.round((weight / totalWeight) * 100) : 0,
+    }))
+}
+
+function buildChainSignals(facts = [], tags = []) {
+  const text = normalizeOntologyText(facts.map(fact => fact.raw || fact.label || '').join(' '))
+  const tagSet = new Set(tags || [])
+  const chains = []
+  const missingChains = []
+  const riskSignals = []
+
+  if (/(vault|underbar|cat leap|climb up|tic tac|wall run)/.test(text) || tagSet.has('parkour')) {
+    chains.push({ name: 'vault chain', status: 'active', reason: 'vault/parkour drill kaniti var' })
+  }
+  if (/(precision|landing|drop|stick landing)/.test(text) || tagSet.has('terrain')) {
+    chains.push({ name: 'landing chain', status: 'active', reason: 'precision/terrain iniş sinyali var' })
+    riskSignals.push('landing load birikti')
+  }
+  if (/(box jump|precision jump|stride|tic tac|wall run)/.test(text) || tagSet.has('explosive')) {
+    chains.push({ name: 'reactive legs', status: 'active', reason: 'explosive lower-chain sinyali var' })
+  }
+  if (/(flow|balance|precision|trail|terrain)/.test(text) || tagSet.has('balance')) {
+    chains.push({ name: 'spatial control', status: 'active', reason: 'denge ve rota okuma sinyali var' })
+  }
+  if (/(core|hollow|plank|underbar|quadrupedal|crawl)/.test(text) || tagSet.has('core')) {
+    chains.push({ name: 'trunk tension', status: 'active', reason: 'direkt trunk sinyali var' })
+  } else if (tagSet.has('parkour') || tagSet.has('explosive')) {
+    missingChains.push('direct trunk chain')
+  }
+
+  if (/(downhill|yokus asagi)/.test(text)) riskSignals.push('eccentric downhill load var')
+  if (/(uphill|yokus yukari|incline)/.test(text)) riskSignals.push('calf ve posterior chain yuklenmesi var')
+  if ((tagSet.has('terrain') || tagSet.has('parkour')) && tagSet.has('walking')) riskSignals.push('ankle stiffness takibi gerekli olabilir')
+
+  return {
+    chains: [...new Map(chains.map(chain => [chain.name, chain])).values()],
+    missingChains: [...new Set(missingChains)],
+    riskSignals: [...new Set(riskSignals)],
+  }
+}
+
+function buildConfidence(facts = [], { explicitDurationMin = 0 } = {}) {
+  const evidenceCount = facts.length
+  const signalCount = facts.reduce((sum, fact) => sum + ((fact.signals || []).length || 0), 0)
+  const hasDistance = facts.some(fact => Number(fact.distanceKm) > 0)
+  const hasDuration = explicitDurationMin > 0 || facts.some(fact => Number(fact.durationMin) > 0)
+  const drillFacts = facts.filter(fact => fact.kind === 'drill').length
+  const confidenceScore = Math.min(100, Math.round(
+    (signalCount * 8)
+    + (evidenceCount * 6)
+    + (hasDistance ? 14 : 0)
+    + (hasDuration ? 14 : 0)
+    + (drillFacts * 6)
+  ))
+
+  const level = confidenceScore >= 70 ? 'high' : confidenceScore >= 45 ? 'medium' : 'low'
+  const reasons = []
+  if (hasDistance) reasons.push('mesafe sinyali net')
+  if (hasDuration) reasons.push('sure sinyali net')
+  if (drillFacts) reasons.push(`drill kaniti ${drillFacts} adet`)
+  if (!signalCount) reasons.push('serbest metin yorumu agirlikli')
+
+  return {
+    score: confidenceScore,
+    level,
+    reasons,
+  }
+}
+
 export function extractAtomicWorkoutFacts(text = '') {
   const rawLines = String(text || '')
     .split(/\r?\n/)
@@ -147,11 +237,15 @@ export function extractAtomicWorkoutFacts(text = '') {
     .slice()
     .sort((left, right) => Number(right.durationMin || 0) - Number(left.durationMin || 0) || Number(right.distanceKm || 0) - Number(left.distanceKm || 0))
     .map(fact => fact.label)[0] || ''
+  const blockMix = buildBlockMix(facts)
+  const chainSignals = buildChainSignals(facts, tags)
+  const confidence = buildConfidence(facts, { explicitDurationMin })
 
   return {
     facts,
     evidence,
     blocks,
+    blockMix,
     exercises,
     type,
     tags,
@@ -159,5 +253,9 @@ export function extractAtomicWorkoutFacts(text = '') {
     distanceKm,
     highlight,
     totalSets: facts.filter(fact => fact.kind === 'drill').length,
+    confidence,
+    chains: chainSignals.chains,
+    missingChains: chainSignals.missingChains,
+    riskSignals: chainSignals.riskSignals,
   }
 }

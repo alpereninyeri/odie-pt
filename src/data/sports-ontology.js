@@ -11,6 +11,16 @@ export const ONTOLOGY_CONCEPTS = [
   { id: 'vault', label: 'Vault', patterns: ['kong vault', 'speed vault', 'lazy vault', 'dash vault', 'vault'], tags: ['parkour', 'balance', 'explosive'], blockKind: 'skill', typeHint: 'Parkour', score: 5 },
   { id: 'precision', label: 'Precision Jump', patterns: ['precision jump', 'precision'], tags: ['parkour', 'balance', 'explosive', 'legs'], blockKind: 'explosive', typeHint: 'Parkour', score: 5 },
   { id: 'box_jump', label: 'Box Jump', patterns: ['box jump', 'broad jump', 'jump drill'], tags: ['explosive', 'legs'], blockKind: 'explosive', typeHint: 'Parkour', score: 4 },
+  { id: 'landing', label: 'Landing Control', patterns: ['landing', 'stick landing', 'precision landing', 'drop landing'], tags: ['parkour', 'balance', 'legs'], blockKind: 'skill', typeHint: 'Parkour', score: 5 },
+  { id: 'cat_leap', label: 'Cat Leap', patterns: ['cat leap', 'catleap', 'arm jump'], tags: ['parkour', 'balance', 'grip'], blockKind: 'skill', typeHint: 'Parkour', score: 5 },
+  { id: 'tic_tac', label: 'Tic Tac', patterns: ['tic tac', 'tictac'], tags: ['parkour', 'balance', 'explosive', 'legs'], blockKind: 'explosive', typeHint: 'Parkour', score: 5 },
+  { id: 'wall_run', label: 'Wall Run', patterns: ['wall run', 'wallrun'], tags: ['parkour', 'legs', 'explosive'], blockKind: 'explosive', typeHint: 'Parkour', score: 5 },
+  { id: 'climb_up_pk', label: 'Climb Up', patterns: ['climb up', 'wall climb', 'mantle'], tags: ['parkour', 'pull', 'grip'], blockKind: 'skill', typeHint: 'Parkour', score: 5 },
+  { id: 'underbar', label: 'Underbar', patterns: ['underbar', 'gate vault'], tags: ['parkour', 'balance', 'core'], blockKind: 'skill', typeHint: 'Parkour', score: 4 },
+  { id: 'stride', label: 'Stride', patterns: ['stride', 'stride jump'], tags: ['parkour', 'explosive', 'legs'], blockKind: 'explosive', typeHint: 'Parkour', score: 4 },
+  { id: 'drop', label: 'Drop', patterns: ['drop', 'drop jump', 'depth drop'], tags: ['parkour', 'legs', 'balance'], blockKind: 'skill', typeHint: 'Parkour', score: 4 },
+  { id: 'quadrupedal', label: 'Quadrupedal', patterns: ['quadrupedal', 'qm', 'crawl flow', 'kong crawl', 'animal flow'], tags: ['parkour', 'core', 'balance'], blockKind: 'skill', typeHint: 'Parkour', score: 4 },
+  { id: 'flow', label: 'Flow Run', patterns: ['flow', 'combo run', 'line run'], tags: ['parkour', 'balance', 'endurance'], blockKind: 'skill', typeHint: 'Parkour', score: 4 },
   { id: 'acro', label: 'Acrobatics', patterns: ['akrobasi', 'acrobatics', 'flip', 'barani', 'round off', 'roundoff'], tags: ['acrobatics', 'balance', 'explosive'], blockKind: 'skill', typeHint: 'Akrobasi', score: 5 },
   { id: 'core', label: 'Core', patterns: ['core', 'plank', 'hollow', 'leg raise', 'hanging leg raise', 'dragon flag', 'caki', 'toes to bar'], tags: ['core'], blockKind: 'core', typeHint: 'Custom', score: 4 },
   { id: 'mobility', label: 'Mobility', patterns: ['mobility', 'esneme', 'stretch', 'bridge', 'split', 'hip flexor'], tags: ['mobility', 'recovery'], blockKind: 'mobility', typeHint: 'Stretching', score: 4 },
@@ -97,4 +107,3 @@ export function deriveBlockKindFromSignals(signals = [], fallback = 'mixed') {
 export function primaryCategoryFromBlockKind(kind = 'mixed') {
   return BLOCK_CATEGORY_MAP[kind] || 'mixed'
 }
-
