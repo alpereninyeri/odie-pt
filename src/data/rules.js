@@ -255,7 +255,12 @@ export function normalizeText(value = '') {
 }
 
 function _hasKeyword(text, keywords) {
-  return keywords.some(keyword => text.includes(normalizeText(keyword)))
+  return keywords.some(keyword => {
+    const normalized = normalizeText(keyword)
+    if (!normalized) return false
+    if (normalized.includes(' ')) return text.includes(normalized)
+    return new RegExp(`(^|[^a-z0-9])${normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`).test(text)
+  })
 }
 
 function _countSetsFromRaw(exercises = []) {
@@ -362,6 +367,59 @@ export function normalizeExercises(exercises = []) {
     .filter(Boolean)
 }
 
+export function normalizeBlocks(blocks = []) {
+  if (!Array.isArray(blocks)) return []
+  return blocks
+    .map(block => {
+      if (!block) return null
+      const kind = String(block.kind || 'mixed').trim()
+      if (!SESSION_BLOCK_KINDS.includes(kind)) return null
+      return {
+        kind,
+        label: String(block.label || kind).trim() || kind,
+        tags: _uniq((block.tags || []).map(normalizeTag)).filter(tag => CANONICAL_TAGS.includes(tag)),
+        sets: Number(block.sets) || 0,
+        reps: block.reps != null ? Number(block.reps) : null,
+        volumeKg: Number(block.volumeKg ?? block.volume_kg) || 0,
+        durationMin: Number(block.durationMin ?? block.duration_min) || 0,
+        distanceKm: Number(block.distanceKm ?? block.distance_km) || 0,
+        source: String(block.source || 'session').trim() || 'session',
+      }
+    })
+    .filter(Boolean)
+}
+
+function mergeBlocks(...collections) {
+  const merged = []
+
+  const upsert = (incoming) => {
+    if (!incoming) return
+    const normalized = normalizeBlocks([incoming])[0]
+    if (!normalized) return
+
+    const key = `${normalized.kind}:${normalizeText(normalized.label)}`
+    const existing = merged.find(block => `${block.kind}:${normalizeText(block.label)}` === key)
+    if (!existing) {
+      merged.push({ ...normalized })
+      return
+    }
+
+    existing.tags = _uniq([...(existing.tags || []), ...(normalized.tags || [])])
+    existing.sets = Math.max(Number(existing.sets) || 0, Number(normalized.sets) || 0)
+    existing.reps = Math.max(Number(existing.reps) || 0, Number(normalized.reps) || 0) || null
+    existing.volumeKg = Math.max(Number(existing.volumeKg) || 0, Number(normalized.volumeKg) || 0)
+    existing.durationMin = Math.max(Number(existing.durationMin) || 0, Number(normalized.durationMin) || 0)
+    existing.distanceKm = Math.max(Number(existing.distanceKm) || 0, Number(normalized.distanceKm) || 0)
+    existing.source = existing.source === 'session' ? existing.source : normalized.source
+  }
+
+  for (const collection of collections) {
+    for (const block of (collection || [])) upsert(block)
+  }
+
+  return merged.map((block, index) => ({ ...block, id: block.id || `${block.kind}-${index}` }))
+}
+
 function inferBlockKind({ name = '', tags = [], type = 'Custom', sets = [] } = {}) {
   const normalizedName = normalizeText(name)
   const tagSet = new Set(tags || [])
@@ -387,18 +445,32 @@ function inferBlockKind({ name = '', tags = [], type = 'Custom', sets = [] } = {
 function buildExerciseBlock(exercise = {}, session = {}) {
   const sets = normalizeExercises([exercise])[0]?.sets || []
   const type = normalizeType(session.type)
-  const sessionTags = session.tags || inferTags(session)
-  const blockTags = _uniq([
-    ...sessionTags,
-    ...inferTags({
-      ...session,
-      type,
-      exercises: [{ name: exercise.name, sets }],
-      tags: sessionTags,
-      highlight: '',
-      notes: '',
-    }),
-  ])
+  const explicitMatch = normalizeBlocks(session.blocks || [])
+    .find(block => normalizeText(block.label) === normalizeText(exercise.name))
+
+  if (explicitMatch) {
+    return {
+      kind: explicitMatch.kind,
+      label: String(exercise.name || explicitMatch.label).trim() || explicitMatch.label,
+      tags: explicitMatch.tags || [],
+      sets: Math.max(explicitMatch.sets || 0, sets.length),
+      reps: sets.reduce((sum, set) => sum + (_number(set.reps)), 0) || explicitMatch.reps || null,
+      volumeKg: Math.max(Math.round(_sumSetLoad(sets)), explicitMatch.volumeKg || 0),
+      durationMin: Math.max(Math.round(_sumSetSeconds(sets) / 60) || 0, explicitMatch.durationMin || 0),
+      distanceKm: explicitMatch.distanceKm || 0,
+      source: explicitMatch.source || 'exercise',
+    }
+  }
+
+  const blockTags = inferTags({
+    ...session,
+    type,
+    exercises: [{ name: exercise.name, sets }],
+    tags: [],
+    highlight: '',
+    notes: '',
+    blocks: [],
+  })
   const kind = inferBlockKind({
     name: exercise.name,
     tags: blockTags,
@@ -437,11 +509,11 @@ function buildFallbackBlocks(normalized = {}) {
     : null
   if (locomotionBlock) blocks.push(locomotionBlock)
 
-  if (tagSet.has('push') || tagSet.has('pull') || tagSet.has('legs') || normalized.primaryCategory === 'strength') {
+  if (tagSet.has('push') || tagSet.has('pull') || tagSet.has('gym') || tagSet.has('calisthenics') || normalized.primaryCategory === 'strength') {
     blocks.push({
       kind: 'strength',
       label: normalized.type,
-      tags: normalized.tags.filter(tag => ['push', 'pull', 'legs', 'gym', 'calisthenics'].includes(tag)),
+      tags: normalized.tags.filter(tag => ['push', 'pull', 'gym', 'calisthenics'].includes(tag)),
       sets: normalized.sets || 0,
       reps: null,
       volumeKg: normalized.volumeKg || 0,
@@ -509,30 +581,18 @@ export function deriveSessionBlocks(session = {}) {
     highlight: session.highlight || '',
     notes: session.notes || '',
   }
+  const explicitBlocks = normalizeBlocks(session.blocks || [])
 
   const exerciseBlocks = normalized.exercises.map(exercise => buildExerciseBlock(exercise, normalized))
     .filter(block => block.label && SESSION_BLOCK_KINDS.includes(block.kind))
 
   const fallbackBlocks = buildFallbackBlocks(normalized)
-  const combined = [...exerciseBlocks]
+  const occupiedKinds = new Set([...explicitBlocks, ...exerciseBlocks].map(block => block.kind))
+  const filteredFallbackBlocks = explicitBlocks.length
+    ? fallbackBlocks.filter(block => !occupiedKinds.has(block.kind))
+    : fallbackBlocks
 
-  for (const block of fallbackBlocks) {
-    const exists = combined.some(item => item.kind === block.kind && item.label === block.label)
-    if (!exists) combined.push(block)
-  }
-
-  return combined.map((block, index) => ({
-    id: `${block.kind}-${index}`,
-    kind: block.kind,
-    label: block.label,
-    tags: _uniq((block.tags || []).map(normalizeTag)).filter(tag => CANONICAL_TAGS.includes(tag)),
-    sets: Number(block.sets) || 0,
-    reps: block.reps != null ? Number(block.reps) : null,
-    volumeKg: Number(block.volumeKg) || 0,
-    durationMin: Number(block.durationMin) || 0,
-    distanceKm: Number(block.distanceKm) || 0,
-    source: block.source || 'session',
-  }))
+  return mergeBlocks(explicitBlocks, exerciseBlocks, filteredFallbackBlocks)
 }
 
 export function countAllSets(sessionOrExercises) {
@@ -547,6 +607,9 @@ function _sessionTextParts(input) {
     input.type,
     input.highlight,
     input.notes,
+    ...(input.blocks || []).map(block => `${block.kind} ${block.label} ${(block.tags || []).join(' ')}`),
+    ...(input.evidence || []),
+    ...(input.facts || []).map(fact => `${fact.label || ''} ${fact.raw || ''}`.trim()),
     ...(input.exercises || []).map(ex => ex.name),
     ...(input.tags || []),
   ]
@@ -602,9 +665,13 @@ function _addTypeTags(tags, type) {
 
 export function inferTags(input = {}) {
   const exercises = normalizeExercises(input.exercises || [])
-  const tags = [...(input.tags || []).map(normalizeTag)]
+  const blocks = normalizeBlocks(input.blocks || [])
+  const tags = [
+    ...(input.tags || []).map(normalizeTag),
+    ...blocks.flatMap(block => block.tags || []),
+  ]
   const type = normalizeType(input.type)
-  const text = normalizeText(_sessionTextParts({ ...input, exercises }).join(' '))
+  const text = normalizeText(_sessionTextParts({ ...input, exercises, blocks }).join(' '))
 
   _addTypeTags(tags, type)
 
@@ -640,6 +707,56 @@ export function inferTags(input = {}) {
 export function inferPrimaryCategory(input = {}) {
   const type = normalizeType(input.type)
   const tags = new Set(input.tags || inferTags(input))
+  const blocks = normalizeBlocks(input.blocks || [])
+
+  if (blocks.length) {
+    const scores = { strength: 0, movement: 0, endurance: 0, recovery: 0 }
+
+    for (const block of blocks) {
+      const weight = 1
+        + ((Number(block.sets) || 0) / 6)
+        + ((Number(block.durationMin) || 0) / 35)
+        + ((Number(block.distanceKm) || 0) / 2.5)
+        + ((Number(block.volumeKg) || 0) / 2500)
+
+      switch (block.kind) {
+        case 'strength':
+          scores.strength += weight * 1.3
+          break
+        case 'core':
+          scores.strength += weight * 0.7
+          scores.movement += weight * 0.2
+          break
+        case 'locomotion':
+          scores.endurance += weight * 1.4
+          break
+        case 'skill':
+          scores.movement += weight * 1.35
+          break
+        case 'explosive':
+          scores.movement += weight * 1.2
+          scores.endurance += weight * 0.15
+          break
+        case 'mobility':
+        case 'recovery':
+          scores.recovery += weight * 1.35
+          break
+        default:
+          scores.strength += weight * 0.25
+          scores.movement += weight * 0.25
+          scores.endurance += weight * 0.25
+          break
+      }
+    }
+
+    const ranked = Object.entries(scores).sort((left, right) => right[1] - left[1])
+    const [winnerKey, winnerScore] = ranked[0] || []
+    const runnerUpScore = ranked[1]?.[1] || 0
+    if (winnerScore > 0) {
+      if (runnerUpScore > 0 && Math.abs(winnerScore - runnerUpScore) < 0.85) return 'mixed'
+      return winnerKey
+    }
+  }
 
   if (type === 'Stretching') return 'recovery'
   if (type === 'Yürüyüş' || type === 'Yuruyus' || type === 'Bisiklet' || type === 'Kayak' || type === 'Koşu') return 'endurance'
@@ -702,17 +819,19 @@ export function normalizeSession(session = {}, { source = 'manual', now = new Da
     notes: String(session.notes || '').trim(),
     hasPr: Boolean(session.hasPr ?? session.has_pr),
     exercises,
+    evidence: Array.isArray(session.evidence) ? session.evidence.map(item => String(item || '').trim()).filter(Boolean) : [],
+    facts: Array.isArray(session.facts) ? session.facts : [],
     sets: Number(session.sets) || _countSetsFromRaw(exercises),
+    distanceKm: Number(session.distanceKm ?? session.distance_km) || 0,
     elevationM: Number(session.elevationM ?? session.elevation_m) || 0,
   }
 
-  const tags = inferTags({ ...normalized, tags: session.tags || [] })
-  const primaryCategory = inferPrimaryCategory({ ...normalized, tags })
+  const estimatedDistanceKm = estimateDistanceKm(normalized)
+  const blocks = deriveSessionBlocks({ ...normalized, distanceKm: estimatedDistanceKm, tags: session.tags || [], blocks: session.blocks || [] })
+  const tags = inferTags({ ...normalized, tags: session.tags || [], blocks })
+  const primaryCategory = inferPrimaryCategory({ ...normalized, tags, blocks })
   const intensity = inferIntensity({ ...normalized, tags, primaryCategory })
   const distanceKm = estimateDistanceKm({ ...normalized, tags })
-  const blocks = Array.isArray(session.blocks) && session.blocks.length
-    ? deriveSessionBlocks({ ...normalized, tags, distanceKm, blocks: session.blocks })
-    : deriveSessionBlocks({ ...normalized, tags, distanceKm })
 
   return {
     ...normalized,
@@ -755,39 +874,80 @@ export function hasLegFocus(session = {}) {
 export function computeSessionStatDelta(session = {}) {
   const normalized = normalizeSession(session)
   const tags = new Set(normalized.tags)
+  const blocks = normalizeBlocks(normalized.blocks || [])
   const delta = { str: 0, agi: 0, end: 0, dex: 0, con: 0, sta: 0 }
 
-  switch (normalized.primaryCategory) {
-    case 'strength':
-      delta.str += 2
-      if (tags.has('legs')) delta.sta += 1
-      break
-    case 'movement':
-      delta.agi += 2
-      delta.dex += 2
-      delta.sta += 1
-      if (normalized.durationMin >= 90) delta.end += 1
-      break
-    case 'endurance':
-      delta.end += 2
-      delta.sta += 2
-      if (tags.has('balance') || tags.has('terrain')) delta.dex += 1
-      break
-    case 'mixed':
-      delta.str += 1
-      delta.agi += 1
-      delta.dex += 1
-      delta.sta += 1
-      break
+  if (blocks.length) {
+    for (const block of blocks) {
+      const blockTags = new Set(block.tags || [])
+      switch (block.kind) {
+        case 'strength':
+          delta.str += 1.8
+          if (blockTags.has('legs')) delta.sta += 0.8
+          break
+        case 'locomotion':
+          delta.end += 2
+          delta.sta += 2
+          if (blockTags.has('terrain') || blockTags.has('balance')) delta.dex += 1
+          break
+        case 'skill':
+          delta.agi += 2
+          delta.dex += 2
+          delta.sta += 1
+          break
+        case 'explosive':
+          delta.agi += 1
+          delta.dex += 1
+          delta.sta += 1
+          break
+        case 'core':
+          delta.con += 2
+          break
+      }
+    }
+  } else {
+    switch (normalized.primaryCategory) {
+      case 'strength':
+        delta.str += 2
+        if (tags.has('legs')) delta.sta += 1
+        break
+      case 'movement':
+        delta.agi += 2
+        delta.dex += 2
+        delta.sta += 1
+        if (normalized.durationMin >= 90) delta.end += 1
+        break
+      case 'endurance':
+        delta.end += 2
+        delta.sta += 2
+        if (tags.has('balance') || tags.has('terrain')) delta.dex += 1
+        break
+      case 'mixed':
+        delta.str += 1
+        delta.agi += 1
+        delta.dex += 1
+        delta.sta += 1
+        break
+    }
   }
 
-  if (hasDirectCoreStimulus(normalized)) {
+  const hasCoreBlock = blocks.some(block => block.kind === 'core')
+  const hasSkillBlock = blocks.some(block => block.kind === 'skill')
+  const hasExplosiveBlock = blocks.some(block => block.kind === 'explosive')
+
+  if (!hasCoreBlock && hasDirectCoreStimulus(normalized)) {
     delta.con += 2
   }
   if (hasAdvancedCoreStimulus(normalized)) {
     delta.con += 1
   } else if (!hasDirectCoreStimulus(normalized) && (tags.has('carry') || tags.has('terrain'))) {
     delta.con += 1
+  }
+
+  if (normalized.type === 'Parkour' && hasExplosiveBlock && !hasSkillBlock) {
+    delta.agi = Math.max(delta.agi, 2)
+    delta.dex = Math.max(delta.dex, 2)
+    delta.sta = Math.max(delta.sta, 1)
   }
 
   if (tags.has('grip') && (normalized.primaryCategory === 'movement' || normalized.primaryCategory === 'strength')) {

@@ -37,8 +37,11 @@ function workoutText(workout) {
     workout.type,
     workout.highlight,
     workout.notes,
+    ...(workout.evidence || []),
+    ...(workout.facts || []).map(fact => `${fact.label || ''} ${fact.raw || ''}`.trim()),
     ...(workout.tags || []),
     ...(workout.blocks || []).map(block => `${block.kind} ${block.label}`),
+    ...(workout.blocks || []).flatMap(block => block.tags || []),
     ...(workout.exercises || []).map(exercise => exercise.name),
     ...(workout.exercises || []).flatMap(exercise => (exercise.sets || []).map(set => set.note || '')),
   ].join(' '))

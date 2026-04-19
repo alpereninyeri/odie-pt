@@ -1,4 +1,5 @@
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from '../src/data/class-engine.js'
+import { extractAtomicWorkoutFacts } from '../src/data/atomic-fact-parser.js'
 import { buildOdieContext } from '../src/data/odie-context.js'
 import { buildFallbackCoachResponse } from '../src/data/odie-fallback.js'
 import { detectPRs } from '../src/data/pr-detector.js'
@@ -434,6 +435,22 @@ function fmtRecentWorkouts(workouts) {
   )).join('\n')
 }
 
+function fmtBlocks(blocks = []) {
+  if (!blocks?.length) return '- blok sinyali yok'
+  return blocks.map(block => {
+    const parts = [block.kind, block.label]
+    if (block.durationMin) parts.push(`${block.durationMin}dk`)
+    if (block.distanceKm) parts.push(`${block.distanceKm}km`)
+    if (block.tags?.length) parts.push(block.tags.slice(0, 4).join('/'))
+    return `- ${parts.filter(Boolean).join(' · ')}`
+  }).join('\n')
+}
+
+function fmtEvidence(evidence = []) {
+  if (!evidence?.length) return '- seans kaniti yok'
+  return evidence.slice(0, 6).map(item => `- ${item}`).join('\n')
+}
+
 function buildCoachPrompt(parsed, context) {
   return `Yeni seans:
 - Tip: ${parsed.type}
@@ -602,6 +619,8 @@ function buildCoachPromptV2(parsed, context) {
   const focusGaps = (odie.focusGaps || [])
     .map(item => `- ${item}`)
     .join('\n') || '- acik gap gorunmuyor'
+  const blockSummary = fmtBlocks(parsed.blocks || [])
+  const evidenceSummary = fmtEvidence(parsed.evidence || [])
 
   return `Yeni seans:
 - Tip: ${parsed.type}
@@ -613,6 +632,12 @@ function buildCoachPromptV2(parsed, context) {
 - PR: ${parsed.has_pr ? 'evet' : 'hayir'}
 - Highlight: ${parsed.highlight || '-'}
 - Notlar: ${parsed.notes || '-'}
+
+Bloklar:
+${blockSummary}
+
+Kanit:
+${evidenceSummary}
 
 Egzersizler:
 ${fmtExercises(parsed.exercises)}
@@ -652,6 +677,11 @@ ${skillPressure}
 
 Onceki koc hafizasi:
 ${coachMemory}
+
+Kurallar:
+- Her yorum satirini yukaridaki kanit veya bloklardan en az birine bagla.
+- Bugunku seans ile global performansi karistirma; global bilgi kullanirsan bunu acikca genel trend gibi yaz.
+- Kanitta gecmeyen hareketi, PR'i, beceriyi veya kasi bugun yapilmis gibi anlatma.
 
 Asagidaki JSON disinda hicbir sey yazma:
 {
@@ -702,7 +732,10 @@ Asagidaki JSON disinda hicbir sey yazma:
 
 STATE_SYNC icindeki alanlar UI kartlarini guncellemek icin kullanilir.
 Guncel peak neyse onu yaz; eski bench, eski core, eski PR gibi stale bilgi verme.
-Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.`
+Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.
+Asla kanitta gecmeyen lift, PR veya beceri uydurma.
+Bu seans dogrudan bench, muscle-up, hang veya benzeri bir olcum icermiyorsa PERFORMANS METRIKLERI bolumunde bunlari yazma.
+SEANS ANALIZI ve PERFORMANS METRIKLERI satirlarini once bu seansin bloklari ve kanit satirlarina bagla, sonra uzun donem trendi ekle.`
 }
 
 function buildStateSyncPrompt(parsed, context, coachNote) {
@@ -721,6 +754,8 @@ Seans:
 - Mesafe: ${parsed.distance_km || 0}
 - Highlight: ${parsed.highlight || '-'}
 - Notlar: ${parsed.notes || '-'}
+- Bloklar: ${(parsed.blocks || []).map(block => `${block.kind}:${block.label}`).join(' | ') || '-'}
+- Kanit: ${(parsed.evidence || []).join(' | ') || '-'}
 
 Baglam:
 - Class: ${context.className}
@@ -733,6 +768,11 @@ Baglam:
 
 Coach note:
 ${sections}
+
+Kurallar:
+- Bugun seans kanitinda gecmeyen hareketi, beceriyi veya performans metricini sync'e yazma.
+- Global trendi ancak baglamda acik bir sureklilik varsa kullan; bugunku seans gibi yazma.
+- Body metrics yalnizca kullanici metninde acik kilo/boy guncellemesi varsa dolsun.
 
 Sadece JSON don.`
 }
@@ -937,6 +977,7 @@ function parseInlineExerciseLine(line = '', fallbackType = 'Custom') {
 }
 
 export function parseStructuredWorkoutText(text = '') {
+  const atomic = extractAtomicWorkoutFacts(text)
   const rawLines = String(text || '')
     .split(/\r?\n/)
     .map(line => line.trim())
@@ -1017,6 +1058,13 @@ export function parseStructuredWorkoutText(text = '') {
   }
 
   const cleanedExercises = exercises.filter(exercise => exercise.name && exercise.sets.length)
+  const structuredExerciseKeys = new Set(cleanedExercises.map(exercise => normalizeLooseText(exercise.name)))
+  const atomicExercises = (atomic.exercises || []).filter(exercise => {
+    const key = normalizeLooseText(exercise.name)
+    if (!key || structuredExerciseKeys.has(key)) return false
+    return (exercise.sets || []).some(set => (Number(set.duration_sec) || 0) > 0 || String(set.note || '').trim())
+  })
+  const mergedExercises = [...cleanedExercises, ...atomicExercises]
   const totalSets = cleanedExercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
   const volumeKg = Math.round(cleanedExercises.reduce((sum, exercise) => (
     sum + exercise.sets.reduce((acc, set) => acc + ((Number(set.weight_kg) || 0) * (Number(set.reps) || 0)), 0)
@@ -1049,18 +1097,24 @@ export function parseStructuredWorkoutText(text = '') {
     highlight = cleanedExercises[0].name
   }
 
+  const mergedTags = [...new Set([...(tags || []), ...(atomic.tags || [])])]
+  const mergedType = (!type || type === 'Custom') ? (atomic.type || type || 'Custom') : type
+
   return {
-    type,
-    duration_min: durationMin,
-    distance_km: Math.round(distanceKm * 100) / 100,
+    type: mergedType,
+    duration_min: Math.max(durationMin, atomic.durationMin || 0),
+    distance_km: Math.round(Math.max(distanceKm, atomic.distanceKm || 0) * 100) / 100,
     elevation_m: 0,
-    tags: [...tags],
-    exercises: cleanedExercises,
+    tags: mergedTags,
+    exercises: mergedExercises,
     volume_kg: volumeKg,
-    total_sets: totalSets,
-    highlight,
+    total_sets: totalSets || atomic.totalSets || 0,
+    highlight: highlight || atomic.highlight || mergedExercises[0]?.name || '',
     has_pr: /\bpr\b|personal record|rekor/i.test(text),
     notes: notes.join(' | '),
+    blocks: atomic.blocks || [],
+    evidence: atomic.evidence || [],
+    facts: atomic.facts || [],
   }
 }
 
@@ -1084,6 +1138,9 @@ function mergeParsedWorkout(heuristic, parsed) {
   if (!parsed?.type || parsed.type === 'Custom') next.type = heuristic?.type || parsed?.type || 'Custom'
   if (!parsed?.highlight && heuristic?.highlight) next.highlight = heuristic.highlight
   next.tags = [...new Set([...(parsed?.tags || []), ...(heuristic?.tags || [])])]
+  next.blocks = [...(heuristic?.blocks || []), ...(parsed?.blocks || [])]
+  next.evidence = [...new Set([...(heuristic?.evidence || []), ...(parsed?.evidence || [])])]
+  next.facts = [...(heuristic?.facts || []), ...(parsed?.facts || [])]
   next.has_pr = Boolean(parsed?.has_pr || heuristic?.has_pr)
   next.notes = [parsed?.notes, heuristic?.notes].filter(Boolean).join(' | ')
 
