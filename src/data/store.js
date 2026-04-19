@@ -703,6 +703,8 @@ function _mergeToProfile(state) {
     quests: state.quests,
     achievements: state.achievements,
     workoutLog: state.workoutLog,
+    workouts: state.workouts,
+    dailyLogs: state.dailyLogs,
     coachNote: state.coachNote,
     currentFocus: profile.currentFocus,
     bodyMetrics: state.bodyMetrics,

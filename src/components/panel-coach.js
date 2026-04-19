@@ -30,6 +30,54 @@ function _memoryTone(item) {
   return 'calm'
 }
 
+function _renderCoachConfidence(p) {
+  const latestWorkout = (p.workouts || [])[0] || null
+  const latestWorkoutId = String(latestWorkout?.id || '')
+  const factRows = (p.workoutFacts || []).filter(item => String(item.workoutId || '') === latestWorkoutId)
+  const evidenceCount = Array.isArray(latestWorkout?.evidence) ? latestWorkout.evidence.length : 0
+  const blockCount = Array.isArray(latestWorkout?.blocks) ? latestWorkout.blocks.length : 0
+  const confidenceScore = Number(latestWorkout?.confidence?.score) || 0
+  const confidenceLevel = latestWorkout?.confidence?.level || 'low'
+  const reasons = (latestWorkout?.confidence?.reasons || []).slice(0, 3)
+  const blockMix = (latestWorkout?.blockMix || []).slice(0, 3)
+
+  return `
+    <div class="coach-confidence-surface">
+      <div class="coach-memory-head">
+        <div>
+          <div class="eyebrow">Coach Confidence</div>
+          <h3>Son seansin parse guven seviyesi</h3>
+        </div>
+        <div class="coach-memory-pills">
+          <span class="coach-pill">${confidenceLevel.toUpperCase()}</span>
+          <span class="coach-pill">${confidenceScore}/100</span>
+        </div>
+      </div>
+
+      <div class="coach-memory-grid coach-confidence-grid">
+        <div class="coach-memory-card tone-${confidenceLevel === 'high' ? 'fire' : confidenceLevel === 'medium' ? 'warn' : 'danger'}">
+          <div class="coach-memory-top">
+            <strong>Signal Count</strong>
+            <span>${factRows.length}</span>
+          </div>
+          <p>${evidenceCount} evidence satiri · ${blockCount} block.</p>
+        </div>
+        <div class="coach-memory-card tone-calm">
+          <div class="coach-memory-top">
+            <strong>Primary Mix</strong>
+            <span>${latestWorkout?.type || '-'}</span>
+          </div>
+          <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' · ') : 'Block mix yok.'}</p>
+        </div>
+      </div>
+
+      <div class="coach-confidence-reasons">
+        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${reason}</span>`).join('') : '<span class="coach-memory-empty">Confidence reason yok.</span>'}
+      </div>
+    </div>
+  `
+}
+
 function _renderMemoryLedger(p) {
   const memories = (p.athleteMemory || []).slice(0, 6)
   const feedback = (p.memoryFeedback || []).slice(0, 4)
@@ -68,6 +116,8 @@ function _renderMemoryLedger(p) {
         <div class="coach-feedback-actions">
           <button class="coach-feedback-btn" data-memory-feedback="correct">DOGRU</button>
           <button class="coach-feedback-btn danger" data-memory-feedback="wrong">YANLISTI</button>
+          <button class="coach-feedback-btn" data-memory-feedback="outdated">ESKI KALDI</button>
+          <button class="coach-feedback-btn" data-memory-feedback="prefer">TONU IYI</button>
         </div>
       </div>
 
@@ -95,6 +145,7 @@ export function renderCoach(p) {
           Henuz coach raporu yok. Telegram'a bir antrenman yaz, ODIE analiz eder ve burada canli rapor sunar.
         </div>
       </div>
+      ${_renderCoachConfidence(p)}
       ${_renderMemoryLedger(p)}`
   }
 
@@ -140,6 +191,7 @@ export function renderCoach(p) {
         <div class="coach-xp-badge">${cn.xpNote}</div>
       </div>
     </div>
+    ${_renderCoachConfidence(p)}
     ${_renderMemoryLedger(p)}`
 }
 
@@ -149,7 +201,14 @@ export function initCoach(p) {
       const feedbackType = button.dataset.memoryFeedback || 'correct'
       await store.addMemoryFeedback({
         feedbackType,
-        note: feedbackType === 'wrong' ? 'Coach note flagged by athlete' : 'Coach note confirmed by athlete',
+        note:
+          feedbackType === 'wrong'
+            ? 'Coach note flagged by athlete'
+            : feedbackType === 'outdated'
+              ? 'Coach note stale or lagging behind current build'
+              : feedbackType === 'prefer'
+                ? 'Coach tone and framing preferred by athlete'
+                : 'Coach note confirmed by athlete',
       })
     }
   })

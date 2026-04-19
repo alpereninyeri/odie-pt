@@ -4717,6 +4717,22 @@ body::after {
   gap:16px;
 }
 
+.coach-confidence-surface {
+  margin-top:18px;
+  display:grid;
+  gap:14px;
+}
+
+.coach-confidence-grid {
+  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.coach-confidence-reasons {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
 .coach-memory-head,
 .coach-feedback-strip {
   display:flex;
