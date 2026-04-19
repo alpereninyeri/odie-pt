@@ -1,4 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
+import {
+  normalizeAthleteMemoryRow,
+  normalizeBodyMetricsHistoryRow,
+  normalizeMemoryFeedbackRow,
+  normalizeWorkoutBlockRow,
+  normalizeWorkoutFactRow,
+} from './memory-engine.js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -42,6 +49,8 @@ function _isMissingColumnError(error) {
   const message = String(error?.message || error || '')
   return (
     /column .* does not exist/i.test(message) ||
+    /relation .* does not exist/i.test(message) ||
+    /table .* does not exist/i.test(message) ||
     /could not find .* column .* schema cache/i.test(message) ||
     /schema cache/i.test(message) ||
     /PGRST204/i.test(message)
@@ -233,6 +242,99 @@ export async function fetchDailyLogs(limit = 30) {
   return data || []
 }
 
+export async function fetchAthleteMemory(limit = 24) {
+  if (isMockMode) return []
+  const profileId = await _resolveProfileId()
+  let query = supabase
+    .from('athlete_memory')
+    .select('*')
+    .eq('active', true)
+    .order('last_used_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (profileId) query = query.eq('profile_id', profileId)
+  const { data, error } = await query
+  if (error) {
+    if (_isMissingColumnError(error)) return []
+    console.warn('[supabase] fetchAthleteMemory:', error.message)
+    return []
+  }
+  return (data || []).map(row => normalizeAthleteMemoryRow(row))
+}
+
+export async function fetchMemoryFeedback(limit = 20) {
+  if (isMockMode) return []
+  const profileId = await _resolveProfileId()
+  let query = supabase
+    .from('memory_feedback')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (profileId) query = query.eq('profile_id', profileId)
+  const { data, error } = await query
+  if (error) {
+    if (_isMissingColumnError(error)) return []
+    console.warn('[supabase] fetchMemoryFeedback:', error.message)
+    return []
+  }
+  return (data || []).map(row => normalizeMemoryFeedbackRow(row))
+}
+
+export async function fetchBodyMetricsHistory(limit = 30) {
+  if (isMockMode) return []
+  const profileId = await _resolveProfileId()
+  let query = supabase
+    .from('body_metrics_history')
+    .select('*')
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (profileId) query = query.eq('profile_id', profileId)
+  const { data, error } = await query
+  if (error) {
+    if (_isMissingColumnError(error)) return []
+    console.warn('[supabase] fetchBodyMetricsHistory:', error.message)
+    return []
+  }
+  return (data || []).map(row => normalizeBodyMetricsHistoryRow(row))
+}
+
+export async function fetchWorkoutBlocks(limit = 240) {
+  if (isMockMode) return []
+  const profileId = await _resolveProfileId()
+  let query = supabase
+    .from('workout_blocks')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (profileId) query = query.eq('profile_id', profileId)
+  const { data, error } = await query
+  if (error) {
+    if (_isMissingColumnError(error)) return []
+    console.warn('[supabase] fetchWorkoutBlocks:', error.message)
+    return []
+  }
+  return (data || []).map(row => normalizeWorkoutBlockRow(row))
+}
+
+export async function fetchWorkoutFacts(limit = 240) {
+  if (isMockMode) return []
+  const profileId = await _resolveProfileId()
+  let query = supabase
+    .from('workout_facts')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (profileId) query = query.eq('profile_id', profileId)
+  const { data, error } = await query
+  if (error) {
+    if (_isMissingColumnError(error)) return []
+    console.warn('[supabase] fetchWorkoutFacts:', error.message)
+    return []
+  }
+  return (data || []).map(row => normalizeWorkoutFactRow(row))
+}
+
 export async function fetchTodayLog(date) {
   if (isMockMode) return null
   const profileId = await _resolveProfileId()
@@ -251,6 +353,23 @@ export async function upsertDailyLog(log) {
   if (isMockMode) return
   const profileId = await _resolveProfileId()
   await supabase.from('daily_logs').upsert({ ...log, profile_id: profileId }, { onConflict: 'date,profile_id' })
+}
+
+export async function insertMemoryFeedback(feedback) {
+  if (isMockMode) return null
+  const profileId = await _resolveProfileId()
+  const payload = { ...feedback, profile_id: feedback.profile_id || profileId }
+  const { data, error } = await supabase
+    .from('memory_feedback')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) {
+    if (_isMissingColumnError(error)) return null
+    console.warn('[supabase] insertMemoryFeedback:', error.message)
+    return null
+  }
+  return normalizeMemoryFeedbackRow(data)
 }
 
 export function subscribeToProfile(onUpdate) {

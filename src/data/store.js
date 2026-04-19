@@ -1,10 +1,16 @@
 import { profile as seedProfile } from './profile.js'
 import { MOCK_STATE } from './mock-state.js'
 import {
+  fetchAthleteMemory,
+  fetchBodyMetricsHistory,
   fetchDailyLogs,
   fetchLatestCoachNote,
+  fetchMemoryFeedback,
   fetchProfile,
+  fetchWorkoutBlocks,
+  fetchWorkoutFacts,
   fetchWorkouts,
+  insertMemoryFeedback,
   insertWorkout,
   isMockMode,
   subscribeToCoachNotes,
@@ -13,6 +19,13 @@ import {
   updateProfile,
   upsertDailyLog,
 } from './supabase-client.js'
+import {
+  normalizeAthleteMemoryRow,
+  normalizeBodyMetricsHistoryRow,
+  normalizeMemoryFeedbackRow,
+  normalizeWorkoutBlockRow,
+  normalizeWorkoutFactRow,
+} from './memory-engine.js'
 import { recalculate } from './engine.js'
 import { checkBadges } from './badge-engine.js'
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from './class-engine.js'
@@ -30,8 +43,8 @@ import {
 } from './rules.js'
 import { applySurvival } from './survival-engine.js'
 
-const LS_KEY = 'odiept-state-v6'
-const CURRENT_VERSION = 6
+const LS_KEY = 'odiept-state-v7'
+const CURRENT_VERSION = 7
 const XP_PER_LEVEL = 2000
 
 let _state = null
@@ -212,6 +225,7 @@ function _buildSeedHealth() {
 
 function _buildSeedCoachNote() {
   return {
+    id: null,
     date: '',
     xpNote: '',
     sections: [],
@@ -354,6 +368,11 @@ function _buildSeed() {
     coachQuestHints: [],
     coachSkillProgress: [],
     bodyMetrics: _normalizeBodyMetrics(seedProfile.bodyMetrics || {}),
+    athleteMemory: [],
+    memoryFeedback: [],
+    bodyMetricsHistory: [],
+    workoutBlocks: [],
+    workoutFacts: [],
   }
 }
 
@@ -471,6 +490,7 @@ function _refreshDerivedState(state) {
 function _applyCoachNote(row) {
   if (!_state || !row) return
   _state.coachNote = {
+    id: row.id || null,
     date: formatMonthShort(row.date),
     sections: row.sections || [],
     xpNote: row.xp_note || row.xpNote || '',
@@ -549,6 +569,11 @@ function _hydrateState(state) {
     coachQuestHints: _clone(state?.coachQuestHints || []),
     coachSkillProgress: _clone(state?.coachSkillProgress || []),
     bodyMetrics: _clone(state?.bodyMetrics || seed.bodyMetrics || {}),
+    athleteMemory: (state?.athleteMemory || []).map(item => normalizeAthleteMemoryRow(item)),
+    memoryFeedback: (state?.memoryFeedback || []).map(item => normalizeMemoryFeedbackRow(item)),
+    bodyMetricsHistory: (state?.bodyMetricsHistory || []).map(item => normalizeBodyMetricsHistoryRow(item)),
+    workoutBlocks: (state?.workoutBlocks || []).map(item => normalizeWorkoutBlockRow(item)),
+    workoutFacts: (state?.workoutFacts || []).map(item => normalizeWorkoutFactRow(item)),
   }
 
   merged.bodyMetrics = _normalizeBodyMetrics(merged.bodyMetrics)
@@ -642,6 +667,7 @@ function _maybeRefreshPath(path) {
     'profile.fatigue',
     'profile.survivalWarnings',
     'bodyMetrics',
+    'bodyMetricsHistory',
     'coachNote',
     'coachQuestHints',
     'coachSkillProgress',
@@ -680,13 +706,36 @@ function _mergeToProfile(state) {
     coachNote: state.coachNote,
     currentFocus: profile.currentFocus,
     bodyMetrics: state.bodyMetrics,
+    athleteMemory: state.athleteMemory || [],
+    memoryFeedback: state.memoryFeedback || [],
+    bodyMetricsHistory: state.bodyMetricsHistory || [],
+    workoutBlocks: state.workoutBlocks || [],
+    workoutFacts: state.workoutFacts || [],
   }
+}
+
+async function _syncMemoryLayer() {
+  if (!_state || isMockMode) return
+
+  const [athleteMemoryRows, memoryFeedbackRows, bodyMetricsHistoryRows, workoutBlockRows, workoutFactRows] = await Promise.all([
+    fetchAthleteMemory(24),
+    fetchMemoryFeedback(24),
+    fetchBodyMetricsHistory(30),
+    fetchWorkoutBlocks(320),
+    fetchWorkoutFacts(320),
+  ])
+
+  _state.athleteMemory = (athleteMemoryRows || []).map(item => normalizeAthleteMemoryRow(item))
+  _state.memoryFeedback = (memoryFeedbackRows || []).map(item => normalizeMemoryFeedbackRow(item))
+  _state.bodyMetricsHistory = (bodyMetricsHistoryRows || []).map(item => normalizeBodyMetricsHistoryRow(item))
+  _state.workoutBlocks = (workoutBlockRows || []).map(item => normalizeWorkoutBlockRow(item))
+  _state.workoutFacts = (workoutFactRows || []).map(item => normalizeWorkoutFactRow(item))
 }
 
 export const store = {
   async init() {
     try {
-      ['odiept-state-v1', 'odiept-state-v2', 'odiept-state-v3', 'odiept-state-v4'].forEach(key => localStorage.removeItem(key))
+      ['odiept-state-v1', 'odiept-state-v2', 'odiept-state-v3', 'odiept-state-v4', 'odiept-state-v6'].forEach(key => localStorage.removeItem(key))
     } catch {}
 
     const cached = _loadFromLS()
@@ -700,8 +749,9 @@ export const store = {
         console.warn('[store] Supabase sync failed, using local state:', error.message)
       }
 
-      _unsubSupabase.push(subscribeToProfile(profileRow => {
+      _unsubSupabase.push(subscribeToProfile(async profileRow => {
         _applySupabaseProfile(profileRow)
+        try { await _syncMemoryLayer() } catch {}
         _refreshDerivedState(_state)
         _unlockEarnedBadges(false)
         _saveToLS()
@@ -713,6 +763,7 @@ export const store = {
         if (_state.workouts.some(workout => String(workout.id) === workoutId)) return
 
         _state.workouts.unshift(_normalizeWorkoutRow(workoutRow))
+        try { await _syncMemoryLayer() } catch {}
         _refreshDerivedState(_state)
         _unlockEarnedBadges(false)
         _saveToLS()
@@ -729,9 +780,10 @@ export const store = {
         } catch {}
       }))
 
-      _unsubSupabase.push(subscribeToCoachNotes(coachRow => {
+      _unsubSupabase.push(subscribeToCoachNotes(async coachRow => {
         if (!coachRow?.sections?.length) return
         _applyCoachNote(coachRow)
+        try { await _syncMemoryLayer() } catch {}
         _refreshDerivedState(_state)
         _saveToLS()
         _notify('*')
@@ -878,11 +930,38 @@ export const store = {
     if (Array.isArray(workoutRows) && workoutRows.length) _state.workouts = workoutRows.map(row => _normalizeWorkoutRow(row))
     if (Array.isArray(dailyLogRows) && dailyLogRows.length) _state.dailyLogs = dailyLogRows.map(row => _normalizeDailyLog(row))
     if (coachNoteRow?.sections?.length) _applyCoachNote(coachNoteRow)
+    await _syncMemoryLayer()
 
     _refreshDerivedState(_state)
     _unlockEarnedBadges(false)
     _saveToLS()
     _notify('*')
+  },
+
+  async addMemoryFeedback({ feedbackType = 'correct', note = '', memoryId = null } = {}) {
+    const payload = {
+      coach_note_id: _state?.coachNote?.id || null,
+      memory_id: memoryId || null,
+      feedback_type: feedbackType,
+      note: note || `${feedbackType} feedback`,
+      created_at: new Date().toISOString(),
+    }
+
+    const normalized = normalizeMemoryFeedbackRow(payload)
+    _state.memoryFeedback.unshift(normalized)
+    _saveToLS()
+    _notify('*')
+
+    if (!isMockMode) {
+      const inserted = await insertMemoryFeedback(payload)
+      if (inserted?.id) {
+        _state.memoryFeedback[0] = inserted
+        _saveToLS()
+        _notify('*')
+      }
+    }
+
+    return normalized
   },
 
   export() {

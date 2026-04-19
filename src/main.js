@@ -664,6 +664,77 @@ function extractCoachInsight(profile) {
   }
 }
 
+function summarizeBlockArchiveRows(blocks = []) {
+  const totals = {}
+  for (const block of blocks || []) {
+    const bucket = totals[block.kind] || {
+      kind: block.kind,
+      count: 0,
+      durationMin: 0,
+      distanceKm: 0,
+      weightPct: 0,
+    }
+    bucket.count += 1
+    bucket.durationMin += Number(block.durationMin) || 0
+    bucket.distanceKm += Number(block.distanceKm) || 0
+    bucket.weightPct += Number(block.weightPct) || 0
+    totals[block.kind] = bucket
+  }
+
+  return Object.values(totals)
+    .map(item => ({
+      ...item,
+      avgWeightPct: Math.round(item.weightPct / Math.max(1, item.count)),
+    }))
+    .sort((left, right) => right.count - left.count || right.avgWeightPct - left.avgWeightPct)
+    .slice(0, 6)
+}
+
+function renderSignalArchive(state) {
+  const blockArchive = summarizeBlockArchiveRows(state.workoutBlocks || [])
+  const facts = (state.workoutFacts || []).slice(0, 6)
+
+  return `
+    <div class="signal-archive-grid">
+      <article class="glass-card surface">
+        <div class="section-top">
+          <div>
+            <div class="eyebrow">Block Archive</div>
+            <h3>Kalici session block arsivi</h3>
+          </div>
+        </div>
+        <div class="signal-archive-list">
+          ${blockArchive.length ? blockArchive.map(item => `
+            <div class="signal-archive-row">
+              <strong>${item.kind}</strong>
+              <span>${item.count} blok</span>
+              <small>${item.avgWeightPct}% avg · ${item.durationMin}dk</small>
+            </div>
+          `).join('') : '<div class="coach-memory-empty">Henuz relational workout_blocks verisi yok.</div>'}
+        </div>
+      </article>
+
+      <article class="glass-card surface">
+        <div class="section-top">
+          <div>
+            <div class="eyebrow">Evidence Audit</div>
+            <h3>Atomic parser kanitlari</h3>
+          </div>
+        </div>
+        <div class="signal-archive-list">
+          ${facts.length ? facts.map(item => `
+            <div class="signal-archive-row">
+              <strong>${item.label || item.blockKind}</strong>
+              <span>${item.blockKind}</span>
+              <small>${item.raw}</small>
+            </div>
+          `).join('') : '<div class="coach-memory-empty">Henuz workout_facts verisi yok.</div>'}
+        </div>
+      </article>
+    </div>
+  `
+}
+
 function renderProgress(state, profile, semantic) {
   return `
     <section class="surface-stack">
@@ -732,6 +803,8 @@ function renderTraining(state, profile, semantic) {
       <div class="glass-card surface" id="panel-training">
         ${renderQuests(profile, semantic)}
       </div>
+
+      ${renderSignalArchive(state)}
     </section>
   `
 }

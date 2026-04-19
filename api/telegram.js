@@ -1,5 +1,17 @@
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from '../src/data/class-engine.js'
 import { extractAtomicWorkoutFacts } from '../src/data/atomic-fact-parser.js'
+import {
+  bodyMetricsChanged,
+  buildAthleteMemoryCandidates,
+  buildBodyMetricsHistoryEntry,
+  buildWorkoutBlockRows,
+  buildWorkoutFactRows,
+  normalizeAthleteMemoryRow,
+  normalizeBodyMetricsHistoryRow,
+  normalizeMemoryFeedbackRow,
+  normalizeWorkoutBlockRow,
+  normalizeWorkoutFactRow,
+} from '../src/data/memory-engine.js'
 import { buildOdieContext } from '../src/data/odie-context.js'
 import { buildFallbackCoachResponse } from '../src/data/odie-fallback.js'
 import { detectPRs } from '../src/data/pr-detector.js'
@@ -52,10 +64,35 @@ async function sbPatch(table, filter, body) {
   if (!response.ok) throw new Error(await response.text())
 }
 
+async function sbUpsert(table, body, onConflict) {
+  const query = onConflict ? `?on_conflict=${encodeURIComponent(onConflict)}` : ''
+  const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/${table}${query}`, {
+    method: 'POST',
+    headers: {
+      ...sbHeaders(),
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) throw new Error(await response.text())
+  return response.json()
+}
+
+async function sbGetSafe(path, fallback = []) {
+  try {
+    return await sbGet(path)
+  } catch (error) {
+    if (isMissingColumnError(error)) return fallback
+    throw error
+  }
+}
+
 function isMissingColumnError(error) {
   const message = String(error?.message || error || '')
   return (
     /column .* does not exist/i.test(message) ||
+    /relation .* does not exist/i.test(message) ||
+    /table .* does not exist/i.test(message) ||
     /could not find .* column .* schema cache/i.test(message) ||
     /schema cache/i.test(message) ||
     /PGRST204/i.test(message)
@@ -625,6 +662,26 @@ function buildCoachPromptV2(parsed, context) {
   const coachMemory = (odie.coachMemory || [])
     .map(item => `- ${item.title}: ${(item.lines || []).join(' ')}`)
     .join('\n') || '- onceki koc hafizasi yok'
+  const athleteMemory = (odie.athleteMemory || [])
+    .map(item => `- [${item.scope}] ${item.summary} (${Math.round((Number(item.confidence) || 0) * 100)}%)`)
+    .join('\n') || '- kalici athlete memory yok'
+  const correctiveMemory = (odie.correctiveMemory?.latest || [])
+    .map(item => `- ${item.feedbackType}: ${item.note || 'geri bildirim kaydi'}`)
+    .join('\n') || '- duzeltici memory yok'
+  const bodyMetricsTrend = odie.bodyMetricsTrend?.samples
+    ? [
+      `- kilo: ${odie.bodyMetricsTrend.currentWeightKg || '-'}kg`,
+      `- boy: ${odie.bodyMetricsTrend.currentHeightCm || '-'}cm`,
+      `- ornek: ${odie.bodyMetricsTrend.samples}`,
+      `- delta: ${odie.bodyMetricsTrend.deltaKg >= 0 ? '+' : ''}${odie.bodyMetricsTrend.deltaKg || 0}kg`,
+    ].join('\n')
+    : '- body trend yok'
+  const blockArchive = (odie.blockArchive || [])
+    .map(item => `- ${item.kind}: ${item.count} blok · ${item.weightPct}% · ${item.durationMin}dk`)
+    .join('\n') || '- blok arsivi yok'
+  const factArchive = (odie.factArchive || [])
+    .map(item => `- ${item.label}: ${item.raw}`)
+    .join('\n') || '- atomik kanit arsivi yok'
   const disciplineMix = Object.entries(odie.disciplineMix || {})
     .map(([key, value]) => `${key}:${value}`)
     .join(' · ') || 'karisik'
@@ -707,6 +764,21 @@ ${questPressure}
 
 Skill baskisi:
 ${skillPressure}
+
+Athlete memory:
+${athleteMemory}
+
+Corrective memory:
+${correctiveMemory}
+
+Body trend:
+${bodyMetricsTrend}
+
+Block arsivi:
+${blockArchive}
+
+Fact arsivi:
+${factArchive}
 
 Onceki koc hafizasi:
 ${coachMemory}
@@ -806,6 +878,10 @@ Baglam:
 - Recovery status: ${context.odie?.recovery?.status || '-'}
 - Recovery xp multiplier: ${context.odie?.recovery?.xpMultiplier ?? 1}
 - Focus gaps: ${(context.odie?.focusGaps || []).join(' | ') || '-'}
+- Athlete memory: ${(context.odie?.athleteMemory || []).map(item => `${item.scope}:${item.summary}`).join(' | ') || '-'}
+- Corrective memory: ${(context.odie?.correctiveMemory?.latest || []).map(item => `${item.feedbackType}:${item.note || ''}`).join(' | ') || '-'}
+- Block archive: ${(context.odie?.blockArchive || []).map(item => `${item.kind}:${item.count}`).join(' | ') || '-'}
+- Fact archive: ${(context.odie?.factArchive || []).map(item => item.label).join(' | ') || '-'}
 
 Coach note:
 ${sections}
@@ -1435,6 +1511,69 @@ function toSupabaseBlocks(blocks = []) {
   }))
 }
 
+async function persistBodyMetricsHistory(profileId, currentBodyMetrics, nextBodyMetrics, { date, source = 'telegram', note = '' } = {}) {
+  if (!profileId || !nextBodyMetrics) return
+  const merged = {
+    ...(currentBodyMetrics || {}),
+    ...(nextBodyMetrics || {}),
+  }
+  if (!bodyMetricsChanged(currentBodyMetrics || {}, merged)) return
+
+  const historyEntry = buildBodyMetricsHistoryEntry(profileId, merged, { date, source, note })
+  if (!historyEntry) return
+
+  try {
+    await sbPost('body_metrics_history', historyEntry)
+  } catch (error) {
+    if (!isMissingColumnError(error)) throw error
+  }
+}
+
+async function persistWorkoutArtifacts({ profileId, workoutId, session, nextStats, nextClass, survival }) {
+  if (!profileId) return
+
+  const blockRows = buildWorkoutBlockRows(profileId, workoutId, session.blocks || [], session.blockMix || [])
+  if (blockRows.length) {
+    try {
+      await sbPost('workout_blocks', blockRows)
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error
+    }
+  }
+
+  const factRows = buildWorkoutFactRows(profileId, workoutId, session.facts || [], session.confidence)
+  if (factRows.length) {
+    try {
+      await sbPost('workout_facts', factRows)
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error
+    }
+  }
+
+  const memoryRows = buildAthleteMemoryCandidates({
+    profileId,
+    session,
+    nextStats,
+    nextClass,
+    survival,
+  }).map(row => ({
+    ...row,
+    value_jsonb: {
+      ...(row.value_jsonb || {}),
+      sessionDate: session.date,
+      workoutId,
+    },
+  }))
+
+  if (memoryRows.length) {
+    try {
+      await sbUpsert('athlete_memory', memoryRows, 'profile_id,scope,key')
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error
+    }
+  }
+}
+
 function formatSummary(session, xp, streak, coachText) {
   const lines = [
     `<b>${session.type} seansi kaydedildi</b>`,
@@ -1510,6 +1649,12 @@ export default async function handler(req, res) {
         if (!isMissingColumnError(error)) throw error
       }
 
+      await persistBodyMetricsHistory(profile.id, profile.body_metrics || {}, nextBodyMetrics, {
+        date: getLocalDateString(),
+        source: 'telegram',
+        note: 'direct body metrics update',
+      })
+
       const bits = []
       if (nextBodyMetrics.weightKg) bits.push(`Kilo ${nextBodyMetrics.weightKg}kg`)
       if (nextBodyMetrics.heightCm) bits.push(`Boy ${nextBodyMetrics.heightCm}cm`)
@@ -1523,14 +1668,24 @@ export default async function handler(req, res) {
     const profile = await resolveProfile()
     if (!profile) throw new Error('Profil bulunamadi')
 
-    const [workoutRows, dailyLogRows, coachRows] = await Promise.all([
+    const [workoutRows, dailyLogRows, coachRows, athleteMemoryRows, memoryFeedbackRows, bodyMetricsHistoryRows, workoutBlockRows, workoutFactRows] = await Promise.all([
       sbGet(`workouts?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=60`),
       sbGet(`daily_logs?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=14`),
       sbGet(`coach_notes?select=*&profile_id=eq.${profile.id}&order=date.desc,created_at.desc&limit=1`),
+      sbGetSafe(`athlete_memory?select=*&profile_id=eq.${profile.id}&active=eq.true&order=last_used_at.desc,created_at.desc&limit=24`, []),
+      sbGetSafe(`memory_feedback?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=24`, []),
+      sbGetSafe(`body_metrics_history?select=*&profile_id=eq.${profile.id}&order=date.desc,created_at.desc&limit=30`, []),
+      sbGetSafe(`workout_blocks?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=320`, []),
+      sbGetSafe(`workout_facts?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=320`, []),
     ])
     const workouts = (workoutRows || []).map(row => normalizeWorkoutRow(row))
     const dailyLogs = (dailyLogRows || []).map(row => normalizeDailyLogRow(row))
     const latestCoachNote = normalizeCoachNoteRow((coachRows || [])[0] || null)
+    const athleteMemory = (athleteMemoryRows || []).map(row => normalizeAthleteMemoryRow(row))
+    const memoryFeedback = (memoryFeedbackRows || []).map(row => normalizeMemoryFeedbackRow(row))
+    const bodyMetricsHistory = (bodyMetricsHistoryRows || []).map(row => normalizeBodyMetricsHistoryRow(row))
+    const workoutBlocks = (workoutBlockRows || []).map(row => normalizeWorkoutBlockRow(row))
+    const workoutFacts = (workoutFactRows || []).map(row => normalizeWorkoutFactRow(row))
     const currentPrs = buildCurrentPrs(workouts)
 
     const draftSession = normalizeSession({
@@ -1608,6 +1763,11 @@ export default async function handler(req, res) {
         profile,
         workouts,
         dailyLogs,
+        athleteMemory,
+        memoryFeedback,
+        bodyMetricsHistory,
+        workoutBlocks,
+        workoutFacts,
         prs: currentPrs,
         coachNote: latestCoachNote,
         nextStats,
@@ -1642,6 +1802,11 @@ export default async function handler(req, res) {
           profile,
           workouts,
           dailyLogs,
+          athleteMemory,
+          memoryFeedback,
+          bodyMetricsHistory,
+          workoutBlocks,
+          workoutFacts,
           prs: currentPrs,
           coachNote: latestCoachNote,
           nextStats,
@@ -1736,6 +1901,21 @@ export default async function handler(req, res) {
       if (!isMissingColumnError(error)) throw error
       await sbPatch('profiles', `id=eq.${profile.id}`, toLegacyProfilePatch(profilePatch))
     }
+
+    await persistBodyMetricsHistory(profile.id, profile.body_metrics || {}, nextBodyMetrics, {
+      date: sessionDate,
+      source: 'telegram',
+      note: nextBodyMetrics?.note || session.highlight || session.type,
+    })
+
+    await persistWorkoutArtifacts({
+      profileId: profile.id,
+      workoutId,
+      session,
+      nextStats,
+      nextClass,
+      survival,
+    })
 
     if (coachNote) {
       const coachPayload = {

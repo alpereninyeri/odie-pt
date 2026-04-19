@@ -1,8 +1,10 @@
-// Cancellation token: her initCoach cagrısında yeni token uretilir.
-// Tum async adimlar token'i kontrol eder; DOM yokken hicbir sey calismaz.
+import { store } from '../data/store.js'
+
 let _token = 0
 
-function _cancelled(t) { return t !== _token }
+function _cancelled(token) {
+  return token !== _token
+}
 
 function _visibleSections(note) {
   return (note?.sections || []).filter(section => !section?.hidden)
@@ -15,8 +17,70 @@ function _parseMarkup(text) {
     .replace(/`([^`]+?)`/g, '<code class="coach-code">$1</code>')
     .replace(/(\b\d+(?:\.\d+)?(?:kg|sn|dk|%|m|km|x\d+|kcal|XP)\b|\b\d+x\d+\b)/gi, '<span class="coach-num">$1</span>')
     .replace(/\b(STR|AGI|END|DEX|CON|STA)\b/g, '<span class="coach-stat">$1</span>')
-    .replace(/([↑↗▲])/g, '<span class="coach-up">$1</span>')
-    .replace(/([↓↘▼])/g, '<span class="coach-down">$1</span>')
+}
+
+function _moodIcon(mood) {
+  return { fire: 'F', warning: '!', warn: '!', danger: 'X', calm: '>' }[mood] || '>'
+}
+
+function _memoryTone(item) {
+  if ((item.scope || '').includes('recovery')) return 'warn'
+  if ((item.scope || '').includes('core')) return 'danger'
+  if ((item.scope || '').includes('parkour')) return 'fire'
+  return 'calm'
+}
+
+function _renderMemoryLedger(p) {
+  const memories = (p.athleteMemory || []).slice(0, 6)
+  const feedback = (p.memoryFeedback || []).slice(0, 4)
+  const wrongCount = (p.memoryFeedback || []).filter(item => item.feedbackType === 'wrong').length
+
+  return `
+    <div class="coach-memory-surface">
+      <div class="coach-memory-head">
+        <div>
+          <div class="eyebrow">Memory Ledger</div>
+          <h3>ODIE'nin kalici atlet hafizasi</h3>
+        </div>
+        <div class="coach-memory-pills">
+          <span class="coach-pill">${memories.length} active memory</span>
+          <span class="coach-pill">${wrongCount} wrong flag</span>
+        </div>
+      </div>
+
+      <div class="coach-memory-grid">
+        ${memories.length ? memories.map(item => `
+          <div class="coach-memory-card tone-${_memoryTone(item)}">
+            <div class="coach-memory-top">
+              <strong>${item.scope || 'global'}</strong>
+              <span>${Math.round((Number(item.confidence) || 0) * 100)}%</span>
+            </div>
+            <p>${item.summary || item.key}</p>
+          </div>
+        `).join('') : '<div class="coach-memory-empty">Henuz kalici memory yok. Yeni session ve feedback geldikce burada birikir.</div>'}
+      </div>
+
+      <div class="coach-feedback-strip">
+        <div>
+          <div class="mini-label">Feedback Loop</div>
+          <strong>Son coach yorumunu hizli isaretle</strong>
+        </div>
+        <div class="coach-feedback-actions">
+          <button class="coach-feedback-btn" data-memory-feedback="correct">DOGRU</button>
+          <button class="coach-feedback-btn danger" data-memory-feedback="wrong">YANLISTI</button>
+        </div>
+      </div>
+
+      <div class="coach-feedback-log">
+        ${feedback.length ? feedback.map(item => `
+          <div class="coach-feedback-row">
+            <span>${item.feedbackType}</span>
+            <p>${item.note || 'Kisa geri bildirim'}</p>
+          </div>
+        `).join('') : '<div class="coach-memory-empty">Henuz feedback kaydi yok.</div>'}
+      </div>
+    </div>
+  `
 }
 
 export function renderCoach(p) {
@@ -25,31 +89,32 @@ export function renderCoach(p) {
   if (!sections.length) {
     return `
       <div class="coach-terminal" style="min-height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
-        <div style="font-size:48px;opacity:.4">☠</div>
+        <div style="font-size:48px;opacity:.4">OD</div>
         <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:3px;opacity:.7">ODIE OFFLINE</div>
         <div style="font-size:11px;opacity:.5;max-width:280px;text-align:center;line-height:1.5">
           Henuz coach raporu yok. Telegram'a bir antrenman yaz, ODIE analiz eder ve burada canli rapor sunar.
         </div>
-      </div>`
+      </div>
+      ${_renderMemoryLedger(p)}`
   }
 
   const warningCount = Array.isArray(cn.warnings) ? cn.warnings.length : 0
   const questCount = Array.isArray(p.quests?.weekly) ? p.quests.weekly.filter(quest => !quest.done).length : 0
-  const shells = sections.map((sec, i) => `
-    <div class="coach-section" id="coach-sec-${i}" data-mood="${sec.mood}">
+  const shells = sections.map((sec, index) => `
+    <div class="coach-section" id="coach-sec-${index}" data-mood="${sec.mood}">
       <div class="coach-sec-head">
         <span class="coach-sec-icon">${_moodIcon(sec.mood)}</span>
         <span class="coach-sec-title">${sec.title}</span>
-        <span class="coach-sec-status" id="coach-st-${i}">BEKLEMEDE</span>
+        <span class="coach-sec-status" id="coach-st-${index}">BEKLEMEDE</span>
       </div>
-      <div class="coach-sec-body" id="coach-sb-${i}"></div>
+      <div class="coach-sec-body" id="coach-sb-${index}"></div>
     </div>`).join('')
 
   return `
     <div class="coach-terminal" id="coach-terminal">
       <div class="coach-scanline"></div>
       <div class="coach-header">
-        <div class="coach-avatar">☠</div>
+        <div class="coach-avatar">OD</div>
         <div class="coach-npc-info">
           <div class="coach-npc-name">ODIE</div>
           <div class="coach-npc-sub">Adaptive Performance Interpreter</div>
@@ -74,14 +139,21 @@ export function renderCoach(p) {
         <button class="coach-skip-btn" id="coach-skip">ATLA - HEPSINI GOSTER</button>
         <div class="coach-xp-badge">${cn.xpNote}</div>
       </div>
-    </div>`
-}
-
-function _moodIcon(mood) {
-  return { fire: '🔥', warning: '⚠️', warn: '⚠️', danger: '🔴', calm: '💬' }[mood] || '▶'
+    </div>
+    ${_renderMemoryLedger(p)}`
 }
 
 export function initCoach(p) {
+  document.querySelectorAll('[data-memory-feedback]').forEach(button => {
+    button.onclick = async () => {
+      const feedbackType = button.dataset.memoryFeedback || 'correct'
+      await store.addMemoryFeedback({
+        feedbackType,
+        note: feedbackType === 'wrong' ? 'Coach note flagged by athlete' : 'Coach note confirmed by athlete',
+      })
+    }
+  })
+
   const sections = _visibleSections(p?.coachNote)
   if (!sections.length) return
 
@@ -116,64 +188,67 @@ export function initCoach(p) {
   }, 800)
 }
 
-function _startTransmission(p, idx, token) {
+function _startTransmission(p, index, token) {
   if (_cancelled(token)) return
   const cn = p.coachNote
-  if (idx >= cn.sections.length) {
+  if (index >= cn.sections.length) {
     const skipBtn = document.getElementById('coach-skip')
     if (skipBtn) skipBtn.style.display = 'none'
     return
   }
 
-  const secEl = document.getElementById(`coach-sec-${idx}`)
-  const bodyEl = document.getElementById(`coach-sb-${idx}`)
-  const statEl = document.getElementById(`coach-st-${idx}`)
+  const secEl = document.getElementById(`coach-sec-${index}`)
+  const bodyEl = document.getElementById(`coach-sb-${index}`)
+  const statEl = document.getElementById(`coach-st-${index}`)
   if (!secEl || !bodyEl) return
 
   secEl.classList.add('active')
   if (statEl) statEl.textContent = 'YAYINDA'
 
-  _typewriterSection(cn.sections[idx].lines || [], bodyEl, token, () => {
+  _typewriterSection(cn.sections[index].lines || [], bodyEl, token, () => {
     if (_cancelled(token)) return
     if (statEl) {
       statEl.textContent = 'TAMAMLANDI'
       statEl.classList.add('done')
     }
-    setTimeout(() => _startTransmission(p, idx + 1, token), 300)
+    setTimeout(() => _startTransmission(p, index + 1, token), 300)
   })
 }
 
 function _typewriterSection(lines, containerEl, token, onDone) {
-  let lineIdx = 0
+  let lineIndex = 0
 
   function typeLine() {
     if (_cancelled(token)) return
-    if (lineIdx >= lines.length) { onDone(); return }
+    if (lineIndex >= lines.length) {
+      onDone()
+      return
+    }
 
-    const el = document.createElement('div')
-    el.className = 'coach-line'
-    containerEl.appendChild(el)
+    const lineEl = document.createElement('div')
+    lineEl.className = 'coach-line'
+    containerEl.appendChild(lineEl)
 
-    const raw = lines[lineIdx]
+    const raw = lines[lineIndex]
     if (!raw) {
-      lineIdx++
+      lineIndex += 1
       setTimeout(typeLine, 60)
       return
     }
 
     const parsed = _parseMarkup(raw)
-    let charIdx = 0
+    let charIndex = 0
     const plainText = raw.replace(/\*\*/g, '')
 
     function typeChar() {
       if (_cancelled(token)) return
-      if (charIdx < plainText.length) {
-        el.innerHTML = _parseMarkup(_slicePlainWithMarkup(raw, charIdx + 1))
-        charIdx++
+      if (charIndex < plainText.length) {
+        lineEl.innerHTML = _parseMarkup(_slicePlainWithMarkup(raw, charIndex + 1))
+        charIndex += 1
         setTimeout(typeChar, 14)
       } else {
-        el.innerHTML = parsed
-        lineIdx++
+        lineEl.innerHTML = parsed
+        lineIndex += 1
         setTimeout(typeLine, 70)
       }
     }
@@ -184,28 +259,28 @@ function _typewriterSection(lines, containerEl, token, onDone) {
   typeLine()
 }
 
-function _slicePlainWithMarkup(raw, n) {
+function _slicePlainWithMarkup(raw, length) {
   let plain = 0
-  let i = 0
-  while (i < raw.length && plain < n) {
-    if (raw[i] === '*' && raw[i + 1] === '*') {
-      i += 2
+  let index = 0
+  while (index < raw.length && plain < length) {
+    if (raw[index] === '*' && raw[index + 1] === '*') {
+      index += 2
       continue
     }
-    plain++
-    i++
+    plain += 1
+    index += 1
   }
-  return raw.slice(0, i)
+  return raw.slice(0, index)
 }
 
 function _skipAll(p) {
   const initLine = document.getElementById('coach-init')
   if (initLine) initLine.style.display = 'none'
 
-  p.coachNote.sections.forEach((sec, i) => {
-    const secEl = document.getElementById(`coach-sec-${i}`)
-    const bodyEl = document.getElementById(`coach-sb-${i}`)
-    const statEl = document.getElementById(`coach-st-${i}`)
+  p.coachNote.sections.forEach((sec, index) => {
+    const secEl = document.getElementById(`coach-sec-${index}`)
+    const bodyEl = document.getElementById(`coach-sb-${index}`)
+    const statEl = document.getElementById(`coach-st-${index}`)
     if (!secEl || !bodyEl) return
     secEl.classList.add('active')
     bodyEl.innerHTML = (sec.lines || []).map(line => `<div class="coach-line">${_parseMarkup(line)}</div>`).join('')

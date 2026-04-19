@@ -1,3 +1,52 @@
+function summarizeWeightHistory(history = []) {
+  const rows = [...(history || [])]
+    .filter(item => item?.date)
+    .sort((left, right) => String(right.date || '').localeCompare(String(left.date || '')))
+    .slice(0, 4)
+
+  const latest = rows[0] || null
+  const oldest = rows[rows.length - 1] || null
+  const deltaKg = latest?.weightKg != null && oldest?.weightKg != null && rows.length > 1
+    ? Math.round((latest.weightKg - oldest.weightKg) * 10) / 10
+    : 0
+
+  return {
+    rows,
+    latest,
+    deltaKg,
+  }
+}
+
+function renderBodyHistory(p) {
+  const trend = summarizeWeightHistory(p.bodyMetricsHistory || [])
+  if (!trend.rows.length) return ''
+
+  const deltaLabel = trend.deltaKg
+    ? `${trend.deltaKg > 0 ? '+' : ''}${trend.deltaKg}kg trend`
+    : 'stabil gorunum'
+
+  return `
+    <div class="body-history-card">
+      <div class="body-history-head">
+        <div>
+          <div class="mini-label">Body History</div>
+          <strong>${trend.latest?.weightKg || '-'} kg</strong>
+        </div>
+        <span class="body-history-chip">${deltaLabel}</span>
+      </div>
+      <div class="body-history-list">
+        ${trend.rows.map(item => `
+          <div class="body-history-row">
+            <span>${item.date}</span>
+            <strong>${item.weightKg || '-'}kg</strong>
+            <small>${item.heightCm || '-'}cm</small>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `
+}
+
 export function renderHealth(p) {
   const { metrics, warnings, readiness } = p.health
 
@@ -18,7 +67,7 @@ export function renderHealth(p) {
     </div>`).join('')
 
   const warningsSection = warnings.length
-    ? `<div class="sec">Sağlık Uyarıları</div>${warningRows}`
+    ? `<div class="sec">Saglik Uyarilari</div>${warningRows}`
     : ''
 
   const readinessSection = readiness
@@ -31,14 +80,17 @@ export function renderHealth(p) {
           </div>
           <span class="readiness-source">${readiness.source || 'limited_data'}</span>
         </div>
-        <p>${readiness.reason || 'Recovery güven notu yok.'}</p>
+        <p>${readiness.reason || 'Recovery guven notu yok.'}</p>
       </div>
     `
     : ''
 
+  const historySection = renderBodyHistory(p)
+
   return `
-    <div class="sec">Vücut & Sağlık Metrikleri</div>
+    <div class="sec">Vucut & Saglik Metrikleri</div>
     ${readinessSection}
     <div class="health-grid">${metricCards}</div>
+    ${historySection}
     ${warningsSection}`
 }

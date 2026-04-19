@@ -1,4 +1,10 @@
 import { profile as seedProfile } from './profile.js'
+import {
+  summarizeBlockArchive,
+  summarizeBodyMetricsTrend,
+  summarizeFactArchive,
+  summarizeFeedbackLoop,
+} from './memory-engine.js'
 import { updatePerformance } from './performance-engine.js'
 import { appendCoachQuests, updateQuests } from './quest-engine.js'
 import { updateSkills } from './skill-engine.js'
@@ -132,6 +138,19 @@ function summarizeCoachMemory(coachNote) {
   }))
 }
 
+function summarizeAthleteMemory(memories = []) {
+  return [...(memories || [])]
+    .filter(item => item?.active !== false)
+    .sort((left, right) => String(right.lastUsedAt || right.createdAt || '').localeCompare(String(left.lastUsedAt || left.createdAt || '')))
+    .slice(0, 5)
+    .map(item => ({
+      scope: item.scope || 'global',
+      key: item.key || '',
+      summary: item.summary || '',
+      confidence: Number(item.confidence) || 0,
+    }))
+}
+
 function summarizeLoadProfile(workouts = []) {
   const recent = workouts.slice(0, 14)
   const previous = workouts.slice(14, 28)
@@ -194,6 +213,11 @@ export function buildOdieContext({
   profile = {},
   workouts = [],
   dailyLogs = [],
+  athleteMemory = [],
+  memoryFeedback = [],
+  bodyMetricsHistory = [],
+  workoutBlocks = [],
+  workoutFacts = [],
   prs = {},
   coachNote = null,
   nextStats = null,
@@ -243,6 +267,11 @@ export function buildOdieContext({
       note: item.note,
     })),
     coachMemory: summarizeCoachMemory(coachNote),
+    athleteMemory: summarizeAthleteMemory(athleteMemory),
+    correctiveMemory: summarizeFeedbackLoop(memoryFeedback),
+    bodyMetricsTrend: summarizeBodyMetricsTrend(bodyMetricsHistory, profile.body_metrics || {}),
+    blockArchive: summarizeBlockArchive(workoutBlocks),
+    factArchive: summarizeFactArchive(workoutFacts),
     loadProfile,
     focusGaps: summarizeFocusGaps(contextWorkouts, dailyLogs),
   }
