@@ -8029,3 +8029,648 @@ body::after,
   .sheet-info-card strong { font-size: .72rem !important; }
   .mission-pressure-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   V8 OLD-SCHOOL MMORPG — deri, bronz, parşömen, altın köşe braketleri
+   (BG2 / Diablo 2 / RuneScape / Tibia / WoW Classic estetiği)
+   ═══════════════════════════════════════════════════════════════════════ */
+:root, [data-theme="dark"] {
+  --mmo-bg-deep:   #0c0603;
+  --mmo-bg:        #160c06;
+  --mmo-leather:   #2a1a10;
+  --mmo-leather-2: #3c2618;
+  --mmo-iron:      #1f1812;
+  --mmo-iron-2:    #2e251c;
+  --mmo-gold:      #e8b957;
+  --mmo-gold-2:    #f5d48a;
+  --mmo-gold-deep: #8c6522;
+  --mmo-gold-dark: #5a3f12;
+  --mmo-crimson:   #c0362c;
+  --mmo-blood:     #d04a40;
+  --mmo-emerald:   #6fa24b;
+  --mmo-sky:       #6e94c8;
+  --mmo-parchment: #ead4a0;
+  --mmo-ink:       #f0dcae;
+  --mmo-ink-dim:   #a38a63;
+  --mmo-ink-deep:  #695035;
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% -10%, rgba(232, 185, 87, 0.14), transparent 42%),
+    radial-gradient(circle at 0% 70%, rgba(192, 54, 44, 0.08), transparent 40%),
+    radial-gradient(circle at 100% 30%, rgba(111, 162, 75, 0.06), transparent 40%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,0.08) 0 1px, transparent 1px 2px),
+    linear-gradient(180deg, #160c06 0%, #0c0603 100%) !important;
+  color: var(--mmo-ink) !important;
+  font-family: 'Space Grotesk', sans-serif;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(0,0,0,.55) 100%);
+  opacity: .8;
+}
+
+/* Glass yüzeyleri → demir/deri plaka + altın iç çerçeve */
+.glass-card,
+.glass-subtle,
+.surface,
+.hero-card,
+.dashboard-card,
+.os-panel,
+.coach-shell,
+.character-sheet-card,
+.quick-card,
+.sheet-info-card,
+.stat-card-v6,
+.perf-compact-card,
+.forge-card,
+.chain-balance-card,
+.achievement-card-v6,
+.quest-scroll-card,
+.raid-ledger-card,
+.pressure-chip,
+.survival-meter-card,
+.survival-warning-card,
+.coach-memory-card,
+.coach-confidence-surface,
+.coach-memory-surface,
+.survival-console,
+.coach-terminal,
+#panel-stats,
+#panel-skills,
+#panel-training,
+.skill-branch-card,
+.next-node-card,
+.skill-node,
+.sheet-stat {
+  background:
+    linear-gradient(180deg, rgba(60, 38, 24, 0.72) 0%, rgba(32, 22, 14, 0.86) 55%, rgba(22, 14, 8, 0.92) 100%),
+    repeating-linear-gradient(135deg, rgba(232, 185, 87, 0.02) 0 1px, transparent 1px 4px) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 212, 138, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 6px 18px rgba(0, 0, 0, 0.55) !important;
+  color: var(--mmo-ink) !important;
+  position: relative;
+}
+
+/* Altın L-köşe braketleri — büyük paneller */
+.character-sheet-card,
+#panel-stats,
+#panel-skills,
+#panel-training,
+.survival-console,
+.coach-confidence-surface,
+.coach-memory-surface,
+.coach-terminal {
+  --bk-size: 18px;
+  --bk-thick: 2px;
+  --bk-color: var(--mmo-gold);
+  background-image:
+    linear-gradient(var(--bk-color), var(--bk-color)),
+    linear-gradient(var(--bk-color), var(--bk-color)),
+    linear-gradient(var(--bk-color), var(--bk-color)),
+    linear-gradient(var(--bk-color), var(--bk-color)),
+    linear-gradient(var(--bk-color), var(--bk-color)),
+    linear-gradient(var(--bk-color), var(--bk-color)),
+    linear-gradient(var(--bk-color), var(--bk-color)),
+    linear-gradient(var(--bk-color), var(--bk-color)),
+    linear-gradient(180deg, rgba(60, 38, 24, 0.72) 0%, rgba(32, 22, 14, 0.86) 55%, rgba(22, 14, 8, 0.92) 100%),
+    repeating-linear-gradient(135deg, rgba(232, 185, 87, 0.02) 0 1px, transparent 1px 4px) !important;
+  background-repeat: no-repeat !important;
+  background-position:
+    6px 6px, 6px 6px,
+    calc(100% - 6px) 6px, calc(100% - 6px) 6px,
+    6px calc(100% - 6px), 6px calc(100% - 6px),
+    calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) calc(100% - 6px),
+    0 0, 0 0 !important;
+  background-size:
+    var(--bk-size) var(--bk-thick), var(--bk-thick) var(--bk-size),
+    var(--bk-size) var(--bk-thick), var(--bk-thick) var(--bk-size),
+    var(--bk-size) var(--bk-thick), var(--bk-thick) var(--bk-size),
+    var(--bk-size) var(--bk-thick), var(--bk-thick) var(--bk-size),
+    100% 100%, 100% 100% !important;
+  border-radius: 10px !important;
+}
+
+/* Küçük plaka kartlar — sadece altın ince border, köşe yok */
+.quick-card,
+.sheet-info-card,
+.stat-card-v6,
+.perf-compact-card,
+.chain-balance-card,
+.achievement-card-v6,
+.quest-scroll-card,
+.raid-ledger-card,
+.pressure-chip,
+.survival-meter-card,
+.survival-warning-card,
+.coach-memory-card,
+.skill-branch-card,
+.next-node-card,
+.skill-node,
+.sheet-stat {
+  border-radius: 6px !important;
+}
+.quick-card::before,
+.sheet-info-card::before,
+.stat-card-v6::before,
+.perf-compact-card::before,
+.quest-scroll-card::before,
+.raid-ledger-card::before,
+.survival-meter-card::before,
+.survival-warning-card::before,
+.coach-memory-card::before,
+.sheet-stat::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(232, 185, 87, 0.12);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* Tipografi — Cinzel başlıklar, Silkscreen pixel etiketler, JetBrains sayılar */
+h1, h2, h3, .page-title, .character-sheet-top h2, .section-top h3 {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif !important;
+  font-weight: 900 !important;
+  letter-spacing: .01em !important;
+  color: var(--mmo-gold-2) !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.6), 0 0 8px rgba(232, 185, 87, 0.25);
+}
+
+.sec,
+.eyebrow,
+.mini-label,
+.sheet-stat-key,
+.stat-card-v6-key,
+.stat-card-v6-status,
+.coach-pill,
+.signal-chip,
+.grade-pill,
+.pressure-chip span,
+.quest-reward,
+.quest-state,
+.bottom-tab span:last-child,
+.mobile-hud-side small,
+.sheet-info-card .mini-label,
+.quick-card .mini-label,
+.survival-warning-card .mini-label,
+.achievement-card-v6 small,
+.portrait-meta span {
+  font-family: 'Silkscreen', 'JetBrains Mono', monospace !important;
+  letter-spacing: .14em !important;
+  text-transform: uppercase !important;
+  color: var(--mmo-ink-dim) !important;
+}
+
+/* Sayılar ve büyük değerler */
+.sheet-stat strong,
+.stat-card-v6-top strong,
+.pressure-chip strong,
+.survival-meter-top strong,
+.perf-compact-value,
+.forge-card-value,
+.chain-balance-card span,
+.mobile-hud-side strong,
+.quick-card small,
+.raid-ledger-top span,
+.raid-meta {
+  font-family: 'JetBrains Mono', monospace !important;
+  color: var(--mmo-gold-2) !important;
+  text-shadow: 0 0 10px rgba(232, 185, 87, 0.35), 0 1px 0 rgba(0,0,0,.7) !important;
+}
+
+/* Stat plakaları — klasik rune taşı tarzı, sol kenarda renkli enerji şeridi */
+.sheet-stat,
+.stat-card-v6 {
+  background:
+    linear-gradient(90deg, rgba(232, 185, 87, 0.08) 0%, transparent 6%),
+    linear-gradient(180deg, rgba(80, 56, 32, 0.55) 0%, rgba(32, 22, 14, 0.85) 100%) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+}
+.sheet-stat::after,
+.stat-card-v6::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, var(--mmo-gold) 40%, var(--mmo-gold) 60%, transparent);
+  box-shadow: 0 0 6px rgba(232, 185, 87, 0.6);
+}
+.sheet-stat.critical,
+.stat-card-v6.critical {
+  background:
+    linear-gradient(90deg, rgba(208, 74, 64, 0.18) 0%, transparent 12%),
+    linear-gradient(180deg, rgba(100, 40, 32, 0.55) 0%, rgba(32, 12, 10, 0.9) 100%) !important;
+  border-color: rgba(208, 74, 64, 0.55) !important;
+}
+.sheet-stat.critical::after,
+.stat-card-v6.critical::after {
+  background: linear-gradient(180deg, transparent, var(--mmo-blood) 40%, var(--mmo-blood) 60%, transparent);
+  box-shadow: 0 0 8px rgba(208, 74, 64, 0.7);
+}
+.sheet-stat.critical strong,
+.stat-card-v6.critical strong { color: var(--mmo-blood) !important; text-shadow: 0 0 10px rgba(208, 74, 64, .5), 0 1px 0 #000 !important; }
+
+/* Stat status / grade pills → rune etiketleri */
+.stat-card-v6-status,
+.grade-pill,
+.coach-pill,
+.signal-chip,
+.sheet-chip {
+  background: linear-gradient(180deg, rgba(90, 63, 18, .45), rgba(40, 28, 8, .7)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  color: var(--mmo-gold-2) !important;
+  box-shadow: inset 0 1px 0 rgba(245, 212, 138, .12), inset 0 -1px 0 rgba(0,0,0,.5) !important;
+  border-radius: 3px !important;
+  font-size: .56rem !important;
+}
+.stat-card-v6.critical .stat-card-v6-status,
+.sheet-stat.critical small {
+  background: linear-gradient(180deg, rgba(120, 40, 34, .6), rgba(50, 16, 12, .8)) !important;
+  border-color: rgba(208, 74, 64, .5) !important;
+  color: var(--mmo-blood) !important;
+}
+.grade-pill.grade-elite,
+.grade-pill.grade-rare {
+  background: linear-gradient(180deg, rgba(111, 162, 75, .45), rgba(40, 60, 20, .7)) !important;
+  border-color: rgba(111, 162, 75, .5) !important;
+  color: #c9e8aa !important;
+}
+.grade-pill.grade-low,
+.grade-pill.grade-crit {
+  background: linear-gradient(180deg, rgba(192, 54, 44, .45), rgba(60, 16, 12, .7)) !important;
+  border-color: rgba(192, 54, 44, .5) !important;
+  color: #f4b2a8 !important;
+}
+
+/* Portrait — altın rune çerçeve */
+.portrait-frame,
+.mobile-hud-avatar {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(245, 212, 138, .2), transparent 55%),
+    linear-gradient(180deg, rgba(80, 56, 32, .6), rgba(24, 16, 10, .95)) !important;
+  border: 2px solid var(--mmo-gold) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, .7),
+    inset 0 0 12px rgba(232, 185, 87, .2),
+    0 0 18px rgba(232, 185, 87, .15),
+    0 8px 18px rgba(0, 0, 0, .6) !important;
+  border-radius: 6px !important;
+}
+
+/* Mobile HUD — banner şeritli */
+.mobile-hud,
+.mobile-hud-v6 {
+  background:
+    linear-gradient(180deg, rgba(60, 38, 24, .92), rgba(24, 14, 8, .96)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  border-radius: 8px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 212, 138, .18),
+    inset 0 -1px 0 rgba(0, 0, 0, .6),
+    0 4px 14px rgba(0, 0, 0, .55) !important;
+  position: relative;
+}
+.mobile-hud::before,
+.mobile-hud-v6::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(232, 185, 87, .18);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.mobile-hud-nick,
+.mobile-hud-nick span {
+  font-family: 'Cinzel', serif !important;
+  color: var(--mmo-gold-2) !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.7), 0 0 6px rgba(232, 185, 87, .3);
+}
+.mobile-hud-xpbar {
+  background: linear-gradient(180deg, rgba(20, 12, 6, .9), rgba(10, 6, 4, .95)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  border-radius: 2px !important;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.6), inset 0 -1px 0 rgba(245,212,138,.08) !important;
+  height: 10px !important;
+}
+.mobile-hud-xpfill {
+  background: linear-gradient(90deg, #8a5a20 0%, #e8b957 40%, #f5d48a 70%, #e8b957 100%) !important;
+  box-shadow: 0 0 8px rgba(232, 185, 87, .6), inset 0 1px 0 rgba(255,235,180,.4) !important;
+  border-radius: 1px !important;
+}
+
+/* Bottom tabs — rune tabletleri */
+.bottom-tabs {
+  background: linear-gradient(180deg, rgba(44, 28, 18, .96), rgba(20, 12, 6, .98)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  border-radius: 8px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 212, 138, .18),
+    inset 0 -1px 0 rgba(0, 0, 0, .6),
+    0 -4px 18px rgba(0, 0, 0, .65) !important;
+}
+.bottom-tab {
+  background: linear-gradient(180deg, rgba(60, 38, 24, .4), rgba(24, 14, 8, .6)) !important;
+  border: 1px solid transparent !important;
+  border-radius: 4px !important;
+  color: var(--mmo-ink-dim) !important;
+  transition: all .15s ease !important;
+}
+.bottom-tab.active {
+  background: linear-gradient(180deg, rgba(140, 101, 34, .55), rgba(60, 40, 12, .75)) !important;
+  border-color: var(--mmo-gold) !important;
+  color: var(--mmo-gold-2) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 212, 138, .25),
+    inset 0 0 10px rgba(232, 185, 87, .15),
+    0 0 12px rgba(232, 185, 87, .25) !important;
+}
+.bottom-tab.active svg,
+.bottom-tab.active .nav-icon { color: var(--mmo-gold-2) !important; fill: var(--mmo-gold-2) !important; }
+.bottom-tab svg,
+.bottom-tab .nav-icon { color: var(--mmo-ink-dim) !important; fill: currentColor !important; }
+
+/* Character sheet top — altın isim şeridi */
+.character-sheet-top h2 {
+  font-size: 1.5rem !important;
+  background: linear-gradient(180deg, #f5d48a 0%, #e8b957 50%, #8c6522 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none !important;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.6));
+}
+.sheet-chip.rank {
+  color: var(--mmo-gold-2) !important;
+}
+.sheet-chip.level {
+  color: var(--mmo-sky) !important;
+  background: linear-gradient(180deg, rgba(40, 70, 120, .45), rgba(12, 30, 60, .7)) !important;
+  border-color: rgba(110, 148, 200, .4) !important;
+}
+
+/* Quest scroll — parşömen tonu */
+.quest-scroll-card {
+  background:
+    linear-gradient(180deg, rgba(90, 66, 36, 0.55) 0%, rgba(38, 28, 16, 0.82) 100%),
+    repeating-linear-gradient(0deg, rgba(232, 185, 87, .02) 0 2px, transparent 2px 5px) !important;
+}
+.quest-scroll-card.done {
+  background:
+    linear-gradient(180deg, rgba(70, 100, 50, 0.35) 0%, rgba(20, 30, 14, 0.8) 100%) !important;
+  border-color: rgba(111, 162, 75, .45) !important;
+}
+.quest-scroll-card.done::after {
+  content: 'OK';
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-family: 'Silkscreen', monospace;
+  font-size: .56rem;
+  color: var(--mmo-emerald);
+  letter-spacing: .2em;
+}
+.quest-scroll-card.urgent {
+  border-color: var(--mmo-crimson) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 212, 138, 0.14),
+    inset 0 0 0 1px rgba(0,0,0,.35),
+    0 0 12px rgba(192, 54, 44, 0.25),
+    0 6px 18px rgba(0, 0, 0, 0.55) !important;
+}
+.quest-ring-track { stroke: rgba(232, 185, 87, .15) !important; }
+.quest-ring-fill { stroke: var(--mmo-gold) !important; filter: drop-shadow(0 0 3px rgba(232,185,87,.6)); }
+.quest-ring span {
+  font-family: 'Silkscreen', monospace !important;
+  color: var(--mmo-gold-2) !important;
+}
+.quest-reward {
+  background: linear-gradient(180deg, rgba(90, 63, 18, .5), rgba(40, 28, 8, .75)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  color: var(--mmo-gold-2) !important;
+  border-radius: 3px !important;
+  padding: 2px 6px !important;
+}
+
+/* Progress bars / meter'lar — eski iron bar */
+.survival-meter {
+  background: linear-gradient(180deg, rgba(10, 6, 4, .9), rgba(20, 12, 6, .95)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  border-radius: 2px !important;
+  height: 10px !important;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.6), inset 0 -1px 0 rgba(245,212,138,.08) !important;
+}
+.survival-meter-fill {
+  background: linear-gradient(90deg, #8c6522 0%, #e8b957 60%, #f5d48a 100%) !important;
+  box-shadow: 0 0 6px rgba(232, 185, 87, .5), inset 0 1px 0 rgba(255,235,180,.4) !important;
+}
+.survival-meter-fill.fatigue {
+  background: linear-gradient(90deg, #5a3f12 0%, #d04a40 60%, #f28a80 100%) !important;
+  box-shadow: 0 0 8px rgba(208, 74, 64, .5), inset 0 1px 0 rgba(255,170,160,.4) !important;
+}
+.survival-meter-fill.injury {
+  background: linear-gradient(90deg, #4a1a10 0%, #c0362c 60%, #d04a40 100%) !important;
+  box-shadow: 0 0 10px rgba(192, 54, 44, .6), inset 0 1px 0 rgba(255,140,130,.4) !important;
+}
+
+/* Campaign toggle — taş tablet butonları */
+.qtab {
+  background: linear-gradient(180deg, rgba(44, 28, 18, .7), rgba(20, 12, 6, .85)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  color: var(--mmo-ink-dim) !important;
+  font-family: 'Silkscreen', monospace !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+  border-radius: 4px !important;
+  font-size: .66rem !important;
+}
+.qtab.active {
+  background: linear-gradient(180deg, rgba(140, 101, 34, .55), rgba(60, 40, 12, .75)) !important;
+  border-color: var(--mmo-gold) !important;
+  color: var(--mmo-gold-2) !important;
+  box-shadow: inset 0 1px 0 rgba(245, 212, 138, .25), inset 0 0 8px rgba(232, 185, 87, .15) !important;
+}
+
+/* Sec başlık şeridi */
+.sec {
+  position: relative;
+  padding-bottom: 8px !important;
+  font-family: 'Cinzel', serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  color: var(--mmo-gold-2) !important;
+  letter-spacing: .18em !important;
+  font-size: .74rem !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.7);
+}
+.sec::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--mmo-gold) 0%, var(--mmo-gold-dark) 40%, transparent 100%);
+}
+.sec::before {
+  content: '◆';
+  margin-right: 8px;
+  color: var(--mmo-gold);
+  font-size: .6em;
+}
+
+/* Bottom tab nav icon rengi — aktif dışında soluk */
+.nav-icon svg { stroke: currentColor; }
+
+/* Toast, modal — aynı tema */
+.modal, .toast {
+  background:
+    linear-gradient(180deg, rgba(60, 38, 24, 0.95) 0%, rgba(24, 14, 8, 0.98) 100%) !important;
+  border: 1px solid var(--mmo-gold) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(245, 212, 138, .18),
+    inset 0 0 0 1px rgba(0, 0, 0, .35),
+    0 12px 40px rgba(0, 0, 0, .7) !important;
+  color: var(--mmo-ink) !important;
+}
+.modal-bg {
+  background: radial-gradient(ellipse at center, rgba(60, 30, 15, .7), rgba(10, 5, 2, .92)) !important;
+}
+
+/* Scrollbars — bronz */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(10, 6, 4, .8); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--mmo-gold-deep), var(--mmo-gold-dark));
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--mmo-gold); }
+
+/* Tüm "v6-mute" metin referansları parşömen dim'e */
+.forge-card p,
+.achievement-card-v6 p,
+.chain-balance-card small,
+.skill-branch-signal,
+.skill-node-copy p,
+.next-node-card p,
+.quest-copy p,
+.raid-ledger-card p,
+.coach-feedback-row p,
+.coach-memory-card p,
+.sheet-info-card small,
+.quick-card p,
+.survival-warning-card small,
+.mobile-hud-side small {
+  color: var(--mmo-ink-dim) !important;
+}
+
+/* Stat delta'lar renk tonu */
+.sheet-stat-delta {
+  font-family: 'Silkscreen', monospace !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+}
+.sheet-stat-delta.up {
+  background: linear-gradient(180deg, rgba(111, 162, 75, .5), rgba(40, 60, 20, .7)) !important;
+  color: #c9e8aa !important;
+  border-color: rgba(111, 162, 75, .5) !important;
+}
+.sheet-stat-delta.focus {
+  background: linear-gradient(180deg, rgba(192, 54, 44, .5), rgba(60, 20, 16, .7)) !important;
+  color: #f4b2a8 !important;
+  border-color: rgba(192, 54, 44, .5) !important;
+}
+.sheet-stat-delta.hold {
+  background: transparent !important;
+  color: var(--mmo-ink-deep) !important;
+}
+
+/* Eski "sheet-chip level" mavi tonu düzelt */
+.sheet-chip {
+  font-family: 'Silkscreen', monospace !important;
+  font-size: .62rem !important;
+}
+
+/* Panel & topbar temizle — beyaz arka planlar vs. */
+.app-nav,
+.topbar {
+  background: linear-gradient(180deg, rgba(44, 28, 18, .96), rgba(20, 12, 6, .98)) !important;
+  border-color: var(--mmo-gold-dark) !important;
+  color: var(--mmo-ink) !important;
+}
+.nav-button,
+.avatar-chip {
+  background: linear-gradient(180deg, rgba(60, 38, 24, .5), rgba(24, 14, 8, .7)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  color: var(--mmo-ink-dim) !important;
+  font-family: 'Silkscreen', monospace !important;
+  letter-spacing: .1em !important;
+}
+.nav-button.active {
+  background: linear-gradient(180deg, rgba(140, 101, 34, .55), rgba(60, 40, 12, .75)) !important;
+  border-color: var(--mmo-gold) !important;
+  color: var(--mmo-gold-2) !important;
+  box-shadow: inset 0 1px 0 rgba(245, 212, 138, .22), inset 0 0 10px rgba(232, 185, 87, .15) !important;
+}
+
+/* Forge sparkline — altın */
+.forge-sparkline-line { stroke: var(--mmo-gold) !important; }
+.forge-sparkline-dot { fill: rgba(232, 185, 87, .5) !important; }
+.forge-sparkline-dot.latest { fill: var(--mmo-crimson) !important; }
+
+/* Mobile hud portre glow rune */
+.mobile-hud-avatar {
+  font-size: 1.2rem !important;
+}
+.mobile-hud-side strong {
+  font-family: 'Cinzel', serif !important;
+}
+
+/* Ana şelale sıralaması düzeyinde z-index garantisi */
+.app-shell-v6,
+.page-content,
+.bottom-tabs,
+.mobile-hud,
+.mobile-hud-v6 { position: relative; z-index: 1; }
+
+/* Sekme butonlarındaki SVG içindeki fill — altın aktif */
+.bottom-tab .nav-icon svg,
+.nav-button .nav-icon svg { fill: currentColor !important; }
+
+/* Achievement kilitli / açık */
+.achievement-card-v6.unlocked {
+  background:
+    linear-gradient(180deg, rgba(90, 66, 36, 0.6) 0%, rgba(38, 28, 16, 0.85) 100%) !important;
+  border-color: var(--mmo-gold) !important;
+}
+.achievement-card-v6.unlocked strong { color: var(--mmo-gold-2) !important; }
+.achievement-card-v6.locked {
+  opacity: .55 !important;
+}
+
+/* Chain balance tone */
+.chain-balance-card.tone-low { border-color: rgba(192, 54, 44, .5) !important; }
+.chain-balance-card.tone-high { border-color: rgba(111, 162, 75, .5) !important; }
+.chain-balance-card.tone-mid { border-color: var(--mmo-gold-dark) !important; }
+
+/* Raid ledger small meta chips */
+.raid-block-chip {
+  background: linear-gradient(180deg, rgba(90, 63, 18, .45), rgba(40, 28, 8, .7)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  color: var(--mmo-gold-2) !important;
+  font-family: 'Silkscreen', monospace !important;
+  border-radius: 3px !important;
+}
