@@ -42,6 +42,7 @@ export function renderSkills(p, semantic = {}) {
     const total = branch.items.length
     const tone = branchTone(branch.branch)
     const nextNode = branchNext(branch)
+    const branchReady = branch.items.filter(item => item.status === 'prog').slice(0, 2)
 
     return `
       <div class="skill-branch-card tone-${tone}">
@@ -57,33 +58,32 @@ export function renderSkills(p, semantic = {}) {
         </div>
 
         ${nextNode ? `
-          <div class="next-node-card">
+          <div class="next-node-card compact">
             <span class="mini-label">Next Node</span>
             <strong>${nextNode.name}</strong>
-            <p>${nextNode.desc}</p>
+            <p>${nextNode.req || nextNode.desc}</p>
           </div>
         ` : ''}
 
-        <div class="skill-node-list">
-          ${branch.items.map(item => {
-            const status = statusMap[item.status]
-            return `
-              <div class="skill-node ${item.status === 'lock' ? 'locked' : ''}">
-                <div class="skill-node-status ${status.cls}">
-                  <span>${status.icon}</span>
-                </div>
-                <div class="skill-node-copy">
-                  <div class="skill-node-top">
-                    <strong>${item.name}</strong>
-                    <span class="skill-node-label">${status.label}</span>
+        <div class="skill-branch-minirow">
+          ${branchReady.length
+            ? branchReady.map(item => {
+              const status = statusMap[item.status]
+              return `
+                <div class="skill-node compact">
+                  <div class="skill-node-status ${status.cls}">
+                    <span>${status.icon}</span>
                   </div>
-                  <p>${item.desc}</p>
-                  ${item.req ? `<div class="skill-node-req">${item.req}</div>` : ''}
+                  <div class="skill-node-copy">
+                    <div class="skill-node-top">
+                      <strong>${item.name}</strong>
+                      <span class="skill-node-label">${status.label}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="skill-node-val" ${item.valColor ? `style="color:${item.valColor}"` : ''}>${item.val}</div>
-              </div>
-            `
-          }).join('')}
+              `
+            }).join('')
+            : '<div class="skill-node compact stable"><div class="skill-node-copy"><div class="skill-node-top"><strong>Stable branch</strong><span class="skill-node-label">No pressure</span></div></div></div>'}
         </div>
       </div>
     `
@@ -106,7 +106,7 @@ export function renderSkills(p, semantic = {}) {
       </div>
     </div>
 
-    <div class="ready-row">
+    <div class="ready-row compact">
       ${readySoon.length
         ? readySoon.map(item => `<div class="ready-chip"><span>READY SOON</span><strong>${item.name}</strong></div>`).join('')
         : '<div class="ready-chip"><span>STABLE</span><strong>Yeni unlock baskisi dusuk</strong></div>'}

@@ -102,12 +102,26 @@ function _renderCoachConfidence(p) {
   const reasons = (latestWorkout?.confidence?.reasons || []).slice(0, 3)
   const blockMix = (latestWorkout?.blockMix || []).slice(0, 3)
 
+  if (!latestWorkout) {
+    return `
+      <div class="coach-confidence-surface compact">
+        <div class="coach-memory-head">
+          <div>
+            <div class="eyebrow">Coach Read</div>
+            <h3>Bu seans icin okumaya hazir</h3>
+          </div>
+        </div>
+        <div class="coach-memory-empty">Yeni session geldikce parse kalitesi, block mix ve kanit satirlari burada gorunecek.</div>
+      </div>
+    `
+  }
+
   return `
     <div class="coach-confidence-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">Coach Confidence</div>
-          <h3>Parse guveni ve block dagilimi</h3>
+          <div class="eyebrow">Coach Read</div>
+          <h3>Bu seans ne kadar net okundu</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${confidenceLevel.toUpperCase()}</span>
@@ -118,7 +132,7 @@ function _renderCoachConfidence(p) {
       <div class="coach-memory-grid coach-confidence-grid">
         <div class="coach-memory-card tone-${confidenceLevel === 'high' ? 'fire' : confidenceLevel === 'medium' ? 'warn' : 'danger'}">
           <div class="coach-memory-top">
-            <strong>Evidence Count</strong>
+            <strong>Signals</strong>
             <span>${factRows.length}</span>
           </div>
           <p>${evidenceCount} kanit satiri / ${blockCount} block tespit edildi.</p>
@@ -133,7 +147,7 @@ function _renderCoachConfidence(p) {
       </div>
 
       <div class="coach-confidence-reasons">
-        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${reason}</span>`).join('') : '<span class="coach-memory-empty">Confidence reason yok.</span>'}
+        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${reason}</span>`).join('') : '<span class="coach-memory-empty">Daha net parse icin set, sure, mesafe veya drill bilgisi yardimci olur.</span>'}
       </div>
     </div>
   `
@@ -143,13 +157,19 @@ function _renderMemoryLedger(p) {
   const memories = (p.athleteMemory || []).slice(0, 6)
   const feedback = (p.memoryFeedback || []).slice(0, 4)
   const wrongCount = (p.memoryFeedback || []).filter(item => item.feedbackType === 'wrong').length
+  const feedbackLabel = value => ({
+    correct: 'dogru',
+    wrong: 'yorum yanlis',
+    outdated: 'eskidi',
+    prefer: 'tonu iyi',
+  }[value] || value)
 
   return `
     <div class="coach-memory-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">Memory Ledger</div>
-          <h3>ODIE kalici atlet hafizasi</h3>
+          <div class="eyebrow">Coach Memory</div>
+          <h3>ODIE senden ne ogrenmis</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${memories.length} active</span>
@@ -166,26 +186,26 @@ function _renderMemoryLedger(p) {
             </div>
             <p>${item.summary || item.key}</p>
           </div>
-        `).join('') : '<div class="coach-memory-empty">Henuz kalici memory yok. Yeni session ve feedback geldikce burada birikir.</div>'}
+        `).join('') : '<div class="coach-memory-empty">Henuz kalici bir not birikmedi. Yanlis veya eksik yorumlari isaretledikce burasi dolar.</div>'}
       </div>
 
       <div class="coach-feedback-strip">
         <div>
-          <div class="mini-label">Feedback Loop</div>
+          <div class="mini-label">Coach Feedback</div>
           <strong>Son coach yorumunu isaretle</strong>
         </div>
         <div class="coach-feedback-actions">
           <button class="coach-feedback-btn" data-memory-feedback="correct">DOGRU</button>
-          <button class="coach-feedback-btn danger" data-memory-feedback="wrong">YANLISTI</button>
+          <button class="coach-feedback-btn danger" data-memory-feedback="wrong">YORUM YANLIS</button>
           <button class="coach-feedback-btn" data-memory-feedback="outdated">ESKI</button>
           <button class="coach-feedback-btn" data-memory-feedback="prefer">TONU IYI</button>
         </div>
       </div>
 
-      <div class="coach-feedback-log">
+      <div class="coach-feedback-log ${feedback.length ? '' : 'empty'}">
         ${feedback.length ? feedback.map(item => `
           <div class="coach-feedback-row">
-            <span>${item.feedbackType}</span>
+            <span>${feedbackLabel(item.feedbackType)}</span>
             <p>${item.note || 'Kisa geri bildirim'}</p>
           </div>
         `).join('') : '<div class="coach-memory-empty">Henuz feedback kaydi yok.</div>'}

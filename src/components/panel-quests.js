@@ -40,10 +40,16 @@ function renderQuestScroll(quest) {
   `
 }
 
+function shortText(value = '', max = 82) {
+  const text = String(value || '').trim()
+  if (text.length <= max) return text
+  return `${text.slice(0, max - 1)}…`
+}
+
 function renderRaidLog(p) {
   return `
     <div class="raid-ledger-list">
-      ${(p.workoutLog || []).map(item => `
+      ${(p.workoutLog || []).slice(0, 4).map(item => `
         <article class="raid-ledger-card">
           <div class="raid-ledger-top">
             <strong>${item.type}</strong>
@@ -54,10 +60,10 @@ function renderRaidLog(p) {
             <span>${item.volume}</span>
             <span>${item.sets} set</span>
           </div>
-          <p>${item.highlight || 'Seans notu yok.'}</p>
+          <p>${shortText(item.highlight || 'Seans notu yok.', 68)}</p>
           ${(item.blocks || []).length ? `
             <div class="raid-block-row">
-              ${(item.blocks || []).map(block => `<span class="raid-block-chip">${block}</span>`).join('')}
+              ${(item.blocks || []).slice(0, 3).map(block => `<span class="raid-block-chip">${block}</span>`).join('')}
             </div>
           ` : ''}
         </article>
@@ -80,7 +86,7 @@ function renderQuestSection(p) {
     </div>
 
     <div class="quest-scroll-stack">
-      ${items.map(renderQuestScroll).join('')}
+      ${items.slice(0, 4).map(renderQuestScroll).join('')}
     </div>
   `
 }

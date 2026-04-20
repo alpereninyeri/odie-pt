@@ -3859,6 +3859,264 @@ body {
   }
 }
 
+/* === V6.2 final tone + compact fixes === */
+:root {
+  --v6-bg: #0b0d12;
+  --v6-panel: #131720;
+  --v6-panel-2: #1a202b;
+  --v6-line: rgba(184, 168, 145, 0.12);
+  --v6-line-strong: rgba(184, 168, 145, 0.22);
+  --v6-text: #f5f1eb;
+  --v6-mute: #a39b90;
+  --v6-amber: #e5b36a;
+  --v6-blue: #8fa2c8;
+  --v6-emerald: #70c4a0;
+  --v6-red: #e9897a;
+}
+
+body {
+  background:
+    radial-gradient(circle at top center, rgba(110, 93, 65, 0.14), transparent 34%),
+    linear-gradient(180deg, #0b0d12 0%, #090b10 100%);
+}
+
+.mobile-hud-v6 {
+  background: linear-gradient(180deg, rgba(11, 13, 18, 0.97), rgba(11, 13, 18, 0.9));
+}
+
+.mobile-hud-avatar,
+.portrait-frame {
+  border-color: rgba(229, 179, 106, 0.2);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 46%),
+    linear-gradient(180deg, rgba(110, 95, 72, 0.16), rgba(33, 38, 49, 0.82));
+}
+
+.mobile-hud-xpfill {
+  background: linear-gradient(90deg, #e5b36a, #f1d089 48%, #70c4a0 100%);
+}
+
+.mobile-hud-side small,
+.sheet-stat-key,
+.pressure-chip span,
+.eyebrow,
+.mini-label,
+.skill-node-label,
+.quest-reward,
+.quest-state,
+.bottom-tab {
+  color: var(--v6-mute) !important;
+}
+
+.bottom-tab.active {
+  border-color: rgba(229, 179, 106, 0.24) !important;
+  background: rgba(229, 179, 106, 0.08) !important;
+}
+
+.sheet-stat-main {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sheet-stat-main strong {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.sheet-stat-delta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .66rem;
+  letter-spacing: .08em;
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.sheet-stat-delta.up {
+  color: var(--v6-emerald);
+  background: rgba(112, 196, 160, 0.1);
+}
+
+.sheet-stat-delta.focus {
+  color: var(--v6-red);
+  background: rgba(233, 137, 122, 0.1);
+}
+
+.sheet-stat-delta.hold {
+  color: var(--v6-mute);
+  background: rgba(255,255,255,.04);
+}
+
+.sheet-info-card small {
+  min-height: 36px;
+  overflow: hidden;
+}
+
+.stat-card-v6-key,
+.quick-card small,
+.forge-trend,
+.signal-chip {
+  color: var(--v6-amber) !important;
+}
+
+.perf-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.perf-compact-card {
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid var(--v6-line);
+  background: rgba(255,255,255,.025);
+  text-align: left;
+}
+
+.perf-compact-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--v6-text);
+}
+
+.perf-compact-value {
+  margin-top: 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.perf-compact-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--v6-mute);
+}
+
+.stats-lower-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.achievement-more-card {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+}
+
+.next-node-card.compact p,
+.coach-memory-empty,
+.coach-feedback-row p {
+  line-height: 1.45;
+}
+
+.coach-confidence-surface.compact,
+.coach-memory-surface,
+.coach-confidence-surface {
+  min-height: 0;
+}
+
+.coach-memory-head h3,
+.section-top h3,
+.page-banner h3 {
+  font-size: 1.08rem !important;
+}
+
+.coach-feedback-log.empty {
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .character-sheet-body {
+    grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .portrait-core {
+    order: 0;
+  }
+
+  .portrait-frame {
+    width: 92px;
+    height: 92px;
+    font-size: 2rem;
+    border-radius: 24px;
+  }
+
+  .stat-rail {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .sheet-stat {
+    padding: 10px 8px 9px;
+  }
+
+  .sheet-stat strong {
+    font-size: 1.06rem;
+  }
+
+  .sheet-stat-key,
+  .sheet-stat small {
+    font-size: .64rem;
+  }
+
+  .character-sheet-footer,
+  .home-quick-grid,
+  .stats-lower-grid,
+  .perf-compact-grid,
+  .coach-support-grid,
+  .coach-memory-grid,
+  .mission-pressure-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .page-banner {
+    display: none !important;
+  }
+
+  .skill-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .skill-branch-card {
+    padding: 12px !important;
+  }
+
+  .skill-branch-minirow {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .skill-node.compact {
+    padding: 10px;
+  }
+
+  .quest-scroll-card {
+    grid-template-columns: 44px 1fr;
+    gap: 10px;
+  }
+
+  .quest-ring,
+  .quest-ring-svg {
+    width: 44px;
+    height: 44px;
+  }
+
+  .raid-ledger-card {
+    padding: 12px !important;
+  }
+}
+
 @media (max-width: 480px) {
   .tactical-os-grid,
   .progress-command-grid,

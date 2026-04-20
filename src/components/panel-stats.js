@@ -82,6 +82,19 @@ function renderForgeCard(perf) {
   `
 }
 
+function renderPerfCompact(perf) {
+  return `
+    <button class="perf-compact-card" data-perf-key="${perf.key}" aria-label="${perf.name} detayini ac">
+      <div class="perf-compact-top">
+        <span>${perf.icon}</span>
+        <strong>${perf.name}</strong>
+      </div>
+      <div class="perf-compact-value">${perf.val}</div>
+      <small>${perf.trend}</small>
+    </button>
+  `
+}
+
 function renderChainBalance(semantic = {}) {
   const chains = [
     { label: 'Upper', value: semantic.chains?.upperStrength || 0, hint: 'push + pull' },
@@ -106,9 +119,11 @@ function renderChainBalance(semantic = {}) {
 }
 
 function renderAchievements(achievements = []) {
+  const visible = achievements.filter(item => item.unlocked).slice(0, 4)
+  const lockedCount = Math.max(0, achievements.length - visible.length)
   return `
     <div class="achievement-grid-v6">
-      ${(achievements || []).map(item => `
+      ${visible.map(item => `
         <div class="achievement-card-v6 ${item.unlocked ? 'unlocked' : 'locked'}">
           <div class="achievement-card-v6-icon">${item.icon}</div>
           <strong>${item.name}</strong>
@@ -116,6 +131,7 @@ function renderAchievements(achievements = []) {
           <small>${item.unlocked ? item.date : item.req}</small>
         </div>
       `).join('')}
+      ${lockedCount ? `<div class="achievement-card-v6 locked achievement-more-card"><strong>+${lockedCount}</strong><p>Daha fazla achievement Stats detayinda bekliyor.</p></div>` : ''}
     </div>
   `
 }
@@ -128,15 +144,20 @@ export function renderStats(profile, semantic = {}) {
     </div>
 
     <div class="sec">Performance</div>
-    <div class="forge-grid">
-      ${(profile.performance || []).map(renderForgeCard).join('')}
+    <div class="perf-compact-grid">
+      ${(profile.performance || []).slice(0, 4).map(renderPerfCompact).join('')}
     </div>
 
-    <div class="sec">Chain Balance</div>
-    ${renderChainBalance(semantic)}
-
-    <div class="sec">Achievements</div>
-    ${renderAchievements(profile.achievements || [])}
+    <div class="stats-lower-grid">
+      <div>
+        <div class="sec">Chain Balance</div>
+        ${renderChainBalance(semantic)}
+      </div>
+      <div>
+        <div class="sec">Achievements</div>
+        ${renderAchievements(profile.achievements || [])}
+      </div>
+    </div>
   `
 }
 

@@ -220,8 +220,10 @@ function renderCharacterSheet(state, profile, semantic) {
   const right = stats.filter(stat => ['dex', 'con', 'sta'].includes(stat.key))
   const liveClass = state.profile.classObj || {}
   const nextUnlock = findNextUnlock(profile.skills || [])
+  const nextUnlockHint = summarizeUnlockHint(nextUnlock, profile.skills || [])
   const rank = profile.rank || 'Unranked'
   const focus = state.profile.currentFocus || 'Hybrid denge'
+  const latestDelta = state.workouts?.[0]?.statDelta || {}
 
   return `
     <article class="glass-card character-sheet-card">
@@ -238,7 +240,7 @@ function renderCharacterSheet(state, profile, semantic) {
 
       <div class="character-sheet-body">
         <div class="stat-rail stat-rail-left">
-          ${left.map(stat => renderSheetStat(stat)).join('')}
+          ${left.map(stat => renderSheetStat(stat, latestDelta)).join('')}
         </div>
 
         <div class="portrait-core">
@@ -250,7 +252,7 @@ function renderCharacterSheet(state, profile, semantic) {
         </div>
 
         <div class="stat-rail stat-rail-right">
-          ${right.map(stat => renderSheetStat(stat)).join('')}
+          ${right.map(stat => renderSheetStat(stat, latestDelta)).join('')}
         </div>
       </div>
 
@@ -268,21 +270,33 @@ function renderCharacterSheet(state, profile, semantic) {
         <div class="sheet-info-card">
           <span class="mini-label">Next Unlock</span>
           <strong>${nextUnlock?.name || 'Stable Build'}</strong>
-          <small>${nextUnlock?.req || nextUnlock?.desc || `Variety ${semantic.variety || 0}`}</small>
+          <small>${nextUnlockHint || `Variety ${semantic.variety || 0}`}</small>
         </div>
       </div>
     </article>
   `
 }
 
-function renderSheetStat(stat) {
+function renderSheetStat(stat, latestDelta = {}) {
+  const delta = Number(latestDelta?.[stat.key]) || 0
   return `
     <button class="sheet-stat ${stat.critical ? 'critical' : ''}" data-tab="progress" aria-label="${stat.name} detay">
       <span class="sheet-stat-key">${stat.label}</span>
-      <strong>${Math.round(Number(stat.val) || 0)}</strong>
+      <div class="sheet-stat-main">
+        <strong>${Math.round(Number(stat.val) || 0)}</strong>
+        ${renderStatDelta(delta, stat.critical)}
+      </div>
       <small>${sheetStatStatus(stat)}</small>
     </button>
   `
+}
+
+function renderStatDelta(delta, critical) {
+  if (delta >= 1.5) return '<span class="sheet-stat-delta up">+2</span>'
+  if (delta >= 0.75) return '<span class="sheet-stat-delta up">+1</span>'
+  if (delta > 0) return '<span class="sheet-stat-delta up">UP</span>'
+  if (critical) return '<span class="sheet-stat-delta focus">F</span>'
+  return '<span class="sheet-stat-delta hold">-</span>'
 }
 
 function sheetStatStatus(stat) {
@@ -353,22 +367,24 @@ function renderQuickCard(label, title, body, meta = '') {
 function findNextUnlock(skills = []) {
   for (const branch of skills) {
     const next = (branch.items || []).find(item => item.status !== 'done')
-    if (next) return next
+    if (next) return { ...next, branch: branch.branch }
   }
   return null
+}
+
+function summarizeUnlockHint(nextUnlock, skills = []) {
+  if (!nextUnlock) return ''
+  const branch = String(nextUnlock.branch || '').replace(/[^\w\s-]/g, '').trim()
+  if (nextUnlock.req) return `${branch ? `${branch} / ` : ''}${String(nextUnlock.req).slice(0, 44)}`
+  if (nextUnlock.status === 'prog') return `${branch ? `${branch} / ` : ''}aktif baski var`
+  if (nextUnlock.desc) return String(nextUnlock.desc).slice(0, 52)
+  const fallbackBranch = skills.find(item => (item.items || []).some(node => node.name === nextUnlock.name))
+  return fallbackBranch ? `${String(fallbackBranch.branch || '').replace(/[^\w\s-]/g, '').trim()} / takipte` : 'Takipte'
 }
 
 function renderProgressV6(state, profile, semantic) {
   return `
     <section class="surface-stack">
-      <article class="glass-card page-banner">
-        <div>
-          <div class="eyebrow">Stats</div>
-          <h3>Stats, performance ve unlock takip</h3>
-          <p>Sayilar, trendler ve skill baskisi tek ekranda.</p>
-        </div>
-      </article>
-
       <div class="glass-card" id="panel-stats">
         ${renderStats(profile, semantic)}
       </div>
@@ -383,14 +399,6 @@ function renderProgressV6(state, profile, semantic) {
 function renderTrainingV6(state, profile, semantic) {
   return `
     <section class="surface-stack">
-      <article class="glass-card page-banner">
-        <div>
-          <div class="eyebrow">Quests</div>
-          <h3>Mission board ve recent sessions</h3>
-          <p>Gunluk gorevler ve son seans loglari burada toplanir.</p>
-        </div>
-      </article>
-
       <div class="glass-card" id="panel-training">
         ${renderQuests(profile, semantic)}
       </div>
