@@ -1238,6 +1238,11 @@ export function parseStructuredWorkoutText(text = '') {
     chains: atomic.chains || [],
     missing_chains: atomic.missingChains || [],
     risk_signals: atomic.riskSignals || [],
+    wellness_facts: atomic.wellnessFacts || [],
+    modifiers: atomic.modifiers || [],
+    body_regions: atomic.bodyRegions || [],
+    completed: atomic.completed !== false,
+    is_double_session: Boolean(atomic.isDoubleSession),
   }
 }
 
