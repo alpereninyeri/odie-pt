@@ -7624,3 +7624,408 @@ body::after,
     font-family:'Space Grotesk', sans-serif !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════
+   V7 MOBILE DENSITY — ilk ekrana daha fazla veri, az scroll
+   ═════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .page-content {
+    padding: 10px 10px 108px !important;
+  }
+
+  .surface-stack,
+  .home-v6 {
+    gap: 10px !important;
+  }
+
+  /* Character Sheet — sıkı mobil */
+  .character-sheet-card {
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+  .character-sheet-top {
+    margin-bottom: 10px !important;
+    align-items: center;
+  }
+  .character-sheet-top h2 {
+    font-size: 1.2rem !important;
+  }
+  .character-sheet-top .eyebrow {
+    font-size: .58rem !important;
+    letter-spacing: .18em !important;
+  }
+  .character-sheet-badges { gap: 6px !important; }
+  .sheet-chip {
+    min-height: 26px !important;
+    padding: 0 9px !important;
+    font-size: .7rem !important;
+  }
+
+  .character-sheet-body {
+    grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr) !important;
+    gap: 6px !important;
+    margin-bottom: 10px !important;
+  }
+  .portrait-frame {
+    width: 72px !important;
+    height: 72px !important;
+    font-size: 1.6rem !important;
+    border-radius: 18px !important;
+  }
+  .portrait-meta strong { font-size: .72rem !important; }
+  .portrait-meta span { font-size: .62rem !important; margin-top: 2px !important; }
+
+  .stat-rail {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+  .sheet-stat {
+    padding: 7px 9px 6px !important;
+    border-radius: 12px !important;
+    gap: 0 6px !important;
+  }
+  .sheet-stat-key { font-size: .6rem !important; letter-spacing: .14em !important; }
+  .sheet-stat small { font-size: .58rem !important; letter-spacing: .1em !important; }
+  .sheet-stat strong { font-size: 1rem !important; }
+  .sheet-stat-main { gap: 4px !important; }
+  .sheet-stat-delta {
+    min-width: 22px !important;
+    height: 18px !important;
+    font-size: .58rem !important;
+    padding: 0 4px !important;
+  }
+
+  .character-sheet-footer {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+  .sheet-info-card {
+    padding: 8px 9px !important;
+    border-radius: 12px !important;
+  }
+  .sheet-info-card .mini-label {
+    font-size: .54rem !important;
+    letter-spacing: .14em !important;
+  }
+  .sheet-info-card strong {
+    font-size: .78rem !important;
+    margin-top: 3px !important;
+    line-height: 1.15 !important;
+    display: block !important;
+  }
+  .sheet-info-card small {
+    font-size: .6rem !important;
+    margin-top: 3px !important;
+    line-height: 1.25 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  /* Home Quick Grid — 2x2 kompakt */
+  .home-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .quick-card {
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+  .quick-card .mini-label {
+    font-size: .54rem !important;
+    letter-spacing: .14em !important;
+  }
+  .quick-card strong {
+    font-size: .82rem !important;
+    margin-top: 4px !important;
+    line-height: 1.2 !important;
+    display: block !important;
+  }
+  .quick-card p {
+    font-size: .7rem !important;
+    margin-top: 4px !important;
+    line-height: 1.3 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+  .quick-card small {
+    font-size: .6rem !important;
+    margin-top: 6px !important;
+  }
+
+  /* Stats sekmesi — 2 kolon grid */
+  #panel-stats,
+  #panel-skills,
+  #panel-training {
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .stat-grid-v6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .stat-card-v6 {
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+  .stat-card-v6-top { gap: 6px !important; }
+  .stat-card-v6-top strong {
+    font-size: 1.15rem !important;
+    line-height: 1 !important;
+  }
+  .stat-card-v6-icon { font-size: .95rem !important; }
+  .stat-card-v6-key {
+    font-size: .64rem !important;
+    letter-spacing: .08em !important;
+  }
+  .stat-card-v6-name {
+    font-size: .72rem !important;
+    margin-top: 3px !important;
+    color: var(--v6-mute) !important;
+  }
+  .stat-card-v6-meta {
+    margin-top: 6px !important;
+    gap: 4px !important;
+  }
+  .stat-card-v6-status {
+    font-size: .58rem !important;
+    min-height: 18px !important;
+    padding: 0 6px !important;
+    letter-spacing: .08em !important;
+  }
+  .grade-pill {
+    font-size: .58rem !important;
+    min-height: 18px !important;
+    padding: 0 6px !important;
+  }
+
+  /* Performance kompakt */
+  .perf-compact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .perf-compact-card {
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+  .perf-compact-top { gap: 6px !important; }
+  .perf-compact-top strong { font-size: .78rem !important; }
+  .perf-compact-value {
+    font-size: 1.1rem !important;
+    margin-top: 4px !important;
+  }
+  .perf-compact-card small {
+    font-size: .6rem !important;
+    margin-top: 2px !important;
+  }
+
+  /* Chain balance ve achievements — 2 kolon koru, kompakt */
+  .chain-balance-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+  .chain-balance-card {
+    padding: 8px !important;
+    border-radius: 12px !important;
+  }
+  .chain-balance-card strong { font-size: .7rem !important; }
+  .chain-balance-card span { font-size: 1rem !important; }
+  .chain-balance-card small {
+    font-size: .56rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .achievement-grid-v6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .achievement-card-v6 {
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+  .achievement-card-v6-icon {
+    font-size: 1rem !important;
+  }
+  .achievement-card-v6 strong {
+    font-size: .78rem !important;
+    margin-top: 4px !important;
+  }
+  .achievement-card-v6 p {
+    font-size: .66rem !important;
+    margin-top: 3px !important;
+    line-height: 1.25 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+  .achievement-card-v6 small {
+    font-size: .58rem !important;
+    margin-top: 4px !important;
+  }
+
+  .stats-lower-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .sec {
+    font-size: .65rem !important;
+    letter-spacing: .14em !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* Missions / Mission pressure strip */
+  .mission-pressure-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+  .pressure-chip {
+    padding: 8px 6px !important;
+    border-radius: 12px !important;
+    gap: 2px !important;
+  }
+  .pressure-chip span {
+    font-size: .56rem !important;
+    letter-spacing: .12em !important;
+  }
+  .pressure-chip strong {
+    font-size: .9rem !important;
+    line-height: 1 !important;
+  }
+
+  .campaign-toggle { gap: 6px !important; }
+  .qtab {
+    min-height: 34px !important;
+    font-size: .72rem !important;
+    border-radius: 10px !important;
+  }
+
+  .quest-scroll-stack,
+  .raid-ledger-list {
+    gap: 8px !important;
+  }
+  .quest-scroll-card {
+    padding: 10px !important;
+    grid-template-columns: 40px 1fr !important;
+    gap: 10px !important;
+  }
+  .quest-ring,
+  .quest-ring-svg {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .quest-copy-top strong { font-size: .84rem !important; }
+  .quest-copy p {
+    font-size: .7rem !important;
+    line-height: 1.3 !important;
+    margin-top: 4px !important;
+  }
+  .quest-meta { font-size: .62rem !important; margin-top: 4px !important; }
+  .quest-reward { font-size: .6rem !important; }
+
+  .raid-ledger-card {
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+  .raid-ledger-top strong { font-size: .84rem !important; }
+  .raid-ledger-top span { font-size: .64rem !important; }
+  .raid-meta { gap: 6px !important; font-size: .64rem !important; }
+  .raid-ledger-card p {
+    font-size: .7rem !important;
+    line-height: 1.3 !important;
+    margin-top: 4px !important;
+  }
+  .raid-block-chip {
+    font-size: .58rem !important;
+    padding: 2px 6px !important;
+  }
+
+  /* ODIE / Coach / Survival — yoğun üst panel */
+  .survival-console,
+  .coach-confidence-surface,
+  .coach-memory-surface,
+  .coach-terminal {
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+  .survival-console-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .survival-console-main {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .survival-meter-card {
+    padding: 9px !important;
+    border-radius: 12px !important;
+  }
+  .survival-meter-top span { font-size: .58rem !important; }
+  .survival-meter-top strong { font-size: 1rem !important; }
+  .survival-warning-stack { gap: 8px !important; }
+  .survival-warning-card {
+    padding: 9px !important;
+    border-radius: 12px !important;
+  }
+  .survival-warning-card .mini-label { font-size: .56rem !important; }
+  .survival-warning-card strong { font-size: .78rem !important; line-height: 1.2 !important; margin-top: 3px !important; display: block !important; }
+  .survival-warning-card small { font-size: .62rem !important; margin-top: 3px !important; display: block !important; }
+
+  .coach-memory-head {
+    margin-bottom: 8px !important;
+    gap: 8px !important;
+  }
+  .coach-memory-head h3 { font-size: .92rem !important; line-height: 1.2 !important; }
+  .coach-memory-pills { gap: 4px !important; flex-wrap: wrap !important; }
+  .coach-pill {
+    font-size: .58rem !important;
+    min-height: 20px !important;
+    padding: 0 6px !important;
+  }
+
+  .coach-memory-grid,
+  .coach-confidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .coach-memory-card {
+    padding: 10px !important;
+    border-radius: 12px !important;
+  }
+  .coach-memory-top strong { font-size: .74rem !important; }
+  .coach-memory-top span { font-size: .68rem !important; }
+  .coach-memory-card p {
+    font-size: .66rem !important;
+    line-height: 1.3 !important;
+    margin-top: 4px !important;
+  }
+  .coach-confidence-reasons {
+    margin-top: 8px !important;
+    gap: 4px !important;
+  }
+  .signal-chip {
+    font-size: .6rem !important;
+    padding: 3px 7px !important;
+  }
+
+  .section-top h3 { font-size: 1rem !important; }
+  .section-top .eyebrow { font-size: .58rem !important; }
+}
+
+/* 380px altı (iPhone SE) — iki kolon koru, tipografiyi biraz daha küçült */
+@media (max-width: 380px) {
+  .character-sheet-body {
+    grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr) !important;
+  }
+  .portrait-frame { width: 64px !important; height: 64px !important; font-size: 1.4rem !important; }
+  .sheet-stat strong { font-size: .92rem !important; }
+  .stat-card-v6-top strong { font-size: 1.05rem !important; }
+  .sheet-info-card strong { font-size: .72rem !important; }
+  .mission-pressure-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
