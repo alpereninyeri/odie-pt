@@ -13,10 +13,10 @@ function branchSignal(branch = '', semantic = {}) {
   const counts = semantic.counts || {}
   const text = String(branch).toLowerCase()
 
-  if (text.includes('acro')) return `${counts.acrobatics || 0} acro · aerial ${chains.aerialControl || 0}${feats.baraniSeen ? ' · barani seen' : ''}`
-  if (text.includes('strength')) return `${counts.strength || 0} strength block · bench ${feats.benchMaxKg || 0}kg · MU ${feats.muscleUpMaxReps || 0}`
-  if (text.includes('mobility')) return `${counts.mobility || 0} mobility block · shoulder ${feats.shoulderMobilitySessions || 0} · split ${feats.splitSessions || 0}`
-  if (text.includes('core')) return `core ${counts.core || 0} · trunk ${chains.trunkControl || 0} · hollow ${feats.hollowMaxSec || 0}sn`
+  if (text.includes('acro')) return `${counts.acrobatics || 0} acro / aerial ${chains.aerialControl || 0}${feats.baraniSeen ? ' / barani seen' : ''}`
+  if (text.includes('strength')) return `${counts.strength || 0} strength block / bench ${feats.benchMaxKg || 0}kg / MU ${feats.muscleUpMaxReps || 0}`
+  if (text.includes('mobility')) return `${counts.mobility || 0} mobility block / shoulder ${feats.shoulderMobilitySessions || 0} / split ${feats.splitSessions || 0}`
+  if (text.includes('core')) return `core ${counts.core || 0} / trunk ${chains.trunkControl || 0} / hollow ${feats.hollowMaxSec || 0}sn`
   return 'semantic signal yok'
 }
 
@@ -26,9 +26,9 @@ function branchNext(branch) {
 
 export function renderSkills(p, semantic = {}) {
   const statusMap = {
-    done: { cls: 'ss-done', icon: '✓', label: 'Unlocked' },
-    prog: { cls: 'ss-prog', icon: '⟳', label: 'Warm' },
-    lock: { cls: 'ss-lock', icon: '⌁', label: 'Locked' },
+    done: { cls: 'ss-done', icon: 'OK', label: 'Unlocked' },
+    prog: { cls: 'ss-prog', icon: 'UP', label: 'Warm' },
+    lock: { cls: 'ss-lock', icon: 'LOCK', label: 'Locked' },
   }
 
   const allItems = p.skills.flatMap(branch => branch.items)

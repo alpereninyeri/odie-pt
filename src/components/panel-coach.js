@@ -51,15 +51,15 @@ function _renderSurvivalConsole(p) {
   const readiness = Number(p.health?.readiness?.score)
   const warnings = Array.isArray(p.survivalWarnings) ? p.survivalWarnings : []
   const injury = p.injuryUntil ? `Risk lock: ${p.injuryUntil}` : 'Injury flag clear'
-  const heavyLabel = Number(p.consecutiveHeavy) ? `${p.consecutiveHeavy} ardÄ±ÅŸÄ±k aÄŸÄ±r seans` : 'AÄŸÄ±r yÃ¼k birikimi yok'
-  const readinessText = Number.isFinite(readiness) ? `${readiness}/100` : 'â€”'
+  const heavyLabel = Number(p.consecutiveHeavy) ? `${p.consecutiveHeavy} ardisik agir seans` : 'Agir yuk birikimi yok'
+  const readinessText = Number.isFinite(readiness) ? `${readiness}/100` : '--'
 
   return `
     <section class="survival-console">
       <div class="section-top">
         <div>
           <div class="eyebrow">Survival Console</div>
-          <h3>Armor, fatigue ve recovery uyarÄ± hattÄ±</h3>
+          <h3>Armor, fatigue ve recovery uyari hatti</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${p.sessions || 0} run</span>
@@ -107,7 +107,7 @@ function _renderCoachConfidence(p) {
       <div class="coach-memory-head">
         <div>
           <div class="eyebrow">Coach Confidence</div>
-          <h3>Parse gÃ¼veni ve block daÄŸÄ±lÄ±mÄ±</h3>
+          <h3>Parse guveni ve block dagilimi</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${confidenceLevel.toUpperCase()}</span>
@@ -121,14 +121,14 @@ function _renderCoachConfidence(p) {
             <strong>Evidence Count</strong>
             <span>${factRows.length}</span>
           </div>
-          <p>${evidenceCount} kanÄ±t satÄ±rÄ± Â· ${blockCount} block tespit edildi.</p>
+          <p>${evidenceCount} kanit satiri / ${blockCount} block tespit edildi.</p>
         </div>
         <div class="coach-memory-card tone-calm">
           <div class="coach-memory-top">
             <strong>Primary Mix</strong>
             <span>${latestWorkout?.type || '-'}</span>
           </div>
-          <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' Â· ') : 'Block mix bulunamadÄ±.'}</p>
+          <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' / ') : 'Block mix bulunamadi.'}</p>
         </div>
       </div>
 
@@ -149,7 +149,7 @@ function _renderMemoryLedger(p) {
       <div class="coach-memory-head">
         <div>
           <div class="eyebrow">Memory Ledger</div>
-          <h3>ODIE'nin kalÄ±cÄ± atlet hafÄ±zasÄ±</h3>
+          <h3>ODIE kalici atlet hafizasi</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${memories.length} active</span>
@@ -166,13 +166,13 @@ function _renderMemoryLedger(p) {
             </div>
             <p>${item.summary || item.key}</p>
           </div>
-        `).join('') : '<div class="coach-memory-empty">HenÃ¼z kalÄ±cÄ± memory yok. Yeni session ve feedback geldikÃ§e burada birikir.</div>'}
+        `).join('') : '<div class="coach-memory-empty">Henuz kalici memory yok. Yeni session ve feedback geldikce burada birikir.</div>'}
       </div>
 
       <div class="coach-feedback-strip">
         <div>
           <div class="mini-label">Feedback Loop</div>
-          <strong>Son coach yorumunu iÅŸaretle</strong>
+          <strong>Son coach yorumunu isaretle</strong>
         </div>
         <div class="coach-feedback-actions">
           <button class="coach-feedback-btn" data-memory-feedback="correct">DOGRU</button>
@@ -186,9 +186,9 @@ function _renderMemoryLedger(p) {
         ${feedback.length ? feedback.map(item => `
           <div class="coach-feedback-row">
             <span>${item.feedbackType}</span>
-            <p>${item.note || 'KÄ±sa geri bildirim'}</p>
+            <p>${item.note || 'Kisa geri bildirim'}</p>
           </div>
-        `).join('') : '<div class="coach-memory-empty">HenÃ¼z feedback kaydÄ± yok.</div>'}
+        `).join('') : '<div class="coach-memory-empty">Henuz feedback kaydi yok.</div>'}
       </div>
     </div>
   `
@@ -211,7 +211,7 @@ export function renderCoach(p) {
         <div style="font-size:48px;opacity:.4">OD</div>
         <div style="font-size:14px;letter-spacing:3px;opacity:.7">ODIE OFFLINE</div>
         <div style="font-size:11px;opacity:.65;max-width:280px;text-align:center;line-height:1.5">
-          HenÃ¼z coach raporu yok. Telegram'a yeni bir antrenman yazdÄ±ÄŸÄ±nda burada kanÄ±ta dayalÄ± rapor gÃ¶rÃ¼necek.
+          Henuz coach raporu yok. Telegram'a yeni bir antrenman yazdiginda burada kanita dayali rapor gorunecek.
         </div>
       </div>
       ${support}`

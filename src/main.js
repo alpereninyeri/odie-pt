@@ -3,7 +3,6 @@ import { store } from './data/store.js'
 import { formatMonthShort } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
 import { renderStats, initStats } from './components/panel-stats.js'
-import { renderMuscles, initMuscles } from './components/panel-muscles.js'
 import { renderSkills, initSkills } from './components/panel-skills.js'
 import { renderQuests, initQuests } from './components/panel-quests.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
@@ -64,22 +63,21 @@ function renderApp() {
   const state = store.getState()
   const profile = store.getProfile()
   const semantic = buildSemanticProfile(state.workouts || [], state.dailyLogs || [])
-  const mobileHud = renderMobileHud(state, profile)
 
   document.getElementById('app').innerHTML = `
     <div class="modal-bg" id="statModal">
       <div class="modal" id="modalContent"></div>
     </div>
 
-    ${mobileHud}
+    ${renderMobileHud(state, profile)}
 
-    <div class="app-shell pixel-shell">
-      <aside class="app-nav glass-card surface-rune">
+    <div class="app-shell app-shell-v6">
+      <aside class="app-nav glass-card">
         <div class="nav-brand">
           <div class="nav-brand-mark">${profile.avatar}</div>
           <div>
-            <div class="nav-brand-title">ODIE PT</div>
-            <div class="nav-brand-sub">performance app</div>
+            <div class="nav-brand-title">OdiePT</div>
+            <div class="nav-brand-sub">${state.profile.classObj?.name || profile.class}</div>
           </div>
         </div>
 
@@ -87,17 +85,17 @@ function renderApp() {
           ${tabs.map(tab => renderNavButton(tab, activeTab === tab.key)).join('')}
         </nav>
 
-        <div class="nav-status glass-subtle surface-rune">
-          <div class="mini-label">Today</div>
+        <div class="nav-status glass-subtle">
+          <div class="mini-label">Current Focus</div>
           <div class="nav-status-title">${state.profile.currentFocus || 'Hybrid denge'}</div>
-          <div class="nav-status-sub">${state.profile.classObj?.name || profile.class}</div>
+          <div class="nav-status-sub">${Number(state.health?.readiness?.score) || '--'}/100 readiness</div>
         </div>
       </aside>
 
       <main class="app-main">
         <header class="topbar">
           <div>
-            <div class="eyebrow">${tabs.find(tab => tab.key === activeTab)?.label || 'Nexus'}</div>
+            <div class="eyebrow">${tabs.find(tab => tab.key === activeTab)?.label || 'Home'}</div>
             <h1 class="page-title">${pageTitle(activeTab, profile)}</h1>
           </div>
           <div class="topbar-actions">
@@ -127,13 +125,13 @@ function renderApp() {
 function pageTitle(tabKey, profile) {
   switch (tabKey) {
     case 'dashboard':
-      return `${profile.nick} Overview`
+      return `${profile.nick} Character Sheet`
     case 'progress':
-      return 'Stats ve Performance'
+      return 'Stats and Performance'
     case 'training':
-      return 'Missions ve Session Log'
+      return 'Missions and Sessions'
     case 'coach':
-      return 'ODIE Coach Feed'
+      return 'ODIE Coach'
     default:
       return profile.nick
   }
@@ -144,32 +142,19 @@ function renderMobileHud(state, profile) {
   const xpMax = profile?.xp?.max || 1
   const pct = Math.max(0, Math.min(100, Math.round((xpCur / xpMax) * 100)))
   const level = profile.level ?? '-'
-  const armor = Math.max(0, Math.min(100, Number(state.profile?.armor) || 0))
-  const fatigue = Math.max(0, Math.min(100, Number(state.profile?.fatigue) || 0))
-  const streak = state.profile?.streak?.current ?? 0
   const readiness = state.health?.readiness?.score
-  const sideLabel = Number.isFinite(readiness) ? `R${readiness}` : `S${streak}`
+  const streak = state.profile?.streak?.current ?? 0
 
   return `
-    <div class="mobile-hud vitals-rail">
+    <div class="mobile-hud mobile-hud-v6">
       <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${profile.avatar}</button>
-      <div class="mobile-hud-center vitals-rail-center">
-        <div class="mobile-hud-nick">${profile.nick}<span> L${level}</span></div>
+      <div class="mobile-hud-center">
+        <div class="mobile-hud-nick">${profile.nick}<span>L${level}</span></div>
         <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
-        <div class="vital-meter-row">
-          <div class="vital-meter tone-armor">
-            <span>AR</span>
-            <div class="vital-meter-track"><div class="vital-meter-fill tone-armor" style="width:${armor}%"></div></div>
-          </div>
-          <div class="vital-meter tone-fatigue">
-            <span>FT</span>
-            <div class="vital-meter-track"><div class="vital-meter-fill tone-fatigue" style="width:${fatigue}%"></div></div>
-          </div>
-        </div>
       </div>
       <div class="mobile-hud-side">
-        <strong>${sideLabel}</strong>
-        <small>${streak} day streak</small>
+        <strong>${Number.isFinite(readiness) ? readiness : streak}</strong>
+        <small>${Number.isFinite(readiness) ? 'ready' : 'streak'}</small>
       </div>
     </div>
   `
@@ -202,132 +187,218 @@ function renderNavGlyph(kind) {
 function renderPage(tabKey, state, profile, semantic) {
   switch (tabKey) {
     case 'dashboard':
-      return renderDashboardV5(state, profile, semantic)
+      return renderHomeV6(state, profile, semantic)
     case 'progress':
-      return renderProgressV5(state, profile, semantic)
+      return renderProgressV6(state, profile, semantic)
     case 'training':
-      return renderTrainingV5(state, profile, semantic)
+      return renderTrainingV6(state, profile, semantic)
     case 'coach':
-      return renderCoachPageV5(state, profile)
+      return renderCoachPageV6(state, profile)
     default:
       return ''
   }
 }
 
-function renderDashboardV5(state, profile, semantic) {
-  const latestWorkout = (state.workouts || [])[0] || null
-  const coachInsight = extractCoachInsight(profile)
-
+function renderHomeV6(state, profile, semantic) {
   return `
-    <section class="surface-stack dashboard-stack">
-      ${renderLastSessionBanner(latestWorkout)}
+    <section class="surface-stack home-v6">
+      ${renderCharacterSheet(state, profile, semantic)}
 
-      <div class="dashboard-columns">
-        ${renderClassSigilCard(state, profile)}
-        ${renderActivityLedger(profile, state)}
+      <div class="home-quick-grid">
+        ${renderLastSessionCard(state)}
+        ${renderCurrentQuestCard(profile)}
+        ${renderRecoveryCard(state, profile)}
+        ${renderRecentWinCard(state, profile)}
       </div>
-
-      <article class="glass-card surface-rune stat-pulse-panel">
-        <div class="section-top">
-          <div>
-            <div class="eyebrow">Stat Momentum</div>
-            <h3>Son seansa gore buff ve focus</h3>
-          </div>
-          <button class="inline-link" data-tab="progress">Open stats</button>
-        </div>
-        <div class="stat-pulse-grid">
-          ${renderDashboardStats(profile, latestWorkout)}
-        </div>
-      </article>
-
-      <div class="dashboard-columns">
-        ${renderBuildDeck(semantic, profile, state)}
-
-        <article class="glass-card surface-rune compact-vitals-panel">
-          <div class="section-top">
-          <div>
-            <div class="eyebrow">Recovery</div>
-            <h3>Readiness ve body status</h3>
-          </div>
-          <button class="inline-link" data-tab="coach">Coach</button>
-        </div>
-          ${renderHealth(profile, { compact: true })}
-        </article>
-      </div>
-
-      <article class="glass-card surface-rune coach-preview-panel">
-        <div class="section-top">
-          <div>
-            <div class="eyebrow">Coach Brief</div>
-            <h3>ODIE'nin son notu</h3>
-          </div>
-          <button class="inline-link" data-tab="coach">Open ODIE</button>
-        </div>
-        <div class="coach-preview-body">
-          <div class="coach-preview-mark">OD</div>
-          <div>
-            <strong>${coachInsight.title}</strong>
-            <p>${coachInsight.body}</p>
-          </div>
-        </div>
-      </article>
     </section>
   `
 }
 
-function renderProgressV5(state, profile, semantic) {
+function renderCharacterSheet(state, profile, semantic) {
+  const stats = profile.stats || []
+  const left = stats.filter(stat => ['str', 'agi', 'end'].includes(stat.key))
+  const right = stats.filter(stat => ['dex', 'con', 'sta'].includes(stat.key))
+  const liveClass = state.profile.classObj || {}
+  const nextUnlock = findNextUnlock(profile.skills || [])
+  const rank = profile.rank || 'Unranked'
+  const focus = state.profile.currentFocus || 'Hybrid denge'
+
+  return `
+    <article class="glass-card character-sheet-card">
+      <div class="character-sheet-top">
+        <div>
+          <div class="eyebrow">Character Sheet</div>
+          <h2>${profile.nick}</h2>
+        </div>
+        <div class="character-sheet-badges">
+          <span class="sheet-chip rank">${rank}</span>
+          <span class="sheet-chip level">L${profile.level}</span>
+        </div>
+      </div>
+
+      <div class="character-sheet-body">
+        <div class="stat-rail stat-rail-left">
+          ${left.map(stat => renderSheetStat(stat)).join('')}
+        </div>
+
+        <div class="portrait-core">
+          <button class="portrait-frame" data-action="open-avatar" aria-label="Profili ac">${profile.avatar}</button>
+          <div class="portrait-meta">
+            <strong>${liveClass.name || profile.class}</strong>
+            <span>${profile.subClass}</span>
+          </div>
+        </div>
+
+        <div class="stat-rail stat-rail-right">
+          ${right.map(stat => renderSheetStat(stat)).join('')}
+        </div>
+      </div>
+
+      <div class="character-sheet-footer">
+        <div class="sheet-info-card">
+          <span class="mini-label">Archetype</span>
+          <strong>${liveClass.name || profile.class}</strong>
+          <small>${liveClass.reason || 'Current build kimligi aktif seanslardan okunur.'}</small>
+        </div>
+        <div class="sheet-info-card">
+          <span class="mini-label">Current Focus</span>
+          <strong>${focus}</strong>
+          <small>${(liveClass.signals || []).slice(0, 2).join(' / ') || 'Yeni sinyal bekleniyor'}</small>
+        </div>
+        <div class="sheet-info-card">
+          <span class="mini-label">Next Unlock</span>
+          <strong>${nextUnlock?.name || 'Stable Build'}</strong>
+          <small>${nextUnlock?.req || nextUnlock?.desc || `Variety ${semantic.variety || 0}`}</small>
+        </div>
+      </div>
+    </article>
+  `
+}
+
+function renderSheetStat(stat) {
+  return `
+    <button class="sheet-stat ${stat.critical ? 'critical' : ''}" data-tab="progress" aria-label="${stat.name} detay">
+      <span class="sheet-stat-key">${stat.label}</span>
+      <strong>${Math.round(Number(stat.val) || 0)}</strong>
+      <small>${sheetStatStatus(stat)}</small>
+    </button>
+  `
+}
+
+function sheetStatStatus(stat) {
+  if (stat.critical) return 'FOCUS'
+  if ((Number(stat.val) || 0) >= 80) return 'STRONG'
+  if ((Number(stat.val) || 0) >= 60) return 'STABLE'
+  return 'BUILD'
+}
+
+function renderLastSessionCard(state) {
+  const workout = (state.workouts || [])[0]
+  if (!workout) {
+    return renderQuickCard('Last Session', 'Yeni seans yok', 'Yeni antrenman geldiginde burada ozet gosterilecek.')
+  }
+
+  const title = `${formatMonthShort(workout.date)} / ${workout.type}`
+  const body = workout.highlight || (workout.evidence || []).slice(0, 1).join(' ') || 'Seans sinyali yok.'
+  const meta = `${workout.durationMin || 0}dk${workout.distanceKm ? ` / ${workout.distanceKm}km` : ''}`
+  return renderQuickCard('Last Session', title, body, meta)
+}
+
+function renderCurrentQuestCard(profile) {
+  const activeQuest = [...(profile.quests?.daily || []), ...(profile.quests?.weekly || [])].find(quest => !quest.done)
+  if (!activeQuest) {
+    return renderQuickCard('Current Quest', 'Tum gorevler temiz', 'Yeni gorev baskisi yok.')
+  }
+  return renderQuickCard(
+    'Current Quest',
+    activeQuest.name,
+    activeQuest.desc,
+    `${activeQuest.progress}/${activeQuest.total} / ${activeQuest.reward || 'XP'}`
+  )
+}
+
+function renderRecoveryCard(state, profile) {
+  const readiness = state.health?.readiness?.score
+  const armor = Math.round(Number(state.profile?.armor) || 0)
+  const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
+  const body = Number.isFinite(readiness)
+    ? `Readiness ${readiness}/100 / Armor ${armor} / Fatigue ${fatigue}`
+    : `Armor ${armor} / Fatigue ${fatigue}`
+  return renderQuickCard('Recovery', profile.health?.metrics?.[1]?.val || 'Stable', body)
+}
+
+function renderRecentWinCard(state, profile) {
+  const perf = (profile.performance || []).find(item => String(item.trend || '').includes('+') || String(item.trend || '').includes('Elite'))
+  const badge = (profile.achievements || []).find(item => item.unlocked)
+  if (perf) {
+    return renderQuickCard('Recent Win', perf.name, perf.trend, perf.val)
+  }
+  if (badge) {
+    return renderQuickCard('Recent Win', badge.name, badge.desc, badge.date || 'Unlocked')
+  }
+  return renderQuickCard('Recent Win', 'No recent win', 'Yeni basari veya PR bekleniyor.')
+}
+
+function renderQuickCard(label, title, body, meta = '') {
+  return `
+    <article class="glass-card quick-card">
+      <span class="mini-label">${label}</span>
+      <strong>${title}</strong>
+      <p>${body}</p>
+      ${meta ? `<small>${meta}</small>` : ''}
+    </article>
+  `
+}
+
+function findNextUnlock(skills = []) {
+  for (const branch of skills) {
+    const next = (branch.items || []).find(item => item.status !== 'done')
+    if (next) return next
+  }
+  return null
+}
+
+function renderProgressV6(state, profile, semantic) {
   return `
     <section class="surface-stack">
-      <article class="glass-card surface-rune page-banner">
+      <article class="glass-card page-banner">
         <div>
           <div class="eyebrow">Stats</div>
-          <h3>Radar, performance ve achievements</h3>
-          <p>Guc, hareket ve progression tek akista okunur.</p>
+          <h3>Stats, performance ve unlock takip</h3>
+          <p>Sayilar, trendler ve skill baskisi tek ekranda.</p>
         </div>
       </article>
 
-      <div class="glass-card surface-rune" id="panel-stats">
+      <div class="glass-card" id="panel-stats">
         ${renderStats(profile, semantic)}
       </div>
-      <div class="glass-card surface-rune" id="panel-muscles">
-        ${renderMuscles(profile)}
-      </div>
-      <div class="glass-card surface-rune" id="panel-skills">
+
+      <div class="glass-card" id="panel-skills">
         ${renderSkills(profile, semantic)}
       </div>
     </section>
   `
 }
 
-function renderTrainingV5(state, profile, semantic) {
-  const openQuests = [...profile.quests.daily, ...profile.quests.weekly].filter(quest => !quest.done).length
-  const recovery = Math.round((semantic.recoveryDiscipline || 0) * 100)
-
+function renderTrainingV6(state, profile, semantic) {
   return `
     <section class="surface-stack">
-      <article class="glass-card surface-rune page-banner">
+      <article class="glass-card page-banner">
         <div>
-          <div class="eyebrow">Missions</div>
-          <h3>Aktif gorevler ve session history</h3>
-          <p>Gorevleri ve son seans izlerini daha temiz bir akista takip et.</p>
-        </div>
-        <div class="page-banner-chips">
-          <span class="signal-chip">${openQuests} open</span>
-          <span class="signal-chip">${recovery}% recovery</span>
-          <span class="signal-chip">${semantic.variety || 0} variety</span>
+          <div class="eyebrow">Quests</div>
+          <h3>Mission board ve recent sessions</h3>
+          <p>Gunluk gorevler ve son seans loglari burada toplanir.</p>
         </div>
       </article>
 
-      <div class="glass-card surface-rune" id="panel-training">
+      <div class="glass-card" id="panel-training">
         ${renderQuests(profile, semantic)}
       </div>
-
-      ${renderSignalArchive(state)}
     </section>
   `
 }
 
-function renderCoachPageV5(state, profile) {
+function renderCoachPageV6(state, profile) {
   const coachProfile = {
     ...profile,
     armor: state.profile?.armor,
@@ -339,13 +410,12 @@ function renderCoachPageV5(state, profile) {
 
   return `
     <section class="surface-stack">
-      <article class="glass-card surface-rune page-banner coach-banner">
+      <article class="glass-card page-banner coach-banner">
         <div>
           <div class="eyebrow">ODIE</div>
           <h3>Coach feed ve recovery durumu</h3>
-          <p>Aktif recovery, parse confidence ve memory tek akista.</p>
+          <p>Aktif yorumlar, confidence ve recovery ayni akista.</p>
         </div>
-        <button class="inline-link" data-tab="training">Open missions</button>
       </article>
 
       <div class="coach-shell">
@@ -355,340 +425,10 @@ function renderCoachPageV5(state, profile) {
   `
 }
 
-function renderDashboardStats(profile, latestWorkout) {
-  const statDelta = latestWorkout?.statDelta || {}
-  return (profile.stats || []).map(stat => `
-    <button class="stat-pulse-item ${stat.critical ? 'critical' : ''}" data-tab="progress" aria-label="${stat.name} detayini ac">
-      <span class="stat-pulse-key">${stat.label}</span>
-      <strong>${String(stat.val).padStart(2, '0')}</strong>
-      <span class="stat-pulse-chip ${dashboardStatChipClass(stat, statDelta)}">${dashboardStatChipLabel(stat, statDelta)}</span>
-      <small>${dashboardStatHint(stat, statDelta)}</small>
-    </button>
-  `).join('')
-}
-
-function dashboardStatChipLabel(stat, statDelta) {
-  const delta = Number(statDelta?.[stat.key]) || 0
-  if (delta > 0) return `+${delta}`
-  if (stat.critical) return 'FOCUS'
-  return 'HOLD'
-}
-
-function dashboardStatChipClass(stat, statDelta) {
-  const delta = Number(statDelta?.[stat.key]) || 0
-  if (delta > 0) return 'up'
-  if (stat.critical) return 'focus'
-  return 'hold'
-}
-
-function dashboardStatHint(stat, statDelta) {
-  const delta = Number(statDelta?.[stat.key]) || 0
-  if (delta > 0) return 'son seans buff'
-  if (stat.critical) return 'bu hatta odaklan'
-  return 'denge korunuyor'
-}
-
-function renderLastSessionBanner(latestWorkout) {
-  if (!latestWorkout) {
-    return `
-      <article class="glass-card surface-rune session-banner empty">
-        <div class="eyebrow">Last Session</div>
-        <h3>HenÃ¼z seans kaydÄ± yok</h3>
-        <p>Telegram'dan yeni workout gÃ¶nderdiÄŸinde burada block mix ve kanÄ±t satÄ±rlarÄ± gÃ¶rÃ¼necek.</p>
-      </article>
-    `
-  }
-
-  const blockChips = (latestWorkout.blockMix || latestWorkout.blocks || []).slice(0, 4).map(block => {
-    if (typeof block === 'string') return `<span class="signal-chip">${block}</span>`
-    const percent = Number.isFinite(Number(block.percent)) ? ` ${Math.round(Number(block.percent))}%` : ''
-    return `<span class="signal-chip">${block.kind}${percent}</span>`
-  }).join('')
-
-  const evidence = (latestWorkout.evidence || []).slice(0, 2).join(' · ') || latestWorkout.highlight || 'Ana sinyal kaydi yok.'
-  const headline = `${formatMonthShort(latestWorkout.date)} · ${latestWorkout.type} · ${latestWorkout.durationMin || 0}dk`
-  const side = latestWorkout.distanceKm ? `${latestWorkout.distanceKm} km` : `${latestWorkout.primaryCategory || 'hybrid'}`
-
-  return `
-    <article class="glass-card surface-rune session-banner">
-      <div class="session-banner-top">
-        <div>
-          <div class="eyebrow">Session Snapshot</div>
-          <h3>${headline}</h3>
-        </div>
-        <span class="session-banner-side">${side}</span>
-      </div>
-      <p>${evidence}</p>
-      <div class="session-banner-blocks">${blockChips || '<span class="signal-chip">signal waiting</span>'}</div>
-    </article>
-  `
-}
-
-function renderClassSigilCard(state, profile) {
-  const liveClass = state.profile.classObj || {}
-  const signals = (liveClass.signals || []).slice(0, 3)
-  const runnerUp = liveClass.runnerUp?.name ? `${liveClass.runnerUp.name}${liveClass.runnerUp.score ? ` · ${liveClass.runnerUp.score.toFixed(1)}` : ''}` : 'No challenger'
-
-  return `
-    <article class="glass-card surface-rune class-sigil-card">
-      <div class="section-top">
-        <div>
-          <div class="eyebrow">Archetype</div>
-          <h3>${liveClass.name || profile.class}</h3>
-        </div>
-        <span class="chip-rarity-legend">${profile.rank}</span>
-      </div>
-      <div class="class-sigil-body">
-        <div class="class-sigil-frame">
-          <span class="class-sigil-glyph">${liveClass.icon || 'SG'}</span>
-        </div>
-        <div class="class-sigil-copy">
-          <strong>${liveClass.reason || profile.subClass}</strong>
-          <p>${liveClass.buff || 'Aktif build sinyalleri sinif kimligini burada gunceller.'}</p>
-        </div>
-      </div>
-      <div class="signal-chip-row">
-        ${signals.length ? signals.map(signal => `<span class="signal-chip">${signal}</span>`).join('') : '<span class="signal-chip">signal waiting</span>'}
-      </div>
-      <div class="runner-up-note">Runner-up: ${runnerUp}</div>
-    </article>
-  `
-}
-
-function renderActivityLedger(profile, state) {
-  const ringStats = normalizeGlobalStats(profile.globalStats || []).slice(0, 4)
-  const lifetimeXp = state.profile?.xp?.total || 0
-  return `
-    <article class="glass-card surface-rune activity-ledger">
-      <div class="section-top">
-        <div>
-          <div class="eyebrow">Rings & Totals</div>
-          <h3>Activity ve toplamlar</h3>
-        </div>
-        <span class="signal-chip">${profile.sessions} run</span>
-      </div>
-      <div class="ring-ledger-grid">
-        ${ringStats.map(item => `
-          <div class="mini-ring-card ${item.warn ? 'warn' : ''}">
-            <strong>${item.val}</strong>
-            <small>${item.label}</small>
-          </div>
-        `).join('')}
-      </div>
-      <div class="totals-ledger-grid">
-        <div class="totals-ledger-cell">
-          <span>Volume</span>
-          <strong>${profile.totalVolume}</strong>
-        </div>
-        <div class="totals-ledger-cell">
-          <span>Sets</span>
-          <strong>${profile.totalSets}</strong>
-        </div>
-        <div class="totals-ledger-cell">
-          <span>Time</span>
-          <strong>${profile.totalTime}</strong>
-        </div>
-        <div class="totals-ledger-cell">
-          <span>XP</span>
-          <strong>${lifetimeXp.toLocaleString('tr-TR')}</strong>
-        </div>
-      </div>
-    </article>
-  `
-}
-
-function normalizeGlobalStats(stats = []) {
-  return stats.map(item => {
-    const label = String(item.label || '')
-      .replace(/GÃ¼n/g, 'Gun')
-      .replace(/GÃ¼nlÃ¼k/g, 'Gunluk')
-      .replace(/AdÄ±m/g, 'Adim')
-      .replace(/HalkasÄ±/g, 'Halkasi')
-      .replace(/Egzersiz/g, 'Egzersiz')
-      .replace(/Hareket/g, 'Hareket')
-    return {
-      val: item.val,
-      label,
-      warn: Boolean(item.red),
-    }
-  })
-}
-
-function renderBuildDeck(semantic, profile, state) {
-  const tracks = [
-    { label: 'Power', value: Math.round((semantic.shares?.strength || 0) * 100), tone: 'str' },
-    { label: 'Motion', value: Math.round((semantic.shares?.movement || 0) * 100), tone: 'agi' },
-    { label: 'Engine', value: Math.round((semantic.shares?.endurance || 0) * 100), tone: 'end' },
-    { label: 'Acro', value: Math.round((semantic.shares?.acrobatics || 0) * 100), tone: 'dex' },
-    { label: 'Core', value: Math.min(100, Math.round((semantic.chains?.trunkControl || 0) * 25)), tone: 'con' },
-    { label: 'Recovery', value: Math.round((semantic.recoveryDiscipline || 0) * 100), tone: 'sta' },
-  ]
-  const notices = buildWeakNotices(semantic, profile, state)
-
-  return `
-    <article class="glass-card surface-rune build-deck">
-      <div class="section-top">
-        <div>
-          <div class="eyebrow">Focus Areas</div>
-          <h3>Discipline tracks ve weak links</h3>
-        </div>
-        <button class="inline-link" data-tab="progress">Details</button>
-      </div>
-
-      <div class="discipline-track-list">
-        ${tracks.map(track => `
-          <div class="disc-track meter-${track.tone}">
-            <div class="disc-track-top">
-              <span>${track.label}</span>
-              <strong>${track.value}%</strong>
-            </div>
-            <div class="disc-track-bar">
-              <div class="disc-track-fill meter-${track.tone}" style="width:${Math.max(8, track.value)}%"></div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="weak-notice-stack">
-        ${notices.map(item => `
-          <div class="weak-notice">
-            <strong>${item.title}</strong>
-            <p>${item.body}</p>
-          </div>
-        `).join('')}
-      </div>
-    </article>
-  `
-}
-
-function buildWeakNotices(semantic, profile, state) {
-  const notices = []
-  const criticalStat = (profile.stats || []).find(stat => stat.critical)
-  if (criticalStat) {
-    notices.push({
-      title: `${criticalStat.label} weak link`,
-      body: `${criticalStat.name} hattini desteklemek icin kontrollu hacim ve dogrudan aktivasyon ekle.`,
-    })
-  }
-  if ((semantic.chains?.trunkControl || 0) < 2) {
-    notices.push({
-      title: 'Trunk chain zayif',
-      body: 'Core veya anti-rotation sinyali eklenirse acro ve landing kalitesi daha dengeli acilir.',
-    })
-  }
-  if ((semantic.counts?.mobility || 0) < 2) {
-    notices.push({
-      title: 'Mobility hattÄ± ince',
-      body: 'Haftalik en az iki mobility touch recovery ve form kalitesini yukari ceker.',
-    })
-  }
-  if ((state.profile?.survivalWarnings || []).length) {
-    notices.push({
-      title: 'Recovery uyarisi',
-      body: state.profile.survivalWarnings[0],
-    })
-  }
-  if (!notices.length) {
-    notices.push({
-      title: 'Build stabil',
-      body: 'Belirgin zayif halka yok; siradaki quest veya skill kilidine gore seans sec.',
-    })
-  }
-  return notices.slice(0, 3)
-}
-
-function extractCoachInsight(profile) {
-  const sections = (profile.coachNote?.sections || []).filter(section => !section?.hidden)
-  const firstSection = sections[0]
-  if (!firstSection) {
-    return {
-      title: 'HenÃ¼z coach raporu yok',
-      body: 'Yeni seans girdiginde ODIE burada ozet ve sonraki odak hatlarini biriktirecek.',
-    }
-  }
-
-  return {
-    title: firstSection.title,
-    body: (firstSection.lines || []).slice(0, 2).join(' '),
-  }
-}
-
-function summarizeBlockArchiveRows(blocks = []) {
-  const totals = {}
-  for (const block of blocks || []) {
-    const bucket = totals[block.kind] || {
-      kind: block.kind,
-      count: 0,
-      durationMin: 0,
-      distanceKm: 0,
-      weightPct: 0,
-    }
-    bucket.count += 1
-    bucket.durationMin += Number(block.durationMin) || 0
-    bucket.distanceKm += Number(block.distanceKm) || 0
-    bucket.weightPct += Number(block.weightPct) || 0
-    totals[block.kind] = bucket
-  }
-
-  return Object.values(totals)
-    .map(item => ({
-      ...item,
-      avgWeightPct: Math.round(item.weightPct / Math.max(1, item.count)),
-    }))
-    .sort((left, right) => right.count - left.count || right.avgWeightPct - left.avgWeightPct)
-    .slice(0, 6)
-}
-
-function renderSignalArchive(state) {
-  const blockArchive = summarizeBlockArchiveRows(state.workoutBlocks || [])
-  const facts = (state.workoutFacts || []).slice(0, 6)
-
-  return `
-    <div class="signal-archive-grid">
-      <article class="glass-card surface-rune">
-        <div class="section-top">
-          <div>
-            <div class="eyebrow">Block Archive</div>
-            <h3>Kalici session block arsivi</h3>
-          </div>
-        </div>
-        <div class="signal-archive-list">
-          ${blockArchive.length ? blockArchive.map(item => `
-            <div class="signal-archive-row">
-              <strong>${item.kind}</strong>
-              <span>${item.count} blok</span>
-              <small>${item.avgWeightPct}% avg · ${item.durationMin}dk</small>
-            </div>
-          `).join('') : '<div class="coach-memory-empty">HenÃ¼z workout_blocks verisi yok.</div>'}
-        </div>
-      </article>
-
-      <article class="glass-card surface-rune">
-        <div class="section-top">
-          <div>
-            <div class="eyebrow">Evidence Audit</div>
-            <h3>Atomic parser kanitlari</h3>
-          </div>
-        </div>
-        <div class="signal-archive-list">
-          ${facts.length ? facts.map(item => `
-            <div class="signal-archive-row">
-              <strong>${item.label || item.blockKind}</strong>
-              <span>${item.blockKind}</span>
-              <small>${item.raw}</small>
-            </div>
-          `).join('') : '<div class="coach-memory-empty">HenÃ¼z workout_facts verisi yok.</div>'}
-        </div>
-      </article>
-    </div>
-  `
-}
-
 function initActivePage(tabKey, profile) {
   switch (tabKey) {
     case 'progress':
       initStats(profile)
-      initMuscles()
       initSkills()
       break
     case 'training':
