@@ -1,0 +1,1920 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   V3.1 CLEAN GAMIFIED OVERRIDE
+   fixes overflow + swaps the theme to a cleaner arena-ops look
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme="dark"] {
+  --bg:#0a0f18;
+  --bg2:#0f1722;
+  --bg3:#141f2c;
+  --bg4:#182637;
+  --bg5:#223247;
+  --txt:#f5f7fb;
+  --dim:#98a5ba;
+  --gold:#ffb85c;
+  --gold2:#ffd17f;
+  --gold3:#9f6d2c;
+  --red:#ff6f7d;
+  --grn:#57d7a8;
+  --blu:#69b7ff;
+  --org:#ff9367;
+  --pur:#8f9bff;
+  --brd:rgba(130,165,220,.14);
+  --brdg:rgba(130,165,220,.24);
+  --glow-gold:rgba(255,184,92,.14);
+  --glow-gold-s:rgba(255,184,92,.06);
+  --glow-gold-xs:rgba(255,184,92,.03);
+}
+
+body {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(105,183,255,.14), transparent 26%),
+    radial-gradient(circle at 86% 10%, rgba(87,215,168,.1), transparent 22%),
+    linear-gradient(180deg, #0d1420 0%, #090e16 48%, #070b12 100%);
+}
+
+body::after {
+  opacity:.16;
+}
+
+.glass-card, .glass-subtle, .surface, .coach-shell, .hero-card, .dashboard-card, .os-panel {
+  background:linear-gradient(180deg, rgba(20,30,43,.92), rgba(14,22,34,.92));
+  border:1px solid rgba(130,165,220,.13);
+  box-shadow:0 12px 32px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+.hero-card {
+  background:
+    radial-gradient(circle at top right, rgba(105,183,255,.08), transparent 24%),
+    linear-gradient(180deg, rgba(19,31,46,.96), rgba(13,21,33,.96));
+}
+
+.app-nav,
+.mobile-hud,
+.bottom-tabs {
+  background:linear-gradient(180deg, rgba(15,22,34,.94), rgba(11,17,28,.94));
+  border-color:rgba(130,165,220,.12);
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
+}
+
+.primary-button,
+.primary-fab {
+  background:linear-gradient(135deg, #5bc6ff, #4ed8a7);
+  border:1px solid rgba(255,255,255,.14);
+  color:#051019;
+  box-shadow:0 10px 26px rgba(55,145,235,.18);
+}
+
+.inline-link,
+.avatar-chip,
+.nav-button,
+.bottom-tab,
+.qtab {
+  background:rgba(255,255,255,.03);
+  border-color:rgba(130,165,220,.12);
+}
+
+.nav-button.active,
+.bottom-tab.active,
+.qtab.active {
+  background:linear-gradient(135deg, rgba(105,183,255,.14), rgba(87,215,168,.08));
+  border-color:rgba(105,183,255,.24);
+}
+
+.os-panel,
+.lane-card,
+.chain-card,
+.gap-item,
+.skill-branch-card,
+.quest-card,
+.raid-log-card,
+.trophy-card,
+.ops-mini-card,
+.next-node-card {
+  min-width:0;
+}
+
+.build-identity-head,
+.quest-card-head,
+.skill-branch-head,
+.skill-node-top,
+.raid-log-top,
+.lane-head {
+  flex-wrap:wrap;
+}
+
+.build-identity-head > div,
+.gap-item > div,
+.quest-card-title,
+.quest-card-title > div,
+.skill-branch-head > div,
+.skill-node-copy,
+.raid-log-card,
+.trophy-card,
+.ops-mini-card,
+.lane-card,
+.chain-card {
+  min-width:0;
+}
+
+.build-identity-head p,
+.gap-item p,
+.quest-card p,
+.skill-node p,
+.trophy-card p,
+.raid-log-card p,
+.next-node-card p,
+.lane-card small,
+.chain-card small,
+.ops-mini-card small,
+.skill-branch-signal,
+.quest-progress span {
+  margin:0;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+.build-identity-head strong,
+.gap-item strong,
+.quest-card-title strong,
+.skill-node-top strong,
+.raid-log-top strong,
+.lane-head strong,
+.chain-card strong,
+.trophy-card strong {
+  display:block;
+  line-height:1.15;
+  overflow-wrap:anywhere;
+}
+
+.signal-chip,
+.ready-chip,
+.quest-state,
+.skill-node-label,
+.skill-node-val {
+  white-space:normal;
+}
+
+.ops-mini-grid,
+.campaign-summary-grid,
+.campaign-ops-grid {
+  grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.lane-grid {
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.chain-grid {
+  grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.skill-branch-grid {
+  grid-template-columns:repeat(auto-fit, minmax(290px, 1fr));
+}
+
+.quest-card-grid {
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.trophy-grid {
+  grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.raid-log-list {
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.tactical-os-grid,
+.progress-command-grid {
+  align-items:start;
+}
+
+.os-panel {
+  padding:14px;
+  border-radius:16px;
+}
+
+.lane-card,
+.chain-card,
+.quest-card,
+.raid-log-card,
+.trophy-card,
+.skill-branch-card,
+.ops-mini-card,
+.gap-item,
+.next-node-card {
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(130,165,220,.11);
+}
+
+.chain-card.high { box-shadow:inset 0 0 0 1px rgba(87,215,168,.12); }
+.chain-card.mid { box-shadow:inset 0 0 0 1px rgba(255,184,92,.12); }
+.chain-card.low { box-shadow:inset 0 0 0 1px rgba(255,111,125,.14); }
+
+.lane-fill.tone-emerald { background:linear-gradient(90deg, #51d8ae, #8ff3d0); }
+.lane-fill.tone-gold,
+.quest-progress-fill { background:linear-gradient(90deg, #ffb85c, #ffd27f); }
+.lane-fill.tone-cobalt { background:linear-gradient(90deg, #69b7ff, #9ed3ff); }
+.lane-fill.tone-violet { background:linear-gradient(90deg, #8f9bff, #c2c9ff); }
+
+.gap-mark {
+  background:linear-gradient(135deg, #ff9367, #ffb85c);
+}
+
+.trophy-card {
+  min-height:136px;
+}
+
+.quest-card-title {
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.quest-state {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:64px;
+}
+
+.page-title,
+.hero-copy h2,
+.section-top h3,
+.build-identity-head strong,
+.lane-head strong,
+.chain-card strong,
+.skill-branch-title,
+.skill-node-top strong,
+.quest-card-title strong,
+.raid-log-top strong,
+.trophy-card strong,
+.nav-brand-title {
+  font-family:'Rajdhani',sans-serif;
+  letter-spacing:.01em;
+}
+
+.mobile-hud-nick,
+.class-chip,
+.rank-capsule,
+.hero-banner strong,
+.hero-raid-item strong,
+.identity-metric strong,
+.stat-hud-item strong {
+  font-family:'Rajdhani',sans-serif;
+}
+
+.qtab {
+  min-width:0;
+  padding:10px 12px;
+}
+
+@media (max-width: 760px) {
+  .tactical-os-grid,
+  .progress-command-grid,
+  .campaign-summary-grid,
+  .campaign-ops-grid,
+  .ready-row {
+    display:grid;
+    grid-template-columns:1fr;
+    grid-auto-flow:row;
+    overflow:visible;
+    padding-bottom:0;
+  }
+
+  .dashboard-grid {
+    grid-auto-columns:minmax(88%, 1fr);
+  }
+
+  .hero-card,
+  .surface,
+  .os-panel {
+    border-radius:14px;
+  }
+
+  .skill-branch-grid,
+  .quest-card-grid,
+  .chain-grid,
+  .lane-grid,
+  .raid-log-list,
+  .trophy-grid {
+    grid-template-columns:1fr;
+  }
+
+  .campaign-toggle {
+    position:static;
+    background:transparent;
+    backdrop-filter:none;
+    padding:0;
+  }
+
+  .qtab {
+    font-size:.72rem;
+  }
+}
+
+/* CLEAN MOBILE RESET */
+:root,
+[data-theme="dark"] {
+  --bg:#08111f;
+  --bg2:#0d1728;
+  --bg3:#111d31;
+  --bg4:#17253d;
+  --bg5:#21304b;
+  --brd:rgba(153,180,224,.14);
+  --brdg:rgba(97,164,255,.28);
+  --txt:#f3f7ff;
+  --dim:#97a7c4;
+  --gold:#67b2ff;
+  --gold2:#9fd0ff;
+  --gold3:#3b85da;
+  --grn:#43d6a8;
+  --red:#ff6b7f;
+  --org:#ffb86b;
+  --blu:#61a4ff;
+  --overlay:rgba(4,10,20,.76);
+}
+
+html,
+body,
+#app {
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  background:linear-gradient(180deg, #08111f 0%, #0b1526 35%, #0f1828 100%);
+}
+
+html {
+  overscroll-behavior-x:none;
+  overscroll-behavior-y:none;
+}
+
+body {
+  font-family:'Manrope',sans-serif;
+  color:var(--txt);
+  -webkit-text-size-adjust:100%;
+  touch-action:pan-y;
+  background-attachment:fixed;
+}
+
+body::before,
+body::after,
+.app-nav::before,
+.app-nav::after,
+.hero-card::before,
+.hero-card::after {
+  display:none !important;
+}
+
+.app-shell {
+  width:100%;
+  max-width:1280px;
+  margin:0 auto;
+}
+
+.app-main {
+  min-width:0;
+}
+
+.app-nav,
+.glass-card,
+.glass-subtle,
+.surface,
+.dashboard-card,
+.coach-shell,
+.hero-card,
+.os-panel,
+.lane-card,
+.chain-card,
+.quest-card,
+.skill-branch-card,
+.trophy-card,
+.raid-log-card,
+.ops-mini-card,
+.next-node-card,
+.gap-item {
+  background:linear-gradient(180deg, rgba(20,31,51,.94), rgba(14,22,37,.96)) !important;
+  border:1px solid rgba(151,179,224,.12) !important;
+  box-shadow:0 12px 28px rgba(0,0,0,.22) !important;
+  backdrop-filter:blur(10px);
+}
+
+.page-title,
+.hero-copy h2,
+.section-top h3,
+.nav-brand-title,
+.build-identity-head strong,
+.lane-head strong,
+.chain-card strong,
+.skill-branch-title,
+.quest-card-title strong,
+.raid-log-top strong,
+.trophy-card strong {
+  font-family:'Manrope',sans-serif !important;
+  letter-spacing:-.02em;
+}
+
+.nav-brand-sub,
+.mini-label,
+.hero-banner-label,
+.eyebrow,
+.mobile-hud-xptext,
+.mobile-hud-stat small,
+.quest-progress span,
+.skill-branch-signal,
+.lane-card small,
+.chain-card small {
+  color:var(--dim) !important;
+}
+
+.mobile-hud {
+  position:sticky !important;
+  top:0;
+  z-index:90;
+  margin:0;
+  padding:env(safe-area-inset-top, 8px) 12px 10px;
+  gap:10px;
+  border-radius:0 0 16px 16px !important;
+  background:rgba(8,17,31,.92) !important;
+  border:none !important;
+  border-bottom:1px solid rgba(151,179,224,.12) !important;
+  box-shadow:0 10px 24px rgba(0,0,0,.24) !important;
+  backdrop-filter:blur(18px);
+}
+
+.mobile-hud-avatar {
+  width:40px !important;
+  height:40px !important;
+  font-size:18px !important;
+  background:rgba(97,164,255,.12) !important;
+  border:1px solid rgba(97,164,255,.18) !important;
+  box-shadow:none !important;
+}
+
+.mobile-hud-center {
+  gap:4px !important;
+}
+
+.mobile-hud-nick {
+  font-family:'Manrope',sans-serif !important;
+  font-size:13px !important;
+  font-weight:700;
+}
+
+.mobile-hud-nick span {
+  color:var(--dim);
+  font-weight:600;
+  margin-left:4px;
+}
+
+.mobile-hud-xpbar {
+  height:5px !important;
+  border-radius:999px !important;
+  background:rgba(255,255,255,.08) !important;
+}
+
+.mobile-hud-xpfill {
+  border-radius:999px !important;
+  background:linear-gradient(90deg, #5aa9ff, #48d6ae) !important;
+}
+
+.mobile-hud-xptext {
+  font-size:10px !important;
+  line-height:1.2;
+}
+
+.mobile-hud-stats {
+  gap:6px !important;
+}
+
+.mobile-hud-stat {
+  min-width:48px !important;
+  padding:6px 8px !important;
+  border-radius:12px !important;
+  background:rgba(255,255,255,.05) !important;
+  border:1px solid rgba(151,179,224,.1) !important;
+}
+
+.mobile-hud-stat strong {
+  font-family:'Manrope',sans-serif !important;
+  font-size:12px !important;
+}
+
+.topbar {
+  padding-top:14px;
+}
+
+.topbar .primary-button.mobile-inline {
+  display:none !important;
+}
+
+.bottom-tabs {
+  left:12px !important;
+  right:12px !important;
+  bottom:10px !important;
+  width:auto !important;
+  max-width:none !important;
+  padding:8px !important;
+  gap:6px !important;
+  border-radius:18px !important;
+  background:rgba(8,17,31,.94) !important;
+  border:1px solid rgba(151,179,224,.12) !important;
+  box-shadow:0 14px 30px rgba(0,0,0,.28) !important;
+  backdrop-filter:blur(18px);
+}
+
+.bottom-tab {
+  min-width:0;
+  padding:8px 6px !important;
+  border-radius:12px !important;
+  background:transparent !important;
+  border:1px solid transparent !important;
+  color:var(--dim) !important;
+  font-size:11px !important;
+  font-weight:700;
+}
+
+.bottom-tab .nav-icon {
+  font-size:11px !important;
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  background:rgba(255,255,255,.05);
+}
+
+.bottom-tab.active {
+  color:var(--txt) !important;
+  background:linear-gradient(180deg, rgba(97,164,255,.16), rgba(72,214,174,.1)) !important;
+  border-color:rgba(97,164,255,.24) !important;
+}
+
+.primary-fab {
+  bottom:84px !important;
+  right:14px !important;
+  left:auto !important;
+  transform:none !important;
+  width:48px !important;
+  height:48px !important;
+  border-radius:15px !important;
+  font-size:24px !important;
+  background:linear-gradient(180deg, #5aa9ff, #48d6ae) !important;
+  color:#03111f !important;
+  border:none !important;
+  box-shadow:0 12px 24px rgba(35,129,235,.28) !important;
+}
+
+.primary-fab:hover,
+.primary-fab:active {
+  transform:none !important;
+}
+
+.page-content,
+.surface-stack,
+.dashboard-grid,
+.tactical-os-grid,
+.progress-command-grid,
+.campaign-summary-grid,
+.campaign-ops-grid,
+.skill-branch-grid,
+.quest-card-grid,
+.chain-grid,
+.lane-grid,
+.raid-log-list,
+.trophy-grid,
+.ready-row {
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+}
+
+.quest-card,
+.quest-card-title,
+.quest-card-head,
+.skill-branch-card,
+.skill-node,
+.gap-item,
+.lane-card,
+.chain-card,
+.raid-log-card,
+.trophy-card {
+  min-width:0;
+}
+
+.quest-card *,
+.skill-branch-card *,
+.gap-item *,
+.lane-card *,
+.chain-card *,
+.raid-log-card *,
+.trophy-card * {
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    display:block !important;
+    padding:0 0 calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-nav {
+    display:none !important;
+  }
+
+  .app-main {
+    padding:0 12px 0 !important;
+  }
+
+  .page-content {
+    padding-bottom:8px !important;
+  }
+
+  .hero-card {
+    padding:16px !important;
+    gap:14px !important;
+    border-radius:18px !important;
+  }
+
+  .hero-main {
+    align-items:flex-start !important;
+    gap:12px !important;
+  }
+
+  .hero-avatar {
+    width:58px !important;
+    height:58px !important;
+    font-size:26px !important;
+  }
+
+  .hero-copy h2 {
+    font-size:24px !important;
+    line-height:1.04;
+  }
+
+  .hero-copy p {
+    font-size:13px !important;
+    line-height:1.45;
+  }
+
+  .hero-raids,
+  .hero-stats,
+  .dashboard-grid,
+  .tactical-os-grid,
+  .progress-command-grid,
+  .campaign-summary-grid,
+  .campaign-ops-grid,
+  .skill-branch-grid,
+  .quest-card-grid,
+  .chain-grid,
+  .lane-grid,
+  .raid-log-list,
+  .trophy-grid,
+  .ready-row {
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    grid-auto-flow:row !important;
+    gap:12px !important;
+  }
+
+  .section-top {
+    gap:8px;
+    margin-bottom:10px !important;
+  }
+
+  .section-top h3 {
+    font-size:18px !important;
+  }
+
+  .surface,
+  .os-panel,
+  .dashboard-card,
+  .quest-card,
+  .skill-branch-card,
+  .lane-card,
+  .chain-card,
+  .raid-log-card,
+  .trophy-card,
+  .ops-mini-card,
+  .gap-item {
+    padding:14px !important;
+    border-radius:16px !important;
+  }
+}
+
+/* APPLE-LIKE DARK GLASS TUNING */
+:root,
+[data-theme="dark"] {
+  --bg:#050816;
+  --bg2:#0a1020;
+  --bg3:#0f172a;
+  --bg4:#131d33;
+  --bg5:#1a2742;
+  --txt:#f5f7ff;
+  --dim:#8fa0bf;
+  --gold:#7db7ff;
+  --gold2:#b8d8ff;
+  --gold3:#447ed9;
+  --blu:#7db7ff;
+  --grn:#58d7bd;
+  --red:#ff7e93;
+  --org:#ffc27a;
+  --brd:rgba(182,204,255,.13);
+  --brdg:rgba(125,183,255,.3);
+  --overlay:rgba(3,8,18,.72);
+}
+
+body {
+  background:
+    radial-gradient(circle at 15% 18%, rgba(125,183,255,.12), transparent 22%),
+    radial-gradient(circle at 82% 12%, rgba(88,215,189,.10), transparent 20%),
+    radial-gradient(circle at 50% 100%, rgba(94,111,255,.08), transparent 28%),
+    linear-gradient(180deg, #040814 0%, #08101d 34%, #0a1322 100%) !important;
+}
+
+.mobile-hud,
+.bottom-tabs,
+.app-nav,
+.glass-card,
+.glass-subtle,
+.surface,
+.dashboard-card,
+.coach-shell,
+.hero-card,
+.os-panel,
+.lane-card,
+.chain-card,
+.quest-card,
+.skill-branch-card,
+.trophy-card,
+.raid-log-card,
+.ops-mini-card,
+.next-node-card,
+.gap-item {
+  background:
+    linear-gradient(180deg, rgba(20,30,48,.76), rgba(11,18,31,.88)) !important;
+  border:1px solid rgba(190,210,255,.14) !important;
+  box-shadow:
+    0 16px 40px rgba(0,0,0,.30),
+    inset 0 1px 0 rgba(255,255,255,.08),
+    inset 0 -1px 0 rgba(255,255,255,.02) !important;
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+}
+
+.hero-card,
+.surface,
+.dashboard-card,
+.os-panel {
+  border-radius:22px !important;
+}
+
+.hero-card {
+  background:
+    radial-gradient(circle at top left, rgba(125,183,255,.16), transparent 30%),
+    linear-gradient(180deg, rgba(21,31,49,.82), rgba(11,18,31,.92)) !important;
+}
+
+.mobile-hud {
+  background:
+    linear-gradient(180deg, rgba(10,18,32,.88), rgba(7,13,24,.94)) !important;
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+
+.bottom-tabs {
+  background:
+    linear-gradient(180deg, rgba(10,18,32,.86), rgba(8,14,25,.95)) !important;
+}
+
+.primary-button,
+.primary-fab {
+  background:
+    linear-gradient(135deg, rgba(138,190,255,1), rgba(82,219,193,1)) !important;
+  color:#04111f !important;
+  box-shadow:
+    0 12px 28px rgba(70,137,231,.28),
+    inset 0 1px 0 rgba(255,255,255,.35) !important;
+}
+
+.nav-button,
+.bottom-tab,
+.avatar-chip,
+.qtab,
+.inline-link {
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(190,210,255,.08) !important;
+}
+
+.nav-button.active,
+.bottom-tab.active,
+.qtab.active {
+  background:
+    linear-gradient(180deg, rgba(125,183,255,.18), rgba(88,215,189,.10)) !important;
+  border-color:rgba(125,183,255,.26) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.mobile-hud-xpbar,
+.xp-track,
+.quest-progress-track,
+.lane-track,
+.chain-meter {
+  background:rgba(255,255,255,.07) !important;
+}
+
+.mobile-hud-xpfill,
+.xp-fill,
+.quest-progress-fill,
+.lane-fill.tone-cobalt,
+.lane-fill.tone-emerald,
+.lane-fill.tone-gold,
+.lane-fill.tone-violet {
+  box-shadow:0 0 18px rgba(125,183,255,.22);
+}
+
+.page-title,
+.hero-copy h2,
+.section-top h3,
+.nav-brand-title {
+  color:#f7f9ff;
+}
+
+.hero-copy p,
+.nav-brand-sub,
+.mini-label,
+.eyebrow,
+.mobile-hud-xptext,
+.mobile-hud-stat small,
+.quest-progress span,
+.skill-branch-signal,
+.lane-card small,
+.chain-card small,
+.quest-card p,
+.raid-log-card p,
+.trophy-card p {
+  color:#9aabca !important;
+}
+
+/* NOCTURNE CYBER GLASS */
+:root,
+[data-theme="dark"] {
+  --bg:#04060a;
+  --bg2:#080b14;
+  --bg3:#0d1220;
+  --bg4:#11182a;
+  --bg5:#172138;
+  --txt:#dbe7da;
+  --dim:#73807b;
+  --gold:#39ff14;
+  --gold2:#7c3aed;
+  --gold3:#1da112;
+  --grn:#39ff14;
+  --blu:#5eb1ff;
+  --pur:#7c3aed;
+  --red:#ff4d6d;
+  --org:#d1ff6a;
+  --brd:rgba(57,255,20,.14);
+  --brdg:rgba(57,255,20,.28);
+  --overlay:rgba(2,4,8,.82);
+}
+
+body {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(57,255,20,.09), transparent 20%),
+    radial-gradient(circle at 82% 14%, rgba(124,58,237,.14), transparent 21%),
+    radial-gradient(circle at 50% 120%, rgba(94,177,255,.08), transparent 30%),
+    linear-gradient(180deg, #020306 0%, #060912 38%, #0a0d16 100%) !important;
+}
+
+body::after {
+  display:block !important;
+  opacity:.18 !important;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 2px,
+      rgba(0,0,0,.12) 2px 3px
+    ) !important;
+  mix-blend-mode:soft-light;
+}
+
+.mobile-hud,
+.bottom-tabs,
+.app-nav,
+.glass-card,
+.glass-subtle,
+.surface,
+.dashboard-card,
+.coach-shell,
+.hero-card,
+.os-panel,
+.lane-card,
+.chain-card,
+.quest-card,
+.skill-branch-card,
+.trophy-card,
+.raid-log-card,
+.ops-mini-card,
+.next-node-card,
+.gap-item {
+  background:
+    linear-gradient(180deg, rgba(10,14,24,.76), rgba(6,9,16,.92)) !important;
+  border:1px solid rgba(57,255,20,.12) !important;
+  box-shadow:
+    0 18px 42px rgba(0,0,0,.34),
+    inset 0 0 0 1px rgba(57,255,20,.06),
+    inset 0 1px 0 rgba(255,255,255,.04) !important;
+  backdrop-filter:blur(14px) saturate(155%);
+  -webkit-backdrop-filter:blur(14px) saturate(155%);
+}
+
+.hero-card {
+  background:
+    radial-gradient(circle at top left, rgba(57,255,20,.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(124,58,237,.10), transparent 24%),
+    linear-gradient(180deg, rgba(12,17,28,.82), rgba(6,9,16,.95)) !important;
+}
+
+.mobile-hud,
+.bottom-tabs,
+.app-nav {
+  border-color:rgba(124,58,237,.18) !important;
+}
+
+.mobile-hud {
+  background:
+    linear-gradient(180deg, rgba(8,12,20,.9), rgba(5,8,14,.96)) !important;
+}
+
+.bottom-tabs {
+  background:
+    linear-gradient(180deg, rgba(9,12,21,.88), rgba(4,7,12,.97)) !important;
+}
+
+.primary-button,
+.primary-fab {
+  background:
+    linear-gradient(135deg, rgba(57,255,20,.92), rgba(124,58,237,.92)) !important;
+  color:#041008 !important;
+  border:1px solid rgba(255,255,255,.08) !important;
+  box-shadow:
+    0 14px 30px rgba(57,255,20,.14),
+    0 0 26px rgba(124,58,237,.12),
+    inset 0 1px 0 rgba(255,255,255,.24) !important;
+}
+
+.nav-button,
+.bottom-tab,
+.avatar-chip,
+.qtab,
+.inline-link {
+  background:rgba(255,255,255,.02) !important;
+  border:1px solid rgba(124,58,237,.12) !important;
+}
+
+.nav-button.active,
+.bottom-tab.active,
+.qtab.active {
+  background:
+    linear-gradient(180deg, rgba(57,255,20,.12), rgba(124,58,237,.14)) !important;
+  border-color:rgba(57,255,20,.24) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 0 18px rgba(57,255,20,.08) !important;
+}
+
+.nav-icon,
+.rank-capsule,
+.class-chip,
+.pill,
+.hero-sigil,
+.signal-chip,
+.quest-state,
+.tag,
+.tf,
+.ts,
+.tw {
+  box-shadow:none !important;
+}
+
+.mobile-hud-xpbar,
+.progress-bar,
+.track,
+.lane-track,
+.qprog-track,
+.quest-progress-track {
+  background:rgba(255,255,255,.05) !important;
+}
+
+.mobile-hud-xpfill,
+.progress-bar-fill,
+.lane-fill.tone-emerald,
+.lane-fill.tone-cobalt,
+.lane-fill.tone-gold,
+.lane-fill.tone-violet,
+.qprog-fill,
+.quest-progress-fill {
+  background:
+    linear-gradient(90deg, rgba(57,255,20,.94), rgba(124,58,237,.96)) !important;
+  box-shadow:
+    0 0 18px rgba(57,255,20,.18),
+    0 0 10px rgba(124,58,237,.14) !important;
+}
+
+.page-title,
+.hero-copy h2,
+.section-top h3,
+.nav-brand-title,
+.modal-head-title {
+  color:#f1fff1 !important;
+  text-shadow:0 0 18px rgba(57,255,20,.06);
+}
+
+.eyebrow,
+.mini-label,
+.nav-brand-sub,
+.mobile-hud-xptext,
+.mobile-hud-stat small,
+.quest-progress span,
+.skill-branch-signal,
+.lane-card small,
+.chain-card small,
+.quest-card p,
+.raid-log-card p,
+.trophy-card p,
+.hero-copy p {
+  color:#7d8b86 !important;
+}
+
+.hero-banner strong,
+.identity-metric strong,
+.hero-raid-item strong,
+.stat-hud-item strong,
+.ops-mini-card strong,
+.lane-head span,
+.qreward,
+.modal-tip,
+.toast-sub {
+  color:#caffb7 !important;
+}
+
+.chain-card.low,
+.gap-mark {
+  box-shadow:0 0 0 1px rgba(255,77,109,.16) inset !important;
+}
+
+.chain-card.high {
+  box-shadow:0 0 0 1px rgba(57,255,20,.16) inset !important;
+}
+
+/* V3.1 HUD LAYOUT RESET */
+html,
+body,
+#app {
+  min-height:100svh;
+  max-width:100%;
+  overscroll-behavior:none;
+}
+
+body {
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+
+input,
+textarea,
+select,
+button {
+  font-size:16px;
+}
+
+.primary-fab {
+  display:none !important;
+}
+
+.bottom-tabs {
+  display:grid !important;
+  grid-template-columns:repeat(5, minmax(0, 1fr));
+  align-items:center;
+}
+
+.bottom-tab {
+  min-height:52px;
+  justify-content:center;
+}
+
+.bottom-tab-action {
+  min-height:58px;
+  border-radius:16px !important;
+  background:linear-gradient(135deg, rgba(57,255,20,.16), rgba(124,58,237,.24)) !important;
+  border:1px solid rgba(57,255,20,.2) !important;
+  color:var(--txt) !important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.04) inset;
+}
+
+.bottom-tab-action .nav-icon {
+  background:rgba(255,255,255,.08) !important;
+}
+
+.mobile-hud {
+  padding:calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px !important;
+  gap:8px !important;
+}
+
+.mobile-hud-center {
+  gap:3px !important;
+}
+
+.mobile-hud-stats {
+  margin-left:auto;
+}
+
+.mobile-hud-stat {
+  min-width:44px !important;
+  padding:5px 7px !important;
+}
+
+.mobile-hud-xptext {
+  font-size:9px !important;
+}
+
+.mission-ticker {
+  padding:14px 16px !important;
+  overflow:hidden;
+}
+
+.mission-ticker-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.mission-ticker-head strong {
+  font-size:.92rem;
+  color:var(--txt);
+}
+
+.mission-ticker-marquee {
+  overflow:hidden;
+  position:relative;
+  mask-image:linear-gradient(90deg, transparent 0, #000 10%, #000 90%, transparent 100%);
+  -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 10%, #000 90%, transparent 100%);
+}
+
+.mission-ticker-track {
+  display:flex;
+  width:max-content;
+  gap:28px;
+  will-change:transform;
+  animation:tickerFlow 26s linear infinite;
+}
+
+.mission-ticker-track span {
+  font-family:'JetBrains Mono',monospace;
+  font-size:.8rem;
+  line-height:1.45;
+  color:#cfe8ca;
+  white-space:nowrap;
+}
+
+@keyframes tickerFlow {
+  0% { transform:translateX(0); }
+  100% { transform:translateX(-50%); }
+}
+
+.compact-stat-hud {
+  padding:14px 16px 16px !important;
+}
+
+.compact-stat-hud .stat-hud-grid {
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+
+.stat-hud-item {
+  align-items:flex-start;
+  gap:6px;
+}
+
+.stat-hud-chip {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:48px;
+  min-height:22px;
+  padding:0 8px;
+  border-radius:999px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.62rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  background:rgba(255,255,255,.05);
+  color:var(--dim);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.stat-hud-chip.up {
+  background:rgba(57,255,20,.12);
+  border-color:rgba(57,255,20,.2);
+  color:#d9ffd0;
+}
+
+.stat-hud-chip.focus {
+  background:rgba(255,191,94,.12);
+  border-color:rgba(255,191,94,.18);
+  color:#ffe2b7;
+}
+
+.stat-hud-chip.hold {
+  background:rgba(124,58,237,.1);
+  border-color:rgba(124,58,237,.16);
+  color:#ddd0ff;
+}
+
+.stat-hud-item small {
+  line-height:1.3;
+}
+
+.hero-card {
+  padding:18px !important;
+}
+
+.hero-raids {
+  grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+}
+
+.hero-stats {
+  grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+}
+
+.dashboard-grid {
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    padding:10px 0 8px !important;
+  }
+
+  .page-content {
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    padding-bottom:8px !important;
+  }
+
+  .compact-stat-hud .stat-hud-grid {
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+  }
+
+  .mission-ticker-track span {
+    font-size:.74rem;
+  }
+
+  .hero-card {
+    padding:14px !important;
+  }
+
+  .hero-raids,
+  .hero-stats {
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    gap:8px !important;
+  }
+
+  .hero-stats .identity-metric:last-child {
+    grid-column:1 / -1;
+  }
+
+  .dashboard-grid {
+    grid-template-columns:1fr !important;
+  }
+}
+
+/* ==========================================================================
+   V4 FINAL OVERRIDE
+   Single dark, readable, mobile-first glass layer for blocks + readiness
+   ========================================================================== */
+
+:root,
+[data-theme="dark"],
+[data-theme="light"] {
+  --neon:#39ff14;
+  --neon2:#7c3aed;
+  --neon-dim:#1da112;
+  --bg:#04060a;
+  --bg2:#080b14;
+  --bg3:#0e1320;
+  --bg4:#141a2a;
+  --bg5:#1b2335;
+  --txt:#d8e8d4;
+  --dim:#6a7a78;
+  --gold:var(--neon);
+  --gold2:#87ff72;
+  --gold3:#1da112;
+  --grn:var(--neon);
+  --pur:var(--neon2);
+  --red:#ff4d6d;
+  --blu:#5eb1ff;
+  --brd:rgba(102,128,171,.18);
+  --brdg:rgba(57,255,20,.24);
+  --glow-gold:rgba(57,255,20,.18);
+  --glow-gold-s:rgba(57,255,20,.09);
+  --glow-gold-xs:rgba(57,255,20,.06);
+  --mist-strong:#a8c0ff;
+  --emerald:#7bf8a7;
+  --cobalt:#7ea8ff;
+  --coral:#ff7185;
+  --overlay:rgba(1,3,8,.76);
+  --glass-fill:linear-gradient(180deg, rgba(14,19,32,.88), rgba(7,10,17,.94));
+  --glass-border:rgba(111,143,199,.16);
+  --glass-inner:inset 0 0 0 1px rgba(57,255,20,.08);
+}
+
+html,
+body {
+  min-height:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  overscroll-behavior:none;
+  background:#04060a !important;
+}
+
+html {
+  scrollbar-gutter:stable both-edges;
+}
+
+body {
+  font-family:'Manrope',sans-serif !important;
+  color:var(--txt) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(57,255,20,.08), transparent 26%),
+    radial-gradient(circle at 88% 8%, rgba(124,58,237,.12), transparent 24%),
+    linear-gradient(180deg, #04060a, #070b12 55%, #05070c) !important;
+}
+
+body::before {
+  background:
+    radial-gradient(ellipse 80% 56% at 50% -10%, rgba(57,255,20,.08) 0%, transparent 70%) !important;
+}
+
+body::after {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.015), transparent 24%, transparent 76%, rgba(57,255,20,.03)),
+    repeating-linear-gradient(180deg, transparent 0 2px, rgba(0,0,0,.06) 2px 3px) !important;
+  opacity:.28;
+  mix-blend-mode:normal !important;
+}
+
+.wrap,
+.app-shell,
+.app-main,
+.page-content,
+.surface-stack,
+.dashboard-grid,
+.tactical-os-grid,
+.progress-command-grid,
+.quest-card-grid,
+.raid-log-list,
+.trophy-grid,
+.lane-grid,
+.chain-grid {
+  min-width:0;
+}
+
+.glass-card,
+.glass-subtle,
+.surface,
+.dashboard-card,
+.coach-shell,
+.hero-card,
+.modal,
+.app-nav,
+.mobile-hud,
+.bottom-tabs,
+.quest-card,
+.raid-log-card,
+.trophy-card,
+.ops-mini-card,
+.lane-card,
+.chain-card,
+.skill-branch-card,
+.next-node-card,
+.gap-item,
+.hcard,
+.dbf,
+.sbranch,
+.balance-wrap {
+  background:var(--glass-fill) !important;
+  border:1px solid var(--glass-border) !important;
+  box-shadow:0 18px 48px rgba(0,0,0,.34), var(--glass-inner) !important;
+  backdrop-filter:blur(12px) saturate(160%);
+  -webkit-backdrop-filter:blur(12px) saturate(160%);
+}
+
+.page-title,
+.section-top h3,
+.hero-copy h2,
+.nav-brand-title,
+.quest-card-title strong,
+.raid-log-top strong,
+.trophy-card strong,
+.mname,
+.pname,
+.stt-val,
+.readiness-score,
+.hval,
+.modal-head-title,
+.nick,
+.skill-summary-val {
+  font-family:'Manrope',sans-serif !important;
+  letter-spacing:-.02em !important;
+  text-shadow:none !important;
+  color:#f3fbf0 !important;
+}
+
+.eyebrow,
+.mini-label,
+.mobile-hud-xptext,
+.mobile-hud-stat small,
+.quest-progress span,
+.quest-state,
+.raid-log-meta span,
+.hsub,
+.hlbl,
+.dbf-desc,
+.pnote,
+.lane-card small,
+.chain-card small,
+.skill-branch-signal,
+.quest-card p,
+.raid-log-card p,
+.trophy-card p,
+.hero-copy p,
+.training-header p,
+.coach-intro p {
+  color:var(--dim) !important;
+}
+
+.primary-button,
+.primary-fab,
+.bottom-tab-action {
+  background:linear-gradient(135deg, rgba(57,255,20,.94), rgba(124,58,237,.92)) !important;
+  color:#051009 !important;
+  border:1px solid rgba(125,255,156,.22) !important;
+  box-shadow:0 14px 30px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+.mobile-hud {
+  position:sticky !important;
+  top:0 !important;
+  z-index:90;
+  padding:calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px !important;
+  margin:0 10px 8px;
+  border-radius:18px !important;
+}
+
+.mobile-hud-avatar {
+  width:40px !important;
+  height:40px !important;
+  border-radius:12px !important;
+}
+
+.mobile-hud-center {
+  min-width:0;
+}
+
+.mobile-hud-nick {
+  font-family:'Manrope',sans-serif !important;
+  font-size:.84rem !important;
+  font-weight:800 !important;
+}
+
+.mobile-hud-xpbar {
+  height:5px !important;
+  border-radius:999px !important;
+  background:rgba(255,255,255,.08) !important;
+}
+
+.mobile-hud-xpfill {
+  background:linear-gradient(90deg, rgba(57,255,20,.92), rgba(124,58,237,.88)) !important;
+  box-shadow:0 0 12px rgba(57,255,20,.18);
+}
+
+.mobile-hud-stats {
+  display:flex;
+  gap:6px !important;
+  margin-left:auto;
+}
+
+.mobile-hud-stat {
+  min-width:48px !important;
+  padding:6px 8px !important;
+  border-radius:12px !important;
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(111,143,199,.14) !important;
+}
+
+.mobile-hud-stat strong {
+  color:#eff8ee !important;
+  font-family:'Manrope',sans-serif !important;
+}
+
+.bottom-tabs {
+  display:grid !important;
+  grid-template-columns:repeat(5, minmax(0, 1fr));
+  align-items:center;
+  gap:4px;
+  left:12px !important;
+  right:12px !important;
+  bottom:10px !important;
+  padding:10px !important;
+  border-radius:22px !important;
+  z-index:92;
+}
+
+.bottom-tab,
+.nav-button {
+  min-width:0;
+}
+
+.bottom-tab {
+  min-height:52px;
+  border-radius:16px !important;
+  gap:4px;
+}
+
+.bottom-tab span:last-child {
+  font-size:.7rem;
+}
+
+.nav-icon {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  min-height:28px;
+  border-radius:10px;
+  background:rgba(255,255,255,.04);
+}
+
+.bottom-tab.active .nav-icon,
+.nav-button.active .nav-icon {
+  background:rgba(57,255,20,.14);
+  color:#f1fff0;
+}
+
+.miniapp-console {
+  display:grid;
+  gap:14px;
+}
+
+.mini-workout-text {
+  width:100%;
+  resize:vertical;
+  min-height:180px;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(111,143,199,.16);
+  border-radius:16px;
+  color:var(--txt);
+  padding:14px 16px;
+  line-height:1.55;
+  font:500 .92rem/1.55 'JetBrains Mono', monospace;
+}
+
+.mini-workout-text:focus {
+  outline:none;
+  border-color:rgba(57,255,20,.35);
+  box-shadow:0 0 0 3px rgba(57,255,20,.08);
+}
+
+.miniapp-console-actions {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.miniapp-console-actions small {
+  color:var(--dim);
+}
+
+.readiness-card {
+  display:grid;
+  gap:10px;
+  padding:14px 16px;
+  margin-bottom:14px;
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+  border:1px solid rgba(111,143,199,.14);
+}
+
+.readiness-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.readiness-source {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(111,143,199,.14);
+  color:#eff8ee;
+  font:600 .72rem/1 'JetBrains Mono', monospace;
+}
+
+.readiness-high {
+  box-shadow:0 0 0 1px rgba(57,255,20,.1) inset;
+}
+
+.readiness-medium {
+  box-shadow:0 0 0 1px rgba(94,177,255,.12) inset;
+}
+
+.readiness-low {
+  box-shadow:0 0 0 1px rgba(255,77,109,.12) inset;
+}
+
+.raid-log-blocks {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.raid-block-chip {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  background:rgba(57,255,20,.08);
+  border:1px solid rgba(57,255,20,.16);
+  color:#dfffd6;
+  font:600 .68rem/1 'JetBrains Mono', monospace;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+
+.quest-card,
+.raid-log-card,
+.trophy-card,
+.ops-mini-card,
+.lane-card,
+.chain-card,
+.skill-branch-card,
+.next-node-card,
+.gap-item {
+  min-width:0;
+  overflow:hidden;
+}
+
+.quest-card *,
+.raid-log-card *,
+.trophy-card *,
+.ops-mini-card *,
+.lane-card *,
+.chain-card *,
+.skill-branch-card *,
+.next-node-card *,
+.gap-item * {
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+.quest-card-grid,
+.raid-log-list {
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)) !important;
+}
+
+.modal-bg.open {
+  align-items:flex-end;
+}
+
+.modal {
+  width:min(100%, 560px) !important;
+}
+
+@media (max-width: 900px) {
+  .modal {
+    width:100% !important;
+    max-width:none !important;
+    max-height:88vh !important;
+    align-self:flex-end;
+    border-radius:20px 20px 0 0 !important;
+    animation:modalSlideUp .22s ease;
+  }
+
+  .topbar .primary-button.mobile-inline {
+    display:none !important;
+  }
+
+  .hero-card,
+  .surface,
+  .dashboard-card,
+  .quest-card,
+  .raid-log-card,
+  .trophy-card,
+  .ops-mini-card,
+  .lane-card,
+  .chain-card,
+  .skill-branch-card,
+  .next-node-card,
+  .gap-item {
+    border-radius:18px !important;
+  }
+
+  .quest-card-grid,
+  .raid-log-list,
+  .trophy-grid,
+  .lane-grid,
+  .chain-grid,
+  .campaign-summary-grid,
+  .dashboard-grid,
+  .progress-command-grid,
+  .tactical-os-grid {
+    grid-template-columns:1fr !important;
+  }
+
+  .mini-workout-text {
+    min-height:160px;
+  }
+}
+
+@keyframes modalSlideUp {
+  from { transform:translateY(24px); opacity:0; }
+  to { transform:translateY(0); opacity:1; }
+}
+
+.body-history-card {
+  margin-top:14px;
+  padding:14px 16px;
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.018));
+  border:1px solid rgba(111,143,199,.14);
+  display:grid;
+  gap:12px;
+}
+
+.body-history-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.body-history-chip {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  background:rgba(57,255,20,.08);
+  border:1px solid rgba(57,255,20,.14);
+  color:#dfffd6;
+  font:600 .72rem/1 'JetBrains Mono', monospace;
+}
+
+.body-history-list,
+.signal-archive-list,
+.coach-feedback-log {
+  display:grid;
+  gap:10px;
+}
+
+.body-history-row,
+.signal-archive-row,
+.coach-feedback-row {
+  display:grid;
+  gap:4px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(111,143,199,.12);
+}
+
+.body-history-row {
+  grid-template-columns:1fr auto auto;
+  align-items:center;
+}
+
+.body-history-row strong,
+.signal-archive-row strong,
+.coach-feedback-row span {
+  color:#eff8ee;
+}
+
+.coach-memory-surface {
+  margin-top:18px;
+  display:grid;
+  gap:16px;
+}
+
+.coach-confidence-surface {
+  margin-top:18px;
+  display:grid;
+  gap:14px;
+}
+
+.coach-confidence-grid {
+  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.coach-confidence-reasons {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.coach-memory-head,
+.coach-feedback-strip {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.coach-memory-pills,
+.coach-feedback-actions {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.coach-memory-grid,
+.signal-archive-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:14px;
+}
+
+.coach-memory-card {
+  display:grid;
+  gap:8px;
+  padding:14px 16px;
+  border-radius:16px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(111,143,199,.14);
+}
+
+.coach-memory-card.tone-fire {
+  box-shadow:0 0 0 1px rgba(57,255,20,.12) inset;
+}
+
+.coach-memory-card.tone-warn {
+  box-shadow:0 0 0 1px rgba(255,176,66,.12) inset;
+}
+
+.coach-memory-card.tone-danger {
+  box-shadow:0 0 0 1px rgba(255,77,109,.14) inset;
+}
+
+.coach-memory-top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.coach-feedback-btn {
+  min-height:40px;
+  padding:0 14px;
+  border-radius:12px;
+  border:1px solid rgba(111,143,199,.16);
+  background:rgba(255,255,255,.04);
+  color:#eff8ee;
+  font:600 .74rem/1 'JetBrains Mono', monospace;
+}
+
+.coach-feedback-btn.danger {
+  border-color:rgba(255,77,109,.2);
+  color:#ffd9df;
+}
+
+.coach-memory-empty {
+  padding:14px 16px;
+  border-radius:16px;
+  background:rgba(255,255,255,.025);
+  border:1px dashed rgba(111,143,199,.14);
+  color:var(--dim);
+}
+
+@media (max-width: 900px) {
+  .body-history-row {
+    grid-template-columns:1fr;
+  }
+}
