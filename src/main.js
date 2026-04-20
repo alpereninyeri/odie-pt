@@ -19,6 +19,13 @@ const tabs = [
 ]
 
 let activeTab = 'dashboard'
+let _renderQueued = false
+let _lastAppMarkup = ''
+let _semanticCache = {
+  workouts: null,
+  dailyLogs: null,
+  value: null,
+}
 
 injectToastStyles()
 initTheme()
@@ -28,7 +35,7 @@ store.init().then(() => {
   renderApp()
 
   store.subscribe('*', () => {
-    renderApp()
+    scheduleRender()
   })
 
   store.subscribe('_classChanged', classObj => {
@@ -59,12 +66,45 @@ function initTheme() {
   localStorage.setItem('odiept-theme', 'dark')
 }
 
+function getSemanticProfile(workouts = [], dailyLogs = []) {
+  if (_semanticCache.workouts === workouts && _semanticCache.dailyLogs === dailyLogs && _semanticCache.value) {
+    return _semanticCache.value
+  }
+
+  const value = buildSemanticProfile(workouts, dailyLogs)
+  _semanticCache = { workouts, dailyLogs, value }
+  return value
+}
+
+function scheduleRender({ immediate = false } = {}) {
+  if (immediate) {
+    _renderQueued = false
+    renderApp()
+    return
+  }
+
+  if (_renderQueued) return
+  _renderQueued = true
+
+  const flush = () => {
+    _renderQueued = false
+    renderApp()
+  }
+
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(flush)
+    return
+  }
+
+  setTimeout(flush, 16)
+}
+
 function renderApp() {
   const state = store.getState()
   const profile = store.getProfile()
-  const semantic = buildSemanticProfile(state.workouts || [], state.dailyLogs || [])
+  const semantic = getSemanticProfile(state.workouts || [], state.dailyLogs || [])
 
-  document.getElementById('app').innerHTML = `
+  const appMarkup = `
     <div class="modal-bg" id="statModal">
       <div class="modal" id="modalContent"></div>
     </div>
@@ -117,9 +157,13 @@ function renderApp() {
     </nav>
   `
 
+  if (appMarkup === _lastAppMarkup) return
+
+  document.getElementById('app').innerHTML = appMarkup
+  _lastAppMarkup = appMarkup
   initModal()
   initActivePage(activeTab, profile)
-  window.__refreshActivePanel = () => renderApp()
+  window.__refreshActivePanel = () => scheduleRender({ immediate: true })
 }
 
 function pageTitle(tabKey, profile) {
@@ -453,7 +497,7 @@ document.addEventListener('click', event => {
   if (tab) {
     closeModal()
     activeTab = tab.dataset.tab
-    renderApp()
+    scheduleRender({ immediate: true })
     return
   }
 
@@ -468,7 +512,7 @@ document.addEventListener('click', event => {
   if (action === 'open-archetype') {
     const state = store.getState()
     const profile = store.getProfile()
-    const semantic = buildSemanticProfile(state.workouts || [], state.dailyLogs || [])
+    const semantic = getSemanticProfile(state.workouts || [], state.dailyLogs || [])
     const criticalStat = (profile.stats || []).find(stat => stat.critical)
     openArchetypeModal({
       classObj: state.profile.classObj || {},
@@ -482,7 +526,7 @@ document.addEventListener('click', event => {
   if (action === 'open-focus') {
     const state = store.getState()
     const profile = store.getProfile()
-    const semantic = buildSemanticProfile(state.workouts || [], state.dailyLogs || [])
+    const semantic = getSemanticProfile(state.workouts || [], state.dailyLogs || [])
     const criticalStats = (profile.stats || []).filter(stat => stat.critical)
     openFocusModal({
       focus: state.profile.currentFocus || profile.currentFocus || 'Hybrid denge',
