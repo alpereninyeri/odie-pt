@@ -7,7 +7,7 @@ import { renderSkills, initSkills } from './components/panel-skills.js'
 import { renderQuests, initQuests } from './components/panel-quests.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
 import { renderHealth } from './components/panel-health.js'
-import { initModal, closeModal, openAvatarModal } from './components/modal.js'
+import { initModal, closeModal, openAvatarModal, openArchetypeModal, openFocusModal, openUnlockModal } from './components/modal.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
 
@@ -257,21 +257,21 @@ function renderCharacterSheet(state, profile, semantic) {
       </div>
 
       <div class="character-sheet-footer">
-        <div class="sheet-info-card">
+        <button class="sheet-info-card" data-action="open-archetype" aria-label="Archetype detayı">
           <span class="mini-label">Archetype</span>
           <strong>${liveClass.name || profile.class}</strong>
           <small>${liveClass.reason || 'Current build kimligi aktif seanslardan okunur.'}</small>
-        </div>
-        <div class="sheet-info-card">
+        </button>
+        <button class="sheet-info-card" data-action="open-focus" aria-label="Focus detayı">
           <span class="mini-label">Current Focus</span>
           <strong>${focus}</strong>
           <small>${(liveClass.signals || []).slice(0, 2).join(' / ') || 'Yeni sinyal bekleniyor'}</small>
-        </div>
-        <div class="sheet-info-card">
+        </button>
+        <button class="sheet-info-card" data-action="open-unlock" aria-label="Next Unlock detayı">
           <span class="mini-label">Next Unlock</span>
           <strong>${nextUnlock?.name || 'Stable Build'}</strong>
           <small>${nextUnlockHint || `Variety ${semantic.variety || 0}`}</small>
-        </div>
+        </button>
       </div>
     </article>
   `
@@ -462,5 +462,46 @@ document.addEventListener('click', event => {
 
   if (action === 'open-avatar') {
     openAvatarModal(store.getProfile())
+    return
+  }
+
+  if (action === 'open-archetype') {
+    const state = store.getState()
+    const profile = store.getProfile()
+    const semantic = buildSemanticProfile(state.workouts || [], state.dailyLogs || [])
+    const criticalStat = (profile.stats || []).find(stat => stat.critical)
+    openArchetypeModal({
+      classObj: state.profile.classObj || {},
+      profile,
+      semantic,
+      criticalStat,
+    })
+    return
+  }
+
+  if (action === 'open-focus') {
+    const state = store.getState()
+    const profile = store.getProfile()
+    const semantic = buildSemanticProfile(state.workouts || [], state.dailyLogs || [])
+    const criticalStats = (profile.stats || []).filter(stat => stat.critical)
+    openFocusModal({
+      focus: state.profile.currentFocus || profile.currentFocus || 'Hybrid denge',
+      classObj: state.profile.classObj || {},
+      criticalStats,
+      semantic,
+      profile: { ...profile, streak: state.profile.streak },
+    })
+    return
+  }
+
+  if (action === 'open-unlock') {
+    const profile = store.getProfile()
+    const nextUnlock = findNextUnlock(profile.skills || [])
+    openUnlockModal({
+      nextUnlock,
+      skills: profile.skills || [],
+      profile,
+    })
+    return
   }
 })

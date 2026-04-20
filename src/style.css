@@ -5669,8 +5669,6 @@ body::after {
   padding:10px !important;
   border-radius:22px !important;
   z-index:92;
-  mask-image:linear-gradient(to top, #000 72%, transparent 100%);
-  -webkit-mask-image:linear-gradient(to top, #000 72%, transparent 100%);
 }
 
 .bottom-tab,
@@ -8035,34 +8033,34 @@ body::after,
    (BG2 / Diablo 2 / RuneScape / Tibia / WoW Classic estetiği)
    ═══════════════════════════════════════════════════════════════════════ */
 :root, [data-theme="dark"] {
-  --mmo-bg-deep:   #0c0603;
-  --mmo-bg:        #160c06;
-  --mmo-leather:   #2a1a10;
-  --mmo-leather-2: #3c2618;
-  --mmo-iron:      #1f1812;
-  --mmo-iron-2:    #2e251c;
-  --mmo-gold:      #e8b957;
-  --mmo-gold-2:    #f5d48a;
-  --mmo-gold-deep: #8c6522;
-  --mmo-gold-dark: #5a3f12;
-  --mmo-crimson:   #c0362c;
-  --mmo-blood:     #d04a40;
-  --mmo-emerald:   #6fa24b;
-  --mmo-sky:       #6e94c8;
-  --mmo-parchment: #ead4a0;
-  --mmo-ink:       #f0dcae;
-  --mmo-ink-dim:   #a38a63;
-  --mmo-ink-deep:  #695035;
+  --mmo-bg-deep:   #040200;
+  --mmo-bg:        #0a0502;
+  --mmo-leather:   #1e130a;
+  --mmo-leather-2: #2e1d10;
+  --mmo-iron:      #15100b;
+  --mmo-iron-2:    #241c14;
+  --mmo-gold:      #f4c876;
+  --mmo-gold-2:    #ffe09c;
+  --mmo-gold-deep: #a07328;
+  --mmo-gold-dark: #6e4d18;
+  --mmo-crimson:   #d44236;
+  --mmo-blood:     #ef5a4e;
+  --mmo-emerald:   #8ec268;
+  --mmo-sky:       #86a8d8;
+  --mmo-parchment: #f2dfa8;
+  --mmo-ink:       #fff0cc;
+  --mmo-ink-dim:   #c4a97c;
+  --mmo-ink-deep:  #7a5e3e;
 }
 
 body {
   background:
-    radial-gradient(circle at 50% -10%, rgba(232, 185, 87, 0.14), transparent 42%),
-    radial-gradient(circle at 0% 70%, rgba(192, 54, 44, 0.08), transparent 40%),
-    radial-gradient(circle at 100% 30%, rgba(111, 162, 75, 0.06), transparent 40%),
-    repeating-linear-gradient(45deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(-45deg, rgba(0,0,0,0.08) 0 1px, transparent 1px 2px),
-    linear-gradient(180deg, #160c06 0%, #0c0603 100%) !important;
+    radial-gradient(circle at 50% -10%, rgba(244, 200, 118, 0.10), transparent 38%),
+    radial-gradient(circle at 0% 70%, rgba(212, 66, 54, 0.06), transparent 38%),
+    radial-gradient(circle at 100% 30%, rgba(142, 194, 104, 0.04), transparent 38%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.008) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,0.14) 0 1px, transparent 1px 2px),
+    linear-gradient(180deg, #0a0502 0%, #040200 100%) !important;
   color: var(--mmo-ink) !important;
   font-family: 'Space Grotesk', sans-serif;
 }
@@ -8673,4 +8671,199 @@ h1, h2, h3, .page-title, .character-sheet-top h2, .section-top h3 {
   color: var(--mmo-gold-2) !important;
   font-family: 'Silkscreen', monospace !important;
   border-radius: 3px !important;
+}
+
+/* Sheet info card — tıklanabilir buton, hover glow */
+button.sheet-info-card {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  display: block;
+  transition: transform .12s ease, box-shadow .15s ease, border-color .15s ease;
+}
+button.sheet-info-card::after {
+  content: '›';
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  color: var(--mmo-gold);
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: .6;
+  text-shadow: 0 0 6px rgba(244, 200, 118, .5);
+}
+button.sheet-info-card:hover,
+button.sheet-info-card:focus-visible {
+  border-color: var(--mmo-gold) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 156, 0.22),
+    inset 0 0 12px rgba(244, 200, 118, 0.15),
+    0 0 14px rgba(244, 200, 118, 0.25),
+    0 6px 18px rgba(0, 0, 0, 0.55) !important;
+  outline: none;
+}
+button.sheet-info-card:active {
+  transform: translateY(1px);
+}
+
+/* Modal section label (archetype/focus/unlock popup içinde) */
+.modal-section-label {
+  font-family: 'Silkscreen', monospace;
+  font-size: .62rem;
+  letter-spacing: .18em;
+  color: var(--mmo-gold-2);
+  margin: 14px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(244, 200, 118, 0.22);
+  text-shadow: 0 1px 0 rgba(0,0,0,.7);
+}
+
+/* Daha büyük mini-label / eyebrow — okunurluk için hafif aç */
+@media (max-width: 900px) {
+  .sec { font-size: .78rem !important; }
+  .mini-label,
+  .sheet-info-card .mini-label,
+  .quick-card .mini-label,
+  .survival-warning-card .mini-label,
+  .eyebrow { font-size: .62rem !important; letter-spacing: .16em !important; color: var(--mmo-gold) !important; }
+  .sheet-stat-key,
+  .stat-card-v6-key { font-size: .7rem !important; color: var(--mmo-gold) !important; }
+  .stat-card-v6-status,
+  .sheet-stat small { font-size: .64rem !important; }
+  .grade-pill,
+  .coach-pill,
+  .signal-chip { font-size: .62rem !important; }
+  .sheet-info-card strong { font-size: .86rem !important; color: var(--mmo-ink) !important; }
+  .sheet-info-card small { font-size: .68rem !important; color: var(--mmo-ink-dim) !important; }
+  .quick-card strong { font-size: .9rem !important; color: var(--mmo-ink) !important; }
+  .quick-card p { font-size: .76rem !important; color: var(--mmo-ink-dim) !important; }
+  .quick-card small { font-size: .66rem !important; color: var(--mmo-gold-2) !important; }
+  .stat-card-v6-name { font-size: .78rem !important; color: var(--mmo-ink) !important; }
+  .bottom-tab span:last-child { font-size: .66rem !important; color: inherit !important; }
+  .bottom-tab.active span:last-child { color: var(--mmo-gold-2) !important; }
+  .mobile-hud-side small { font-size: .56rem !important; }
+  .mobile-hud-side strong { font-size: 1.1rem !important; }
+  .mobile-hud-nick { font-size: 1rem !important; }
+  .mobile-hud-nick span { font-size: .7rem !important; }
+}
+
+/* Page content alt boşluğu nav'ın içine girmesin diye biraz daha aç */
+@media (max-width: 900px) {
+  .page-content { padding-bottom: 120px !important; }
+}
+
+/* Bottom tabs — koyulaşmış zemin + net kontur, mask zaten kaldırıldı */
+.bottom-tabs {
+  background: linear-gradient(180deg, rgba(30, 19, 10, .98), rgba(10, 5, 2, 1)) !important;
+  border: 1px solid var(--mmo-gold-deep) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 156, .2),
+    inset 0 -1px 0 rgba(0, 0, 0, .7),
+    0 -6px 22px rgba(0, 0, 0, .75) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* Modal body içi metin tonu — parşömen */
+.modal-desc,
+.modal-coach,
+.modal-tip,
+.modal-item-label,
+.modal-item-val {
+  color: var(--mmo-ink) !important;
+}
+.modal-item {
+  background: linear-gradient(180deg, rgba(60, 38, 24, .55), rgba(24, 14, 8, .75)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+}
+.modal-tip {
+  color: var(--mmo-ink-dim) !important;
+  border-top: 1px solid rgba(244, 200, 118, .18);
+  padding-top: 10px;
+  margin-top: 14px;
+  font-size: .78rem;
+  font-style: italic;
+}
+.modal-coach {
+  background: linear-gradient(180deg, rgba(90, 63, 18, .35), rgba(40, 28, 8, .5)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  border-radius: 6px !important;
+  padding: 10px 12px !important;
+  margin: 10px 0 !important;
+  color: var(--mmo-ink) !important;
+}
+.modal-head-title {
+  font-family: 'Cinzel Decorative', serif !important;
+  color: var(--mmo-gold-2) !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.7), 0 0 8px rgba(244, 200, 118, .25);
+}
+.modal-close {
+  background: linear-gradient(180deg, rgba(90, 63, 18, .5), rgba(40, 28, 8, .75)) !important;
+  border: 1px solid var(--mmo-gold-dark) !important;
+  color: var(--mmo-gold-2) !important;
+  border-radius: 4px !important;
+}
+.modal-close:hover {
+  background: linear-gradient(180deg, rgba(140, 101, 34, .6), rgba(60, 40, 12, .8)) !important;
+  border-color: var(--mmo-gold) !important;
+}
+
+/* Modal grid */
+.modal-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 8px 0 !important;
+}
+.modal-item {
+  padding: 8px 10px !important;
+  border-radius: 6px !important;
+}
+.modal-item-label {
+  font-family: 'Silkscreen', monospace !important;
+  font-size: .56rem !important;
+  letter-spacing: .16em !important;
+  color: var(--mmo-gold) !important;
+  text-transform: uppercase !important;
+}
+.modal-item-val {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: .88rem !important;
+  color: var(--mmo-ink) !important;
+  margin-top: 3px !important;
+}
+
+/* Genel metin parlaklık düzeltmesi — daha önceki v6-mute override tekrar */
+.forge-card p,
+.achievement-card-v6 p,
+.chain-balance-card small,
+.skill-branch-signal,
+.skill-node-copy p,
+.next-node-card p,
+.quest-copy p,
+.raid-ledger-card p,
+.coach-feedback-row p,
+.coach-memory-card p,
+.sheet-info-card small,
+.quick-card p,
+.survival-warning-card small,
+.mobile-hud-side small,
+.portrait-meta span,
+.pressure-chip span {
+  color: var(--mmo-ink-dim) !important;
+}
+
+/* Körleşme önleme: Ana stat değerleri tek tip altın parlaklık */
+.sheet-stat strong,
+.stat-card-v6-top strong,
+.pressure-chip strong,
+.survival-meter-top strong,
+.perf-compact-value,
+.mobile-hud-side strong,
+.quick-card small,
+.forge-card-value,
+.chain-balance-card span {
+  color: var(--mmo-gold-2) !important;
+  text-shadow: 0 0 8px rgba(244, 200, 118, 0.45), 0 1px 0 rgba(0,0,0,.8) !important;
 }
