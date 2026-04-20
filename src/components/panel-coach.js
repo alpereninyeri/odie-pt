@@ -30,6 +30,67 @@ function _memoryTone(item) {
   return 'calm'
 }
 
+function _meter(label, value, tone = 'armor') {
+  const safeValue = Math.max(0, Math.min(100, Number(value) || 0))
+  return `
+    <div class="survival-meter-card">
+      <div class="survival-meter-top">
+        <span>${label}</span>
+        <strong>${safeValue}</strong>
+      </div>
+      <div class="survival-meter ${tone}">
+        <div class="survival-meter-fill ${tone}" style="width:${safeValue}%"></div>
+      </div>
+    </div>
+  `
+}
+
+function _renderSurvivalConsole(p) {
+  const armor = Number(p.armor ?? 100) || 0
+  const fatigue = Number(p.fatigue ?? 0) || 0
+  const readiness = Number(p.health?.readiness?.score)
+  const warnings = Array.isArray(p.survivalWarnings) ? p.survivalWarnings : []
+  const injury = p.injuryUntil ? `Risk lock: ${p.injuryUntil}` : 'Injury flag clear'
+  const heavyLabel = Number(p.consecutiveHeavy) ? `${p.consecutiveHeavy} ardÄ±ÅŸÄ±k aÄŸÄ±r seans` : 'AÄŸÄ±r yÃ¼k birikimi yok'
+  const readinessText = Number.isFinite(readiness) ? `${readiness}/100` : 'â€”'
+
+  return `
+    <section class="survival-console">
+      <div class="section-top">
+        <div>
+          <div class="eyebrow">Survival Console</div>
+          <h3>Armor, fatigue ve recovery uyarÄ± hattÄ±</h3>
+        </div>
+        <div class="coach-memory-pills">
+          <span class="coach-pill">${p.sessions || 0} run</span>
+          <span class="coach-pill">${readinessText} RDY</span>
+        </div>
+      </div>
+
+      <div class="survival-console-grid">
+        <div class="survival-console-main">
+          ${_meter('Armor', armor, armor <= 35 ? 'injury' : armor <= 60 ? 'fatigue' : 'armor')}
+          ${_meter('Fatigue', fatigue, fatigue >= 70 ? 'injury' : 'fatigue')}
+        </div>
+
+        <div class="survival-warning-stack">
+          <div class="survival-warning-card">
+            <span class="mini-label">Heavy Chain</span>
+            <strong>${heavyLabel}</strong>
+            <small>${injury}</small>
+          </div>
+          ${(warnings.length ? warnings : ['Aktif survival warning yok.']).slice(0, 3).map(item => `
+            <div class="survival-warning-card ${warnings.length ? 'warn' : ''}">
+              <span class="mini-label">Field Note</span>
+              <strong>${item}</strong>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+  `
+}
+
 function _renderCoachConfidence(p) {
   const latestWorkout = (p.workouts || [])[0] || null
   const latestWorkoutId = String(latestWorkout?.id || '')
@@ -46,7 +107,7 @@ function _renderCoachConfidence(p) {
       <div class="coach-memory-head">
         <div>
           <div class="eyebrow">Coach Confidence</div>
-          <h3>Son seansin parse guven seviyesi</h3>
+          <h3>Parse gÃ¼veni ve block daÄŸÄ±lÄ±mÄ±</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${confidenceLevel.toUpperCase()}</span>
@@ -57,17 +118,17 @@ function _renderCoachConfidence(p) {
       <div class="coach-memory-grid coach-confidence-grid">
         <div class="coach-memory-card tone-${confidenceLevel === 'high' ? 'fire' : confidenceLevel === 'medium' ? 'warn' : 'danger'}">
           <div class="coach-memory-top">
-            <strong>Signal Count</strong>
+            <strong>Evidence Count</strong>
             <span>${factRows.length}</span>
           </div>
-          <p>${evidenceCount} evidence satiri · ${blockCount} block.</p>
+          <p>${evidenceCount} kanÄ±t satÄ±rÄ± Â· ${blockCount} block tespit edildi.</p>
         </div>
         <div class="coach-memory-card tone-calm">
           <div class="coach-memory-top">
             <strong>Primary Mix</strong>
             <span>${latestWorkout?.type || '-'}</span>
           </div>
-          <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' · ') : 'Block mix yok.'}</p>
+          <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' Â· ') : 'Block mix bulunamadÄ±.'}</p>
         </div>
       </div>
 
@@ -88,10 +149,10 @@ function _renderMemoryLedger(p) {
       <div class="coach-memory-head">
         <div>
           <div class="eyebrow">Memory Ledger</div>
-          <h3>ODIE'nin kalici atlet hafizasi</h3>
+          <h3>ODIE'nin kalÄ±cÄ± atlet hafÄ±zasÄ±</h3>
         </div>
         <div class="coach-memory-pills">
-          <span class="coach-pill">${memories.length} active memory</span>
+          <span class="coach-pill">${memories.length} active</span>
           <span class="coach-pill">${wrongCount} wrong flag</span>
         </div>
       </div>
@@ -105,18 +166,18 @@ function _renderMemoryLedger(p) {
             </div>
             <p>${item.summary || item.key}</p>
           </div>
-        `).join('') : '<div class="coach-memory-empty">Henuz kalici memory yok. Yeni session ve feedback geldikce burada birikir.</div>'}
+        `).join('') : '<div class="coach-memory-empty">HenÃ¼z kalÄ±cÄ± memory yok. Yeni session ve feedback geldikÃ§e burada birikir.</div>'}
       </div>
 
       <div class="coach-feedback-strip">
         <div>
           <div class="mini-label">Feedback Loop</div>
-          <strong>Son coach yorumunu hizli isaretle</strong>
+          <strong>Son coach yorumunu iÅŸaretle</strong>
         </div>
         <div class="coach-feedback-actions">
           <button class="coach-feedback-btn" data-memory-feedback="correct">DOGRU</button>
           <button class="coach-feedback-btn danger" data-memory-feedback="wrong">YANLISTI</button>
-          <button class="coach-feedback-btn" data-memory-feedback="outdated">ESKI KALDI</button>
+          <button class="coach-feedback-btn" data-memory-feedback="outdated">ESKI</button>
           <button class="coach-feedback-btn" data-memory-feedback="prefer">TONU IYI</button>
         </div>
       </div>
@@ -125,9 +186,9 @@ function _renderMemoryLedger(p) {
         ${feedback.length ? feedback.map(item => `
           <div class="coach-feedback-row">
             <span>${item.feedbackType}</span>
-            <p>${item.note || 'Kisa geri bildirim'}</p>
+            <p>${item.note || 'KÄ±sa geri bildirim'}</p>
           </div>
-        `).join('') : '<div class="coach-memory-empty">Henuz feedback kaydi yok.</div>'}
+        `).join('') : '<div class="coach-memory-empty">HenÃ¼z feedback kaydÄ± yok.</div>'}
       </div>
     </div>
   `
@@ -136,17 +197,24 @@ function _renderMemoryLedger(p) {
 export function renderCoach(p) {
   const cn = p.coachNote || { date: '', xpNote: '', sections: [] }
   const sections = _visibleSections(cn)
+  const support = `
+    <div class="coach-support-grid">
+      ${_renderCoachConfidence(p)}
+      ${_renderMemoryLedger(p)}
+    </div>
+  `
+
   if (!sections.length) {
     return `
-      <div class="coach-terminal" style="min-height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+      ${_renderSurvivalConsole(p)}
+      <div class="coach-terminal coach-terminal-empty" style="min-height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
         <div style="font-size:48px;opacity:.4">OD</div>
-        <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:3px;opacity:.7">ODIE OFFLINE</div>
-        <div style="font-size:11px;opacity:.5;max-width:280px;text-align:center;line-height:1.5">
-          Henuz coach raporu yok. Telegram'a bir antrenman yaz, ODIE analiz eder ve burada canli rapor sunar.
+        <div style="font-size:14px;letter-spacing:3px;opacity:.7">ODIE OFFLINE</div>
+        <div style="font-size:11px;opacity:.65;max-width:280px;text-align:center;line-height:1.5">
+          HenÃ¼z coach raporu yok. Telegram'a yeni bir antrenman yazdÄ±ÄŸÄ±nda burada kanÄ±ta dayalÄ± rapor gÃ¶rÃ¼necek.
         </div>
       </div>
-      ${_renderCoachConfidence(p)}
-      ${_renderMemoryLedger(p)}`
+      ${support}`
   }
 
   const warningCount = Array.isArray(cn.warnings) ? cn.warnings.length : 0
@@ -162,6 +230,7 @@ export function renderCoach(p) {
     </div>`).join('')
 
   return `
+    ${_renderSurvivalConsole(p)}
     <div class="coach-terminal" id="coach-terminal">
       <div class="coach-scanline"></div>
       <div class="coach-header">
@@ -191,8 +260,7 @@ export function renderCoach(p) {
         <div class="coach-xp-badge">${cn.xpNote}</div>
       </div>
     </div>
-    ${_renderCoachConfidence(p)}
-    ${_renderMemoryLedger(p)}`
+    ${support}`
 }
 
 export function initCoach(p) {
@@ -318,37 +386,37 @@ function _typewriterSection(lines, containerEl, token, onDone) {
   typeLine()
 }
 
-function _slicePlainWithMarkup(raw, length) {
-  let plain = 0
-  let index = 0
-  while (index < raw.length && plain < length) {
-    if (raw[index] === '*' && raw[index + 1] === '*') {
-      index += 2
-      continue
-    }
-    plain += 1
-    index += 1
-  }
-  return raw.slice(0, index)
-}
-
 function _skipAll(p) {
-  const initLine = document.getElementById('coach-init')
-  if (initLine) initLine.style.display = 'none'
-
-  p.coachNote.sections.forEach((sec, index) => {
+  const cn = p.coachNote
+  ;(cn.sections || []).forEach((section, index) => {
     const secEl = document.getElementById(`coach-sec-${index}`)
     const bodyEl = document.getElementById(`coach-sb-${index}`)
     const statEl = document.getElementById(`coach-st-${index}`)
-    if (!secEl || !bodyEl) return
-    secEl.classList.add('active')
-    bodyEl.innerHTML = (sec.lines || []).map(line => `<div class="coach-line">${_parseMarkup(line)}</div>`).join('')
+    if (secEl) secEl.classList.add('active')
+    if (bodyEl) {
+      bodyEl.innerHTML = (section.lines || []).map(line => `<div class="coach-line">${_parseMarkup(line)}</div>`).join('')
+    }
     if (statEl) {
       statEl.textContent = 'TAMAMLANDI'
       statEl.classList.add('done')
     }
   })
-
+  const initLine = document.getElementById('coach-init')
+  if (initLine) initLine.style.display = 'none'
   const skipBtn = document.getElementById('coach-skip')
   if (skipBtn) skipBtn.style.display = 'none'
+}
+
+function _slicePlainWithMarkup(raw, plainLength) {
+  let plainCount = 0
+  let result = ''
+  for (let i = 0; i < raw.length; i += 1) {
+    const char = raw[i]
+    result += char
+    if (char !== '*') {
+      plainCount += 1
+    }
+    if (plainCount >= plainLength) break
+  }
+  return result
 }

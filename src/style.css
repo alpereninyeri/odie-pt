@@ -4812,3 +4812,1177 @@ body::after {
     grid-template-columns:1fr;
   }
 }
+
+/* =========================
+   V5 PIXEL TACTICAL RESET
+   ========================= */
+
+:root {
+  --ink-0:#07070b;
+  --ink-1:#0f1016;
+  --ink-2:#171922;
+  --ink-3:#232734;
+  --vellum:#ece3c8;
+  --mute:#878ca0;
+
+  --r-common:#9aa3b5;
+  --r-uncommon:#71cb88;
+  --r-rare:#5ea9ff;
+  --r-epic:#af84ff;
+  --r-legend:#d6a44a;
+  --r-mythic:#ff6b7e;
+
+  --s-str:#ff665f;
+  --s-agi:#6aa8ff;
+  --s-end:#58d09c;
+  --s-dex:#b18aff;
+  --s-con:#ff9e4d;
+  --s-sta:#dbc15d;
+
+  --armor:#58d09c;
+  --armor-low:#e0ab54;
+  --armor-crit:#ff665f;
+  --fatigue:#ff6b6b;
+  --injury:#ff4765;
+
+  --shadow-deep:0 22px 50px -28px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.04);
+  --pixel-border:inset 0 0 0 1px rgba(255,230,170,.05), 0 0 0 1px rgba(255,230,170,.08);
+  --scanline-soft:repeating-linear-gradient(180deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);
+
+  --bg:var(--ink-0);
+  --bg2:var(--ink-1);
+  --bg3:var(--ink-2);
+  --bg4:var(--ink-3);
+  --txt:var(--vellum);
+  --dim:var(--mute);
+  --gold:var(--r-legend);
+  --gold2:#f5be5a;
+  --gold3:#8a6025;
+  --gold-shine:#ffd98b;
+  --red:var(--s-str);
+  --grn:var(--s-end);
+  --blu:var(--s-agi);
+  --pur:var(--s-dex);
+  --org:var(--s-con);
+  --cobalt:#4b7fff;
+  --brd:rgba(255,224,158,.12);
+  --brdg:rgba(255,224,158,.24);
+}
+
+html,
+body {
+  max-width:100%;
+  overflow-x:hidden !important;
+  overscroll-behavior-x:none;
+  background:
+    radial-gradient(circle at top, rgba(214,164,74,.12), transparent 24%),
+    linear-gradient(180deg, #05060a 0%, #090a10 100%) !important;
+  color:var(--vellum) !important;
+  font-family:'Space Grotesk', 'Manrope', sans-serif !important;
+}
+
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  opacity:.3;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,255,255,.015) 1px, transparent 1px);
+  background-size:24px 24px;
+}
+
+body::after {
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  opacity:.1;
+  background:var(--scanline-soft);
+}
+
+#app {
+  min-height:100svh;
+}
+
+.app-shell {
+  width:min(100%, 1220px);
+  max-width:1220px !important;
+  margin:0 auto;
+  min-height:100svh;
+  display:grid !important;
+  grid-template-columns:260px minmax(0, 1fr);
+  gap:18px;
+  padding:18px 18px calc(110px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app-main,
+.page-content,
+.surface-stack,
+.dashboard-stack {
+  display:grid;
+  gap:14px;
+  min-width:0;
+}
+
+.app-nav,
+.glass-card,
+.surface,
+.modal,
+.coach-terminal,
+.bottom-tabs,
+.mobile-hud {
+  backdrop-filter:none !important;
+  background:
+    linear-gradient(180deg, rgba(24,26,34,.98), rgba(13,14,20,.98)),
+    linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)) !important;
+  border:1px solid var(--brd) !important;
+  box-shadow:var(--shadow-deep), var(--pixel-border) !important;
+  border-radius:14px !important;
+}
+
+.surface-rune,
+.glass-card.surface-rune,
+.surface.surface-rune {
+  position:relative;
+  overflow:hidden;
+}
+
+.surface-rune::before,
+.surface-rune::after,
+.glass-card::before,
+.glass-card::after {
+  content:'';
+  position:absolute;
+  width:18px;
+  height:18px;
+  border-color:rgba(214,164,74,.32);
+  pointer-events:none;
+}
+
+.surface-rune::before,
+.glass-card::before {
+  top:10px;
+  left:10px;
+  border-top:1px solid rgba(214,164,74,.32);
+  border-left:1px solid rgba(214,164,74,.32);
+}
+
+.surface-rune::after,
+.glass-card::after {
+  right:10px;
+  bottom:10px;
+  border-right:1px solid rgba(214,164,74,.24);
+  border-bottom:1px solid rgba(214,164,74,.24);
+}
+
+.nav-brand-title,
+.page-title,
+.section-top h3,
+.hero-copy h2,
+.class-sigil-copy strong,
+.sec,
+.coach-npc-name,
+.skill-branch-title {
+  font-family:'Cinzel Decorative', 'Cinzel', serif !important;
+  letter-spacing:.04em;
+}
+
+.page-title {
+  margin:4px 0 0;
+  font-size:clamp(1.3rem, 2vw, 2rem) !important;
+}
+
+.eyebrow,
+.mini-label,
+.nav-brand-sub,
+.nav-status-sub,
+.quest-reward,
+.runner-up-note,
+.mobile-hud-xptext,
+.body-history-chip,
+.signal-chip,
+.coach-pill,
+.pressure-chip span,
+.quest-state,
+.skill-node-label,
+.skill-branch-signal {
+  font-family:'JetBrains Mono', monospace !important;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.topbar {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  padding:2px 2px 4px;
+}
+
+.topbar-actions {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.nav-brand {
+  padding:8px 2px 14px;
+}
+
+.nav-brand-mark,
+.mobile-hud-avatar,
+.avatar-chip-icon {
+  background:linear-gradient(180deg, rgba(214,164,74,.22), rgba(214,164,74,.07));
+  border:1px solid rgba(214,164,74,.25);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+}
+
+.nav-button,
+.bottom-tab,
+.avatar-chip,
+.inline-link,
+.qtab,
+.coach-feedback-btn {
+  min-height:44px;
+  border-radius:10px !important;
+  border:1px solid rgba(255,224,158,.12) !important;
+  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)) !important;
+  color:var(--vellum) !important;
+  font-family:'JetBrains Mono', monospace !important;
+}
+
+.nav-button:hover,
+.bottom-tab:hover,
+.avatar-chip:hover,
+.inline-link:hover,
+.qtab:hover,
+.coach-feedback-btn:hover {
+  border-color:rgba(214,164,74,.3) !important;
+  transform:translateY(-1px);
+}
+
+.nav-button.active,
+.bottom-tab.active,
+.qtab.active {
+  background:linear-gradient(180deg, rgba(214,164,74,.2), rgba(214,164,74,.08)) !important;
+  border-color:rgba(214,164,74,.34) !important;
+  color:var(--gold-shine) !important;
+}
+
+.nav-button.active::before,
+.bottom-tab.active::before {
+  display:none !important;
+}
+
+.nav-icon {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  height:28px;
+  border-radius:8px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.04);
+  font-size:.72rem !important;
+  letter-spacing:.06em;
+}
+
+.mobile-hud {
+  position:sticky !important;
+  top:0 !important;
+  z-index:30;
+  display:flex;
+  align-items:center;
+  gap:10px !important;
+  padding:calc(env(safe-area-inset-top, 0px) + 8px) 12px 10px !important;
+  margin:0 12px;
+}
+
+.mobile-hud-center {
+  min-width:0;
+}
+
+.mobile-hud-nick {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-family:'Cinzel', serif !important;
+  font-size:.84rem !important;
+}
+
+.mobile-hud-nick span {
+  color:var(--mute);
+  font-family:'JetBrains Mono', monospace !important;
+  font-size:.68rem;
+}
+
+.mobile-hud-xpbar,
+.progress-bar,
+.quest-progress-track,
+.disc-track-bar,
+.survival-meter {
+  height:6px !important;
+  border-radius:999px !important;
+  background:rgba(255,255,255,.06) !important;
+  overflow:hidden;
+}
+
+.mobile-hud-xpfill,
+.progress-bar-fill {
+  background:linear-gradient(90deg, rgba(247,214,124,.95), rgba(214,164,74,.95)) !important;
+  box-shadow:none !important;
+}
+
+.vital-meter-row {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:8px;
+}
+
+.vital-meter {
+  display:grid;
+  gap:4px;
+}
+
+.vital-meter span,
+.mobile-hud-side small {
+  font-family:'JetBrains Mono', monospace;
+  font-size:.62rem;
+  color:var(--mute);
+}
+
+.vital-meter-fill,
+.survival-meter-fill {
+  height:100%;
+  border-radius:999px;
+}
+
+.tone-armor .vital-meter-fill,
+.vital-meter-fill.tone-armor,
+.survival-meter-fill.armor {
+  background:linear-gradient(90deg, #3db47c, #6de0a2);
+}
+
+.tone-fatigue .vital-meter-fill,
+.vital-meter-fill.tone-fatigue,
+.survival-meter-fill.fatigue {
+  background:linear-gradient(90deg, #d37a48, #ff7968);
+}
+
+.survival-meter-fill.injury {
+  background:linear-gradient(90deg, #ff4964, #ff8394);
+}
+
+.mobile-hud-side {
+  display:grid;
+  gap:2px;
+  min-width:62px;
+  text-align:right;
+}
+
+.mobile-hud-side strong {
+  font-family:'JetBrains Mono', monospace;
+  font-size:.76rem;
+  color:var(--gold-shine);
+}
+
+.bottom-tabs {
+  position:fixed !important;
+  left:12px !important;
+  right:12px !important;
+  bottom:calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index:28;
+  display:grid !important;
+  grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+  gap:8px;
+  padding:8px !important;
+}
+
+.bottom-tab {
+  flex-direction:column;
+  gap:4px;
+  padding:8px 6px !important;
+  min-width:0;
+}
+
+.bottom-tab span:last-child {
+  font-size:.66rem;
+}
+
+.page-banner {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:18px !important;
+}
+
+.page-banner p {
+  margin:6px 0 0;
+  color:var(--mute);
+}
+
+.page-banner-chips {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.dashboard-columns,
+.signal-archive-grid,
+.coach-support-grid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:14px;
+}
+
+.session-banner,
+.class-sigil-card,
+.activity-ledger,
+.build-deck,
+.stat-pulse-panel,
+.coach-preview-panel,
+.compact-vitals-panel {
+  padding:18px !important;
+}
+
+.session-banner-top,
+.class-sigil-body,
+.coach-preview-body,
+.totals-ledger-grid,
+.body-history-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.session-banner p,
+.class-sigil-copy p,
+.weak-notice p,
+.coach-preview-body p,
+.quest-copy p,
+.raid-ledger-card p,
+.coach-memory-card p,
+.signal-archive-row small,
+.survival-warning-card small {
+  color:var(--mute);
+}
+
+.session-banner-side,
+.chip-rarity-legend {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  background:rgba(214,164,74,.12);
+  border:1px solid rgba(214,164,74,.2);
+  color:var(--gold-shine);
+  font:600 .72rem/1 'JetBrains Mono', monospace;
+}
+
+.session-banner-blocks,
+.signal-chip-row {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+
+.signal-chip,
+.chip-rarity-common,
+.chip-rarity-uncommon,
+.chip-rarity-rare,
+.chip-rarity-epic,
+.chip-rarity-legend,
+.chip-rarity-mythic {
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,224,158,.14);
+  background:rgba(255,255,255,.03);
+  color:var(--vellum);
+  font-size:.68rem;
+}
+
+.chip-rarity-common { border-color:rgba(154,163,181,.22); color:var(--r-common); }
+.chip-rarity-uncommon { border-color:rgba(111,208,136,.22); color:var(--r-uncommon); }
+.chip-rarity-rare { border-color:rgba(74,168,255,.22); color:var(--r-rare); }
+.chip-rarity-epic { border-color:rgba(180,128,255,.22); color:var(--r-epic); }
+.chip-rarity-legend { border-color:rgba(214,164,74,.26); color:var(--r-legend); }
+.chip-rarity-mythic { border-color:rgba(255,94,122,.22); color:var(--r-mythic); }
+
+.class-sigil-frame,
+.class-sigil {
+  width:68px;
+  height:68px;
+  border-radius:16px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(214,164,74,.24);
+  background:linear-gradient(180deg, rgba(214,164,74,.12), rgba(255,255,255,.02));
+}
+
+.class-sigil-glyph {
+  font-family:'Silkscreen', 'JetBrains Mono', monospace;
+  font-size:1rem;
+  color:var(--gold-shine);
+}
+
+.class-sigil-copy {
+  flex:1;
+  min-width:0;
+  display:grid;
+  gap:6px;
+}
+
+.runner-up-note {
+  margin-top:12px;
+  color:var(--mute);
+  font-size:.82rem;
+}
+
+.ring-ledger-grid,
+.totals-ledger-grid,
+.stat-pulse-grid,
+.mission-pressure-strip,
+.coach-memory-grid,
+.coach-confidence-grid,
+.trophy-grid,
+.skill-summary,
+.campaign-summary-grid,
+.forge-grid,
+.chain-seal-grid,
+.feat-vault-grid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+
+.mini-ring-card,
+.totals-ledger-cell,
+.stat-pulse-item,
+.pressure-chip,
+.survival-warning-card,
+.coach-memory-card,
+.signal-archive-row,
+.body-history-row,
+.forge-card,
+.chain-seal-card,
+.feat-card,
+.weak-notice,
+.skill-summary-card,
+.next-node-card,
+.skill-node,
+.skill-branch-card {
+  min-width:0;
+  overflow:hidden;
+  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)) !important;
+  border:1px solid rgba(255,255,255,.06) !important;
+  border-radius:12px !important;
+}
+
+.mini-ring-card,
+.totals-ledger-cell,
+.pressure-chip,
+.survival-warning-card,
+.signal-archive-row,
+.body-history-row,
+.weak-notice,
+.skill-summary-card {
+  padding:12px 14px;
+}
+
+.mini-ring-card strong,
+.totals-ledger-cell strong,
+.pressure-chip strong,
+.stat-pulse-item strong,
+.survival-warning-card strong,
+.forge-head strong,
+.chain-seal-card strong,
+.feat-card strong,
+.skill-summary-val {
+  font-family:'JetBrains Mono', monospace !important;
+}
+
+.mini-ring-card.warn,
+.weak-notice,
+.survival-warning-card.warn {
+  border-color:rgba(255,121,104,.18) !important;
+}
+
+.totals-ledger-grid {
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+}
+
+.totals-ledger-cell span,
+.mini-ring-card small,
+.totals-ledger-cell strong,
+.stat-pulse-item small,
+.weak-notice p,
+.pressure-chip span {
+  display:block;
+}
+
+.stat-pulse-item {
+  display:grid;
+  gap:6px;
+  padding:14px;
+  text-align:left;
+}
+
+.stat-pulse-key {
+  font-family:'JetBrains Mono', monospace;
+  font-size:.72rem;
+  color:var(--mute);
+}
+
+.stat-pulse-chip {
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  min-height:24px;
+  padding:0 8px;
+  border-radius:999px;
+  font:700 .62rem/1 'JetBrains Mono', monospace;
+}
+
+.stat-pulse-chip.up { background:rgba(88,208,156,.12); color:var(--s-end); }
+.stat-pulse-chip.focus { background:rgba(255,102,95,.12); color:var(--s-str); }
+.stat-pulse-chip.hold { background:rgba(255,224,158,.1); color:var(--gold-shine); }
+
+.discipline-track-list,
+.weak-notice-stack,
+.quest-scroll-stack,
+.raid-ledger-list,
+.skill-branch-grid,
+.skill-node-list {
+  display:grid;
+  gap:10px;
+}
+
+.disc-track {
+  display:grid;
+  gap:6px;
+}
+
+.disc-track-top,
+.survival-meter-top,
+.forge-head,
+.raid-ledger-top,
+.quest-copy-top,
+.coach-memory-top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.disc-track-fill {
+  height:100%;
+  border-radius:999px;
+}
+
+.meter-str,
+.meter-str .disc-track-fill { color:var(--s-str); }
+.meter-agi,
+.meter-agi .disc-track-fill { color:var(--s-agi); }
+.meter-end,
+.meter-end .disc-track-fill { color:var(--s-end); }
+.meter-dex,
+.meter-dex .disc-track-fill { color:var(--s-dex); }
+.meter-con,
+.meter-con .disc-track-fill { color:var(--s-con); }
+.meter-sta,
+.meter-sta .disc-track-fill { color:var(--s-sta); }
+.meter-armor,
+.meter-armor .disc-track-fill { color:var(--armor); }
+.meter-fatigue,
+.meter-fatigue .disc-track-fill { color:var(--fatigue); }
+
+.meter-str .disc-track-fill { background:linear-gradient(90deg, rgba(255,102,95,.9), rgba(255,142,103,.9)); }
+.meter-agi .disc-track-fill { background:linear-gradient(90deg, rgba(106,168,255,.9), rgba(72,207,255,.9)); }
+.meter-end .disc-track-fill { background:linear-gradient(90deg, rgba(88,208,156,.9), rgba(126,226,180,.9)); }
+.meter-dex .disc-track-fill { background:linear-gradient(90deg, rgba(177,138,255,.9), rgba(213,165,255,.9)); }
+.meter-con .disc-track-fill { background:linear-gradient(90deg, rgba(255,158,77,.9), rgba(255,195,119,.9)); }
+.meter-sta .disc-track-fill { background:linear-gradient(90deg, rgba(219,193,93,.9), rgba(255,223,120,.9)); }
+
+.stats-codex,
+.quest-ledger-surface,
+.raid-ledger-surface {
+  display:grid;
+  gap:14px;
+}
+
+.stat-hex-card,
+.forge-card,
+.chain-seal-card,
+.feat-card,
+.quest-scroll-card,
+.raid-ledger-card {
+  padding:16px !important;
+}
+
+.stat-hex-svg {
+  width:min(100%, 260px);
+  margin-inline:auto;
+  display:block;
+}
+
+.stat-codex-grid,
+.forge-grid,
+.chain-seal-grid,
+.feat-vault-grid {
+  margin-top:8px;
+}
+
+.stat-codex-card {
+  padding:14px;
+  display:grid;
+  gap:8px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;
+  background:rgba(255,255,255,.02);
+}
+
+.stat-codex-card.critical {
+  border-color:rgba(255,102,95,.22);
+}
+
+.grade-pill {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:24px;
+  min-width:34px;
+  padding:0 8px;
+  border-radius:999px;
+  font:700 .66rem/1 'JetBrains Mono', monospace;
+}
+
+.grade-aplus,
+.grade-a,
+.grade-a-minus {
+  background:rgba(214,164,74,.14);
+  color:var(--gold-shine);
+}
+
+.grade-bplus,
+.grade-b,
+.grade-b-minus {
+  background:rgba(94,169,255,.12);
+  color:var(--s-agi);
+}
+
+.grade-c,
+.grade-d {
+  background:rgba(255,158,77,.12);
+  color:var(--s-con);
+}
+
+.grade-f {
+  background:rgba(255,102,95,.12);
+  color:var(--s-str);
+}
+
+.forge-sparkline {
+  width:100%;
+  height:58px;
+}
+
+.forge-sparkline path {
+  fill:none;
+  stroke:var(--gold-shine);
+  stroke-width:2;
+}
+
+.forge-sparkline circle {
+  fill:var(--gold);
+}
+
+.chain-seal-card.low { border-color:rgba(255,102,95,.2) !important; }
+.chain-seal-card.mid { border-color:rgba(255,158,77,.2) !important; }
+.chain-seal-card.high { border-color:rgba(214,164,74,.22) !important; }
+
+.chain-seal-mark {
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  font-family:'Silkscreen', monospace;
+  border:1px solid rgba(255,224,158,.14);
+  background:rgba(255,255,255,.03);
+}
+
+.feat-card.locked {
+  opacity:.72;
+}
+
+.quest-scroll-card {
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:14px;
+  align-items:start;
+}
+
+.quest-ring {
+  position:relative;
+  width:54px;
+  height:54px;
+  display:grid;
+  place-items:center;
+}
+
+.quest-ring span {
+  position:absolute;
+  font:700 .64rem/1 'JetBrains Mono', monospace;
+  color:var(--gold-shine);
+}
+
+.quest-ring-svg {
+  width:54px;
+  height:54px;
+  transform:rotate(-90deg);
+}
+
+.quest-ring-track {
+  fill:none;
+  stroke:rgba(255,255,255,.08);
+  stroke-width:4;
+}
+
+.quest-ring-fill {
+  fill:none;
+  stroke:var(--gold);
+  stroke-width:4;
+  stroke-linecap:round;
+}
+
+.quest-copy {
+  min-width:0;
+  display:grid;
+  gap:8px;
+}
+
+.quest-meta,
+.raid-meta,
+.raid-block-row {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.raid-block-chip {
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:0 8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.06);
+  font:600 .66rem/1 'JetBrains Mono', monospace;
+}
+
+.mission-pressure-strip {
+  margin:8px 0 4px;
+}
+
+.survival-console,
+.coach-confidence-surface,
+.coach-memory-surface {
+  padding:18px !important;
+  background:linear-gradient(180deg, rgba(18,20,28,.98), rgba(10,11,16,.98)) !important;
+  border:1px solid var(--brd) !important;
+  border-radius:14px !important;
+}
+
+.survival-console-grid {
+  display:grid;
+  grid-template-columns:1.3fr .9fr;
+  gap:14px;
+}
+
+.survival-console-main,
+.survival-warning-stack {
+  display:grid;
+  gap:10px;
+}
+
+.coach-support-grid {
+  margin-top:14px;
+}
+
+.coach-terminal {
+  padding:0 !important;
+}
+
+.coach-strip {
+  padding-inline:18px;
+}
+
+.coach-body {
+  padding:12px 18px 18px;
+}
+
+.coach-feedback-strip,
+.coach-memory-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.coach-memory-pills,
+.coach-feedback-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.body-history-card {
+  background:rgba(255,255,255,.02) !important;
+  border:1px solid rgba(255,255,255,.06) !important;
+}
+
+.rune-divider {
+  height:1px;
+  background:linear-gradient(90deg, transparent, rgba(214,164,74,.42), transparent);
+}
+
+.modal-bg.open {
+  align-items:flex-end;
+}
+
+.modal {
+  width:min(100%, 560px) !important;
+  max-height:88vh !important;
+}
+
+.coach-terminal-empty::before,
+.coach-terminal-empty::after {
+  display:none;
+}
+
+@media (max-width: 1120px) {
+  .app-shell {
+    display:block !important;
+    padding:0 12px calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-nav {
+    display:none !important;
+  }
+
+  .topbar {
+    padding:6px 0 2px;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-columns,
+  .signal-archive-grid,
+  .coach-support-grid,
+  .ring-ledger-grid,
+  .totals-ledger-grid,
+  .stat-pulse-grid,
+  .mission-pressure-strip,
+  .forge-grid,
+  .chain-seal-grid,
+  .feat-vault-grid,
+  .coach-memory-grid,
+  .coach-confidence-grid,
+  .campaign-summary-grid,
+  .trophy-grid,
+  .skill-summary,
+  .survival-console-grid {
+    grid-template-columns:1fr !important;
+  }
+
+  .page-banner,
+  .session-banner-top,
+  .class-sigil-body,
+  .coach-preview-body,
+  .body-history-head,
+  .raid-ledger-top {
+    flex-direction:column;
+  }
+
+  .quest-scroll-card {
+    grid-template-columns:1fr;
+  }
+
+  .mobile-hud {
+    display:flex !important;
+  }
+
+  .modal {
+    width:100% !important;
+    max-width:none !important;
+    border-radius:18px 18px 0 0 !important;
+  }
+}
+
+html {
+  -webkit-text-size-adjust:100%;
+}
+
+button,
+.nav-button,
+.bottom-tab,
+.avatar-chip,
+.inline-link {
+  touch-action:manipulation;
+}
+
+.app-main,
+.page-content {
+  min-width:0;
+}
+
+.page-content {
+  padding-bottom:4px;
+}
+
+.mobile-hud {
+  margin:8px 12px 10px;
+}
+
+.mobile-hud-avatar {
+  width:38px !important;
+  height:38px !important;
+  border-radius:12px !important;
+}
+
+.mobile-hud-side {
+  min-width:54px;
+}
+
+.bottom-tabs {
+  max-width:640px;
+  margin-inline:auto;
+}
+
+.bottom-tab .nav-icon {
+  min-width:26px;
+  height:26px;
+}
+
+@media (max-width: 900px) {
+  .page-content,
+  .surface-stack,
+  .dashboard-stack {
+    gap:12px;
+  }
+
+  .page-banner,
+  .session-banner,
+  .class-sigil-card,
+  .activity-ledger,
+  .build-deck,
+  .stat-pulse-panel,
+  .coach-preview-panel,
+  .compact-vitals-panel,
+  .survival-console,
+  .coach-confidence-surface,
+  .coach-memory-surface,
+  .quest-scroll-card,
+  .raid-ledger-card,
+  .signal-archive-row,
+  .body-history-card,
+  .forge-card,
+  .chain-seal-card,
+  .feat-card {
+    padding:15px !important;
+  }
+
+  .topbar {
+    align-items:flex-end;
+    gap:10px;
+  }
+
+  .topbar-actions .avatar-chip {
+    min-width:42px;
+    padding:0 10px !important;
+  }
+
+  .topbar-actions .avatar-chip span:last-child {
+    display:none;
+  }
+
+  .mobile-hud {
+    padding:calc(env(safe-area-inset-top, 0px) + 7px) 10px 8px !important;
+    gap:8px !important;
+  }
+
+  .mobile-hud-side small {
+    display:none;
+  }
+
+  .mobile-hud-side strong {
+    font-size:.72rem;
+  }
+
+  .mobile-hud-nick {
+    font-size:.8rem !important;
+  }
+
+  .mobile-hud-xpbar {
+    height:4px !important;
+  }
+
+  .vital-meter-row {
+    gap:6px;
+  }
+
+  .bottom-tabs {
+    left:10px !important;
+    right:10px !important;
+    padding:7px !important;
+    gap:6px;
+  }
+
+  .bottom-tab {
+    min-height:50px;
+    padding:7px 4px !important;
+  }
+
+  .bottom-tab span:last-child {
+    font-size:.62rem;
+  }
+
+  .totals-ledger-grid {
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .mission-pressure-strip,
+  .ring-ledger-grid,
+  .stat-pulse-grid,
+  .forge-grid,
+  .chain-seal-grid,
+  .feat-vault-grid {
+    gap:8px;
+  }
+
+  .quest-ring,
+  .quest-ring-svg {
+    width:48px;
+    height:48px;
+  }
+
+  .raid-meta,
+  .quest-meta,
+  .raid-block-row {
+    gap:6px;
+  }
+}

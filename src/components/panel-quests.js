@@ -8,65 +8,59 @@ function isDone(item) {
   return item.done || Number(item.progress) >= Number(item.total)
 }
 
-function renderQuestCard(quest) {
+function ringLabel(item) {
+  return isDone(item) ? 'DONE' : `${Number(item.progress)}/${Number(item.total)}`
+}
+
+function renderQuestScroll(quest) {
   const pct = progressPct(quest)
   const done = isDone(quest)
   return `
-    <div class="quest-card ${done ? 'done' : ''} ${quest.urgent && !done ? 'urgent' : ''}">
-      <div class="quest-card-head">
-        <div class="quest-card-title">
-          <span class="quest-icon">${quest.icon}</span>
-          <div>
-            <strong>${quest.name}</strong>
-            <small>${quest.reward}</small>
-          </div>
-        </div>
-        <span class="quest-state">${done ? 'CLEAR' : `${pct}%`}</span>
+    <article class="quest-scroll-card ${done ? 'done' : ''} ${quest.urgent && !done ? 'urgent' : ''}">
+      <div class="quest-ring">
+        <svg viewBox="0 0 42 42" class="quest-ring-svg" aria-hidden="true">
+          <circle class="quest-ring-track" cx="21" cy="21" r="16"></circle>
+          <circle class="quest-ring-fill" cx="21" cy="21" r="16" style="stroke-dasharray:${pct}, 100"></circle>
+        </svg>
+        <span>${done ? 'OK' : `${pct}%`}</span>
       </div>
-      <p>${quest.desc}</p>
-      <div class="quest-progress">
-        <div class="quest-progress-track"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
-        <span>${quest.progress} / ${quest.total}</span>
-      </div>
-    </div>
-  `
-}
 
-function renderAchievements(p) {
-  return `
-    <div class="trophy-grid">
-      ${p.achievements.map(item => `
-        <div class="trophy-card ${item.unlocked ? 'unlocked' : ''}">
-          <div class="trophy-icon">${item.icon}</div>
-          <strong>${item.name}</strong>
-          <p>${item.desc}</p>
-          <small>${item.unlocked ? item.date : item.req}</small>
+      <div class="quest-copy">
+        <div class="quest-copy-top">
+          <strong>${quest.name}</strong>
+          <span class="quest-reward">${quest.reward || 'XP'}</span>
         </div>
-      `).join('')}
-    </div>
+        <p>${quest.desc}</p>
+        <div class="quest-meta">
+          <span>${ringLabel(quest)}</span>
+          <span class="quest-state ${done ? 'done' : ''}">${done ? 'Temizlendi' : 'Acilde'}</span>
+        </div>
+      </div>
+    </article>
   `
 }
 
 function renderRaidLog(p) {
   return `
-    <div class="raid-log-list">
-      ${p.workoutLog.map(item => `
-        <div class="raid-log-card">
-          <div class="raid-log-top">
+    <div class="raid-ledger-list">
+      ${(p.workoutLog || []).map(item => `
+        <article class="raid-ledger-card">
+          <div class="raid-ledger-top">
             <strong>${item.type}</strong>
             <span>${item.date}</span>
           </div>
-          <div class="raid-log-meta">
+          <div class="raid-meta">
             <span>${item.duration}</span>
             <span>${item.volume}</span>
+            <span>${item.sets} set</span>
           </div>
-          <p>${item.highlight}</p>
+          <p>${item.highlight || 'Seans notu yok.'}</p>
           ${(item.blocks || []).length ? `
-            <div class="raid-log-blocks">
+            <div class="raid-block-row">
               ${(item.blocks || []).map(block => `<span class="raid-block-chip">${block}</span>`).join('')}
             </div>
           ` : ''}
-        </div>
+        </article>
       `).join('')}
     </div>
   `
@@ -84,8 +78,9 @@ function renderQuestSection(p) {
       <button class="qtab ${activeQuestTab === 'daily' ? 'active' : ''}" data-qtab="daily">Daily ${dailyDone}/${daily.length}</button>
       <button class="qtab ${activeQuestTab === 'weekly' ? 'active' : ''}" data-qtab="weekly">Weekly ${weeklyDone}/${weekly.length}</button>
     </div>
-    <div class="quest-card-grid">
-      ${items.map(renderQuestCard).join('')}
+
+    <div class="quest-scroll-stack">
+      ${items.map(renderQuestScroll).join('')}
     </div>
   `
 }
@@ -94,44 +89,38 @@ export function renderQuests(p, semantic = {}) {
   const daily = p.quests.daily || []
   const weekly = p.quests.weekly || []
   const openObjectives = [...daily, ...weekly].filter(item => !isDone(item)).length
+  const recoveryDiscipline = Math.round((semantic.recoveryDiscipline || 0) * 100)
+  const variety = semantic.variety || 0
+  const trunkGap = semantic.chains?.trunkControl || 0
 
   return `
-    <div id="quest-section">
-      <div class="sec">Campaign Board</div>
-      <div class="campaign-summary-grid">
-        <div class="ops-mini-card">
-          <span class="mini-label">Open Objectives</span>
+    <section id="quest-section" class="quest-ledger-surface">
+      <div class="sec">Quest Ledger</div>
+      <div class="mission-pressure-strip">
+        <div class="pressure-chip">
+          <span>AÃ§Ä±k GÃ¶rev</span>
           <strong>${openObjectives}</strong>
-          <small>active board load</small>
         </div>
-        <div class="ops-mini-card">
-          <span class="mini-label">Leg Pressure</span>
-          <strong>${semantic.counts?.legs || 0}</strong>
-          <small>lower chain hits</small>
+        <div class="pressure-chip">
+          <span>Recovery</span>
+          <strong>${recoveryDiscipline}%</strong>
         </div>
-        <div class="ops-mini-card">
-          <span class="mini-label">Core Pressure</span>
-          <strong>${semantic.counts?.core || 0}</strong>
-          <small>trunk signal</small>
+        <div class="pressure-chip">
+          <span>Variety</span>
+          <strong>${variety}</strong>
         </div>
-        <div class="ops-mini-card">
-          <span class="mini-label">Mobility Ops</span>
-          <strong>${semantic.counts?.mobility || 0}</strong>
-          <small>recovery branch</small>
+        <div class="pressure-chip">
+          <span>Trunk Chain</span>
+          <strong>${trunkGap}</strong>
         </div>
       </div>
       ${renderQuestSection(p)}
-    </div>
+    </section>
 
-    <div class="training-subsection">
-      <div class="sec">Achievement Sheet</div>
-      ${renderAchievements(p)}
-    </div>
-
-    <div class="training-subsection">
-      <div class="sec">Raid Log</div>
+    <section class="training-subsection raid-ledger-surface">
+      <div class="sec">Raid Ledger</div>
       ${renderRaidLog(p)}
-    </div>
+    </section>
   `
 }
 
@@ -144,27 +133,23 @@ export function initQuests(p) {
     if (!button) return
     activeQuestTab = button.dataset.qtab
     section.innerHTML = `
-      <div class="sec">Campaign Board</div>
-      <div class="campaign-summary-grid">
-        <div class="ops-mini-card">
-          <span class="mini-label">Open Objectives</span>
+      <div class="sec">Quest Ledger</div>
+      <div class="mission-pressure-strip">
+        <div class="pressure-chip">
+          <span>AÃ§Ä±k GÃ¶rev</span>
           <strong>${[...p.quests.daily, ...p.quests.weekly].filter(item => !isDone(item)).length}</strong>
-          <small>active board load</small>
         </div>
-        <div class="ops-mini-card">
-          <span class="mini-label">Daily Clear</span>
+        <div class="pressure-chip">
+          <span>Daily Clear</span>
           <strong>${p.quests.daily.filter(isDone).length}/${p.quests.daily.length}</strong>
-          <small>today</small>
         </div>
-        <div class="ops-mini-card">
-          <span class="mini-label">Weekly Clear</span>
+        <div class="pressure-chip">
+          <span>Weekly Clear</span>
           <strong>${p.quests.weekly.filter(isDone).length}/${p.quests.weekly.length}</strong>
-          <small>cycle</small>
         </div>
-        <div class="ops-mini-card">
-          <span class="mini-label">Campaign Mode</span>
+        <div class="pressure-chip">
+          <span>Mode</span>
           <strong>${activeQuestTab === 'daily' ? 'Daily' : 'Weekly'}</strong>
-          <small>active tab</small>
         </div>
       </div>
       ${renderQuestSection(p)}

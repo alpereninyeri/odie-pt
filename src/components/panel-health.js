@@ -17,16 +17,16 @@ function summarizeWeightHistory(history = []) {
   }
 }
 
-function renderBodyHistory(p) {
-  const trend = summarizeWeightHistory(p.bodyMetricsHistory || [])
+function renderBodyHistory(profile, compact = false) {
+  const trend = summarizeWeightHistory(profile.bodyMetricsHistory || [])
   if (!trend.rows.length) return ''
 
   const deltaLabel = trend.deltaKg
-    ? `${trend.deltaKg > 0 ? '+' : ''}${trend.deltaKg}kg trend`
-    : 'stabil gorunum'
+    ? `${trend.deltaKg > 0 ? '+' : ''}${trend.deltaKg}kg`
+    : 'stabil'
 
   return `
-    <div class="body-history-card">
+    <div class="body-history-card ${compact ? 'compact' : ''}">
       <div class="body-history-head">
         <div>
           <div class="mini-label">Body History</div>
@@ -47,50 +47,61 @@ function renderBodyHistory(p) {
   `
 }
 
-export function renderHealth(p) {
-  const { metrics, warnings, readiness } = p.health
-
-  const metricCards = metrics.map(m => `
-    <div class="hcard" style="--hc:${m.color}">
-      <div class="hcard-icon">${m.icon}</div>
-      <div class="hval">${m.val}</div>
-      <div class="hlbl">${m.label}</div>
-      <div class="hsub">${m.sub}</div>
-    </div>`).join('')
-
-  const warningRows = warnings.map(w => `
-    <div class="dbf" style="--dc:${w.color}">
-      <div>
-        <div class="dbf-name">${w.icon} ${w.name}</div>
-        <div class="dbf-desc">${w.desc}</div>
+function renderMetricCard(metric, compact = false) {
+  return `
+    <div class="vital-card ${compact ? 'compact' : ''}" style="--hc:${metric.color}">
+      <div class="vital-card-top">
+        <span class="vital-card-icon">${metric.icon}</span>
+        <strong>${metric.val}</strong>
       </div>
-    </div>`).join('')
+      <div class="vital-card-label">${metric.label}</div>
+      <small>${metric.sub}</small>
+    </div>
+  `
+}
 
+export function renderHealth(profile, options = {}) {
+  const compact = Boolean(options?.compact)
+  const { metrics = [], warnings = [], readiness = null } = profile.health || {}
+
+  const visibleMetrics = compact ? metrics.slice(1, 5) : metrics
   const warningsSection = warnings.length
-    ? `<div class="sec">Saglik Uyarilari</div>${warningRows}`
+    ? `
+      <div class="health-warning-list">
+        ${warnings.map(item => `
+          <div class="dbf" style="--dc:${item.color}">
+            <div>
+              <div class="dbf-name">${item.icon} ${item.name}</div>
+              <div class="dbf-desc">${item.desc}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `
     : ''
 
   const readinessSection = readiness
     ? `
-      <div class="readiness-card readiness-${readiness.confidence || 'low'}">
+      <div class="readiness-card ${compact ? 'compact' : ''} readiness-${readiness.confidence || 'low'}">
         <div class="readiness-head">
           <div>
-            <div class="mini-label">Recovery Confidence</div>
-            <strong>${String(readiness.confidence || 'low').toUpperCase()}</strong>
+            <div class="mini-label">${compact ? 'Recovery Trust' : 'Recovery Confidence'}</div>
+            <strong>${Number.isFinite(readiness.score) ? readiness.score : '--'}/100</strong>
           </div>
-          <span class="readiness-source">${readiness.source || 'limited_data'}</span>
+          <span class="readiness-source">${String(readiness.confidence || 'low').toUpperCase()}</span>
         </div>
         <p>${readiness.reason || 'Recovery guven notu yok.'}</p>
       </div>
     `
     : ''
 
-  const historySection = renderBodyHistory(p)
-
   return `
-    <div class="sec">Vucut & Saglik Metrikleri</div>
+    ${compact ? '' : '<div class="sec">Vital Codex</div>'}
     ${readinessSection}
-    <div class="health-grid">${metricCards}</div>
-    ${historySection}
-    ${warningsSection}`
+    <div class="vital-grid ${compact ? 'compact' : ''}">
+      ${visibleMetrics.map(metric => renderMetricCard(metric, compact)).join('')}
+    </div>
+    ${renderBodyHistory(profile, compact)}
+    ${warningsSection}
+  `
 }

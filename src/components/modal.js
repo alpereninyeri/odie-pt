@@ -2,11 +2,11 @@ let _onClose = null
 
 export function initModal() {
   const bg = document.getElementById('statModal')
-  bg.addEventListener('click', e => {
-    if (e.target === bg) closeModal()
+  bg.addEventListener('click', event => {
+    if (event.target === bg) closeModal()
   })
-  bg.addEventListener('click', e => {
-    if (e.target.closest('[data-close-modal]')) closeModal()
+  bg.addEventListener('click', event => {
+    if (event.target.closest('[data-close-modal]')) closeModal()
   })
 }
 
@@ -22,60 +22,72 @@ export function openModal(html) {
 
 function miniBarChart(data, color) {
   if (!data || !data.length) return ''
-  const max = Math.max(...data.map(d => d.val)) || 1
-  const W = 220
-  const H = 64
+  const max = Math.max(...data.map(point => point.val)) || 1
+  const width = 220
+  const height = 64
   const padX = 4
   const count = data.length
-  const barW = Math.floor((W - padX * (count - 1)) / count)
-  const labelH = 14
-  const chartH = H - labelH
+  const barWidth = Math.floor((width - padX * (count - 1)) / count)
+  const labelHeight = 14
+  const chartHeight = height - labelHeight
 
-  const bars = data.map((d, i) => {
-    const bh = Math.max(4, Math.round((d.val / max) * (chartH - 18)))
-    const x = i * (barW + padX)
-    const y = chartH - bh - 14
-    const isLast = i === count - 1
+  const bars = data.map((point, index) => {
+    const barHeight = Math.max(4, Math.round((point.val / max) * (chartHeight - 18)))
+    const x = index * (barWidth + padX)
+    const y = chartHeight - barHeight - 14
+    const isLast = index === count - 1
     return `
-      <rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="${color}" opacity="${isLast ? 1 : 0.35}" rx="2"/>
-      <text x="${x + barW / 2}" y="${H - 2}" text-anchor="middle" fill="var(--dim)" font-size="8" font-family="'Share Tech Mono',monospace">${d.date}</text>
-      <text x="${x + barW / 2}" y="${y - 3}" text-anchor="middle" fill="${isLast ? color : 'var(--dim)'}" font-size="8" font-family="'Share Tech Mono',monospace">${d.val}</text>
+      <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${color}" opacity="${isLast ? 1 : 0.35}" rx="2"/>
+      <text x="${x + barWidth / 2}" y="${height - 2}" text-anchor="middle" fill="var(--dim)" font-size="8" font-family="'JetBrains Mono', monospace">${point.date}</text>
+      <text x="${x + barWidth / 2}" y="${y - 3}" text-anchor="middle" fill="${isLast ? color : 'var(--dim)'}" font-size="8" font-family="'JetBrains Mono', monospace">${point.val}</text>
     `
   }).join('')
 
   return `
     <div class="modal-chart">
-      <div class="modal-chart-title">Ilerleme Gecmisi</div>
-      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;display:block;margin:0 auto">${bars}</svg>
-    </div>`
+      <div class="modal-chart-title">Trend Kaydi</div>
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible;display:block;margin:0 auto">${bars}</svg>
+    </div>
+  `
 }
 
-function _closeBtn() {
-  return `<button class="modal-close" data-close-modal aria-label="Kapat">✕</button>`
+function closeButton() {
+  return '<button class="modal-close" data-close-modal aria-label="Kapat">x</button>'
+}
+
+function gradePillClass(value = '') {
+  const raw = String(value || '').toUpperCase()
+  if (raw.startsWith('A')) return 'grade-elite'
+  if (raw.startsWith('B')) return 'grade-rare'
+  if (raw.startsWith('C')) return 'grade-steady'
+  if (raw.startsWith('D')) return 'grade-low'
+  if (raw.startsWith('F')) return 'grade-crit'
+  return 'grade-neutral'
 }
 
 export function openStatModal(stat) {
   const html = `
     <div class="modal-head">
       <span style="font-size:22px">${stat.icon}</span>
-      <div class="modal-head-title">${stat.name}</div>
-      ${_closeBtn()}
+      <div class="modal-head-title">${stat.name} Codex</div>
+      ${closeButton()}
     </div>
     <div class="modal-body">
       <div class="modal-stat-big" style="color:${stat.color}">
         ${stat.val}<span style="font-size:20px;color:var(--dim)">/100</span>
       </div>
-      ${stat.critical ? `<div style="text-align:center;margin-bottom:8px"><span style="background:var(--red);color:#fff;font-size:9px;padding:3px 10px;font-family:'Share Tech Mono',monospace;letter-spacing:2px">KRITIK SEVIYE</span></div>` : ''}
+      ${stat.critical ? '<div style="text-align:center;margin-bottom:8px"><span class="grade-pill grade-crit">CRITICAL</span></div>' : ''}
       <div class="modal-desc">${stat.desc}</div>
       <div class="modal-coach">${stat.coach}</div>
       <div class="modal-grid">
-        ${(stat.detail || []).map(d => `
+        ${(stat.detail || []).map(detail => `
           <div class="modal-item">
-            <div class="modal-item-label">${d.label}</div>
-            <div class="modal-item-val">${d.val}</div>
-          </div>`).join('')}
+            <div class="modal-item-label">${detail.label}</div>
+            <div class="modal-item-val"><span class="grade-pill ${gradePillClass(detail.val)}">${detail.val}</span></div>
+          </div>
+        `).join('')}
       </div>
-      <div class="modal-tip">Koc Notu: Bu stat ${stat.label} skorunun guncel bilesenlerini gosterir.</div>
+      <div class="modal-tip">Field note: Bu stat ${stat.label} skorunun guncel bilesenlerini gosterir.</div>
     </div>`
   openModal(html)
 }
@@ -85,49 +97,50 @@ export function openPerfModal(perf) {
   const html = `
     <div class="modal-head">
       <span style="font-size:22px">${perf.icon}</span>
-      <div class="modal-head-title">${perf.name}</div>
-      ${_closeBtn()}
+      <div class="modal-head-title">${perf.name} Forge</div>
+      ${closeButton()}
     </div>
     <div class="modal-body">
       <div class="modal-stat-big" style="color:var(--gold);font-size:38px;padding-bottom:8px">${perf.val}</div>
       <div class="modal-desc">${perf.note}</div>
       ${chart}
       <div class="modal-grid">
-        ${(perf.details || []).map(d => `
+        ${(perf.details || []).map(detail => `
           <div class="modal-item">
-            <div class="modal-item-label">${d.label}</div>
-            <div class="modal-item-val">${d.val}</div>
-          </div>`).join('')}
+            <div class="modal-item-label">${detail.label}</div>
+            <div class="modal-item-val">${detail.val}</div>
+          </div>
+        `).join('')}
       </div>
-      <div class="modal-tip">Koc Analizi: ${perf.tip}</div>
+      <div class="modal-tip">Forge note: ${perf.tip}</div>
     </div>`
   openModal(html)
 }
 
 export function openEpicVolumeModal(currentKg, tiers) {
-  const items = tiers.map(t => {
-    const achieved = currentKg >= t.kg
-    const pct = Math.min(100, Math.round((currentKg / t.kg) * 100))
+  const items = tiers.map(tier => {
+    const achieved = currentKg >= tier.kg
+    const pct = Math.min(100, Math.round((currentKg / tier.kg) * 100))
     return `
       <div class="epic-tier ${achieved ? 'done' : ''}">
-        <div class="epic-tier-icon">${t.icon}</div>
+        <div class="epic-tier-icon">${tier.icon}</div>
         <div class="epic-tier-body">
           <div class="epic-tier-head">
-            <span class="epic-tier-name">${t.name}</span>
-            <span class="epic-tier-kg">${t.kg.toLocaleString('tr-TR')} kg</span>
+            <span class="epic-tier-name">${tier.name}</span>
+            <span class="epic-tier-kg">${tier.kg.toLocaleString('tr-TR')} kg</span>
           </div>
-          <div class="epic-tier-msg">${t.msg}</div>
+          <div class="epic-tier-msg">${tier.msg}</div>
           ${!achieved ? `<div class="epic-tier-bar"><div class="epic-tier-fill" style="width:${pct}%"></div></div>` : ''}
         </div>
-        <div class="epic-tier-badge">${achieved ? '✓' : '🔒'}</div>
+        <div class="epic-tier-badge">${achieved ? 'OK' : 'LOCK'}</div>
       </div>`
   }).join('')
 
   const html = `
     <div class="modal-head">
-      <span style="font-size:22px">⚖️</span>
-      <div class="modal-head-title">EPIC VOLUME RAIDER</div>
-      ${_closeBtn()}
+      <span style="font-size:22px">VOL</span>
+      <div class="modal-head-title">Epic Volume Ledger</div>
+      ${closeButton()}
     </div>
     <div class="modal-body">
       <div class="epic-total">
@@ -146,17 +159,17 @@ export function openClassModal(cls) {
   const signals = Array.isArray(cls.signals) ? cls.signals.slice(0, 3) : []
 
   const statItems = Object.entries(statMult)
-    .map(([k, v]) => `<div class="modal-item"><div class="modal-item-label">${k.toUpperCase()}</div><div class="modal-item-val">x${v.toFixed(2)}</div></div>`)
+    .map(([key, value]) => `<div class="modal-item"><div class="modal-item-label">${key.toUpperCase()}</div><div class="modal-item-val">x${value.toFixed(2)}</div></div>`)
     .join('')
   const xpItems = Object.entries(xpMult)
-    .map(([k, v]) => `<div class="modal-item"><div class="modal-item-label">${k}</div><div class="modal-item-val">x${v.toFixed(2)}</div></div>`)
+    .map(([key, value]) => `<div class="modal-item"><div class="modal-item-label">${key}</div><div class="modal-item-val">x${value.toFixed(2)}</div></div>`)
     .join('')
 
   const html = `
     <div class="modal-head">
       <span style="font-size:28px">${cls.icon}</span>
       <div class="modal-head-title">${cls.name}</div>
-      ${_closeBtn()}
+      ${closeButton()}
     </div>
     <div class="modal-body">
       <div style="text-align:center;padding:8px 0 16px">
@@ -165,39 +178,39 @@ export function openClassModal(cls) {
         <div style="font-size:11px;color:var(--dim);letter-spacing:.5px">${cls.subName || ''}</div>
       </div>
       <div class="modal-desc">${cls.desc}</div>
-      <div class="modal-coach"><strong>Pasif:</strong> ${cls.buff}</div>
-      ${cls.reason ? `<div class="modal-coach"><strong>Neden bu sinif:</strong> ${cls.reason}</div>` : ''}
-      ${signals.length ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">SEMANTIC SIGNALS</div><div class="modal-grid">${signals.map(signal => `<div class="modal-item"><div class="modal-item-label">Signal</div><div class="modal-item-val">${signal}</div></div>`).join('')}</div>` : ''}
-      ${statItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">STAT CARPANI</div><div class="modal-grid">${statItems}</div>` : ''}
-      ${xpItems ? `<div style="font-size:10px;opacity:.6;margin:12px 0 6px;letter-spacing:1px">XP CARPANI</div><div class="modal-grid">${xpItems}</div>` : ''}
-      <div class="modal-tip">Sinif son 10 antrenmana gore dinamik degisir. Desen degistirdikce sinif da degisir.</div>
+      <div class="modal-coach"><strong>Buff:</strong> ${cls.buff}</div>
+      ${cls.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${cls.reason}</div>` : ''}
+      ${signals.length ? `<div style="font-size:10px;opacity:.7;margin:12px 0 6px;letter-spacing:1px">CLASS SIGNALS</div><div class="modal-grid">${signals.map(signal => `<div class="modal-item"><div class="modal-item-label">Signal</div><div class="modal-item-val">${signal}</div></div>`).join('')}</div>` : ''}
+      ${statItems ? `<div style="font-size:10px;opacity:.7;margin:12px 0 6px;letter-spacing:1px">STAT CARPANI</div><div class="modal-grid">${statItems}</div>` : ''}
+      ${xpItems ? `<div style="font-size:10px;opacity:.7;margin:12px 0 6px;letter-spacing:1px">XP CARPANI</div><div class="modal-grid">${xpItems}</div>` : ''}
+      <div class="modal-tip">Sinif son 10 antrenman desenine gore dinamik degisir.</div>
     </div>`
   openModal(html)
 }
 
-export function openAvatarModal(p) {
-  const criticalStat = (p.stats || []).find(stat => stat.critical)
+export function openAvatarModal(profile) {
+  const criticalStat = (profile.stats || []).find(stat => stat.critical)
   const liveTip = criticalStat
-    ? `${criticalStat.label} su an en zayif halka. ${p.currentFocus || 'Siradaki seansi buna gore sec.'}`
-    : (p.currentFocus ? `Su an odak: ${p.currentFocus}.` : 'Hybrid denge korunuyor.')
+    ? `${criticalStat.label} su an en zayif halka. ${profile.currentFocus || 'Siradaki seansi buna gore sec.'}`
+    : (profile.currentFocus ? `Su an odak: ${profile.currentFocus}.` : 'Hybrid denge korunuyor.')
 
   const html = `
     <div class="modal-head">
-      <span style="font-size:22px">${p.avatar}</span>
-      <div class="modal-head-title">${p.nick}</div>
-      ${_closeBtn()}
+      <span style="font-size:22px">${profile.avatar}</span>
+      <div class="modal-head-title">${profile.nick}</div>
+      ${closeButton()}
     </div>
     <div class="modal-body">
       <div style="text-align:center;padding:16px 0 12px">
-        <div style="font-size:72px;margin-bottom:8px">${p.avatar}</div>
-        <div style="font-family:'Cinzel',serif;font-size:18px;color:var(--gold);margin-bottom:4px">${p.class}</div>
-        <div style="font-size:12px;color:var(--dim)">${p.subClass} · ${p.rank}</div>
+        <div style="font-size:72px;margin-bottom:8px">${profile.avatar}</div>
+        <div style="font-family:'Cinzel',serif;font-size:18px;color:var(--gold);margin-bottom:4px">${profile.class}</div>
+        <div style="font-size:12px;color:var(--dim)">${profile.subClass} · ${profile.rank}</div>
       </div>
       <div class="modal-grid">
-        <div class="modal-item"><div class="modal-item-label">Toplam Seans</div><div class="modal-item-val">${p.sessions}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Toplam Hacim</div><div class="modal-item-val">${p.totalVolume}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Toplam Set</div><div class="modal-item-val">${p.totalSets}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Toplam Sure</div><div class="modal-item-val">${p.totalTime}</div></div>
+        <div class="modal-item"><div class="modal-item-label">Toplam Seans</div><div class="modal-item-val">${profile.sessions}</div></div>
+        <div class="modal-item"><div class="modal-item-label">Toplam Hacim</div><div class="modal-item-val">${profile.totalVolume}</div></div>
+        <div class="modal-item"><div class="modal-item-label">Toplam Set</div><div class="modal-item-val">${profile.totalSets}</div></div>
+        <div class="modal-item"><div class="modal-item-label">Toplam Sure</div><div class="modal-item-val">${profile.totalTime}</div></div>
       </div>
       <div class="modal-tip">${liveTip}</div>
     </div>`
