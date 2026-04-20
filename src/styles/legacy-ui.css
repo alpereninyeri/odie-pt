@@ -1,0 +1,343 @@
+@media(max-width:600px) {
+  .gstats { grid-template-columns:repeat(2,1fr); }
+  .ach-grid { grid-template-columns:repeat(3,1fr); }
+  .health-grid { grid-template-columns:repeat(2,1fr); }
+  .log-table .log-vol, .log-table .log-dur { display:none; }
+  .stt-grid { grid-template-columns:repeat(2,1fr); }
+  .rings-row { grid-template-columns:repeat(2,1fr); }
+  .skill-summary { grid-template-columns:repeat(3,1fr); }
+  .coach-header { flex-wrap:wrap; gap:10px; }
+  .coach-meta { width:100%; text-align:left; display:flex; gap:12px; }
+  .rank-row { flex-wrap:wrap; }
+  .rdiv { display:none; }
+  .rcell { width:50%; }
+  .coach-fab { bottom:16px; right:16px; width:46px; height:46px; font-size:18px; }
+}
+
+::-webkit-scrollbar { width:3px; height:3px; }
+::-webkit-scrollbar-track { background:var(--bg2); }
+::-webkit-scrollbar-thumb { background:var(--scroll-thumb); border-radius:2px; }
+
+/* ── Streak Badge ────────────────────────────────────────────────────────── */
+.streak-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:linear-gradient(135deg, #ff6b0020, #ff6b0010);
+  border:1px solid #ff6b0060; border-radius:20px;
+  padding:4px 14px; margin:8px auto 0; font-size:11px;
+  font-family:'Share Tech Mono',monospace; color:var(--org);
+  font-weight:700; letter-spacing:1px; animation:streakPulse 2s infinite;
+}
+@keyframes streakPulse {
+  0%,100% { box-shadow:0 0 0 0 #ff6b0030; }
+  50%      { box-shadow:0 0 0 6px #ff6b0000; }
+}
+
+/* ── Workout FAB ─────────────────────────────────────────────────────────── */
+.workout-fab {
+  position:fixed; bottom:72px; left:16px;
+  width:46px; height:46px; border-radius:50%;
+  background:var(--grn); color:#fff; font-size:20px;
+  border:none; cursor:pointer; z-index:100;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  transition:transform .15s, box-shadow .15s;
+}
+.workout-fab:hover { transform:scale(1.1); box-shadow:0 6px 24px rgba(0,0,0,.5); }
+
+/* ── Daily Checklist ─────────────────────────────────────────────────────── */
+.daily-checklist {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:14px 16px; margin-bottom:16px;
+}
+.dc-title { font-size:10px; color:var(--dim); font-family:'Share Tech Mono',monospace;
+  letter-spacing:1.5px; margin-bottom:12px; }
+.dc-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.dc-icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
+.dc-info { flex:1; min-width:0; }
+.dc-lbl  { font-size:10px; color:var(--dim); font-family:'Share Tech Mono',monospace;
+  letter-spacing:1px; margin-bottom:4px; }
+.dc-bar  { height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+.dc-fill { height:100%; border-radius:2px; transition:width .4s ease; }
+.dc-val  { font-size:11px; font-family:'Share Tech Mono',monospace; color:var(--fg);
+  white-space:nowrap; min-width:80px; text-align:right; }
+.dc-btns { display:flex; gap:4px; flex-shrink:0; }
+.dc-btn  { background:var(--bg2); border:1px solid var(--border); border-radius:6px;
+  color:var(--fg); font-family:'Share Tech Mono',monospace; font-size:10px;
+  padding:4px 8px; cursor:pointer; white-space:nowrap; }
+.dc-btn:hover { border-color:var(--grn); color:var(--grn); }
+.dc-input { background:var(--bg2); border:1px solid var(--border); border-radius:6px;
+  color:var(--fg); font-family:'Share Tech Mono',monospace; font-size:11px;
+  padding:4px 6px; width:70px; }
+
+/* ── Workout Form ────────────────────────────────────────────────────────── */
+.wf-row { margin-bottom:12px; }
+.wf-label { display:block; font-size:10px; color:var(--dim);
+  font-family:'Share Tech Mono',monospace; letter-spacing:1px; margin-bottom:4px; }
+.wf-input, .wf-select {
+  width:100%; background:var(--bg2); border:1px solid var(--border);
+  border-radius:8px; color:var(--fg); font-family:'Share Tech Mono',monospace;
+  font-size:12px; padding:8px 10px; box-sizing:border-box;
+}
+.wf-input:focus, .wf-select:focus { outline:none; border-color:var(--grn); }
+.wf-section-title { font-size:10px; color:var(--dim); font-family:'Share Tech Mono',monospace;
+  letter-spacing:1.5px; margin:16px 0 8px; }
+.wf-optional { color:var(--dim); font-size:9px; }
+.wf-ex-row { background:var(--bg2); border:1px solid var(--border); border-radius:8px;
+  padding:10px; margin-bottom:8px; }
+.wf-ex-name { margin-bottom:8px; }
+.wf-set-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:6px; }
+.wf-set-reps, .wf-set-weight, .wf-set-dur { font-size:11px; padding:5px 7px; }
+.wf-add-set, .wf-remove-ex {
+  background:none; border:1px solid var(--border); border-radius:6px;
+  color:var(--dim); font-family:'Share Tech Mono',monospace; font-size:10px;
+  padding:4px 10px; cursor:pointer; margin-right:6px;
+}
+.wf-add-set:hover  { border-color:var(--grn); color:var(--grn); }
+.wf-remove-ex:hover { border-color:var(--red); color:var(--red); }
+.wf-add-ex {
+  width:100%; background:none; border:1px dashed var(--border); border-radius:8px;
+  color:var(--dim); font-family:'Share Tech Mono',monospace; font-size:11px;
+  padding:8px; cursor:pointer; margin:4px 0 12px;
+}
+.wf-add-ex:hover { border-color:var(--grn); color:var(--grn); }
+.wf-volume-preview {
+  font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--gold);
+  text-align:center; padding:8px; background:var(--bg2);
+  border-radius:6px; margin-bottom:12px;
+}
+.wf-actions { display:flex; justify-content:center; }
+.wf-submit {
+  background:var(--grn); color:#000; border:none; border-radius:10px;
+  font-family:'Share Tech Mono',monospace; font-size:13px; font-weight:700;
+  padding:12px 32px; cursor:pointer; letter-spacing:1px;
+  transition:opacity .2s;
+}
+.wf-submit:disabled { opacity:.5; cursor:not-allowed; }
+.wf-submit:hover:not(:disabled) { opacity:.85; }
+
+/* ── Status Widget (class + armor + epic) ─────────────────────────────── */
+.status-widget {
+  display:flex; flex-direction:column; gap:12px;
+  margin:12px 0 16px;
+}
+.status-class {
+  display:flex; gap:14px; align-items:center;
+  padding:14px; border-radius:14px;
+  background:linear-gradient(135deg, var(--class-color,#64748b)18, transparent 90%);
+  border:1px solid var(--class-color,#64748b);
+  box-shadow:0 0 24px var(--class-color,#64748b)22;
+}
+.status-class-icon { font-size:42px; line-height:1; }
+.status-class-body { flex:1; min-width:0; }
+.status-class-name {
+  font-family:'Share Tech Mono',monospace; font-size:18px; font-weight:700;
+  color:var(--class-color,#fff); letter-spacing:1px;
+}
+.status-class-sub { font-size:10px; opacity:.65; letter-spacing:.5px; margin-top:2px; }
+.status-class-buff { font-size:11px; margin-top:6px; opacity:.85; }
+.status-class-evolving {
+  font-size:10px; margin-top:4px; color:#eab308; font-style:italic;
+}
+
+.status-survival {
+  padding:12px 14px; border-radius:12px;
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08);
+}
+.status-survival-header { margin-bottom:8px; }
+.status-survival-badge {
+  display:inline-block; padding:3px 10px; border-radius:999px;
+  font-size:10px; font-family:'Share Tech Mono',monospace; font-weight:700;
+  letter-spacing:.5px; border:1px solid;
+}
+.status-bar-row {
+  display:flex; gap:10px; align-items:center; margin-top:6px;
+  font-family:'Share Tech Mono',monospace; font-size:11px;
+}
+.status-bar-label { flex:0 0 75px; opacity:.85; }
+.status-bar {
+  flex:1; height:8px; border-radius:4px; overflow:hidden;
+  background:rgba(255,255,255,.08);
+}
+.status-bar-fill { height:100%; transition:width .4s ease, background .4s ease; }
+.status-bar-val { flex:0 0 55px; text-align:right; opacity:.75; font-size:10px; }
+.status-warnings { margin-top:8px; display:flex; flex-direction:column; gap:3px; }
+.status-warning { font-size:10px; color:#fca5a5; line-height:1.4; }
+
+.status-epic {
+  padding:12px 14px; border-radius:12px;
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08);
+}
+.status-epic-title {
+  font-family:'Share Tech Mono',monospace; font-size:10px; font-weight:700;
+  letter-spacing:1.5px; opacity:.55; margin-bottom:8px;
+}
+.status-epic-tier { display:flex; gap:12px; align-items:center; }
+.status-epic-icon { font-size:32px; line-height:1; }
+.status-epic-body { flex:1; min-width:0; }
+.status-epic-name {
+  font-family:'Share Tech Mono',monospace; font-size:13px; font-weight:700;
+  letter-spacing:.5px; margin-bottom:3px;
+}
+.status-epic-msg { font-size:10px; opacity:.75; line-height:1.4; margin-bottom:6px; }
+.status-epic-bar {
+  height:4px; border-radius:2px; overflow:hidden;
+  background:rgba(255,255,255,.08);
+}
+.status-epic-fill {
+  height:100%;
+  background:linear-gradient(90deg,#f59e0b,#ef4444);
+  transition:width .4s ease;
+}
+
+/* ── Status Widget: click affordance + mobile ──────────────────────────── */
+.status-class { cursor:pointer; transition:transform .15s, box-shadow .15s; }
+.status-class:hover { transform:translateY(-1px); }
+.status-class:active { transform:translateY(0); }
+.status-class-chev {
+  font-size:24px; color:var(--class-color,#64748b); opacity:.6;
+  font-family:'Share Tech Mono',monospace;
+}
+.status-epic { cursor:pointer; transition:transform .15s, border-color .15s; }
+.status-epic:hover { border-color:rgba(255,255,255,.2); }
+.status-epic:active { transform:scale(.995); }
+.status-epic-chev { float:right; opacity:.5; }
+
+/* ── Epic Tier Modal List ──────────────────────────────────────────────── */
+.epic-total {
+  text-align:center; padding:10px 0 18px;
+  border-bottom:1px solid rgba(255,255,255,.08); margin-bottom:14px;
+}
+.epic-total-val {
+  font-family:'Cinzel',serif; font-size:36px; font-weight:900; color:var(--gold);
+  text-shadow:0 0 30px var(--glow-gold-s);
+}
+.epic-total-lbl {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:var(--dim); letter-spacing:2px; text-transform:uppercase; margin-top:4px;
+}
+.epic-tier-list { display:flex; flex-direction:column; gap:8px; }
+.epic-tier {
+  display:flex; gap:12px; align-items:center; padding:10px 12px;
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06);
+  border-radius:10px; transition:all .2s;
+}
+.epic-tier.done {
+  background:linear-gradient(90deg, rgba(34,197,94,.1), transparent);
+  border-color:rgba(34,197,94,.3);
+}
+.epic-tier-icon { font-size:26px; line-height:1; flex-shrink:0; }
+.epic-tier-body { flex:1; min-width:0; }
+.epic-tier-head {
+  display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+  margin-bottom:2px;
+}
+.epic-tier-name {
+  font-family:'Share Tech Mono',monospace; font-size:12px;
+  font-weight:700; letter-spacing:.5px;
+}
+.epic-tier.done .epic-tier-name { color:#4ade80; }
+.epic-tier-kg {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:var(--dim); white-space:nowrap;
+}
+.epic-tier-msg { font-size:10px; opacity:.65; line-height:1.4; }
+.epic-tier-bar {
+  height:3px; border-radius:2px; overflow:hidden;
+  background:rgba(255,255,255,.08); margin-top:5px;
+}
+.epic-tier-fill {
+  height:100%;
+  background:linear-gradient(90deg,#f59e0b,#ef4444);
+}
+.epic-tier-badge {
+  font-size:16px; flex-shrink:0; opacity:.5;
+}
+.epic-tier.done .epic-tier-badge { color:#4ade80; opacity:1; }
+
+/* ── Mobile optimizations (≤600px) ─────────────────────────────────────── */
+@media (max-width:600px) {
+  .wrap { padding:12px 10px 90px; }
+  .header { padding:20px 0 16px; }
+  .avatar { width:64px; height:64px; font-size:32px; }
+  .nick { letter-spacing:2px; }
+  .xpbar { padding:8px 12px; }
+  .gstats { grid-template-columns:repeat(2,1fr); gap:5px; margin-bottom:14px; }
+  .gstat { padding:8px 6px; }
+  .gstat-val { font-size:15px; }
+  .gstat-lbl { font-size:8px; }
+
+  .tabs { margin:18px -10px 0; padding:0 10px; }
+  .tab { padding:10px 12px; font-size:10px; letter-spacing:1.5px; min-height:44px; }
+
+  .panel { padding:16px 0; }
+  .stt-grid { grid-template-columns:repeat(2,1fr); gap:6px; }
+  .stt { padding:11px 8px; min-height:58px; }
+
+  /* Status widget mobile */
+  .status-class { padding:12px; gap:10px; }
+  .status-class-icon { font-size:36px; }
+  .status-class-name { font-size:16px; }
+  .status-class-sub { font-size:9px; }
+  .status-class-buff { font-size:10px; }
+  .status-class-chev { font-size:20px; }
+  .status-epic { padding:10px 12px; }
+  .status-epic-icon { font-size:28px; }
+  .status-epic-name { font-size:12px; }
+  .status-epic-msg { font-size:9px; }
+
+  /* Modal mobile */
+  .modal { width:94%; max-width:94%; max-height:88vh; border-radius:14px; }
+  .modal-head { padding:14px 16px; }
+  .modal-head-title { font-size:13px; }
+  .modal-body { padding:16px 14px; }
+  .modal-stat-big { font-size:42px; }
+  .modal-grid { grid-template-columns:1fr 1fr; gap:6px; }
+  .modal-item { padding:8px 10px; }
+  .modal-close {
+    font-size:22px; padding:8px 12px;
+    min-width:40px; min-height:40px; /* Touch target */
+  }
+
+  /* Epic tier list mobile */
+  .epic-total-val { font-size:28px; }
+  .epic-tier { padding:9px 10px; gap:10px; }
+  .epic-tier-icon { font-size:22px; }
+  .epic-tier-name { font-size:11px; }
+  .epic-tier-kg { font-size:9px; }
+  .epic-tier-msg { font-size:9px; }
+
+  /* FABs — touch targets 48px min */
+  .workout-fab, .coach-fab {
+    width:52px; height:52px; font-size:22px;
+    bottom:20px;
+  }
+  .workout-fab { right:20px; }
+  .coach-fab { left:20px; }
+
+  /* Theme toggle — daha küçük */
+  .theme-toggle { padding:6px 10px; font-size:12px; }
+  .theme-toggle-label { display:none; }
+
+  /* Form inputs — 16px minimum font-size (iOS zoom önler) */
+  input, select, textarea, button { font-size:16px !important; }
+  .tab { font-size:10px !important; }
+  .stt-lbl, .modal-item-label, .gstat-lbl, .sec { font-size:9px !important; }
+}
+
+/* ── Extra small (≤380px) ──────────────────────────────────────────────── */
+@media (max-width:380px) {
+  .wrap { padding:10px 8px 90px; }
+  .stt-grid { grid-template-columns:repeat(2,1fr); }
+  .gstats { grid-template-columns:repeat(2,1fr); }
+  .tab { padding:9px 10px; }
+  .modal-body { padding:14px 12px; }
+}
+
+/* ── Touch targets: butonları minimum 44px yap ─────────────────────────── */
+button, .tab, [data-action], [data-tab] { min-height:44px; }
+.modal-close { min-width:44px; min-height:44px; }
+
+/* ── iOS Safari bottom safe area ───────────────────────────────────────── */
+@supports (padding:max(0px)) {
+  .wrap { padding-bottom:max(80px, env(safe-area-inset-bottom) + 80px); }
+  .workout-fab, .coach-fab { bottom:max(20px, env(safe-area-inset-bottom) + 4px); }
+}
