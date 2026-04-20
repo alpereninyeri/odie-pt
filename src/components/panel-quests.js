@@ -9,7 +9,7 @@ function isDone(item) {
 }
 
 function ringLabel(item) {
-  return isDone(item) ? 'DONE' : `${Number(item.progress)}/${Number(item.total)}`
+  return isDone(item) ? 'Done' : `${Number(item.progress)}/${Number(item.total)}`
 }
 
 function renderQuestScroll(quest) {
@@ -33,7 +33,7 @@ function renderQuestScroll(quest) {
         <p>${quest.desc}</p>
         <div class="quest-meta">
           <span>${ringLabel(quest)}</span>
-          <span class="quest-state ${done ? 'done' : ''}">${done ? 'Temizlendi' : 'Acilde'}</span>
+          <span class="quest-state ${done ? 'done' : ''}">${done ? 'Completed' : 'Active'}</span>
         </div>
       </div>
     </article>
@@ -95,10 +95,10 @@ export function renderQuests(p, semantic = {}) {
 
   return `
     <section id="quest-section" class="quest-ledger-surface">
-      <div class="sec">Quest Ledger</div>
+      <div class="sec">Mission Board</div>
       <div class="mission-pressure-strip">
         <div class="pressure-chip">
-          <span>AÃ§Ä±k GÃ¶rev</span>
+          <span>Open</span>
           <strong>${openObjectives}</strong>
         </div>
         <div class="pressure-chip">
@@ -110,7 +110,7 @@ export function renderQuests(p, semantic = {}) {
           <strong>${variety}</strong>
         </div>
         <div class="pressure-chip">
-          <span>Trunk Chain</span>
+          <span>Trunk</span>
           <strong>${trunkGap}</strong>
         </div>
       </div>
@@ -118,7 +118,7 @@ export function renderQuests(p, semantic = {}) {
     </section>
 
     <section class="training-subsection raid-ledger-surface">
-      <div class="sec">Raid Ledger</div>
+      <div class="sec">Recent Sessions</div>
       ${renderRaidLog(p)}
     </section>
   `
@@ -133,22 +133,22 @@ export function initQuests(p) {
     if (!button) return
     activeQuestTab = button.dataset.qtab
     section.innerHTML = `
-      <div class="sec">Quest Ledger</div>
+      <div class="sec">Mission Board</div>
       <div class="mission-pressure-strip">
         <div class="pressure-chip">
-          <span>AÃ§Ä±k GÃ¶rev</span>
+          <span>Open</span>
           <strong>${[...p.quests.daily, ...p.quests.weekly].filter(item => !isDone(item)).length}</strong>
         </div>
         <div class="pressure-chip">
-          <span>Daily Clear</span>
+          <span>Daily</span>
           <strong>${p.quests.daily.filter(isDone).length}/${p.quests.daily.length}</strong>
         </div>
         <div class="pressure-chip">
-          <span>Weekly Clear</span>
+          <span>Weekly</span>
           <strong>${p.quests.weekly.filter(isDone).length}/${p.quests.weekly.length}</strong>
         </div>
         <div class="pressure-chip">
-          <span>Mode</span>
+          <span>View</span>
           <strong>${activeQuestTab === 'daily' ? 'Daily' : 'Weekly'}</strong>
         </div>
       </div>

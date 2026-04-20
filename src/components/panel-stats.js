@@ -70,9 +70,9 @@ function renderStatHex(stats = []) {
           ${labels}
         </svg>
         <div class="stat-radar-core">
-          <span class="mini-label">Build Sigil</span>
+          <span class="mini-label">Stat Radar</span>
           <strong>${critical ? critical.label : 'SYNC'}</strong>
-          <small>${critical ? 'weak link live' : 'balance stable'}</small>
+          <small>${critical ? 'focus needed' : 'balance stable'}</small>
         </div>
       </div>
     </div>
@@ -204,7 +204,7 @@ function renderFeatVault(achievements = []) {
 
 export function renderStats(profile, semantic = {}) {
   return `
-    <div class="sec">Stat Codex</div>
+    <div class="sec">Stat Radar</div>
     <div class="stats-codex-shell">
       ${renderStatHex(profile.stats || [])}
       <div class="stat-codex-grid">
@@ -212,18 +212,18 @@ export function renderStats(profile, semantic = {}) {
       </div>
     </div>
 
-    <div class="sec">PR Forge</div>
+    <div class="sec">Performance</div>
     <div class="forge-grid">
       ${(profile.performance || []).map(renderForgeCard).join('')}
     </div>
 
-    <div class="sec">Chain Seals</div>
+    <div class="sec">Chain Balance</div>
     ${renderChainSeals(semantic)}
 
-    <div class="sec">Weak Link Notices</div>
+    <div class="sec">Weak Links</div>
     ${renderWeakNotices(profile.debuffs || [])}
 
-    <div class="sec">Feat Vault</div>
+    <div class="sec">Achievements</div>
     ${renderFeatVault(profile.achievements || [])}
   `
 }

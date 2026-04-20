@@ -13,10 +13,10 @@ import { injectToastStyles, showToast } from './components/toast.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
 
 const tabs = [
-  { key: 'dashboard', label: 'Nexus', icon: 'NX' },
-  { key: 'progress', label: 'Stats', icon: 'ST' },
-  { key: 'training', label: 'Quest', icon: 'QS' },
-  { key: 'coach', label: 'ODIE', icon: 'OD' },
+  { key: 'dashboard', label: 'Home', icon: 'home' },
+  { key: 'progress', label: 'Stats', icon: 'chart' },
+  { key: 'training', label: 'Missions', icon: 'target' },
+  { key: 'coach', label: 'ODIE', icon: 'pulse' },
 ]
 
 let activeTab = 'dashboard'
@@ -79,7 +79,7 @@ function renderApp() {
           <div class="nav-brand-mark">${profile.avatar}</div>
           <div>
             <div class="nav-brand-title">ODIE PT</div>
-            <div class="nav-brand-sub">field ledger</div>
+            <div class="nav-brand-sub">performance app</div>
           </div>
         </div>
 
@@ -88,7 +88,7 @@ function renderApp() {
         </nav>
 
         <div class="nav-status glass-subtle surface-rune">
-          <div class="mini-label">Field Focus</div>
+          <div class="mini-label">Today</div>
           <div class="nav-status-title">${state.profile.currentFocus || 'Hybrid denge'}</div>
           <div class="nav-status-sub">${state.profile.classObj?.name || profile.class}</div>
         </div>
@@ -127,13 +127,13 @@ function renderApp() {
 function pageTitle(tabKey, profile) {
   switch (tabKey) {
     case 'dashboard':
-      return `${profile.nick} Field Nexus`
+      return `${profile.nick} Overview`
     case 'progress':
-      return 'Stat Codex ve Forge'
+      return 'Stats ve Performance'
     case 'training':
-      return 'Quest Ledger ve Raid Log'
+      return 'Missions ve Session Log'
     case 'coach':
-      return 'ODIE Survival Console'
+      return 'ODIE Coach Feed'
     default:
       return profile.nick
   }
@@ -148,7 +148,7 @@ function renderMobileHud(state, profile) {
   const fatigue = Math.max(0, Math.min(100, Number(state.profile?.fatigue) || 0))
   const streak = state.profile?.streak?.current ?? 0
   const readiness = state.health?.readiness?.score
-  const sideLabel = Number.isFinite(readiness) ? `RDY ${readiness}` : `${streak} ST`
+  const sideLabel = Number.isFinite(readiness) ? `R${readiness}` : `S${streak}`
 
   return `
     <div class="mobile-hud vitals-rail">
@@ -169,7 +169,7 @@ function renderMobileHud(state, profile) {
       </div>
       <div class="mobile-hud-side">
         <strong>${sideLabel}</strong>
-        <small>${xpCur.toLocaleString('tr-TR')} / ${xpMax.toLocaleString('tr-TR')} XP</small>
+        <small>${streak} day streak</small>
       </div>
     </div>
   `
@@ -178,10 +178,25 @@ function renderMobileHud(state, profile) {
 function renderNavButton(tab, isActive, mobile = false) {
   return `
     <button class="${mobile ? 'bottom-tab' : 'nav-button'} ${isActive ? 'active' : ''}" data-tab="${tab.key}">
-      <span class="nav-icon">${tab.icon}</span>
+      <span class="nav-icon">${renderNavGlyph(tab.icon)}</span>
       <span>${tab.label}</span>
     </button>
   `
+}
+
+function renderNavGlyph(kind) {
+  switch (kind) {
+    case 'home':
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20h-5.5v-4.8h-5V20H4z"/></svg>`
+    case 'chart':
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9h3v10zm5 0V5h3v14zm5 0v-7h3v7z"/></svg>`
+    case 'target':
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-2.2A6.8 6.8 0 1 1 12 5.2zm0 3.2a5.8 5.8 0 1 0 5.8 5.8h-2a3.8 3.8 0 1 1-3.8-3.8zm0 2.8a3 3 0 1 0 3 3h-1.8A1.2 1.2 0 1 1 12 10.2z"/></svg>`
+    case 'pulse':
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-4 3 9 2-5h7"/></svg>`
+    default:
+      return kind
+  }
 }
 
 function renderPage(tabKey, state, profile, semantic) {
@@ -215,10 +230,10 @@ function renderDashboardV5(state, profile, semantic) {
       <article class="glass-card surface-rune stat-pulse-panel">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Stat Pulse</div>
-            <h3>Son seans buff, focus ve hold</h3>
+            <div class="eyebrow">Stat Momentum</div>
+            <h3>Son seansa gore buff ve focus</h3>
           </div>
-          <button class="inline-link" data-tab="progress">Stat codex</button>
+          <button class="inline-link" data-tab="progress">Open stats</button>
         </div>
         <div class="stat-pulse-grid">
           ${renderDashboardStats(profile, latestWorkout)}
@@ -230,12 +245,12 @@ function renderDashboardV5(state, profile, semantic) {
 
         <article class="glass-card surface-rune compact-vitals-panel">
           <div class="section-top">
-            <div>
-              <div class="eyebrow">Vitals</div>
-              <h3>Readiness ve body ledger</h3>
-            </div>
-            <button class="inline-link" data-tab="coach">Survival</button>
+          <div>
+            <div class="eyebrow">Recovery</div>
+            <h3>Readiness ve body status</h3>
           </div>
+          <button class="inline-link" data-tab="coach">Coach</button>
+        </div>
           ${renderHealth(profile, { compact: true })}
         </article>
       </div>
@@ -243,10 +258,10 @@ function renderDashboardV5(state, profile, semantic) {
       <article class="glass-card surface-rune coach-preview-panel">
         <div class="section-top">
           <div>
-            <div class="eyebrow">ODIE Feed</div>
-            <h3>Son komut yorumu</h3>
+            <div class="eyebrow">Coach Brief</div>
+            <h3>ODIE'nin son notu</h3>
           </div>
-          <button class="inline-link" data-tab="coach">Tam konsol</button>
+          <button class="inline-link" data-tab="coach">Open ODIE</button>
         </div>
         <div class="coach-preview-body">
           <div class="coach-preview-mark">OD</div>
@@ -265,9 +280,9 @@ function renderProgressV5(state, profile, semantic) {
     <section class="surface-stack">
       <article class="glass-card surface-rune page-banner">
         <div>
-          <div class="eyebrow">Stat Codex</div>
-          <h3>Hexwheel, forge kartlari ve chain seals</h3>
-          <p>Guc, hareket ve progression ayni ekranda okunur.</p>
+          <div class="eyebrow">Stats</div>
+          <h3>Radar, performance ve achievements</h3>
+          <p>Guc, hareket ve progression tek akista okunur.</p>
         </div>
       </article>
 
@@ -292,9 +307,9 @@ function renderTrainingV5(state, profile, semantic) {
     <section class="surface-stack">
       <article class="glass-card surface-rune page-banner">
         <div>
-          <div class="eyebrow">Quest Ledger</div>
-          <h3>Aktif gorevler, mission baskisi ve raid kaydi</h3>
-          <p>Gorevleri ve son seans izlerini tek akista takip et.</p>
+          <div class="eyebrow">Missions</div>
+          <h3>Aktif gorevler ve session history</h3>
+          <p>Gorevleri ve son seans izlerini daha temiz bir akista takip et.</p>
         </div>
         <div class="page-banner-chips">
           <span class="signal-chip">${openQuests} open</span>
@@ -327,10 +342,10 @@ function renderCoachPageV5(state, profile) {
       <article class="glass-card surface-rune page-banner coach-banner">
         <div>
           <div class="eyebrow">ODIE</div>
-          <h3>Survival console ve coach feed</h3>
-          <p>Aktif recovery durumu, parse confidence ve hafiza ayni hatta.</p>
+          <h3>Coach feed ve recovery durumu</h3>
+          <p>Aktif recovery, parse confidence ve memory tek akista.</p>
         </div>
-        <button class="inline-link" data-tab="training">Raid ledger</button>
+        <button class="inline-link" data-tab="training">Open missions</button>
       </article>
 
       <div class="coach-shell">
@@ -398,7 +413,7 @@ function renderLastSessionBanner(latestWorkout) {
     <article class="glass-card surface-rune session-banner">
       <div class="session-banner-top">
         <div>
-          <div class="eyebrow">Last Session</div>
+          <div class="eyebrow">Session Snapshot</div>
           <h3>${headline}</h3>
         </div>
         <span class="session-banner-side">${side}</span>
@@ -418,7 +433,7 @@ function renderClassSigilCard(state, profile) {
     <article class="glass-card surface-rune class-sigil-card">
       <div class="section-top">
         <div>
-          <div class="eyebrow">Class Sigil</div>
+          <div class="eyebrow">Archetype</div>
           <h3>${liveClass.name || profile.class}</h3>
         </div>
         <span class="chip-rarity-legend">${profile.rank}</span>
@@ -447,8 +462,8 @@ function renderActivityLedger(profile, state) {
     <article class="glass-card surface-rune activity-ledger">
       <div class="section-top">
         <div>
-          <div class="eyebrow">Activity Rings</div>
-          <h3>Session totals ve life ledger</h3>
+          <div class="eyebrow">Rings & Totals</div>
+          <h3>Activity ve toplamlar</h3>
         </div>
         <span class="signal-chip">${profile.sessions} run</span>
       </div>
@@ -514,10 +529,10 @@ function renderBuildDeck(semantic, profile, state) {
     <article class="glass-card surface-rune build-deck">
       <div class="section-top">
         <div>
-          <div class="eyebrow">Build Sigil</div>
-          <h3>Discipline tracks ve weak link notices</h3>
+          <div class="eyebrow">Focus Areas</div>
+          <h3>Discipline tracks ve weak links</h3>
         </div>
-        <button class="inline-link" data-tab="progress">Codex</button>
+        <button class="inline-link" data-tab="progress">Details</button>
       </div>
 
       <div class="discipline-track-list">

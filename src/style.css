@@ -5986,3 +5986,403 @@ button,
     gap:6px;
   }
 }
+
+/* =========================
+   V5.1 PREMIUM MOBILE RESET
+   ========================= */
+
+:root {
+  --ink-0:#06070b;
+  --ink-1:#0d1017;
+  --ink-2:#141925;
+  --ink-3:#1b2130;
+  --vellum:#f3f6fb;
+  --mute:#96a0b5;
+  --r-legend:#f3be66;
+  --r-rare:#5aa8ff;
+  --r-uncommon:#4fd1a1;
+  --r-mythic:#ff6d88;
+  --s-str:#ff6b63;
+  --s-agi:#6ba8ff;
+  --s-end:#4fd1a1;
+  --s-dex:#ad88ff;
+  --s-con:#ffab59;
+  --s-sta:#f0c66c;
+}
+
+html,
+body {
+  background:
+    radial-gradient(circle at top, rgba(90,168,255,.12), transparent 28%),
+    linear-gradient(180deg, #06070b 0%, #0a0d14 100%) !important;
+  color:var(--vellum) !important;
+}
+
+body::before,
+body::after,
+.surface-rune::before,
+.surface-rune::after,
+.glass-card::before,
+.glass-card::after {
+  display:none !important;
+}
+
+.nav-brand-title,
+.page-title,
+.section-top h3,
+.hero-copy h2,
+.class-sigil-copy strong,
+.sec,
+.coach-npc-name,
+.skill-branch-title,
+.mobile-hud-nick {
+  font-family:'Space Grotesk', 'Manrope', sans-serif !important;
+  letter-spacing:0 !important;
+}
+
+.app-shell {
+  gap:16px !important;
+}
+
+.app-nav,
+.glass-card,
+.surface,
+.modal,
+.coach-terminal,
+.bottom-tabs,
+.mobile-hud,
+.survival-console,
+.coach-confidence-surface,
+.coach-memory-surface {
+  background:
+    linear-gradient(180deg, rgba(18,23,34,.96), rgba(12,16,24,.98)) !important;
+  border:1px solid rgba(146,162,196,.14) !important;
+  border-radius:22px !important;
+  box-shadow:
+    0 18px 40px -24px rgba(0,0,0,.72),
+    inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+.app-nav {
+  padding:18px 16px !important;
+}
+
+.nav-brand {
+  padding:0 2px 18px !important;
+}
+
+.nav-button,
+.bottom-tab,
+.avatar-chip,
+.inline-link,
+.qtab,
+.coach-feedback-btn {
+  border-radius:16px !important;
+  border:1px solid rgba(146,162,196,.14) !important;
+  background:rgba(255,255,255,.03) !important;
+  transition:background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.nav-button.active,
+.bottom-tab.active,
+.qtab.active {
+  background:linear-gradient(180deg, rgba(90,168,255,.18), rgba(90,168,255,.08)) !important;
+  border-color:rgba(90,168,255,.3) !important;
+  color:#eef5ff !important;
+}
+
+.nav-icon {
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(255,255,255,.05) !important;
+  color:#d7e6ff;
+}
+
+.nav-icon svg {
+  width:15px;
+  height:15px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.nav-icon svg path {
+  fill:currentColor;
+}
+
+.nav-button,
+.bottom-tab {
+  gap:10px !important;
+}
+
+.bottom-tab {
+  border-radius:18px !important;
+}
+
+.mobile-hud {
+  background:rgba(13,16,23,.92) !important;
+  border-color:rgba(146,162,196,.14) !important;
+  border-radius:20px !important;
+  box-shadow:0 16px 32px -22px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+.mobile-hud-avatar {
+  background:linear-gradient(180deg, rgba(90,168,255,.18), rgba(90,168,255,.06)) !important;
+  border:1px solid rgba(90,168,255,.22) !important;
+}
+
+.mobile-hud-xpfill,
+.progress-bar-fill {
+  background:linear-gradient(90deg, #5aa8ff, #4fd1a1) !important;
+}
+
+.vital-meter-track,
+.mobile-hud-xpbar,
+.progress-bar,
+.disc-track-bar,
+.survival-meter {
+  background:rgba(255,255,255,.08) !important;
+}
+
+.vital-meter-fill.tone-armor,
+.survival-meter-fill.armor {
+  background:linear-gradient(90deg, #4fd1a1, #5fe1b3) !important;
+}
+
+.vital-meter-fill.tone-fatigue,
+.survival-meter-fill.fatigue {
+  background:linear-gradient(90deg, #ff9459, #ff6f7c) !important;
+}
+
+.survival-meter-fill.injury {
+  background:linear-gradient(90deg, #ff5f75, #ff8da0) !important;
+}
+
+.page-banner,
+.session-banner,
+.class-sigil-card,
+.activity-ledger,
+.build-deck,
+.stat-pulse-panel,
+.coach-preview-panel,
+.compact-vitals-panel,
+.signal-archive-row,
+.quest-scroll-card,
+.raid-ledger-card,
+.forge-card,
+.chain-seal-card,
+.feat-card,
+.stat-codex-card,
+.mini-ring-card,
+.totals-ledger-cell,
+.pressure-chip,
+.weak-notice,
+.survival-warning-card,
+.coach-memory-card,
+.skill-summary-card,
+.next-node-card,
+.skill-node,
+.skill-branch-card,
+.body-history-card {
+  border-radius:20px !important;
+  border:1px solid rgba(146,162,196,.12) !important;
+  background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.02)) !important;
+}
+
+.section-top {
+  margin-bottom:10px;
+}
+
+.section-top h3 {
+  font-size:1rem !important;
+}
+
+.eyebrow {
+  color:#8ea9d6 !important;
+}
+
+.page-banner p,
+.session-banner p,
+.class-sigil-copy p,
+.weak-notice p,
+.coach-preview-body p,
+.quest-copy p,
+.raid-ledger-card p,
+.coach-memory-card p,
+.signal-archive-row small,
+.survival-warning-card small,
+.nav-brand-sub,
+.nav-status-sub {
+  color:var(--mute) !important;
+}
+
+.class-sigil-frame,
+.class-sigil {
+  background:linear-gradient(180deg, rgba(90,168,255,.14), rgba(90,168,255,.05)) !important;
+  border-color:rgba(90,168,255,.2) !important;
+  border-radius:18px !important;
+}
+
+.class-sigil-glyph {
+  color:#e8f2ff !important;
+}
+
+.session-banner-side,
+.chip-rarity-legend,
+.signal-chip {
+  background:rgba(90,168,255,.1) !important;
+  border-color:rgba(90,168,255,.18) !important;
+  color:#dcecff !important;
+}
+
+.stat-pulse-chip.up {
+  background:rgba(79,209,161,.14) !important;
+  color:#72e1bc !important;
+}
+
+.stat-pulse-chip.focus {
+  background:rgba(255,107,99,.14) !important;
+  color:#ff9d96 !important;
+}
+
+.stat-pulse-chip.hold {
+  background:rgba(90,168,255,.12) !important;
+  color:#8fc0ff !important;
+}
+
+.chain-seal-card.low .chain-seal-mark,
+.weak-notice {
+  background:linear-gradient(180deg, rgba(255,107,99,.08), rgba(255,107,99,.04)) !important;
+}
+
+.chain-seal-card.mid .chain-seal-mark {
+  background:linear-gradient(180deg, rgba(255,171,89,.08), rgba(255,171,89,.04)) !important;
+}
+
+.chain-seal-card.high .chain-seal-mark {
+  background:linear-gradient(180deg, rgba(79,209,161,.08), rgba(79,209,161,.04)) !important;
+}
+
+.bottom-tabs {
+  max-width:520px !important;
+  background:rgba(13,16,23,.94) !important;
+  border-color:rgba(146,162,196,.12) !important;
+}
+
+.bottom-tab {
+  min-height:54px !important;
+}
+
+.bottom-tab .nav-icon {
+  min-width:28px;
+  height:28px;
+  border-radius:10px;
+}
+
+.coach-strip,
+.mission-pressure-strip,
+.ring-ledger-grid,
+.stat-pulse-grid,
+.forge-grid,
+.chain-seal-grid,
+.feat-vault-grid {
+  gap:10px !important;
+}
+
+.coach-terminal {
+  border-radius:24px !important;
+  overflow:hidden;
+}
+
+.coach-header {
+  padding:18px !important;
+  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+}
+
+.coach-body {
+  padding:14px 18px 18px !important;
+}
+
+.coach-section,
+.coach-sec-head {
+  border-radius:18px !important;
+}
+
+.modal {
+  background:linear-gradient(180deg, rgba(18,23,34,.98), rgba(11,15,23,.99)) !important;
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    padding:4px 2px 0 !important;
+  }
+
+  .eyebrow {
+    font-size:.62rem !important;
+  }
+
+  .page-title {
+    font-size:1.05rem !important;
+  }
+
+  .mobile-hud {
+    margin:8px 10px 8px !important;
+    padding:calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px !important;
+  }
+
+  .mobile-hud-avatar {
+    width:36px !important;
+    height:36px !important;
+  }
+
+  .mobile-hud-side {
+    min-width:46px !important;
+  }
+
+  .bottom-tabs {
+    left:10px !important;
+    right:10px !important;
+    bottom:calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    padding:6px !important;
+    gap:6px !important;
+  }
+
+  .bottom-tab {
+    min-height:52px !important;
+    padding:6px 4px !important;
+  }
+
+  .bottom-tab span:last-child {
+    font-size:.6rem !important;
+  }
+
+  .page-banner,
+  .session-banner,
+  .class-sigil-card,
+  .activity-ledger,
+  .build-deck,
+  .stat-pulse-panel,
+  .coach-preview-panel,
+  .compact-vitals-panel,
+  .survival-console,
+  .coach-confidence-surface,
+  .coach-memory-surface,
+  .quest-scroll-card,
+  .raid-ledger-card,
+  .signal-archive-row,
+  .body-history-card,
+  .forge-card,
+  .chain-seal-card,
+  .feat-card {
+    padding:14px !important;
+    border-radius:18px !important;
+  }
+
+  .nav-brand-title,
+  .page-title,
+  .section-top h3,
+  .coach-npc-name {
+    font-family:'Space Grotesk', sans-serif !important;
+  }
+}
