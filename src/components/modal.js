@@ -20,6 +20,67 @@ export function openModal(html) {
   document.getElementById('statModal').classList.add('open')
 }
 
+function openDetailModal({ icon, title, body, iconSize = 22 }) {
+  openModal(`
+    <div class="modal-head">
+      <span style="font-size:${iconSize}px">${icon}</span>
+      <div class="modal-head-title">${title}</div>
+      ${closeButton()}
+    </div>
+    <div class="modal-body">
+      ${body}
+    </div>
+  `)
+}
+
+function renderModalItem({ label, value, itemStyle = '', valueStyle = '', pillClass = '' }) {
+  const itemAttr = itemStyle ? ` style="${itemStyle}"` : ''
+  const valueAttr = valueStyle ? ` style="${valueStyle}"` : ''
+  const valueMarkup = pillClass
+    ? `<div class="modal-item-val"><span class="${pillClass}"${valueAttr}>${value}</span></div>`
+    : `<div class="modal-item-val"${valueAttr}>${value}</div>`
+
+  return `
+    <div class="modal-item"${itemAttr}>
+      <div class="modal-item-label">${label}</div>
+      ${valueMarkup}
+    </div>
+  `
+}
+
+function renderModalGrid(items = []) {
+  if (!items.length) return ''
+  return `
+    <div class="modal-grid">
+      ${items.map(renderModalItem).join('')}
+    </div>
+  `
+}
+
+function renderModalSection(title, body) {
+  if (!body) return ''
+  return `
+    <div class="modal-section-label">${title}</div>
+    ${body}
+  `
+}
+
+function renderSignalGrid(signals = []) {
+  if (!signals.length) return ''
+  return renderModalGrid(signals.map(signal => ({
+    label: 'Signal',
+    value: signal,
+  })))
+}
+
+function renderEntryGrid(entries = [], { labelFormatter, valueFormatter } = {}) {
+  if (!entries.length) return ''
+  return renderModalGrid(entries.map(([key, value]) => ({
+    label: labelFormatter ? labelFormatter(key, value) : key,
+    value: valueFormatter ? valueFormatter(key, value) : value,
+  })))
+}
+
 function miniBarChart(data, color) {
   if (!data || !data.length) return ''
   const max = Math.max(...data.map(point => point.val)) || 1
@@ -66,55 +127,41 @@ function gradePillClass(value = '') {
 }
 
 export function openStatModal(stat) {
-  const html = `
-    <div class="modal-head">
-      <span style="font-size:22px">${stat.icon}</span>
-      <div class="modal-head-title">${stat.name} Codex</div>
-      ${closeButton()}
-    </div>
-    <div class="modal-body">
+  openDetailModal({
+    icon: stat.icon,
+    title: `${stat.name} Codex`,
+    body: `
       <div class="modal-stat-big" style="color:${stat.color}">
         ${stat.val}<span style="font-size:20px;color:var(--dim)">/100</span>
       </div>
       ${stat.critical ? '<div style="text-align:center;margin-bottom:8px"><span class="grade-pill grade-crit">CRITICAL</span></div>' : ''}
       <div class="modal-desc">${stat.desc}</div>
       <div class="modal-coach">${stat.coach}</div>
-      <div class="modal-grid">
-        ${(stat.detail || []).map(detail => `
-          <div class="modal-item">
-            <div class="modal-item-label">${detail.label}</div>
-            <div class="modal-item-val"><span class="grade-pill ${gradePillClass(detail.val)}">${detail.val}</span></div>
-          </div>
-        `).join('')}
-      </div>
+      ${renderModalGrid((stat.detail || []).map(detail => ({
+        label: detail.label,
+        value: detail.val,
+        pillClass: `grade-pill ${gradePillClass(detail.val)}`,
+      })))}
       <div class="modal-tip">Field note: Bu stat ${stat.label} skorunun guncel bilesenlerini gosterir.</div>
-    </div>`
-  openModal(html)
+    `,
+  })
 }
 
 export function openPerfModal(perf) {
-  const chart = miniBarChart(perf.history, 'var(--gold)')
-  const html = `
-    <div class="modal-head">
-      <span style="font-size:22px">${perf.icon}</span>
-      <div class="modal-head-title">${perf.name} Forge</div>
-      ${closeButton()}
-    </div>
-    <div class="modal-body">
+  openDetailModal({
+    icon: perf.icon,
+    title: `${perf.name} Forge`,
+    body: `
       <div class="modal-stat-big" style="color:var(--gold);font-size:38px;padding-bottom:8px">${perf.val}</div>
       <div class="modal-desc">${perf.note}</div>
-      ${chart}
-      <div class="modal-grid">
-        ${(perf.details || []).map(detail => `
-          <div class="modal-item">
-            <div class="modal-item-label">${detail.label}</div>
-            <div class="modal-item-val">${detail.val}</div>
-          </div>
-        `).join('')}
-      </div>
+      ${miniBarChart(perf.history, 'var(--gold)')}
+      ${renderModalGrid((perf.details || []).map(detail => ({
+        label: detail.label,
+        value: detail.val,
+      })))}
       <div class="modal-tip">Forge note: ${perf.tip}</div>
-    </div>`
-  openModal(html)
+    `,
+  })
 }
 
 export function openEpicVolumeModal(currentKg, tiers) {
@@ -133,45 +180,34 @@ export function openEpicVolumeModal(currentKg, tiers) {
           ${!achieved ? `<div class="epic-tier-bar"><div class="epic-tier-fill" style="width:${pct}%"></div></div>` : ''}
         </div>
         <div class="epic-tier-badge">${achieved ? 'OK' : 'LOCK'}</div>
-      </div>`
+      </div>
+    `
   }).join('')
 
-  const html = `
-    <div class="modal-head">
-      <span style="font-size:22px">VOL</span>
-      <div class="modal-head-title">Epic Volume Ledger</div>
-      ${closeButton()}
-    </div>
-    <div class="modal-body">
+  openDetailModal({
+    icon: 'VOL',
+    title: 'Epic Volume Ledger',
+    body: `
       <div class="epic-total">
         <div class="epic-total-val">${currentKg.toLocaleString('tr-TR')} kg</div>
         <div class="epic-total-lbl">Toplam kaldirilan hacim</div>
       </div>
       <div class="epic-tier-list">${items}</div>
-    </div>`
-  openModal(html)
+    `,
+  })
 }
 
 export function openClassModal(cls) {
   const passive = cls.passive || {}
-  const statMult = passive.statMult || {}
-  const xpMult = passive.xpMult || {}
   const signals = Array.isArray(cls.signals) ? cls.signals.slice(0, 3) : []
+  const statEntries = Object.entries(passive.statMult || {})
+  const xpEntries = Object.entries(passive.xpMult || {})
 
-  const statItems = Object.entries(statMult)
-    .map(([key, value]) => `<div class="modal-item"><div class="modal-item-label">${key.toUpperCase()}</div><div class="modal-item-val">x${value.toFixed(2)}</div></div>`)
-    .join('')
-  const xpItems = Object.entries(xpMult)
-    .map(([key, value]) => `<div class="modal-item"><div class="modal-item-label">${key}</div><div class="modal-item-val">x${value.toFixed(2)}</div></div>`)
-    .join('')
-
-  const html = `
-    <div class="modal-head">
-      <span style="font-size:28px">${cls.icon}</span>
-      <div class="modal-head-title">${cls.name}</div>
-      ${closeButton()}
-    </div>
-    <div class="modal-body">
+  openDetailModal({
+    icon: cls.icon,
+    title: cls.name,
+    iconSize: 28,
+    body: `
       <div style="text-align:center;padding:8px 0 16px">
         <div style="font-size:72px;margin-bottom:8px">${cls.icon}</div>
         <div style="font-family:'Cinzel',serif;font-size:18px;color:${cls.color};margin-bottom:4px">${cls.name}</div>
@@ -180,26 +216,27 @@ export function openClassModal(cls) {
       <div class="modal-desc">${cls.desc}</div>
       <div class="modal-coach"><strong>Buff:</strong> ${cls.buff}</div>
       ${cls.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${cls.reason}</div>` : ''}
-      ${signals.length ? `<div style="font-size:10px;opacity:.7;margin:12px 0 6px;letter-spacing:1px">CLASS SIGNALS</div><div class="modal-grid">${signals.map(signal => `<div class="modal-item"><div class="modal-item-label">Signal</div><div class="modal-item-val">${signal}</div></div>`).join('')}</div>` : ''}
-      ${statItems ? `<div style="font-size:10px;opacity:.7;margin:12px 0 6px;letter-spacing:1px">STAT CARPANI</div><div class="modal-grid">${statItems}</div>` : ''}
-      ${xpItems ? `<div style="font-size:10px;opacity:.7;margin:12px 0 6px;letter-spacing:1px">XP CARPANI</div><div class="modal-grid">${xpItems}</div>` : ''}
+      ${renderModalSection('CLASS SIGNALS', renderSignalGrid(signals))}
+      ${renderModalSection('STAT CARPANI', renderEntryGrid(statEntries, {
+        labelFormatter: key => key.toUpperCase(),
+        valueFormatter: (_, value) => `x${value.toFixed(2)}`,
+      }))}
+      ${renderModalSection('XP CARPANI', renderEntryGrid(xpEntries, {
+        valueFormatter: (_, value) => `x${value.toFixed(2)}`,
+      }))}
       <div class="modal-tip">Sinif son 10 antrenman desenine gore dinamik degisir.</div>
-    </div>`
-  openModal(html)
+    `,
+  })
 }
 
 export function openArchetypeModal({ classObj, profile, semantic, criticalStat }) {
   const signals = Array.isArray(classObj?.signals) ? classObj.signals.slice(0, 4) : []
-  const chains = semantic?.chains || {}
-  const chainEntries = Object.entries(chains).slice(0, 4)
+  const chainEntries = Object.entries(semantic?.chains || {}).slice(0, 4)
 
-  const html = `
-    <div class="modal-head">
-      <span style="font-size:22px">${classObj?.icon || profile.avatar}</span>
-      <div class="modal-head-title">${classObj?.name || profile.class}</div>
-      ${closeButton()}
-    </div>
-    <div class="modal-body">
+  openDetailModal({
+    icon: classObj?.icon || profile.avatar,
+    title: classObj?.name || profile.class,
+    body: `
       <div style="text-align:center;padding:10px 0 14px">
         <div style="font-size:60px;margin-bottom:6px">${classObj?.icon || profile.avatar}</div>
         <div style="font-family:'Cinzel',serif;font-size:17px;color:var(--mmo-gold-2, var(--gold));margin-bottom:4px">${classObj?.name || profile.class}</div>
@@ -209,11 +246,11 @@ export function openArchetypeModal({ classObj, profile, semantic, criticalStat }
       ${classObj?.buff ? `<div class="modal-coach"><strong>Buff:</strong> ${classObj.buff}</div>` : ''}
       ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${classObj.reason}</div>` : ''}
       ${criticalStat ? `<div class="modal-coach" style="border-color:rgba(208,74,64,.45)"><strong>Kritik Nokta:</strong> ${criticalStat.label} ${criticalStat.val}/100 — ${criticalStat.name}</div>` : ''}
-      ${signals.length ? `<div class="modal-section-label">CLASS SIGNALS</div><div class="modal-grid">${signals.map(signal => `<div class="modal-item"><div class="modal-item-label">Signal</div><div class="modal-item-val">${signal}</div></div>`).join('')}</div>` : ''}
-      ${chainEntries.length ? `<div class="modal-section-label">CHAIN LOAD</div><div class="modal-grid">${chainEntries.map(([key, val]) => `<div class="modal-item"><div class="modal-item-label">${key}</div><div class="modal-item-val">${val}</div></div>`).join('')}</div>` : ''}
+      ${renderModalSection('CLASS SIGNALS', renderSignalGrid(signals))}
+      ${renderModalSection('CHAIN LOAD', renderEntryGrid(chainEntries))}
       <div class="modal-tip">Sınıfın son 10 antrenman deseninden okunur; yeni blok biçimi girdikçe otomatik değişir.</div>
-    </div>`
-  openModal(html)
+    `,
+  })
 }
 
 export function openFocusModal({ focus, classObj, criticalStats, semantic, profile }) {
@@ -221,54 +258,43 @@ export function openFocusModal({ focus, classObj, criticalStats, semantic, profi
   const recoveryDisc = Math.round(Number(semantic?.recoveryDiscipline || 0) * 100)
   const variety = Number(semantic?.variety || 0)
   const signals = Array.isArray(classObj?.signals) ? classObj.signals.slice(0, 3) : []
+  const focusGrid = renderModalGrid(critList.map(stat => ({
+    label: stat.label,
+    value: `${stat.val}/100`,
+    itemStyle: 'border-color:rgba(208,74,64,.45)',
+    valueStyle: 'color:var(--mmo-blood, var(--red))',
+  })))
+  const stateGrid = renderModalGrid([
+    { label: 'Recovery', value: `${recoveryDisc}%` },
+    { label: 'Variety', value: variety },
+    { label: 'Streak', value: profile?.streak?.current ?? 0 },
+    { label: 'Sessions', value: profile?.sessions ?? 0 },
+  ])
 
-  const html = `
-    <div class="modal-head">
-      <span style="font-size:22px">◈</span>
-      <div class="modal-head-title">Current Focus</div>
-      ${closeButton()}
-    </div>
-    <div class="modal-body">
+  openDetailModal({
+    icon: '◈',
+    title: 'Current Focus',
+    body: `
       <div style="text-align:center;padding:6px 0 14px">
         <div style="font-family:'Cinzel Decorative',serif;font-size:22px;color:var(--mmo-gold-2, var(--gold));letter-spacing:.5px">${focus || 'Hybrid denge'}</div>
         <div style="font-size:11px;color:var(--mmo-ink-dim, var(--dim));margin-top:4px;letter-spacing:.8px">aktif odak — son 14 gün verisinden</div>
       </div>
-      ${critList.length ? `
-        <div class="modal-section-label">ZAYIF HALKA</div>
-        <div class="modal-grid">
-          ${critList.map(stat => `
-            <div class="modal-item" style="border-color:rgba(208,74,64,.45)">
-              <div class="modal-item-label">${stat.label}</div>
-              <div class="modal-item-val" style="color:var(--mmo-blood, var(--red))">${stat.val}/100</div>
-            </div>
-          `).join('')}
-        </div>
-      ` : '<div class="modal-coach">Şu an kritik stat yok — dengen yerinde.</div>'}
+      ${focusGrid ? `${renderModalSection('ZAYIF HALKA', focusGrid)}` : '<div class="modal-coach">Şu an kritik stat yok — dengen yerinde.</div>'}
       ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu odak:</strong> ${classObj.reason}</div>` : ''}
-      ${signals.length ? `<div class="modal-section-label">AKTİF SİNYAL</div><div class="modal-grid">${signals.map(signal => `<div class="modal-item"><div class="modal-item-label">Signal</div><div class="modal-item-val">${signal}</div></div>`).join('')}</div>` : ''}
-      <div class="modal-section-label">DURUM</div>
-      <div class="modal-grid">
-        <div class="modal-item"><div class="modal-item-label">Recovery</div><div class="modal-item-val">${recoveryDisc}%</div></div>
-        <div class="modal-item"><div class="modal-item-label">Variety</div><div class="modal-item-val">${variety}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Streak</div><div class="modal-item-val">${profile?.streak?.current ?? 0}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Sessions</div><div class="modal-item-val">${profile?.sessions ?? 0}</div></div>
-      </div>
+      ${renderModalSection('AKTİF SİNYAL', renderSignalGrid(signals))}
+      ${renderModalSection('DURUM', stateGrid)}
       <div class="modal-tip">Focus, kritik stat + seans deseni + sınıf sinyalinin bileşimidir. Bir sonraki seçimin bunu nasıl iter öngörüsü ODIE'dedir.</div>
-    </div>`
-  openModal(html)
+    `,
+  })
 }
 
-export function openUnlockModal({ nextUnlock, skills, profile }) {
+export function openUnlockModal({ nextUnlock, skills }) {
   if (!nextUnlock) {
-    openModal(`
-      <div class="modal-head">
-        <span style="font-size:22px">✦</span>
-        <div class="modal-head-title">Next Unlock</div>
-        ${closeButton()}
-      </div>
-      <div class="modal-body">
-        <div class="modal-coach">Bütün yakın kilitler açık — yeni skill dalları ODIE üzerinden tetiklenecek.</div>
-      </div>`)
+    openDetailModal({
+      icon: '✦',
+      title: 'Next Unlock',
+      body: '<div class="modal-coach">Bütün yakın kilitler açık — yeni skill dalları ODIE üzerinden tetiklenecek.</div>',
+    })
     return
   }
 
@@ -281,13 +307,10 @@ export function openUnlockModal({ nextUnlock, skills, profile }) {
     ?.items?.filter(item => item.name !== nextUnlock.name)
     ?.slice(0, 3) || []
 
-  const html = `
-    <div class="modal-head">
-      <span style="font-size:22px">✦</span>
-      <div class="modal-head-title">${nextUnlock.name}</div>
-      ${closeButton()}
-    </div>
-    <div class="modal-body">
+  openDetailModal({
+    icon: '✦',
+    title: nextUnlock.name,
+    body: `
       <div style="text-align:center;padding:6px 0 12px">
         <div style="font-family:'Cinzel Decorative',serif;font-size:22px;color:var(--mmo-gold-2, var(--gold));letter-spacing:.5px">${nextUnlock.name}</div>
         ${branch ? `<div style="font-size:11px;color:var(--mmo-ink-dim, var(--dim));margin-top:4px;letter-spacing:.8px">${branch}</div>` : ''}
@@ -295,20 +318,13 @@ export function openUnlockModal({ nextUnlock, skills, profile }) {
       </div>
       ${nextUnlock.desc ? `<div class="modal-desc">${nextUnlock.desc}</div>` : ''}
       ${nextUnlock.req ? `<div class="modal-coach"><strong>Gereksinim:</strong> ${nextUnlock.req}</div>` : ''}
-      ${siblings.length ? `
-        <div class="modal-section-label">AYNI DAL</div>
-        <div class="modal-grid">
-          ${siblings.map(node => `
-            <div class="modal-item">
-              <div class="modal-item-label">${node.status === 'done' ? 'AÇIK' : node.status === 'prog' ? 'AKTİF' : 'KİLİT'}</div>
-              <div class="modal-item-val">${node.name}</div>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
+      ${renderModalSection('AYNI DAL', renderModalGrid(siblings.map(node => ({
+        label: node.status === 'done' ? 'AÇIK' : node.status === 'prog' ? 'AKTİF' : 'KİLİT',
+        value: node.name,
+      }))))}
       <div class="modal-tip">Next Unlock, skill ağacındaki en yakın ilerleme nodu. Koşulu karşıladığında otomatik açılır.</div>
-    </div>`
-  openModal(html)
+    `,
+  })
 }
 
 export function openAvatarModal(profile) {
@@ -317,25 +333,22 @@ export function openAvatarModal(profile) {
     ? `${criticalStat.label} su an en zayif halka. ${profile.currentFocus || 'Siradaki seansi buna gore sec.'}`
     : (profile.currentFocus ? `Su an odak: ${profile.currentFocus}.` : 'Hybrid denge korunuyor.')
 
-  const html = `
-    <div class="modal-head">
-      <span style="font-size:22px">${profile.avatar}</span>
-      <div class="modal-head-title">${profile.nick}</div>
-      ${closeButton()}
-    </div>
-    <div class="modal-body">
+  openDetailModal({
+    icon: profile.avatar,
+    title: profile.nick,
+    body: `
       <div style="text-align:center;padding:16px 0 12px">
         <div style="font-size:72px;margin-bottom:8px">${profile.avatar}</div>
         <div style="font-family:'Cinzel',serif;font-size:18px;color:var(--gold);margin-bottom:4px">${profile.class}</div>
         <div style="font-size:12px;color:var(--dim)">${profile.subClass} · ${profile.rank}</div>
       </div>
-      <div class="modal-grid">
-        <div class="modal-item"><div class="modal-item-label">Toplam Seans</div><div class="modal-item-val">${profile.sessions}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Toplam Hacim</div><div class="modal-item-val">${profile.totalVolume}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Toplam Set</div><div class="modal-item-val">${profile.totalSets}</div></div>
-        <div class="modal-item"><div class="modal-item-label">Toplam Sure</div><div class="modal-item-val">${profile.totalTime}</div></div>
-      </div>
+      ${renderModalGrid([
+        { label: 'Toplam Seans', value: profile.sessions },
+        { label: 'Toplam Hacim', value: profile.totalVolume },
+        { label: 'Toplam Set', value: profile.totalSets },
+        { label: 'Toplam Sure', value: profile.totalTime },
+      ])}
       <div class="modal-tip">${liveTip}</div>
-    </div>`
-  openModal(html)
+    `,
+  })
 }
