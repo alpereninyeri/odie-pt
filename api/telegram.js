@@ -668,6 +668,10 @@ function buildCoachPromptV2(parsed, context) {
   const correctiveMemory = (odie.correctiveMemory?.latest || [])
     .map(item => `- ${item.feedbackType}: ${item.note || 'geri bildirim kaydi'}`)
     .join('\n') || '- duzeltici memory yok'
+  const recentQuestions = (context.recentQuestions || [])
+    .slice(0, 5)
+    .map(item => `- Soru: ${item.question}\n  Cevap izi: ${item.answer}`)
+    .join('\n') || '- soru hafizasi yok'
   const bodyMetricsTrend = odie.bodyMetricsTrend?.samples
     ? [
       `- kilo: ${odie.bodyMetricsTrend.currentWeightKg || '-'}kg`,
@@ -771,6 +775,9 @@ ${athleteMemory}
 Corrective memory:
 ${correctiveMemory}
 
+Soru hafizasi:
+${recentQuestions}
+
 Body trend:
 ${bodyMetricsTrend}
 
@@ -790,18 +797,17 @@ Kurallar:
 - Ana ekseni block agirligina gore sec.
 - Eksik halka ve sonraki odagi varsa missing zincir veya focus gap uzerinden kur.
 - Parkour ve custom hareket seanslarinda gym dili yerine teknik, landing, reactive legs ve trunk tension dili kullan.
+- Teknik prompt etiketlerini kullaniciya yansitma. "parse confidence", "yuklenen zincirler", "ana eksen" gibi ham basliklar yazma.
+- Basliklar ve cumleler duz, dogal ve sporcuya anlatir gibi Turkce olsun.
 
 Asagidaki JSON disinda hicbir sey yazma:
 {
-  "telegram_msg": "2-4 cumle. Sirayla ana eksen, kanit, eksik halka veya sonraki odak olsun.",
+  "telegram_msg": "2-4 cumle. Kisa, net ve dogal Turkce kullan. Once bugunun ana yorumu, sonra gerekirse risk ve sonraki adim gelsin.",
   "coach_note": {
     "sections": [
-      { "title": "ANA EKSEN", "mood": "fire|calm|warn|danger", "lines": [""] },
-      { "title": "KANIT", "mood": "calm|warn", "lines": ["", ""] },
-      { "title": "YUKLENEN ZINCIRLER", "mood": "fire|calm|warn", "lines": [""] },
-      { "title": "EKSIK HALKA", "mood": "warn|danger|calm", "lines": [""] },
-      { "title": "RISK VE RECOVERY", "mood": "warn|danger|calm", "lines": [""] },
-      { "title": "SONRAKI ODAK", "mood": "calm|fire", "lines": [""] },
+      { "title": "BUGUNUN OZETI", "mood": "fire|calm|warn|danger", "lines": ["", ""] },
+      { "title": "RISK VE DENGE", "mood": "warn|danger|calm", "lines": [""] },
+      { "title": "SIRADAKI ADIM", "mood": "calm|fire|warn", "lines": [""] },
       {
         "title": "STATE_SYNC",
         "hidden": true,
@@ -1287,7 +1293,7 @@ async function parseWithGemini(text) {
     const raw = await callGeminiWithModel(buildParsePrompt(text), {
       maxTokens: 1600,
       temperature: 0.1,
-      model: process.env.GEMINI_PARSE_MODEL || 'gemini-2.5-flash-lite',
+      model: process.env.GEMINI_PARSE_MODEL || process.env.GEMINI_FAST_MODEL || 'gemini-2.5-flash',
       responseMimeType: 'application/json',
       responseSchema: PARSE_RESPONSE_SCHEMA,
     })
@@ -1316,6 +1322,7 @@ async function getCoachResponse(parsed, context) {
     xp: context.xp,
     className: context.className,
     recovery: context.odie?.recovery,
+    questionMemory: context.recentQuestions?.slice(0, 3).map(item => `${item.question}|${item.createdAt}`),
   })
   const cached = coachCache.get(cacheKey)
   if (cached && (Date.now() - cached.at) < 300000) return cached.value
@@ -1324,7 +1331,7 @@ async function getCoachResponse(parsed, context) {
     system: ODIE_SYSTEM,
     maxTokens: 2000,
     temperature: 0.72,
-    model: process.env.GEMINI_COACH_MODEL || 'gemini-2.5-flash',
+    model: process.env.GEMINI_COACH_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-pro',
     responseMimeType: 'application/json',
     responseSchema: COACH_NOTE_SCHEMA,
   })
@@ -1335,7 +1342,7 @@ async function getCoachResponse(parsed, context) {
     system: `${ODIE_SYSTEM}\nYalnizca structured state sync cikar. Abartma ve emin olmadigin alani bos birak.`,
     maxTokens: 1200,
     temperature: 0.15,
-    model: process.env.GEMINI_SYNC_MODEL || process.env.GEMINI_COACH_MODEL || 'gemini-2.5-flash',
+    model: process.env.GEMINI_SYNC_MODEL || process.env.GEMINI_MODEL || process.env.GEMINI_COACH_MODEL || 'gemini-2.5-pro',
     responseMimeType: 'application/json',
     responseSchema: STATE_SYNC_SCHEMA,
   })
@@ -1423,6 +1430,18 @@ function normalizeCoachNoteRow(row = null) {
     warnings: Array.isArray(row.warnings) ? row.warnings : [],
     quest_hints: Array.isArray(row.quest_hints) ? row.quest_hints : [],
     skill_progress: Array.isArray(row.skill_progress) ? row.skill_progress : [],
+  }
+}
+
+function normalizeQuestionRow(row = {}) {
+  return {
+    id: row.id || null,
+    question: String(row.question || '').trim(),
+    answer: String(row.answer || '').trim(),
+    responseJson: row.response_json || {},
+    model: row.model || '',
+    source: row.source || 'web',
+    createdAt: row.created_at || null,
   }
 }
 
@@ -1673,7 +1692,7 @@ export default async function handler(req, res) {
     const profile = await resolveProfile()
     if (!profile) throw new Error('Profil bulunamadi')
 
-    const [workoutRows, dailyLogRows, coachRows, athleteMemoryRows, memoryFeedbackRows, bodyMetricsHistoryRows, workoutBlockRows, workoutFactRows] = await Promise.all([
+    const [workoutRows, dailyLogRows, coachRows, athleteMemoryRows, memoryFeedbackRows, bodyMetricsHistoryRows, workoutBlockRows, workoutFactRows, questionRows] = await Promise.all([
       sbGet(`workouts?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=60`),
       sbGet(`daily_logs?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=14`),
       sbGet(`coach_notes?select=*&profile_id=eq.${profile.id}&order=date.desc,created_at.desc&limit=1`),
@@ -1682,6 +1701,7 @@ export default async function handler(req, res) {
       sbGetSafe(`body_metrics_history?select=*&profile_id=eq.${profile.id}&order=date.desc,created_at.desc&limit=30`, []),
       sbGetSafe(`workout_blocks?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=320`, []),
       sbGetSafe(`workout_facts?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=320`, []),
+      sbGetSafe(`odie_questions?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=8`, []),
     ])
     const workouts = (workoutRows || []).map(row => normalizeWorkoutRow(row))
     const dailyLogs = (dailyLogRows || []).map(row => normalizeDailyLogRow(row))
@@ -1691,6 +1711,7 @@ export default async function handler(req, res) {
     const bodyMetricsHistory = (bodyMetricsHistoryRows || []).map(row => normalizeBodyMetricsHistoryRow(row))
     const workoutBlocks = (workoutBlockRows || []).map(row => normalizeWorkoutBlockRow(row))
     const workoutFacts = (workoutFactRows || []).map(row => normalizeWorkoutFactRow(row))
+    const questionHistory = (questionRows || []).map(row => normalizeQuestionRow(row))
     const currentPrs = buildCurrentPrs(workouts)
 
     const draftSession = normalizeSession({
@@ -1788,6 +1809,7 @@ export default async function handler(req, res) {
         className: nextClass.name,
         stats: nextStats,
         recentWorkouts: workouts,
+        recentQuestions: questionHistory,
         bodyMetrics: profile.body_metrics || {},
         odie,
       })
@@ -1802,6 +1824,7 @@ export default async function handler(req, res) {
         className: nextClass.name,
         stats: nextStats,
         recentWorkouts: workouts,
+        recentQuestions: questionHistory,
         bodyMetrics: profile.body_metrics || {},
         odie: odie || buildOdieContext({
           profile,

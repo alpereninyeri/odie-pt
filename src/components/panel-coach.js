@@ -10,6 +10,46 @@ function _visibleSections(note) {
   return (note?.sections || []).filter(section => !section?.hidden)
 }
 
+function _sectionBucket(title = '') {
+  const text = String(title || '').toUpperCase()
+  if (/(SONRAKI ODAK|SONRAKI ADIM|SIRADAKI ADIM)/.test(text)) return 'next'
+  if (/(RISK|UYARI|EKSIK HALKA|SKILL VE HEDEF|DENGE)/.test(text)) return 'risk'
+  return 'summary'
+}
+
+function _mergeMood(current = 'calm', next = 'calm') {
+  const weight = { danger: 4, warn: 3, warning: 3, fire: 2, calm: 1 }
+  return (weight[next] || 0) > (weight[current] || 0) ? next : current
+}
+
+function _groupCoachSections(note) {
+  const groups = {
+    summary: { title: 'Bugunun Ozeti', mood: 'calm', lines: [] },
+    risk: { title: 'Risk ve Denge', mood: 'calm', lines: [] },
+    next: { title: 'Siradaki Adim', mood: 'calm', lines: [] },
+  }
+
+  _visibleSections(note).forEach(section => {
+    const bucket = _sectionBucket(section?.title)
+    const target = groups[bucket]
+    target.mood = _mergeMood(target.mood, section?.mood || 'calm')
+    ;(section?.lines || [])
+      .map(line => String(line || '').trim())
+      .filter(Boolean)
+      .forEach(line => {
+        if (!target.lines.includes(line)) target.lines.push(line)
+      })
+  })
+
+  return ['summary', 'risk', 'next']
+    .map(key => groups[key])
+    .filter(group => group.lines.length)
+    .map(group => ({
+      ...group,
+      lines: group.lines.slice(0, group.title === 'Bugunun Ozeti' ? 3 : 2),
+    }))
+}
+
 function _parseMarkup(text) {
   return String(text)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -58,12 +98,12 @@ function _renderSurvivalConsole(p) {
     <section class="survival-console">
       <div class="section-top">
         <div>
-          <div class="eyebrow">Survival Console</div>
-          <h3>Armor, fatigue ve recovery uyari hatti</h3>
+          <div class="eyebrow">Durum Hatti</div>
+          <h3>Yorgunluk, toparlanma ve risk ozeti</h3>
         </div>
         <div class="coach-memory-pills">
-          <span class="coach-pill">${p.sessions || 0} run</span>
-          <span class="coach-pill">${readinessText} RDY</span>
+          <span class="coach-pill">${p.sessions || 0} seans</span>
+          <span class="coach-pill">${readinessText} hazirlik</span>
         </div>
       </div>
 
@@ -75,13 +115,13 @@ function _renderSurvivalConsole(p) {
 
         <div class="survival-warning-stack">
           <div class="survival-warning-card">
-            <span class="mini-label">Heavy Chain</span>
+            <span class="mini-label">Yuk Birikimi</span>
             <strong>${heavyLabel}</strong>
             <small>${injury}</small>
           </div>
           ${(warnings.length ? warnings : ['Aktif survival warning yok.']).slice(0, 3).map(item => `
             <div class="survival-warning-card ${warnings.length ? 'warn' : ''}">
-              <span class="mini-label">Field Note</span>
+              <span class="mini-label">Saha Notu</span>
               <strong>${item}</strong>
             </div>
           `).join('')}
@@ -107,11 +147,11 @@ function _renderCoachConfidence(p) {
       <div class="coach-confidence-surface compact">
         <div class="coach-memory-head">
           <div>
-            <div class="eyebrow">Coach Read</div>
-            <h3>Bu seans icin okumaya hazir</h3>
+            <div class="eyebrow">Seans Okumasi</div>
+            <h3>Yeni seans geldikce burasi dolacak</h3>
           </div>
         </div>
-        <div class="coach-memory-empty">Yeni session geldikce parse kalitesi, block mix ve kanit satirlari burada gorunecek.</div>
+        <div class="coach-memory-empty">ODIE yeni seans geldiginde ne kadar net okudugunu ve neye dayandigini burada gosterecek.</div>
       </div>
     `
   }
@@ -120,32 +160,33 @@ function _renderCoachConfidence(p) {
     <div class="coach-confidence-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">Coach Read</div>
-          <h3>Bu seans ne kadar net okundu</h3>
+          <div class="eyebrow">Seans Okumasi</div>
+          <h3>ODIE bu seansi ne kadar net okudu</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${confidenceLevel.toUpperCase()}</span>
-          <span class="coach-pill">${confidenceScore}/100</span>
+          <span class="coach-pill">${confidenceScore}/100 netlik</span>
         </div>
       </div>
 
       <div class="coach-memory-grid coach-confidence-grid">
         <div class="coach-memory-card tone-${confidenceLevel === 'high' ? 'fire' : confidenceLevel === 'medium' ? 'warn' : 'danger'}">
           <div class="coach-memory-top">
-            <strong>Signals</strong>
+            <strong>Bulgu Sayisi</strong>
             <span>${factRows.length}</span>
           </div>
-          <p>${evidenceCount} kanit satiri / ${blockCount} block tespit edildi.</p>
+          <p>${evidenceCount} net kanit satiri ve ${blockCount} yuk parcasi bulundu.</p>
         </div>
         <div class="coach-memory-card tone-calm">
           <div class="coach-memory-top">
-            <strong>Primary Mix</strong>
+            <strong>Ana Yuk</strong>
             <span>${latestWorkout?.type || '-'}</span>
           </div>
-          <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' / ') : 'Block mix bulunamadi.'}</p>
+          <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' / ') : 'Yuk dagilimi okunamadi.'}</p>
         </div>
       </div>
 
+      <div class="mini-label">Neye Dayaniyor</div>
       <div class="coach-confidence-reasons">
         ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${reason}</span>`).join('') : '<span class="coach-memory-empty">Daha net parse icin set, sure, mesafe veya drill bilgisi yardimci olur.</span>'}
       </div>
@@ -168,12 +209,12 @@ function _renderMemoryLedger(p) {
     <div class="coach-memory-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">Coach Memory</div>
+          <div class="eyebrow">Kalici Hafiza</div>
           <h3>ODIE senden ne ogrenmis</h3>
         </div>
         <div class="coach-memory-pills">
-          <span class="coach-pill">${memories.length} active</span>
-          <span class="coach-pill">${wrongCount} wrong flag</span>
+          <span class="coach-pill">${memories.length} aktif</span>
+          <span class="coach-pill">${wrongCount} yanlis isaret</span>
         </div>
       </div>
 
@@ -191,7 +232,7 @@ function _renderMemoryLedger(p) {
 
       <div class="coach-feedback-strip">
         <div>
-          <div class="mini-label">Coach Feedback</div>
+          <div class="mini-label">Geri Bildirim</div>
           <strong>Son coach yorumunu isaretle</strong>
         </div>
         <div class="coach-feedback-actions">
@@ -216,7 +257,7 @@ function _renderMemoryLedger(p) {
 
 export function renderCoach(p) {
   const cn = p.coachNote || { date: '', xpNote: '', sections: [] }
-  const sections = _visibleSections(cn)
+  const sections = _groupCoachSections(cn)
   const support = `
     <div class="coach-support-grid">
       ${_renderCoachConfidence(p)}
@@ -231,7 +272,7 @@ export function renderCoach(p) {
         <div style="font-size:48px;opacity:.4">OD</div>
         <div style="font-size:14px;letter-spacing:3px;opacity:.7">ODIE OFFLINE</div>
         <div style="font-size:11px;opacity:.65;max-width:280px;text-align:center;line-height:1.5">
-          Henuz coach raporu yok. Telegram'a yeni bir antrenman yazdiginda burada kanita dayali rapor gorunecek.
+          Henuz coach raporu yok. Telegram'a yeni bir antrenman yazdiginda burada sade ve okunur bir yorum goreceksin.
         </div>
       </div>
       ${support}`
@@ -257,17 +298,17 @@ export function renderCoach(p) {
         <div class="coach-avatar">OD</div>
         <div class="coach-npc-info">
           <div class="coach-npc-name">ODIE</div>
-          <div class="coach-npc-sub">Adaptive Performance Interpreter</div>
+          <div class="coach-npc-sub">canli performans yorumu</div>
         </div>
         <div class="coach-meta">
           <div class="coach-date">${cn.date}</div>
-          <div class="coach-session">SESSION #${p.sessions}</div>
+          <div class="coach-session">SEANS #${p.sessions}</div>
         </div>
       </div>
       <div class="coach-strip">
-        <span class="coach-pill">LIVE SYNC</span>
-        <span class="coach-pill">${warningCount} warning</span>
-        <span class="coach-pill">${questCount} active quest</span>
+        <span class="coach-pill">CANLI BAGLAM</span>
+        <span class="coach-pill">${warningCount} uyari</span>
+        <span class="coach-pill">${questCount} acik hedef</span>
       </div>
       <div class="coach-body" id="coach-body">
         <div class="coach-init-line" id="coach-init">
@@ -276,7 +317,7 @@ export function renderCoach(p) {
         ${shells}
       </div>
       <div class="coach-footer">
-        <button class="coach-skip-btn" id="coach-skip">ATLA - HEPSINI GOSTER</button>
+        <button class="coach-skip-btn" id="coach-skip">HEPSINI AC</button>
         <div class="coach-xp-badge">${cn.xpNote}</div>
       </div>
     </div>
@@ -301,7 +342,7 @@ export function initCoach(p) {
     }
   })
 
-  const sections = _visibleSections(p?.coachNote)
+  const sections = _groupCoachSections(p?.coachNote)
   if (!sections.length) return
 
   const coachState = {

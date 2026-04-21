@@ -1,4 +1,7 @@
 import './style.css'
+import './styles/legacy-overrides.css'
+import './styles/theme-mmo.css'
+import './styles/hud-ask.css'
 import { store } from './data/store.js'
 import { formatMonthShort } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
@@ -6,16 +9,21 @@ import { renderStats, initStats } from './components/panel-stats.js'
 import { renderSkills, initSkills } from './components/panel-skills.js'
 import { renderQuests, initQuests } from './components/panel-quests.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
+import { renderAsk, initAsk } from './components/panel-ask.js'
 import { renderHealth } from './components/panel-health.js'
+import { renderDailyChecklist, initDailyChecklist } from './components/daily-checklist.js'
+import { openWorkoutForm } from './components/workout-form.js'
+import { renderStatusWidget, initStatusWidget } from './components/status-widget.js'
 import { initModal, closeModal, openAvatarModal, openArchetypeModal, openFocusModal, openUnlockModal } from './components/modal.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
 
 const tabs = [
-  { key: 'dashboard', label: 'Home', icon: 'home' },
-  { key: 'progress', label: 'Stats', icon: 'chart' },
-  { key: 'training', label: 'Missions', icon: 'target' },
+  { key: 'dashboard', label: 'Ana', icon: 'home' },
+  { key: 'progress', label: 'Stat', icon: 'chart' },
+  { key: 'training', label: 'Gorev', icon: 'target' },
   { key: 'coach', label: 'ODIE', icon: 'pulse' },
+  { key: 'ask', label: 'Sor', icon: 'spark' },
 ]
 
 let activeTab = 'dashboard'
@@ -53,7 +61,7 @@ store.init().then(() => {
     if (!coachNote) return
     showToast({
       icon: 'OD',
-      title: 'ODIE raporu geldi',
+      title: 'ODIE yorumu geldi',
       msg: coachNote.xp_note || 'Yeni antrenman analizi hazir',
       rarity: 'rare',
       duration: 3200,
@@ -127,8 +135,8 @@ function renderApp() {
 
         <div class="nav-status glass-subtle">
           <div class="mini-label">Current Focus</div>
-          <div class="nav-status-title">${state.profile.currentFocus || 'Hybrid denge'}</div>
-          <div class="nav-status-sub">${Number(state.health?.readiness?.score) || '--'}/100 readiness</div>
+            <div class="nav-status-title">${state.profile.currentFocus || 'Hybrid denge'}</div>
+          <div class="nav-status-sub">${Number(state.health?.readiness?.score) || '--'}/100 hazirlik</div>
         </div>
       </aside>
 
@@ -169,13 +177,15 @@ function renderApp() {
 function pageTitle(tabKey, profile) {
   switch (tabKey) {
     case 'dashboard':
-      return `${profile.nick} Character Sheet`
+      return `${profile.nick} Ana Panel`
     case 'progress':
-      return 'Stats and Performance'
+      return 'Ilerleme ve performans'
     case 'training':
-      return 'Missions and Sessions'
+      return 'Gorevler ve seanslar'
     case 'coach':
-      return 'ODIE Coach'
+      return 'ODIE yorumu'
+    case 'ask':
+      return "ODIE'ye Sor"
     default:
       return profile.nick
   }
@@ -190,15 +200,23 @@ function renderMobileHud(state, profile) {
   const streak = state.profile?.streak?.current ?? 0
 
   return `
-    <div class="mobile-hud mobile-hud-v6">
-      <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${profile.avatar}</button>
-      <div class="mobile-hud-center">
-        <div class="mobile-hud-nick">${profile.nick}<span>L${level}</span></div>
-        <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
+    <div class="mobile-hud-wrap">
+      <div class="mobile-hud mobile-hud-v6">
+        <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${profile.avatar}</button>
+        <div class="mobile-hud-center">
+          <div class="mobile-hud-nick">${profile.nick}<span>L${level}</span></div>
+          <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="mobile-hud-side">
+          <strong>${Number.isFinite(readiness) ? readiness : streak}</strong>
+          <small>${Number.isFinite(readiness) ? 'hazirlik' : 'seri'}</small>
+        </div>
       </div>
-      <div class="mobile-hud-side">
-        <strong>${Number.isFinite(readiness) ? readiness : streak}</strong>
-        <small>${Number.isFinite(readiness) ? 'ready' : 'streak'}</small>
+
+      <div class="hud-command-row">
+        <button class="hud-command-chip ${activeTab === 'coach' ? 'active' : ''}" data-tab="coach">ODIE Yorum</button>
+        <button class="hud-command-chip ${activeTab === 'ask' ? 'active' : ''}" data-tab="ask">Sor</button>
+        <button class="hud-command-chip ${activeTab === 'training' ? 'active' : ''}" data-tab="training">Gorevler</button>
       </div>
     </div>
   `
@@ -223,6 +241,8 @@ function renderNavGlyph(kind) {
       return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-2.2A6.8 6.8 0 1 1 12 5.2zm0 3.2a5.8 5.8 0 1 0 5.8 5.8h-2a3.8 3.8 0 1 1-3.8-3.8zm0 2.8a3 3 0 1 0 3 3h-1.8A1.2 1.2 0 1 1 12 10.2z"/></svg>`
     case 'pulse':
       return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-4 3 9 2-5h7"/></svg>`
+    case 'spark':
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 4.8L19 10l-5.1 2.2L12 17l-1.9-4.8L5 10l5.1-2.2L12 3z"/></svg>`
     default:
       return kind
   }
@@ -238,6 +258,8 @@ function renderPage(tabKey, state, profile, semantic) {
       return renderTrainingV6(state, profile, semantic)
     case 'coach':
       return renderCoachPageV6(state, profile)
+    case 'ask':
+      return renderAsk(state, profile)
     default:
       return ''
   }
@@ -248,12 +270,56 @@ function renderHomeV6(state, profile, semantic) {
     <section class="surface-stack home-v6">
       ${renderCharacterSheet(state, profile, semantic)}
 
+      <div class="home-ops-grid">
+        <article class="glass-card home-command-deck">
+          <div class="section-top">
+            <div>
+              <div class="eyebrow">Command Deck</div>
+              <h3>Hizli erisim ve canli HUD</h3>
+            </div>
+          </div>
+
+          <div class="home-command-grid">
+            <button class="home-command-card primary" data-action="open-workout">
+              <span class="mini-label">Quick Log</span>
+              <strong>Seans Ekle</strong>
+              <small>Manual workout form ile aninda kayit ac.</small>
+            </button>
+            <button class="home-command-card tone-cobalt" data-tab="ask">
+              <span class="mini-label">ODIE'ye Sor</span>
+              <strong>Soru Sor</strong>
+              <small>Recovery, plan ve trend icin ODIE terminaline gec.</small>
+            </button>
+            <button class="home-command-card tone-emerald" data-tab="coach">
+              <span class="mini-label">ODIE Yorumu</span>
+              <strong>Canli Rapor</strong>
+              <small>Son yorum, seans netligi ve hafiza akisina don.</small>
+            </button>
+          </div>
+        </article>
+
+        <article class="glass-card home-system-deck">
+          ${renderStatusWidget()}
+        </article>
+      </div>
+
       <div class="home-quick-grid">
+        ${renderOdiePulseCard(state)}
         ${renderLastSessionCard(state)}
         ${renderCurrentQuestCard(profile)}
         ${renderRecoveryCard(state, profile)}
         ${renderRecentWinCard(state, profile)}
       </div>
+
+      <article class="glass-card home-recovery-deck">
+        <div class="section-top">
+          <div>
+            <div class="eyebrow">Recovery Deck</div>
+            <h3>Bugunun recovery HUD'i</h3>
+          </div>
+        </div>
+        ${renderDailyChecklist()}
+      </article>
     </section>
   `
 }
@@ -353,22 +419,41 @@ function sheetStatStatus(stat) {
 function renderLastSessionCard(state) {
   const workout = (state.workouts || [])[0]
   if (!workout) {
-    return renderQuickCard('Last Session', 'Yeni seans yok', 'Yeni antrenman geldiginde burada ozet gosterilecek.')
+    return renderQuickCard('Son Seans', 'Yeni seans yok', 'Yeni antrenman geldiginde burada ozet gosterilecek.')
   }
 
   const title = `${formatMonthShort(workout.date)} / ${workout.type}`
   const body = workout.highlight || (workout.evidence || []).slice(0, 1).join(' ') || 'Seans sinyali yok.'
   const meta = `${workout.durationMin || 0}dk${workout.distanceKm ? ` / ${workout.distanceKm}km` : ''}`
-  return renderQuickCard('Last Session', title, body, meta)
+  return renderQuickCard('Son Seans', title, body, meta)
+}
+
+function renderOdiePulseCard(state) {
+  const sections = (state.coachNote?.sections || [])
+    .filter(section => !section?.hidden)
+    .map(section => ({
+      title: section.title,
+      line: (section.lines || []).map(line => String(line || '').trim()).find(Boolean),
+    }))
+    .filter(section => section.line)
+
+  if (!sections.length) {
+    return renderQuickCard('ODIE Nabiz', 'Son yorum yok', 'Yeni seans geldikce ODIE burada gunun ana mesajini birakir.')
+  }
+
+  const lead = sections[0]
+  const body = String(lead.line || '').slice(0, 110)
+  const meta = sections.slice(1, 3).map(section => section.title).join(' / ')
+  return renderQuickCard('ODIE Nabiz', lead.title || 'Gunun yorumu', body, meta)
 }
 
 function renderCurrentQuestCard(profile) {
   const activeQuest = [...(profile.quests?.daily || []), ...(profile.quests?.weekly || [])].find(quest => !quest.done)
   if (!activeQuest) {
-    return renderQuickCard('Current Quest', 'Tum gorevler temiz', 'Yeni gorev baskisi yok.')
+    return renderQuickCard('Guncel Gorev', 'Tum gorevler temiz', 'Yeni gorev baskisi yok.')
   }
   return renderQuickCard(
-    'Current Quest',
+    'Guncel Gorev',
     activeQuest.name,
     activeQuest.desc,
     `${activeQuest.progress}/${activeQuest.total} / ${activeQuest.reward || 'XP'}`
@@ -382,19 +467,19 @@ function renderRecoveryCard(state, profile) {
   const body = Number.isFinite(readiness)
     ? `Readiness ${readiness}/100 / Armor ${armor} / Fatigue ${fatigue}`
     : `Armor ${armor} / Fatigue ${fatigue}`
-  return renderQuickCard('Recovery', profile.health?.metrics?.[1]?.val || 'Stable', body)
+  return renderQuickCard('Toparlanma', profile.health?.metrics?.[1]?.val || 'Stabil', body)
 }
 
 function renderRecentWinCard(state, profile) {
   const perf = (profile.performance || []).find(item => String(item.trend || '').includes('+') || String(item.trend || '').includes('Elite'))
   const badge = (profile.achievements || []).find(item => item.unlocked)
   if (perf) {
-    return renderQuickCard('Recent Win', perf.name, perf.trend, perf.val)
+    return renderQuickCard('Son Kazanim', perf.name, perf.trend, perf.val)
   }
   if (badge) {
-    return renderQuickCard('Recent Win', badge.name, badge.desc, badge.date || 'Unlocked')
+    return renderQuickCard('Son Kazanim', badge.name, badge.desc, badge.date || 'Acildi')
   }
-  return renderQuickCard('Recent Win', 'No recent win', 'Yeni basari veya PR bekleniyor.')
+  return renderQuickCard('Son Kazanim', 'Yeni win yok', 'Yeni basari veya PR bekleniyor.')
 }
 
 function renderQuickCard(label, title, body, meta = '') {
@@ -465,8 +550,8 @@ function renderCoachPageV6(state, profile) {
       <article class="glass-card page-banner coach-banner">
         <div>
           <div class="eyebrow">ODIE</div>
-          <h3>Coach feed ve recovery durumu</h3>
-          <p>Aktif yorumlar, confidence ve recovery ayni akista.</p>
+          <h3>Yorum, netlik ve toparlanma durumu</h3>
+          <p>Aktif yorumlar, seans netligi ve toparlanma ayni akista.</p>
         </div>
       </article>
 
@@ -479,6 +564,10 @@ function renderCoachPageV6(state, profile) {
 
 function initActivePage(tabKey, profile) {
   switch (tabKey) {
+    case 'dashboard':
+      initDailyChecklist()
+      initStatusWidget()
+      break
     case 'progress':
       initStats(profile)
       initSkills()
@@ -488,6 +577,9 @@ function initActivePage(tabKey, profile) {
       break
     case 'coach':
       initCoach(profile)
+      break
+    case 'ask':
+      initAsk(profile)
       break
   }
 }
@@ -506,6 +598,11 @@ document.addEventListener('click', event => {
 
   if (action === 'open-avatar') {
     openAvatarModal(store.getProfile())
+    return
+  }
+
+  if (action === 'open-workout') {
+    openWorkoutForm()
     return
   }
 

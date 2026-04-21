@@ -1,74 +1,68 @@
-# OdiePt — Spor Karakter Kartı
+# OdiePt - Working Notes
 
-Bu proje, @senuzulme27'nin fitness takip uygulamasıdır. RPG karakter kartı formatında spor verilerini gösterir.
+Bu repo artik iki moda sahip:
 
-## Canlı URL
-**https://odie-pt.vercel.app**
+## 1. Seed mode
+`src/data/profile.js`
+- fallback UI data
+- default copy
+- seed achievements / skills / empty state
 
-## Proje Yapısı
-- `src/data/profile.js` — TÜM VERİ BURADADIR. Güncelleme yaparken sadece bu dosyayı değiştir.
-- `src/components/` — UI bileşenleri (genellikle dokunma)
+## 2. Live mode
+Canli veri akisi:
+- `src/data/store.js`
+- `src/data/supabase-client.js`
+- `api/telegram.js`
+- `api/ask.js`
 
-## Deploy Akışı (GitHub → Vercel Otomatik)
+Yani yeni workout, memory, coach note, ask history gibi seyler her zaman `profile.js` uzerinden gitmez.
 
-`main` branch'e her push → Vercel otomatik deploy (~30sn).
+## What To Touch First
+### UI
+- `src/main.js`
+- `src/style.css`
+- `src/components/*`
 
-### Standart Güncelleme (PC'de Claude Code ile):
-1. `src/data/profile.js` güncelle
-2. Push et:
-   ```bash
-   git add src/data/profile.js
-   git commit -m "workout: <özet>"
-   git push
-   ```
-3. https://odie-pt.vercel.app otomatik güncellenir
+### Data / derived logic
+- `src/data/rules.js`
+- `src/data/engine.js`
+- `src/data/store.js`
+- `src/data/semantic-profile.js`
 
-### Mobil Claude Workflow:
+### Server routes
+- `api/telegram.js`
+- `api/ask.js`
 
-**Seçenek A — GitHub Web Editor (önerilen):**
-1. Mobilde `github.com/[USERNAME]/odie-pt` → `src/data/profile.js`
-2. Kalem ikonuna tıkla → düzenle → "Commit changes"
-3. Vercel ~30sn içinde deploy eder
+## Current User Flows
+### Workout logging
+- Telegram message
+- site icinde manual workout form
 
-**Seçenek B — PC Claude Code:**
-1. Mobil Claude'da antrenmanı anlat
-2. PC'de bu klasörde `claude` aç
-3. "Mobilde anlattım, profile.js güncelle ve push et"
+### Recovery logging
+- daily checklist
 
-### Emergency Manuel Deploy (git yoksa):
+### Coaching
+- coach feed
+- ask terminal
+- memory feedback
+
+## If You Need To Add Schema
+Infra klasorune yeni migration ekle.
+Mevcut zincir:
+- `supabase-schema.sql`
+- `supabase-schema-v2.sql`
+- `supabase-memory-v3.sql`
+- `supabase-odie-ask-v4.sql`
+
+## Verification
+Her anlamli degisiklikten sonra:
 ```bash
-npm run build && vercel --prod --yes
+npm test
+npm run build
 ```
 
-## profile.js Güncelleme Kılavuzu
-
-### Yeni antrenman → `workoutLog` başına ekle:
-```js
-{ date: 'XX Ay', type: 'Push', duration: '70dk', volume: '4.500 kg', sets: 20, highlight: 'Bench 62.5kg PR' }
-```
-
-### Performans güncellemesi → `performance[x].history` sonuna ekle + `val`, `note`, `trend` güncelle:
-```js
-{ date: 'May', val: 62.5 }
-```
-
-### Stat değişimi → `stats[x].val` güncelle (0-100).
-
-### XP → `xp.current` güncelle.
-
-### Quest tamamlandı → `done: true` yap.
-
-### Başarı açıldı → `unlocked: true`, `date: 'Ay YYYY'` yap.
-
-## Git Commit Konvansiyonları
-- `workout: Push günü — Bench 62.5kg PR`
-- `feat: yeni achievement eklendi`
-- `fix: bug açıklaması`
-- `data: weekly quest progress güncellendi`
-
-## Kullanıcı Profili
-- **Kullanıcı:** SenUzulme27 (@senuzulme27)
-- **Sınıf:** Calisthenic Warrior / Acrobatic Sub-Class
-- **Rank:** Silver III, Level 4
-- **Ana eksikler:** Core (RANK F — 0 set), Bacak (ihmal edilmiş)
-- **Güçlü yanlar:** Dead Hang (Elite), Bench 60kg, Muscle-Up x3, Front Flip
+## Current Debt To Prefer
+1. CSS sadeleme
+2. full rerender maliyeti
+3. docs drift
+4. dormant componentleri ya bagla ya sil
