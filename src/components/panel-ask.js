@@ -59,7 +59,7 @@ function sampleQuestions(profile) {
   const focus = profile.currentFocus || 'core stabilitesi'
   return [
     `Bu hafta ${focus} icin en akilli 2 seans ne olsun?`,
-    `${className} cizgisini korurken hangi zincir geri kaliyor?`,
+    `${className} cizgisini korurken en cok hangi taraf geri kaliyor?`,
     'Yarin hafif ama etkili bir recovery gunu nasil kurulur?',
   ]
 }
@@ -215,8 +215,8 @@ export function renderAsk(state, profile) {
         <section class="glass-card ask-console">
           <div class="ask-console-head">
             <div>
-              <div class="mini-label">ODIE Terminal</div>
-              <strong>Sorunu birak</strong>
+              <div class="mini-label">ODIE Hatti</div>
+              <strong>Sorunu yaz</strong>
             </div>
             <span class="ask-status-chip ${askState.loadingAnswer ? 'live' : ''}">${askState.loadingAnswer ? 'DUSUNUYOR' : 'HAZIR'}</span>
           </div>
@@ -265,7 +265,7 @@ export function renderAsk(state, profile) {
                   <ul>${renderList(latest.evidence, 'Ek dayanak cikarilmadi.')}</ul>
                 </div>
                 <div class="ask-detail-card">
-                  <div class="mini-label">Ne Yapalım</div>
+                  <div class="mini-label">Ne Yapalim</div>
                   <ul>${renderList(latest.nextSteps, 'Net sonraki adim onerisi yok.')}</ul>
                 </div>
               </div>

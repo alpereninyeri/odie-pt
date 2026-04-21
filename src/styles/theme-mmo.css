@@ -14,6 +14,9 @@
   --hud-gold: var(--mmo-gold-2);
   --hud-cobalt: #9cb8e7;
   --hud-emerald: #93caa0;
+  --hud-gold-soft: rgba(244, 200, 118, .14);
+  --hud-cobalt-soft: rgba(156, 184, 231, .14);
+  --hud-emerald-soft: rgba(147, 202, 160, .14);
 }
 
 .mobile-hud,
@@ -67,7 +70,9 @@
   transition: all .15s ease !important;
 }
 .bottom-tab.active {
-  background: linear-gradient(180deg, rgba(140, 101, 34, .55), rgba(60, 40, 12, .75)) !important;
+  background:
+    linear-gradient(180deg, rgba(140, 101, 34, .55), rgba(60, 40, 12, .75)),
+    linear-gradient(90deg, var(--hud-cobalt-soft), transparent 45%, var(--hud-emerald-soft)) !important;
   border-color: var(--mmo-gold) !important;
   color: var(--mmo-gold-2) !important;
   box-shadow:
@@ -82,7 +87,7 @@
 
 @media (max-width: 900px) {
   .mobile-hud-wrap {
-    padding: 8px 8px 0 !important;
+    padding: 8px 6px 0 !important;
   }
 
   .mobile-hud,
@@ -91,9 +96,9 @@
   }
 
   .bottom-tabs {
-    left: 8px !important;
-    right: 8px !important;
-    bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 6px !important;
+    right: 6px !important;
+    bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
     max-width: none !important;
   }
 }

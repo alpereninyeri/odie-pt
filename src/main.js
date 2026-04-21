@@ -281,14 +281,14 @@ function renderHomeV6(state, profile, semantic) {
 
           <div class="home-command-grid">
             <button class="home-command-card primary" data-action="open-workout">
-              <span class="mini-label">Quick Log</span>
+              <span class="mini-label">Hizli Kayit</span>
               <strong>Seans Ekle</strong>
               <small>Manual workout form ile aninda kayit ac.</small>
             </button>
             <button class="home-command-card tone-cobalt" data-tab="ask">
               <span class="mini-label">ODIE'ye Sor</span>
               <strong>Soru Sor</strong>
-              <small>Recovery, plan ve trend icin ODIE terminaline gec.</small>
+              <small>Toparlanma, plan ve trend icin ODIE soru hattina gec.</small>
             </button>
             <button class="home-command-card tone-emerald" data-tab="coach">
               <span class="mini-label">ODIE Yorumu</span>

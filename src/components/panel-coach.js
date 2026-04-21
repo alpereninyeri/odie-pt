@@ -70,6 +70,14 @@ function _memoryTone(item) {
   return 'calm'
 }
 
+function _confidenceLabel(level = 'low') {
+  return {
+    high: 'NET',
+    medium: 'ORTA',
+    low: 'DUSUK',
+  }[level] || 'DUSUK'
+}
+
 function _meter(label, value, tone = 'armor') {
   const safeValue = Math.max(0, Math.min(100, Number(value) || 0))
   return `
@@ -164,7 +172,7 @@ function _renderCoachConfidence(p) {
           <h3>ODIE bu seansi ne kadar net okudu</h3>
         </div>
         <div class="coach-memory-pills">
-          <span class="coach-pill">${confidenceLevel.toUpperCase()}</span>
+          <span class="coach-pill">${_confidenceLabel(confidenceLevel)}</span>
           <span class="coach-pill">${confidenceScore}/100 netlik</span>
         </div>
       </div>
@@ -172,10 +180,10 @@ function _renderCoachConfidence(p) {
       <div class="coach-memory-grid coach-confidence-grid">
         <div class="coach-memory-card tone-${confidenceLevel === 'high' ? 'fire' : confidenceLevel === 'medium' ? 'warn' : 'danger'}">
           <div class="coach-memory-top">
-            <strong>Bulgu Sayisi</strong>
+            <strong>Okunan Parca</strong>
             <span>${factRows.length}</span>
           </div>
-          <p>${evidenceCount} net kanit satiri ve ${blockCount} yuk parcasi bulundu.</p>
+          <p>Seans notundan ${evidenceCount} ayri ipucu ve ${blockCount} calisma blogu ayiklandi.</p>
         </div>
         <div class="coach-memory-card tone-calm">
           <div class="coach-memory-top">

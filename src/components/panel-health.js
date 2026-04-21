@@ -60,6 +60,14 @@ function renderMetricCard(metric, compact = false) {
   `
 }
 
+function readinessLabel(value = 'low') {
+  return {
+    high: 'NET',
+    medium: 'ORTA',
+    low: 'DUSUK',
+  }[String(value || 'low')] || 'DUSUK'
+}
+
 export function renderHealth(profile, options = {}) {
   const compact = Boolean(options?.compact)
   const { metrics = [], warnings = [], readiness = null } = profile.health || {}
@@ -85,10 +93,10 @@ export function renderHealth(profile, options = {}) {
       <div class="readiness-card ${compact ? 'compact' : ''} readiness-${readiness.confidence || 'low'}">
         <div class="readiness-head">
           <div>
-            <div class="mini-label">${compact ? 'Recovery Trust' : 'Recovery Confidence'}</div>
+            <div class="mini-label">${compact ? 'Toparlanma Notu' : 'Toparlanma Netligi'}</div>
             <strong>${Number.isFinite(readiness.score) ? readiness.score : '--'}/100</strong>
           </div>
-          <span class="readiness-source">${String(readiness.confidence || 'low').toUpperCase()}</span>
+          <span class="readiness-source">${readinessLabel(readiness.confidence)}</span>
         </div>
         <p>${readiness.reason || 'Recovery guven notu yok.'}</p>
       </div>

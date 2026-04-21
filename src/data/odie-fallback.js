@@ -39,33 +39,33 @@ function topBlockMix(blockMix = []) {
 
 function mainAxisSentence(parsed = {}) {
   const leading = topBlockMix(parsed.block_mix || [])
-  if (!leading.length) return `${parsed.type} seansi yapisal olarak kayda girdi.`
-  return `Ana eksen ${leading.map(item => `${item.kind} ${item.percent}%`).join(' · ')}.`
+  if (!leading.length) return `${parsed.type} seansi temel haliyle kayda girdi.`
+  return `Seansin ana akisi ${leading.map(item => `${item.kind} ${item.percent}%`).join(' · ')}.`
 }
 
 function evidenceSentence(parsed = {}) {
   const evidence = (parsed.evidence || []).slice(0, 3)
-  if (!evidence.length) return 'Kanit sinyali sinirli; yorum blok uzerinden kuruldu.'
-  return `Ana kanit: ${evidence.join(' | ')}.`
+  if (!evidence.length) return 'Metin kisa oldugu icin yorum genel seans akisina gore kuruldu.'
+  return `Okunan ana ipuclari: ${evidence.join(' | ')}.`
 }
 
 function chainSentence(parsed = {}) {
   const chains = (parsed.chains || []).slice(0, 3)
-  if (!chains.length) return 'Yuklenen zincir net degil.'
+  if (!chains.length) return 'Baskin calisma hatti net secilemedi.'
   return chains.map(chain => `${chain.name}${chain.reason ? ` · ${chain.reason}` : ''}`).join(' | ')
 }
 
 function missingSentence(parsed = {}, firstGap = '') {
   const missing = parsed.missing_chains || []
-  if (missing.length) return `Eksik halka: ${missing[0]}.`
-  if (firstGap) return `Eksik halka: ${firstGap}.`
-  return 'Eksik halka net degil; sonraki blokta progression sec.'
+  if (missing.length) return `Acik taraf: ${missing[0]}.`
+  if (firstGap) return `Acik taraf: ${firstGap}.`
+  return 'Acik taraf net degil; sonraki blokta tek bir eksige yuklenmek daha iyi olur.'
 }
 
 function riskSentence(parsed = {}, recovery = {}) {
   const risk = (parsed.risk_signals || [])[0]
-  if (risk) return `Risk: ${risk}.`
-  return `Recovery: armor ${recovery.armor ?? '-'} / fatigue ${recovery.fatigue ?? '-'} / ${recovery.status || 'healthy'}.`
+  if (risk) return `Dikkat edilmesi gereken nokta: ${risk}.`
+  return `Toparlanma durumu armor ${recovery.armor ?? '-'} / fatigue ${recovery.fatigue ?? '-'} / ${recovery.status || 'healthy'}.`
 }
 
 function performanceSentence(parsed = {}, firstPerf = null, context = {}) {
@@ -73,16 +73,16 @@ function performanceSentence(parsed = {}, firstPerf = null, context = {}) {
     return `${parsed.type} ${parsed.total_sets || 0} set ve ${parsed.volume_kg || 0}kg hacimle kayda girdi.`
   }
   if ((parsed.distance_km || 0) > 0 || (parsed.duration_min || 0) > 0) {
-    return `${parsed.duration_min || 0}dk${parsed.distance_km ? ` · ${parsed.distance_km}km` : ''} uzerinden hareket yuku okundu.`
+    return `${parsed.duration_min || 0}dk${parsed.distance_km ? ` · ${parsed.distance_km}km` : ''} hareket yuku okundu.`
   }
   if (firstPerf) return `${firstPerf.name}: ${firstPerf.val} · ${firstPerf.trend}.`
   return `Stat paneli guncel: ${buildStatLine(context.stats || {})}.`
 }
 
-function confidenceSentence(parsed = {}) {
+function claritySentence(parsed = {}) {
   const confidence = parsed.confidence || null
-  if (!confidence) return 'Parse confidence: unknown.'
-  return `Parse confidence: ${confidence.level}${confidence.score != null ? ` (${confidence.score}/100)` : ''}.`
+  if (!confidence) return 'Okuma netligi sinirli.'
+  return `Okuma netligi ${confidence.level}${confidence.score != null ? ` (${confidence.score}/100)` : ''}.`
 }
 
 export function buildFallbackCoachResponse(parsed, context = {}) {
@@ -117,38 +117,25 @@ export function buildFallbackCoachResponse(parsed, context = {}) {
       mood: 'calm',
       lines: [
         evidenceSentence(parsed),
-        confidenceSentence(parsed),
+        claritySentence(parsed),
       ],
     },
     {
-      title: 'YUKLENEN ZINCIRLER',
-      mood: 'fire',
-      lines: [
-        chainSentence(parsed),
-        firstTrend || 'Uzun donem trend sinyali zayif.',
-      ],
-    },
-    {
-      title: 'EKSIK HALKA',
-      mood: 'warn',
-      lines: [
-        missingSentence(parsed, firstGap),
-      ],
-    },
-    {
-      title: 'RISK VE RECOVERY',
+      title: 'RISK VE DENGE',
       mood: recovery.status === 'overloaded' || recovery.status === 'injured' ? 'danger' : 'warn',
       lines: [
         riskSentence(parsed, recovery),
-        warningLine,
+        missingSentence(parsed, firstGap),
+        firstTrend || 'Yuk trendi su an stabil.',
       ],
     },
     {
       title: 'SONRAKI ODAK',
       mood: 'calm',
       lines: [
-        firstSkill ? `${firstSkill.branch}: ${firstSkill.name} · ${firstSkill.status}.` : 'Sonraki blokta eksik halkayi kapatan net bir teknik odak sec.',
-        firstQuest ? `En yakin quest: ${firstQuest.name} ${firstQuest.progress}/${firstQuest.total}.` : 'Quest board baskisi dusuk.',
+        firstSkill ? `${firstSkill.branch}: ${firstSkill.name} · ${firstSkill.status}.` : 'Sonraki blokta tek bir eksik alani kapatan net bir odak sec.',
+        firstQuest ? `En yakin hedef: ${firstQuest.name} ${firstQuest.progress}/${firstQuest.total}.` : 'Yakinda baski yaratan bir hedef yok.',
+        chainSentence(parsed),
       ],
     },
     emptyStateSync(),
