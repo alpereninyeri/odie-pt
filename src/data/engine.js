@@ -517,7 +517,7 @@ function _updateStatNarratives(state, coachPayload) {
         ]
         return {
           ...stat,
-          desc: coach?.desc || `AGI artik movement yogunluguna gore akiyor. Son ${movementWorkouts.length} seans parkour/akrobasi hizi ve zemin gecisini besliyor.`,
+          desc: coach?.desc || `AGI dogrudan movement hacmine bagli. Son ${movementWorkouts.length} seans parkour/akrobasi hizi ve zemin gecisini calistirdi.`,
           coach: coach?.coach || `${latestMovement?.highlight || 'Son movement izi yok'}. Core ve landing kalite arttikca AGI daha rahat yukselecek.`,
           detail,
         }
@@ -619,7 +619,7 @@ function _updateMuscleNarratives(state, coachPayload) {
     switch (card.name) {
       case 'Omuz Kompleksi':
         detail = coach?.detail || `Omuzlarin guncel kuvvet izi shoulder press ${ohpBest.weight || 0}kg. Push hacmi yuksek, ama on/arka omuz dengesi halen takip edilmeli.`
-        tip = coach?.tip || 'Face pull ve arka omuz isi omuz kalitesini temiz tutar; sadece press biriktirme.'
+        tip = coach?.tip || 'Face pull ve arka omuz seti ekle; sadece press yigmayi birak.'
         tag = coach?.tag || ((balance.Omuz || 0) >= 180 ? 'Dominant' : 'Stabil')
         tagClass = tag === 'Dominant' ? 'tf' : 'ts'
         break

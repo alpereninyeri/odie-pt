@@ -732,6 +732,154 @@
   }
 }
 
+/* Mobile yatay overflow guard — hiçbir kart parent'ı taşmasın */
+@media (max-width: 560px) {
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw;
+  }
+
+  .app-shell,
+  .app-shell-v6,
+  .app-main,
+  .page-content,
+  .character-page,
+  .today-page,
+  .odie-page,
+  .surface-stack {
+    min-width: 0 !important;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .glass-card,
+  .character-page > article {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .stat-pixel,
+  .stat-pixel-body,
+  .pix-bar,
+  .pix-bar-thin,
+  .quest-body,
+  .quest-ticket,
+  .trio-card {
+    min-width: 0;
+  }
+}
+
+/* Combat Stats — mobile tek kolon (sağa taşma yok) */
+@media (max-width: 560px) {
+  .stat-grid-pixel {
+    grid-template-columns: 1fr !important;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .stat-pixel {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .stat-pixel-icon {
+    font-size: 16px;
+  }
+
+  .stat-pixel-row strong {
+    font-size: 14px;
+  }
+
+  .stat-pixel-row .pixel-label {
+    font-size: 9px;
+  }
+}
+
+/* Trio cards — mobile tek kolon, satır içi sıkıştırılmış */
+@media (max-width: 560px) {
+  .trio-grid {
+    grid-template-columns: 1fr !important;
+    gap: 6px;
+  }
+
+  .trio-card {
+    padding: 10px 12px;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left !important;
+    gap: 10px;
+  }
+
+  .trio-card > * {
+    margin: 0 !important;
+  }
+
+  .trio-card .pixel-label {
+    font-size: 8px;
+    letter-spacing: 1px;
+    flex: 0 0 auto;
+    min-width: 64px;
+  }
+
+  .trio-card strong {
+    font-size: 12px;
+    line-height: 1.2;
+    flex: 1;
+    text-align: right;
+  }
+
+  .trio-card small {
+    display: none;
+  }
+}
+
+/* Portrait banner — mobile sıkıştır */
+@media (max-width: 560px) {
+  .portrait-banner {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .portrait-img-frame {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
+    font-size: 32px;
+  }
+
+  .portrait-info {
+    min-width: 0;
+  }
+
+  .portrait-name {
+    font-size: 16px;
+  }
+
+  .portrait-class-line {
+    font-size: 10px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .pixel-label,
+  .bar-val {
+    font-size: 8px;
+  }
+
+  .portrait-bar-row {
+    gap: 6px;
+  }
+
+  .portrait-level-chip {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}
+
 /* Portrait banner */
 
 .portrait-banner {

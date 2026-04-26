@@ -37,8 +37,8 @@
 
 .hud-command-chip.active {
   color: var(--hud-gold);
-  border-color: rgba(244, 200, 118, 0.28);
-  background: linear-gradient(180deg, rgba(244, 200, 118, 0.18), rgba(156, 184, 231, 0.10));
+  border-color: rgba(200, 212, 228, 0.28);
+  background: linear-gradient(180deg, rgba(200, 212, 228, 0.18), rgba(156, 184, 231, 0.10));
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
@@ -126,7 +126,7 @@
 }
 
 .ask-status-chip.live {
-  border-color: rgba(244, 200, 118, 0.34);
+  border-color: rgba(200, 212, 228, 0.34);
   animation: ask-pulse 1.8s ease-in-out infinite;
 }
 
@@ -187,7 +187,7 @@
 }
 
 .ask-sample-chip {
-  border: 1px solid rgba(244, 200, 118, 0.2);
+  border: 1px solid rgba(200, 212, 228, 0.2);
   background: var(--hud-gold-soft);
   color: var(--mmo-ink);
   border-radius: 999px;
@@ -198,7 +198,7 @@
 }
 
 .ask-sample-chip:hover {
-  border-color: rgba(244, 200, 118, 0.32);
+  border-color: rgba(200, 212, 228, 0.32);
   transform: translateY(-1px);
 }
 
@@ -329,8 +329,8 @@
 
 .ask-history-item:hover {
   transform: translateY(-1px);
-  border-color: rgba(244, 200, 118, 0.24);
-  background: rgba(244, 200, 118, 0.06);
+  border-color: rgba(200, 212, 228, 0.24);
+  background: rgba(200, 212, 228, 0.06);
 }
 
 .ask-history-item strong {
@@ -415,8 +415,8 @@
 }
 
 .home-command-card.primary {
-  border-color: rgba(244, 200, 118, 0.26);
-  background: linear-gradient(180deg, rgba(244, 200, 118, 0.18), rgba(19, 12, 8, 0.88));
+  border-color: rgba(200, 212, 228, 0.26);
+  background: linear-gradient(180deg, rgba(200, 212, 228, 0.18), rgba(19, 12, 8, 0.88));
 }
 
 .home-command-card.tone-cobalt {
@@ -431,7 +431,7 @@
 
 .home-command-card:hover {
   transform: translateY(-1px);
-  border-color: rgba(244, 200, 118, 0.28);
+  border-color: rgba(200, 212, 228, 0.28);
 }
 
 .home-command-card strong {
@@ -526,7 +526,7 @@
 
 .ask-bubble.odie {
   justify-self: start;
-  background: linear-gradient(180deg, rgba(244, 200, 118, 0.10), rgba(255, 255, 255, 0.02));
+  background: linear-gradient(180deg, rgba(200, 212, 228, 0.10), rgba(255, 255, 255, 0.02));
 }
 
 .ask-bubble.pending {

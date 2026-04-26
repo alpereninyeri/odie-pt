@@ -2,31 +2,33 @@
 /* Current MMO theme */
 :root,
 [data-theme="dark"] {
-  --mmo-gold:       #e8b957;
-  --mmo-gold-2:     #f5d48a;
-  --mmo-gold-dark:  #8c6522;
-  --mmo-gold-deep:  #5a3f12;
-  --mmo-ink:        #efe7d3;
-  --mmo-ink-dim:    #b3a58a;
-  --mmo-ink-deep:   #8a7a5d;
-  --mmo-emerald:    #93caa0;
+  /* Cool steel paleti — altın değil. Gold isimleri legacy compat için duruyor; değerler artık silver/steel. */
+  --mmo-gold:       #b8c5d6;
+  --mmo-gold-2:     #e1e8f2;
+  --mmo-gold-dark:  #3e4a5c;
+  --mmo-gold-deep:  #1a212d;
+  --mmo-ink:        #e8ecf2;
+  --mmo-ink-dim:    #8a96a8;
+  --mmo-ink-deep:   #5e6a7c;
+  --mmo-emerald:    #6dd3a8;
   --mmo-crimson:    #e87070;
-  --mmo-sky:        #9cb8e7;
-  --hud-shell-bg: linear-gradient(180deg, rgba(46, 28, 18, .96), rgba(18, 10, 6, .98));
+  --mmo-sky:        #7fa3d6;
+  --mmo-purple:     #9b8fdb;
+  --hud-shell-bg: linear-gradient(180deg, rgba(28, 34, 44, .96), rgba(12, 16, 22, .98));
   --hud-shell-border: var(--mmo-gold-dark);
   --hud-shell-shadow:
-    inset 0 1px 0 rgba(245, 212, 138, .18),
+    inset 0 1px 0 rgba(225, 232, 242, .12),
     inset 0 -1px 0 rgba(0, 0, 0, .58),
     0 8px 22px rgba(0, 0, 0, .58);
-  --hud-panel-bg: linear-gradient(180deg, rgba(52, 34, 22, .72), rgba(19, 12, 8, .88));
-  --hud-panel-border: rgba(244, 200, 118, .16);
-  --hud-panel-soft: rgba(255, 240, 204, .04);
+  --hud-panel-bg: linear-gradient(180deg, rgba(34, 42, 56, .72), rgba(14, 18, 26, .88));
+  --hud-panel-border: rgba(184, 197, 214, .18);
+  --hud-panel-soft: rgba(225, 232, 242, .04);
   --hud-gold: var(--mmo-gold-2);
-  --hud-cobalt: #9cb8e7;
-  --hud-emerald: #93caa0;
-  --hud-gold-soft: rgba(244, 200, 118, .14);
-  --hud-cobalt-soft: rgba(156, 184, 231, .14);
-  --hud-emerald-soft: rgba(147, 202, 160, .14);
+  --hud-cobalt: #7fa3d6;
+  --hud-emerald: var(--mmo-emerald);
+  --hud-gold-soft: rgba(184, 197, 214, .14);
+  --hud-cobalt-soft: rgba(127, 163, 214, .14);
+  --hud-emerald-soft: rgba(109, 211, 168, .14);
 }
 
 .mobile-hud,
@@ -42,7 +44,7 @@
   content: '';
   position: absolute;
   inset: 3px;
-  border: 1px solid rgba(232, 185, 87, .18);
+  border: 1px solid rgba(184, 197, 214, .18);
   border-radius: 4px;
   pointer-events: none;
 }
@@ -50,7 +52,7 @@
 .mobile-hud-nick span {
   font-family: 'Cinzel', serif !important;
   color: var(--mmo-gold-2) !important;
-  text-shadow: 0 1px 0 rgba(0,0,0,.7), 0 0 6px rgba(232, 185, 87, .3);
+  text-shadow: 0 1px 0 rgba(0,0,0,.7), 0 0 6px rgba(184, 197, 214, .3);
 }
 .mobile-hud-xpbar {
   background: linear-gradient(180deg, rgba(20, 12, 6, .9), rgba(10, 6, 4, .95)) !important;
@@ -60,8 +62,8 @@
   height: 10px !important;
 }
 .mobile-hud-xpfill {
-  background: linear-gradient(90deg, #8a5a20 0%, #e8b957 40%, #f5d48a 70%, #e8b957 100%) !important;
-  box-shadow: 0 0 8px rgba(232, 185, 87, .6), inset 0 1px 0 rgba(255,235,180,.4) !important;
+  background: linear-gradient(90deg, #2c3543 0%, #b8c5d6 40%, #e1e8f2 70%, #b8c5d6 100%) !important;
+  box-shadow: 0 0 8px rgba(184, 197, 214, .6), inset 0 1px 0 rgba(235, 240, 248,.4) !important;
   border-radius: 1px !important;
 }
 
@@ -81,14 +83,14 @@
 }
 .bottom-tab.active {
   background:
-    linear-gradient(180deg, rgba(140, 101, 34, .55), rgba(60, 40, 12, .75)),
+    linear-gradient(180deg, rgba(62, 74, 92, .55), rgba(26, 33, 45, .75)),
     linear-gradient(90deg, var(--hud-cobalt-soft), transparent 45%, var(--hud-emerald-soft)) !important;
   border-color: var(--mmo-gold) !important;
   color: var(--mmo-gold-2) !important;
   box-shadow:
-    inset 0 1px 0 rgba(245, 212, 138, .25),
-    inset 0 0 10px rgba(232, 185, 87, .15),
-    0 0 12px rgba(232, 185, 87, .25) !important;
+    inset 0 1px 0 rgba(225, 232, 242, .25),
+    inset 0 0 10px rgba(184, 197, 214, .15),
+    0 0 12px rgba(184, 197, 214, .25) !important;
 }
 .bottom-tab.active svg,
 .bottom-tab.active .nav-icon { color: var(--mmo-gold-2) !important; fill: var(--mmo-gold-2) !important; }
@@ -116,7 +118,7 @@
 /* Character sheet top — altın isim şeridi */
 .character-sheet-top h2 {
   font-size: 1.5rem !important;
-  background: linear-gradient(180deg, #f5d48a 0%, #e8b957 50%, #8c6522 100%);
+  background: linear-gradient(180deg, #e1e8f2 0%, #b8c5d6 50%, #3e4a5c 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -136,7 +138,7 @@
 .quest-scroll-card {
   background:
     linear-gradient(180deg, rgba(90, 66, 36, 0.55) 0%, rgba(38, 28, 16, 0.82) 100%),
-    repeating-linear-gradient(0deg, rgba(232, 185, 87, .02) 0 2px, transparent 2px 5px) !important;
+    repeating-linear-gradient(0deg, rgba(184, 197, 214, .02) 0 2px, transparent 2px 5px) !important;
 }
 .quest-scroll-card.done {
   background:
@@ -156,12 +158,12 @@
 .quest-scroll-card.urgent {
   border-color: var(--mmo-crimson) !important;
   box-shadow:
-    inset 0 1px 0 rgba(245, 212, 138, 0.14),
+    inset 0 1px 0 rgba(225, 232, 242, 0.14),
     inset 0 0 0 1px rgba(0,0,0,.35),
     0 0 12px rgba(192, 54, 44, 0.25),
     0 6px 18px rgba(0, 0, 0, 0.55) !important;
 }
-.quest-ring-track { stroke: rgba(232, 185, 87, .15) !important; }
+.quest-ring-track { stroke: rgba(184, 197, 214, .15) !important; }
 .quest-ring-fill { stroke: var(--mmo-gold) !important; filter: drop-shadow(0 0 3px rgba(232,185,87,.6)); }
 .quest-ring span {
   font-family: 'Silkscreen', monospace !important;
@@ -185,11 +187,11 @@
   box-shadow: inset 0 1px 0 rgba(0,0,0,.6), inset 0 -1px 0 rgba(245,212,138,.08) !important;
 }
 .survival-meter-fill {
-  background: linear-gradient(90deg, #8c6522 0%, #e8b957 60%, #f5d48a 100%) !important;
-  box-shadow: 0 0 6px rgba(232, 185, 87, .5), inset 0 1px 0 rgba(255,235,180,.4) !important;
+  background: linear-gradient(90deg, #3e4a5c 0%, #b8c5d6 60%, #e1e8f2 100%) !important;
+  box-shadow: 0 0 6px rgba(184, 197, 214, .5), inset 0 1px 0 rgba(235, 240, 248,.4) !important;
 }
 .survival-meter-fill.fatigue {
-  background: linear-gradient(90deg, #5a3f12 0%, #d04a40 60%, #f28a80 100%) !important;
+  background: linear-gradient(90deg, #1a212d 0%, #d04a40 60%, #f28a80 100%) !important;
   box-shadow: 0 0 8px rgba(208, 74, 64, .5), inset 0 1px 0 rgba(255,170,160,.4) !important;
 }
 .survival-meter-fill.injury {
@@ -209,10 +211,10 @@
   font-size: .66rem !important;
 }
 .qtab.active {
-  background: linear-gradient(180deg, rgba(140, 101, 34, .55), rgba(60, 40, 12, .75)) !important;
+  background: linear-gradient(180deg, rgba(62, 74, 92, .55), rgba(26, 33, 45, .75)) !important;
   border-color: var(--mmo-gold) !important;
   color: var(--mmo-gold-2) !important;
-  box-shadow: inset 0 1px 0 rgba(245, 212, 138, .25), inset 0 0 8px rgba(232, 185, 87, .15) !important;
+  box-shadow: inset 0 1px 0 rgba(225, 232, 242, .25), inset 0 0 8px rgba(184, 197, 214, .15) !important;
 }
 
 /* Sec başlık şeridi */
@@ -252,7 +254,7 @@
     linear-gradient(180deg, rgba(60, 38, 24, 0.95) 0%, rgba(24, 14, 8, 0.98) 100%) !important;
   border: 1px solid var(--mmo-gold) !important;
   box-shadow:
-    inset 0 1px 0 rgba(245, 212, 138, .18),
+    inset 0 1px 0 rgba(225, 232, 242, .18),
     inset 0 0 0 1px rgba(0, 0, 0, .35),
     0 12px 40px rgba(0, 0, 0, .7) !important;
   color: var(--mmo-ink) !important;
@@ -330,15 +332,15 @@
   letter-spacing: .1em !important;
 }
 .nav-button.active {
-  background: linear-gradient(180deg, rgba(140, 101, 34, .55), rgba(60, 40, 12, .75)) !important;
+  background: linear-gradient(180deg, rgba(62, 74, 92, .55), rgba(26, 33, 45, .75)) !important;
   border-color: var(--mmo-gold) !important;
   color: var(--mmo-gold-2) !important;
-  box-shadow: inset 0 1px 0 rgba(245, 212, 138, .22), inset 0 0 10px rgba(232, 185, 87, .15) !important;
+  box-shadow: inset 0 1px 0 rgba(225, 232, 242, .22), inset 0 0 10px rgba(184, 197, 214, .15) !important;
 }
 
 /* Forge sparkline — altın */
 .forge-sparkline-line { stroke: var(--mmo-gold) !important; }
-.forge-sparkline-dot { fill: rgba(232, 185, 87, .5) !important; }
+.forge-sparkline-dot { fill: rgba(184, 197, 214, .5) !important; }
 .forge-sparkline-dot.latest { fill: var(--mmo-crimson) !important; }
 
 /* Mobile hud portre glow rune */
@@ -403,15 +405,15 @@ button.sheet-info-card::after {
   font-size: 1.1rem;
   line-height: 1;
   opacity: .6;
-  text-shadow: 0 0 6px rgba(244, 200, 118, .5);
+  text-shadow: 0 0 6px rgba(200, 212, 228, .5);
 }
 button.sheet-info-card:hover,
 button.sheet-info-card:focus-visible {
   border-color: var(--mmo-gold) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 224, 156, 0.22),
-    inset 0 0 12px rgba(244, 200, 118, 0.15),
-    0 0 14px rgba(244, 200, 118, 0.25),
+    inset 0 0 12px rgba(200, 212, 228, 0.15),
+    0 0 14px rgba(200, 212, 228, 0.25),
     0 6px 18px rgba(0, 0, 0, 0.55) !important;
   outline: none;
 }
@@ -427,7 +429,7 @@ button.sheet-info-card:active {
   color: var(--mmo-gold-2);
   margin: 14px 0 6px;
   padding-bottom: 4px;
-  border-bottom: 1px solid rgba(244, 200, 118, 0.22);
+  border-bottom: 1px solid rgba(200, 212, 228, 0.22);
   text-shadow: 0 1px 0 rgba(0,0,0,.7);
 }
 
@@ -504,7 +506,7 @@ button.sheet-info-card:active {
 }
 .modal-tip {
   color: var(--mmo-ink-dim) !important;
-  border-top: 1px solid rgba(244, 200, 118, .18);
+  border-top: 1px solid rgba(200, 212, 228, .18);
   padding-top: 10px;
   margin-top: 14px;
   font-size: .78rem;
@@ -521,7 +523,7 @@ button.sheet-info-card:active {
 .modal-head-title {
   font-family: 'Cinzel Decorative', serif !important;
   color: var(--mmo-gold-2) !important;
-  text-shadow: 0 1px 0 rgba(0,0,0,.7), 0 0 8px rgba(244, 200, 118, .25);
+  text-shadow: 0 1px 0 rgba(0,0,0,.7), 0 0 8px rgba(200, 212, 228, .25);
 }
 .modal-close {
   background: linear-gradient(180deg, rgba(90, 63, 18, .5), rgba(40, 28, 8, .75)) !important;
@@ -530,7 +532,7 @@ button.sheet-info-card:active {
   border-radius: 4px !important;
 }
 .modal-close:hover {
-  background: linear-gradient(180deg, rgba(140, 101, 34, .6), rgba(60, 40, 12, .8)) !important;
+  background: linear-gradient(180deg, rgba(62, 74, 92, .6), rgba(26, 33, 45, .8)) !important;
   border-color: var(--mmo-gold) !important;
 }
 
@@ -590,5 +592,5 @@ button.sheet-info-card:active {
 .forge-card-value,
 .chain-balance-card span {
   color: var(--mmo-gold-2) !important;
-  text-shadow: 0 0 8px rgba(244, 200, 118, 0.45), 0 1px 0 rgba(0,0,0,.8) !important;
+  text-shadow: 0 0 8px rgba(200, 212, 228, 0.45), 0 1px 0 rgba(0,0,0,.8) !important;
 }
