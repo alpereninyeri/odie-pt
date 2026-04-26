@@ -2,6 +2,16 @@
 /* Current MMO theme */
 :root,
 [data-theme="dark"] {
+  --mmo-gold:       #e8b957;
+  --mmo-gold-2:     #f5d48a;
+  --mmo-gold-dark:  #8c6522;
+  --mmo-gold-deep:  #5a3f12;
+  --mmo-ink:        #efe7d3;
+  --mmo-ink-dim:    #b3a58a;
+  --mmo-ink-deep:   #8a7a5d;
+  --mmo-emerald:    #93caa0;
+  --mmo-crimson:    #e87070;
+  --mmo-sky:        #9cb8e7;
   --hud-shell-bg: linear-gradient(180deg, rgba(46, 28, 18, .96), rgba(18, 10, 6, .98));
   --hud-shell-border: var(--mmo-gold-dark);
   --hud-shell-shadow:
@@ -420,6 +430,19 @@ button.sheet-info-card:active {
   border-bottom: 1px solid rgba(244, 200, 118, 0.22);
   text-shadow: 0 1px 0 rgba(0,0,0,.7);
 }
+
+/* Global text tones — must stay outside mobile media query */
+.sheet-info-card strong,
+.quick-card strong,
+.stat-card-v6-name { color: var(--mmo-ink) !important; }
+.sheet-info-card small,
+.quick-card p { color: var(--mmo-ink-dim) !important; }
+.sheet-info-card .mini-label,
+.quick-card .mini-label,
+.survival-warning-card .mini-label,
+.eyebrow { color: var(--mmo-gold) !important; }
+.sheet-stat-key,
+.stat-card-v6-key { color: var(--mmo-gold) !important; }
 
 /* Daha büyük mini-label / eyebrow — okunurluk için hafif aç */
 @media (max-width: 900px) {

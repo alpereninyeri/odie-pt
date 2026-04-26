@@ -1,3 +1,4 @@
+import { appendClassQuests } from './class-quests.js'
 import { updatePerformance } from './performance-engine.js'
 import { appendCoachQuests, updateQuests } from './quest-engine.js'
 import { updateSkills } from './skill-engine.js'
@@ -237,7 +238,28 @@ function _updateHealthAndGlobalStats(state) {
   const avgDuration = Math.round(avg(workouts.slice(0, 10).map(workout => Number(workout.durationMin) || 0), 0))
   const monthWorkoutDays = new Set(workouts.filter(workout => normalizeDateString(workout.date).startsWith(todayMonth)).map(workout => normalizeDateString(workout.date)))
   const totalKm = Math.round((Number(state.profile.totalKm) || 0) * 10) / 10
-  const recoveryScore = Math.max(0, Math.min(100, Math.round(((state.profile.armor ?? 100) - (state.profile.fatigue ?? 0)) + 20)))
+  const survivalBase = Math.max(0, Math.min(100, Math.round(((state.profile.armor ?? 100) - (state.profile.fatigue ?? 0)) + 20)))
+  const lifestyleLogs = recentLogs.slice(0, 3).filter(log => (Number(log.sleepHours) || 0) > 0 || (Number(log.waterMl) || 0) > 0 || (Number(log.steps) || 0) > 0)
+  const lifestyleSamples = lifestyleLogs.length
+  const avgSleep = avg(lifestyleLogs.map(log => Number(log.sleepHours) || 0))
+  const avgWaterMl = avg(lifestyleLogs.map(log => Number(log.waterMl) || 0))
+  const avgSteps = avg(lifestyleLogs.map(log => Number(log.steps) || 0))
+  const lifestyleNotes = []
+  let lifestyleDelta = 0
+  if (lifestyleSamples) {
+    if (avgSleep >= 7.5) { lifestyleDelta += 8; lifestyleNotes.push(`uyku ort. ${avgSleep.toFixed(1)}h ↑`) }
+    else if (avgSleep >= 6.5) lifestyleDelta += 3
+    else if (avgSleep > 0 && avgSleep < 5.5) { lifestyleDelta -= 10; lifestyleNotes.push(`uyku ort. ${avgSleep.toFixed(1)}h ↓`) }
+    else if (avgSleep > 0 && avgSleep < 6.5) { lifestyleDelta -= 4; lifestyleNotes.push(`uyku ort. ${avgSleep.toFixed(1)}h kısa`) }
+
+    if (avgWaterMl >= 2200) lifestyleDelta += 4
+    else if (avgWaterMl > 0 && avgWaterMl < 1200) { lifestyleDelta -= 5; lifestyleNotes.push('su < 1.2L') }
+
+    if (avgSteps >= 8000) lifestyleDelta += 4
+    else if (avgSteps > 0 && avgSteps < 3500) { lifestyleDelta -= 4; lifestyleNotes.push('adım < 3.5k') }
+  }
+  lifestyleDelta = Math.max(-15, Math.min(15, lifestyleDelta))
+  const recoveryScore = Math.max(0, Math.min(100, survivalBase + lifestyleDelta))
   const bm = state.bodyMetrics || {}
   const weightKg = Number(bm.weightKg) || 0
   const heightCm = Number(bm.heightCm) || 0
@@ -254,10 +276,13 @@ function _updateHealthAndGlobalStats(state) {
     : hasTrainingLoad
       ? 'medium'
       : 'low'
+  const lifestyleReason = lifestyleSamples
+    ? (lifestyleNotes.length ? lifestyleNotes.join(' · ') : 'lifestyle stabil')
+    : 'lifestyle logu yok'
   const readinessReason = enoughRecoveryLogs >= 4
-    ? 'Son 7 günde yeterli uyku/su/adım logu var.'
+    ? `Son 7 gün uyku/su/adım yeterli. ${lifestyleReason}.`
     : hasTrainingLoad
-      ? 'Yük verisi var ama recovery logu zayıf; skor tahmini.'
+      ? `Yük verisi var, recovery logu zayıf. ${lifestyleReason}.`
       : 'Hem günlük recovery verisi hem de yük örneği düşük.'
   const staticWeight = weightKg
     ? { icon: '⚖️', label: 'Kilo', val: `${weightKg} kg`, sub: heightCm ? `${heightCm}cm` : 'Manuel giriş', color: 'var(--emerald)' }
@@ -304,7 +329,8 @@ function _updateHealthAndGlobalStats(state) {
 
 function _updateQuests(state) {
   const quests = updateQuests(state.quests, state.workouts || [], state.dailyLogs || [])
-  state.quests = appendCoachQuests(quests, state.coachQuestHints || [])
+  const withCoach = appendCoachQuests(quests, state.coachQuestHints || [])
+  state.quests = appendClassQuests(withCoach, state.profile?.classObj?.id || state.profile?.classId, state.workouts || [], state.dailyLogs || [])
 }
 
 function _updateSkills(state) {

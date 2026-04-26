@@ -1,6 +1,7 @@
 import { profile as seedProfile } from './profile.js'
 import { MOCK_STATE } from './mock-state.js'
 import {
+  deleteWorkout,
   fetchAthleteMemory,
   fetchBodyMetricsHistory,
   fetchDailyLogs,
@@ -43,8 +44,8 @@ import {
 } from './rules.js'
 import { applySurvival } from './survival-engine.js'
 
-const LS_KEY = 'odiept-state-v7'
-const CURRENT_VERSION = 7
+const LS_KEY = 'odiept-state-v8'
+const CURRENT_VERSION = 8
 const XP_PER_LEVEL = 2000
 
 let _state = null
@@ -737,7 +738,7 @@ async function _syncMemoryLayer() {
 export const store = {
   async init() {
     try {
-      ['odiept-state-v1', 'odiept-state-v2', 'odiept-state-v3', 'odiept-state-v4', 'odiept-state-v6'].forEach(key => localStorage.removeItem(key))
+      ['odiept-state-v1', 'odiept-state-v2', 'odiept-state-v3', 'odiept-state-v4', 'odiept-state-v6', 'odiept-state-v7'].forEach(key => localStorage.removeItem(key))
     } catch {}
 
     const cached = _loadFromLS()
@@ -895,6 +896,35 @@ export const store = {
     _saveToLS()
     _notify('*')
     return workout
+  },
+
+  async deleteWorkout(id) {
+    if (!id) return false
+    const targetId = String(id)
+    const index = (_state.workouts || []).findIndex(item => String(item.id) === targetId)
+    if (index < 0) return false
+    const removed = _state.workouts.splice(index, 1)[0]
+
+    const xpRefund = Number(removed?.xpEarned) || 0
+    if (xpRefund) {
+      const total = Math.max(0, (Number(_state.profile.xp.total) || 0) - xpRefund)
+      _state.profile.xp.total = total
+    }
+    _state.profile.lastUpdated = new Date().toISOString()
+
+    _refreshDerivedState(_state)
+    _saveToLS()
+    _notify('*')
+
+    if (!isMockMode) {
+      try {
+        await deleteWorkout(removed.id)
+        await updateProfile(_toSupabaseProfile(_state.profile, _state.bodyMetrics))
+      } catch (error) {
+        console.warn('[store] deleteWorkout sync failed:', error.message)
+      }
+    }
+    return true
   },
 
   async saveDailyLog(log) {

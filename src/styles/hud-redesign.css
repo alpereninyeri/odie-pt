@@ -1,0 +1,1142 @@
+/* ============================================================
+   HUD Redesign — Mobile-first MMO Pixel RPG layout
+   Tier system: card-hero / card-panel (=glass-card) / card-strip
+   Pixel theme: Silkscreen labels, segmented bars, sharp frames
+   ============================================================ */
+
+:root {
+  --pix-frame: 3px;
+  --pix-radius: 4px;
+  --pix-bar-bg: color-mix(in srgb, var(--mmo-ink-deep) 90%, #000);
+}
+
+/* ---------- Pixel utilities ---------- */
+
+.pixel-label {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  color: color-mix(in srgb, var(--mmo-gold) 75%, transparent);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.pixel-num {
+  font-family: 'Silkscreen', monospace;
+  color: var(--mmo-gold);
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+
+.pixel-name {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--mmo-ink);
+}
+
+/* Segmented pixel bar */
+.pix-bar {
+  position: relative;
+  height: 10px;
+  background: var(--pix-bar-bg);
+  border: 1px solid color-mix(in srgb, var(--mmo-gold) 35%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.pix-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mmo-gold-dark), var(--mmo-gold));
+  position: relative;
+  transition: width .3s ease;
+}
+
+.pix-bar-fill::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg,
+    transparent 0 6px,
+    rgba(0,0,0,.28) 6px 7px);
+}
+
+.pix-bar-fill.green { background: linear-gradient(90deg, #1b6b2f, var(--mmo-emerald)); }
+.pix-bar-fill.red { background: linear-gradient(90deg, #6b1b1b, var(--mmo-crimson)); }
+.pix-bar-fill.sky { background: linear-gradient(90deg, #1b3a6b, var(--mmo-sky)); }
+
+.pix-bar-thin { height: 6px; }
+.pix-bar-fat { height: 14px; }
+
+/* Pixel frame with corner accents (MMO panel) */
+.pixel-frame {
+  position: relative;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--mmo-ink-deep) 92%, #000) 0%,
+      color-mix(in srgb, var(--mmo-ink) 80%, transparent) 100%);
+  border: 2px solid color-mix(in srgb, var(--mmo-gold) 55%, transparent);
+  border-radius: var(--pix-radius);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--mmo-gold) 22%, transparent),
+    0 6px 18px rgba(0, 0, 0, .55);
+  padding: 14px;
+}
+
+.pixel-frame::before,
+.pixel-frame::after,
+.pixel-frame > .corner-tl,
+.pixel-frame > .corner-tr {
+  content: '';
+  position: absolute;
+  width: 6px; height: 6px;
+  background: var(--mmo-gold);
+  box-shadow: 0 0 0 1px var(--mmo-ink-deep);
+}
+
+.pixel-frame::before { top: -3px; left: -3px; }
+.pixel-frame::after { top: -3px; right: -3px; }
+.pixel-frame > .corner-tl { bottom: -3px; left: -3px; }
+.pixel-frame > .corner-tr { bottom: -3px; right: -3px; }
+
+/* ---------- Hero / strips (today page) ---------- */
+
+.card-hero {
+  position: relative;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--mmo-gold) 18%, transparent) 0%,
+      color-mix(in srgb, var(--mmo-ink-deep) 88%, transparent) 65%);
+  border: 2px solid color-mix(in srgb, var(--mmo-gold) 50%, transparent);
+  border-radius: var(--pix-radius);
+  padding: 18px 18px 16px;
+  color: var(--mmo-ink);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--mmo-gold) 25%, transparent),
+    0 10px 30px color-mix(in srgb, var(--mmo-gold) 14%, transparent),
+    0 6px 22px rgba(0, 0, 0, .55);
+  overflow: hidden;
+}
+
+.card-hero::before,
+.card-hero::after {
+  content: '';
+  position: absolute;
+  width: 8px; height: 8px;
+  background: var(--mmo-gold);
+  box-shadow: 0 0 0 1px var(--mmo-ink-deep);
+}
+.card-hero::before { top: -3px; left: -3px; }
+.card-hero::after { top: -3px; right: -3px; }
+
+.card-strip {
+  display: block;
+  background: color-mix(in srgb, var(--mmo-ink-deep) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mmo-gold) 28%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--mmo-gold) 70%, transparent);
+  border-radius: 3px;
+  padding: 10px 12px 12px;
+  color: var(--mmo-ink);
+}
+
+.card-strip > .pixel-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.card-strip-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.card-strip-row strong {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: var(--mmo-gold);
+  flex: 1;
+  min-width: 0;
+  letter-spacing: .5px;
+}
+
+.card-strip-row span {
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  color: var(--mmo-ink-dim);
+  letter-spacing: 1px;
+}
+
+.card-strip p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--mmo-ink-dim);
+  line-height: 1.4;
+  font-family: 'Silkscreen', monospace;
+  letter-spacing: .4px;
+}
+
+/* ---------- Today page ---------- */
+
+.today-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.today-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.today-hero-eyebrow {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: color-mix(in srgb, var(--mmo-gold) 80%, transparent);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.today-hero-score {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.today-hero-score strong {
+  font-family: 'Silkscreen', 'Orbitron', monospace;
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--mmo-gold);
+  line-height: 1;
+  text-shadow:
+    0 2px 0 color-mix(in srgb, var(--mmo-gold) 40%, #000),
+    0 0 18px color-mix(in srgb, var(--mmo-gold) 35%, transparent);
+}
+
+.today-hero-score small {
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  color: var(--mmo-ink-dim);
+  letter-spacing: 1px;
+}
+
+.today-hero-title {
+  margin: 10px 0 6px;
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--mmo-ink);
+  letter-spacing: 2px;
+  line-height: 1.1;
+}
+
+.today-hero-lead {
+  margin: 0;
+  color: var(--mmo-ink-dim);
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 56ch;
+  font-family: 'Silkscreen', monospace;
+  letter-spacing: .3px;
+}
+
+.today-hero-cta-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.cta-primary {
+  flex: 2;
+  min-width: 150px;
+  background: linear-gradient(180deg, var(--mmo-gold) 0%, var(--mmo-gold-dark) 100%);
+  color: #1a0f00;
+  border: 2px solid color-mix(in srgb, var(--mmo-gold) 90%, #000);
+  border-radius: 3px;
+  padding: 12px 14px;
+  font-family: 'Silkscreen', monospace;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  font-size: 11px;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .35),
+    inset 0 -2px 0 rgba(0, 0, 0, .25),
+    0 4px 0 color-mix(in srgb, var(--mmo-gold-dark) 50%, #000),
+    0 8px 18px color-mix(in srgb, var(--mmo-gold) 30%, transparent);
+  transition: transform .1s ease, box-shadow .1s ease;
+}
+
+.cta-primary:hover { filter: brightness(1.07); }
+.cta-primary:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .25),
+    inset 0 -1px 0 rgba(0, 0, 0, .25),
+    0 2px 0 color-mix(in srgb, var(--mmo-gold-dark) 50%, #000);
+}
+
+.cta-secondary {
+  flex: 1;
+  min-width: 120px;
+  background: color-mix(in srgb, var(--mmo-ink-deep) 60%, transparent);
+  color: var(--mmo-gold);
+  border: 2px solid color-mix(in srgb, var(--mmo-gold) 55%, transparent);
+  border-radius: 3px;
+  padding: 12px 14px;
+  font-family: 'Silkscreen', monospace;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+
+.cta-secondary:hover {
+  background: color-mix(in srgb, var(--mmo-gold) 12%, transparent);
+}
+
+/* sessions list */
+
+.today-sessions { padding: 14px; }
+.today-sessions .section-top { margin-bottom: 10px; }
+
+.today-session-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.today-session-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--mmo-ink-deep) 60%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--mmo-gold) 40%, transparent);
+}
+
+.today-session-text {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.today-session-item strong {
+  color: var(--mmo-gold);
+  font-size: 12px;
+  flex: 1;
+  font-family: 'Silkscreen', monospace;
+  letter-spacing: .6px;
+}
+
+.today-session-item span {
+  color: var(--mmo-ink-dim);
+  font-size: 9px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  font-family: 'Silkscreen', monospace;
+}
+
+.today-session-del {
+  background: transparent;
+  color: var(--mmo-ink-dim);
+  border: 1px solid color-mix(in srgb, var(--mmo-blood, #d04a40) 35%, transparent);
+  border-radius: 2px;
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.today-session-del:hover {
+  background: color-mix(in srgb, var(--mmo-blood, #d04a40) 20%, transparent);
+  color: var(--mmo-gold);
+  border-color: var(--mmo-blood, #d04a40);
+}
+
+.today-session-empty {
+  padding: 16px;
+  color: var(--mmo-ink-dim);
+  font-size: 11px;
+  text-align: center;
+  font-family: 'Silkscreen', monospace;
+  letter-spacing: 1px;
+}
+
+/* ---------- Character (Karakter) page — pixel MMO sheet ---------- */
+
+.character-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.character-page > article > h3,
+.character-page > article > .section-top h3,
+.character-page .panel-title {
+  font-family: 'Cinzel Decorative', serif !important;
+  letter-spacing: 1.5px !important;
+}
+
+/* Stat radar */
+
+.stat-radar-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.stat-radar-summary {
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  padding: 4px 8px;
+  border: 1px solid var(--mmo-gold-soft, rgba(208, 175, 80, .35));
+  color: var(--mmo-gold);
+  border-radius: 2px;
+}
+
+.stat-radar-summary.pos {
+  border-color: color-mix(in srgb, var(--mmo-emerald, #4cd28a) 60%, transparent);
+  color: var(--mmo-emerald, #4cd28a);
+}
+
+.stat-radar-summary.neg {
+  border-color: color-mix(in srgb, var(--mmo-blood, #d04a40) 60%, transparent);
+  color: var(--mmo-blood, #d04a40);
+}
+
+.stat-radar-svg-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 0;
+}
+
+.stat-radar-svg {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+}
+
+.radar-axis {
+  stroke: color-mix(in srgb, var(--mmo-gold) 18%, transparent);
+  stroke-width: 1;
+}
+
+.radar-ring {
+  fill: none;
+  stroke: color-mix(in srgb, var(--mmo-gold) 12%, transparent);
+  stroke-width: 1;
+}
+
+.radar-prev {
+  fill: color-mix(in srgb, var(--mmo-ink-dim) 35%, transparent);
+  stroke: color-mix(in srgb, var(--mmo-ink-dim) 70%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.radar-current {
+  fill: color-mix(in srgb, var(--mmo-gold) 35%, transparent);
+  stroke: var(--mmo-gold);
+  stroke-width: 1.5;
+}
+
+.radar-label-key {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  fill: var(--mmo-gold);
+}
+
+.radar-label-val {
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  fill: var(--mmo-ink-bright, #f3e7c6);
+}
+
+.radar-label-delta {
+  font-family: 'Silkscreen', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+
+.radar-label-delta.pos { fill: var(--mmo-emerald, #4cd28a); }
+.radar-label-delta.neg { fill: var(--mmo-blood, #d04a40); }
+.radar-label-delta.flat { fill: var(--mmo-ink-dim); }
+
+.stat-radar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  color: var(--mmo-ink-dim);
+  letter-spacing: 1.2px;
+}
+
+.stat-radar-legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.stat-radar-legend .dot-current {
+  background: var(--mmo-gold);
+  border: 1px solid var(--mmo-gold);
+}
+
+.stat-radar-legend .dot-prev {
+  background: transparent;
+  border: 1px dashed var(--mmo-ink-dim);
+}
+
+/* Heatmap calendar */
+
+.heatmap-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.heatmap-summary {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--mmo-ink-dim);
+  text-align: right;
+}
+
+.heatmap-svg-wrap {
+  overflow-x: auto;
+  padding: 4px 0 6px;
+  scrollbar-width: thin;
+}
+
+.heatmap-svg {
+  display: block;
+  min-width: 100%;
+}
+
+.heatmap-cell {
+  fill: color-mix(in srgb, var(--mmo-ink-deep) 65%, transparent);
+  stroke: color-mix(in srgb, var(--mmo-gold) 6%, transparent);
+  stroke-width: 0.5;
+  cursor: pointer;
+  transition: filter .12s;
+}
+
+.heatmap-cell:hover {
+  filter: brightness(1.4);
+}
+
+.heatmap-cell.tone-1 { fill: color-mix(in srgb, var(--mmo-emerald, #4cd28a) 28%, var(--mmo-ink-deep)); }
+.heatmap-cell.tone-2 { fill: color-mix(in srgb, var(--mmo-emerald, #4cd28a) 50%, var(--mmo-ink-deep)); }
+.heatmap-cell.tone-3 { fill: color-mix(in srgb, var(--mmo-emerald, #4cd28a) 72%, var(--mmo-gold)); }
+.heatmap-cell.tone-4 { fill: var(--mmo-gold); }
+
+.heatmap-cell.today {
+  stroke: var(--mmo-blood, #d04a40);
+  stroke-width: 1.5;
+}
+
+.heatmap-month-label {
+  font-family: 'Silkscreen', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  fill: var(--mmo-ink-dim);
+}
+
+.heatmap-day-label {
+  font-family: 'Silkscreen', monospace;
+  font-size: 7px;
+  letter-spacing: 1px;
+  fill: var(--mmo-ink-dim);
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-family: 'Silkscreen', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--mmo-ink-dim);
+}
+
+.heatmap-legend i {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+}
+
+/* Portrait banner */
+
+.portrait-banner {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  align-items: stretch;
+}
+
+.portrait-img-frame {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  flex: 0 0 88px;
+  background:
+    radial-gradient(circle at 30% 25%,
+      color-mix(in srgb, var(--mmo-gold) 30%, transparent) 0%,
+      color-mix(in srgb, var(--mmo-ink-deep) 90%, transparent) 70%);
+  border: 2px solid var(--mmo-gold);
+  border-radius: 3px;
+  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, .4),
+    inset 0 0 12px rgba(0, 0, 0, .5),
+    0 4px 14px color-mix(in srgb, var(--mmo-gold) 25%, transparent);
+}
+
+.portrait-img-frame::before,
+.portrait-img-frame::after {
+  content: '';
+  position: absolute;
+  width: 5px; height: 5px;
+  background: var(--mmo-gold);
+}
+.portrait-img-frame::before { top: -2px; left: -2px; }
+.portrait-img-frame::after { top: -2px; right: -2px; }
+
+.portrait-level-chip {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, var(--mmo-gold), var(--mmo-gold-dark));
+  color: #1a0f00;
+  padding: 2px 8px;
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  border: 1px solid var(--mmo-ink-deep);
+  white-space: nowrap;
+}
+
+.portrait-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.portrait-name {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--mmo-gold);
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.portrait-class-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--mmo-ink-dim);
+}
+
+.portrait-class-line .rank-pill {
+  background: color-mix(in srgb, var(--mmo-gold) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mmo-gold) 45%, transparent);
+  color: var(--mmo-gold);
+  padding: 2px 5px;
+  border-radius: 2px;
+  font-size: 8px;
+  letter-spacing: 1.2px;
+}
+
+.portrait-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.portrait-bar-row {
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.portrait-bar-row .bar-val {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  color: var(--mmo-ink-dim);
+  letter-spacing: .6px;
+  white-space: nowrap;
+}
+
+/* Stat grid pixel cards */
+
+.stat-grid-pixel {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 12px;
+}
+
+.stat-pixel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--mmo-ink-deep) 75%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mmo-gold) 28%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--mmo-gold) 60%, transparent);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .15s ease, transform .1s ease;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+
+.stat-pixel:hover {
+  background: color-mix(in srgb, var(--mmo-ink-deep) 60%, transparent);
+}
+
+.stat-pixel.crit {
+  border-color: var(--mmo-crimson);
+  border-left-color: var(--mmo-crimson);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mmo-crimson) 35%, transparent);
+}
+
+.stat-pixel-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.stat-pixel-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-pixel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.stat-pixel-row .pixel-label { font-size: 9px; }
+
+.stat-pixel-row strong {
+  font-family: 'Silkscreen', monospace;
+  color: var(--mmo-gold);
+  font-size: 14px;
+  letter-spacing: .5px;
+}
+
+.stat-pixel.crit .stat-pixel-row strong { color: var(--mmo-crimson); }
+
+.stat-pixel-flag {
+  display: inline-block;
+  background: var(--mmo-crimson);
+  color: #fff;
+  font-family: 'Silkscreen', monospace;
+  font-size: 8px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+
+/* Trio cards (Archetype / Focus / Unlock) */
+
+.trio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.trio-card {
+  background: color-mix(in srgb, var(--mmo-ink-deep) 78%, transparent);
+  border: 2px solid color-mix(in srgb, var(--mmo-gold) 35%, transparent);
+  border-radius: 3px;
+  padding: 10px 8px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  position: relative;
+  transition: transform .15s ease, border-color .15s ease;
+}
+
+.trio-card::before {
+  content: '';
+  position: absolute;
+  top: -2px; left: -2px;
+  width: 4px; height: 4px;
+  background: var(--mmo-gold);
+}
+
+.trio-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--mmo-gold) 60%, transparent);
+}
+
+.trio-card .pixel-label { font-size: 8px; display: block; margin-bottom: 4px; }
+
+.trio-card strong {
+  display: block;
+  font-family: 'Cinzel', serif;
+  color: var(--mmo-gold);
+  font-size: 12px;
+  letter-spacing: .4px;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.trio-card small {
+  display: block;
+  font-family: 'Silkscreen', monospace;
+  color: var(--mmo-ink-dim);
+  font-size: 8px;
+  letter-spacing: .4px;
+  line-height: 1.4;
+}
+
+/* Skill tree branches */
+
+.skill-pixel { padding: 14px; }
+.skill-pixel .panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.skill-pixel .panel-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 14px;
+  color: var(--mmo-gold);
+  letter-spacing: 1.5px;
+}
+
+.branch-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.branch-tab {
+  background: color-mix(in srgb, var(--mmo-ink-deep) 75%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mmo-gold) 25%, transparent);
+  color: var(--mmo-ink-dim);
+  padding: 6px 8px;
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: .8px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.branch-tab.active {
+  background: linear-gradient(180deg, var(--mmo-gold), var(--mmo-gold-dark));
+  color: #1a0f00;
+  border-color: var(--mmo-gold);
+}
+
+.branch-tab.warn::after {
+  content: '!';
+  display: inline-block;
+  margin-left: 4px;
+  color: var(--mmo-crimson);
+  font-weight: 900;
+}
+
+.skill-node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.skill-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: color-mix(in srgb, var(--mmo-ink-deep) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mmo-gold) 18%, transparent);
+  border-radius: 2px;
+}
+
+.skill-node.done { border-left: 3px solid var(--mmo-emerald); }
+.skill-node.prog { border-left: 3px solid var(--mmo-gold); animation: pulseSkill 2s ease-in-out infinite; }
+.skill-node.lock { border-left: 3px solid color-mix(in srgb, var(--mmo-ink-dim) 80%, transparent); opacity: .75; }
+
+@keyframes pulseSkill {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mmo-gold) 25%, transparent); }
+  50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mmo-gold) 18%, transparent); }
+}
+
+.skill-node-glyph {
+  width: 18px;
+  text-align: center;
+  font-family: 'Silkscreen', monospace;
+  font-size: 12px;
+}
+
+.skill-node.done .skill-node-glyph { color: var(--mmo-emerald); }
+.skill-node.prog .skill-node-glyph { color: var(--mmo-gold); }
+.skill-node.lock .skill-node-glyph { color: var(--mmo-ink-dim); }
+
+.skill-node strong {
+  flex: 1;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  color: var(--mmo-ink);
+  letter-spacing: .3px;
+}
+
+.skill-node small {
+  font-family: 'Silkscreen', monospace;
+  font-size: 8px;
+  color: var(--mmo-ink-dim);
+  letter-spacing: .8px;
+  white-space: nowrap;
+}
+
+.skill-node.done small { color: var(--mmo-emerald); }
+.skill-node.prog small { color: var(--mmo-gold); }
+
+/* Quests pixel tickets */
+
+.quest-pixel { padding: 14px; }
+
+.quest-pixel-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.quest-pixel-tabs .branch-tab { flex: 1; text-align: center; }
+
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quest-ticket {
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--mmo-ink-deep) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mmo-gold) 22%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--mmo-gold) 50%, transparent);
+  border-radius: 2px;
+  align-items: center;
+}
+
+.quest-ticket.done {
+  border-left-color: var(--mmo-emerald);
+  opacity: .7;
+}
+
+.quest-ticket.class-quest {
+  border-left-color: var(--mmo-purple, #8a74ff);
+}
+
+.quest-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quest-source {
+  font-family: 'Silkscreen', monospace;
+  font-size: 7px;
+  letter-spacing: 1.2px;
+  padding: 1px 4px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.quest-source.class {
+  color: var(--mmo-purple, #8a74ff);
+}
+
+.quest-source.coach {
+  color: var(--mmo-gold);
+}
+
+.quest-icon {
+  font-size: 18px;
+  flex: 0 0 auto;
+}
+
+.quest-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.quest-body strong {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  color: var(--mmo-ink);
+  letter-spacing: .3px;
+  line-height: 1.1;
+}
+
+.quest-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.quest-meta small {
+  font-family: 'Silkscreen', monospace;
+  font-size: 8px;
+  color: var(--mmo-ink-dim);
+  letter-spacing: .8px;
+  white-space: nowrap;
+}
+
+.quest-meta .reward {
+  color: var(--mmo-gold);
+}
+
+/* Recovery pixel ---*/
+
+.recovery-pixel { padding: 14px; }
+
+/* ---------- ODIE merged page (Yorum + Sor) ---------- */
+
+.odie-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.odie-switcher {
+  display: flex;
+  background: color-mix(in srgb, var(--mmo-ink-deep) 85%, transparent);
+  border: 2px solid color-mix(in srgb, var(--mmo-gold) 30%, transparent);
+  border-radius: 3px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.odie-switcher-btn {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--mmo-ink-dim);
+  padding: 9px 14px;
+  font-family: 'Silkscreen', monospace;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all .15s ease;
+}
+
+.odie-switcher-btn:hover { color: var(--mmo-ink); }
+
+.odie-switcher-btn.active {
+  background: linear-gradient(180deg, var(--mmo-gold), var(--mmo-gold-dark));
+  color: #1a0f00;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3);
+}
+
+/* ---------- Cleanup: hide stat delta when empty ---------- */
+
+.sheet-stat-main:has(.sheet-stat-delta:empty) .sheet-stat-delta { display: none; }
+
+/* ---------- Section heads inside character page ---------- */
+
+.character-page .section-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.character-page .section-top .eyebrow {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  color: color-mix(in srgb, var(--mmo-gold) 75%, transparent);
+}
+
+.character-page .section-top h3 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 14px;
+  color: var(--mmo-gold);
+  margin: 0;
+  letter-spacing: 1.5px;
+}
+
+/* ---------- Mobile tightening ---------- */
+
+@media (max-width: 720px) {
+  .card-hero { padding: 16px 14px 14px; }
+  .today-hero-score strong { font-size: 34px; }
+  .today-hero-title { font-size: 18px; letter-spacing: 1.5px; }
+  .today-hero-cta-row { flex-direction: column; }
+  .cta-primary, .cta-secondary { flex: 1 1 auto; min-width: 0; }
+  .today-session-item { padding: 8px 10px; gap: 8px; }
+
+  .portrait-img-frame { width: 76px; height: 76px; flex-basis: 76px; font-size: 40px; }
+  .portrait-name { font-size: 16px; }
+
+  .trio-grid { grid-template-columns: 1fr; gap: 5px; }
+  .trio-card { padding: 8px 10px; }
+
+  .branch-tabs { gap: 3px; }
+  .branch-tab { padding: 5px 6px; font-size: 8px; letter-spacing: .6px; }
+}
+
+@media (min-width: 900px) {
+  .stat-grid-pixel { grid-template-columns: repeat(3, 1fr); }
+}

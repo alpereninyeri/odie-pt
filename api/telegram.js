@@ -25,6 +25,7 @@ import {
   normalizeSession,
 } from '../src/data/rules.js'
 import { applySurvival } from '../src/data/survival-engine.js'
+import { computeVolumeWithBodyweight } from '../src/data/volume-utils.js'
 
 function sbHeaders() {
   const key = process.env.VITE_SUPABASE_ANON_KEY
@@ -303,12 +304,35 @@ Sadece su JSON:
 }`
 }
 
-const ODIE_SYSTEM = `Sen ODIE'sin. Tum yanitlar Turkce olmali.
-Gercek koç gibi net, kisa ve spesifik konus.
-Yapay hype yapma. Bu uygulama hybrid atlet icin: parkour, kayak, bisiklet, gym, calisthenics, yuruyus, tirmanis.
-Senin gorevin seansi yorumlamak; final XP, stat ve streak hesaplari kural motorundan gelir.
-COACH_NOTE icinde yalnizca kisa, scan edilebilir satirlar uret.
-Tum yorumlari guncel veriye bagla; stale seed bilgi uretme.`
+const ODIE_SYSTEM = `Sen ODIE'sin — bu sporcunun antrenman verilerini anlik okuyup yorum yazan koc. Turkce, sade, kisa.
+
+KIM:
+- Yillarca ayni sporcuyla calismis birinin tonu. Tarih, egilim, eski hatalar aklinda.
+- Salonda yan duruyormus gibi konus — birinci sahis, aktif. Pasif "yapilmali" yok.
+- Sahte cosku ("Bravo!", "Inanilmaz!"), klise ("Asla pes etme!"), abarti ("rekor!", "muhtesem!") yok.
+- Bilmedigini soyle: "elde net X yok, su yuzden boyle yorumluyorum" de. Veriyi uydurma.
+
+DUSUNME SIRASI (bu duzende uret):
+1. SEANS — bugunku is ne anlatiyor (yuk, blok dagilimi, sure, kalite).
+2. TREND — son 14 gun ne degisti, gecen ayla farki ne.
+3. BOSLUK — hangi blok eksik, dengesizlik var mi, recovery isaret veriyor mu.
+4. SONRAKI ADIM — yarin/obur gun icin TEK somut is.
+
+YAPMA:
+- "Strength %85 · core %9" yuzde dump.
+- Kanitta olmayan PR/skill/sakatlik uydurma.
+- Jargon ("block_mix", "ana eksen", "trunk control") yansitma.
+- Tek seansi epik mit gibi anlatma — surdurulebilirlik onemli.
+- Section basliklarini degistirme; verilen baslik altina yaz.
+- Stat / XP / streak / level sayilarini hesaplama, motor zaten yapiyor — sadece anlamlandir.
+- Risk uyarisini dramatize etme ("DIKKAT!"); "armor 30, bugun agir seans riskli" yeter.
+
+YAP:
+- Sayiyi cumlenin icine yedir: "65kg ile bench bugun net kalkti, son 30 gunde 3 kez ayni yuk".
+- Her bolume tek net sinyal/oneri. 1-2 satir.
+- corrective_memory'de bir konuda yanlis demisse, ayni yorumu tekrar etme.
+- athlete_memory'deki uzun sureli bilgileri (sakatlik, hedef, tercih) cevaba sessizce yedir.
+- Kanit zayifsa kesin konusma: "belki", "gorunuse gore" kullan.`
 
 const PARSE_RESPONSE_SCHEMA = {
   type: 'OBJECT',
@@ -692,6 +716,12 @@ function buildCoachPromptV2(parsed, context) {
   const trendSignals = (odie.loadProfile?.trendSignals || [])
     .map(signal => `- ${signal}`)
     .join('\n') || '- son blok trend sinyali zayif'
+  const historicalEcho = (odie.historicalEcho?.summarySentences || [])
+    .map(item => `- ${item}`)
+    .join('\n') || '- karsilastirmali gecmis verisi yok'
+  const last30Prs = (odie.historicalEcho?.recentPrs || [])
+    .map(pr => `- ${pr.name} ${pr.weightKg ? `${pr.weightKg}kg×${pr.reps || 1}` : pr.reps ? `${pr.reps} rep` : `${pr.durationSec}sn`} (${pr.date})`)
+    .join('\n') || '- son 30 gunde PR yok'
   const focusGaps = (odie.focusGaps || [])
     .map(item => `- ${item}`)
     .join('\n') || '- acik gap gorunmuyor'
@@ -748,8 +778,14 @@ Baglam:
 - Disiplin mix: ${disciplineMix}
 - Parse confidence: ${confidence.level || 'unknown'} ${confidence.score != null ? `(${confidence.score}/100)` : ''}
 
-Trend sinyalleri:
+Trend sinyalleri (son 14 gun vs onceki 14):
 ${trendSignals}
+
+Karsilastirmali gecmis (son 30 vs onceki 30, 1 yil once ayni hafta):
+${historicalEcho}
+
+Son 30 gunde guncellenen PR'lar:
+${last30Prs}
 
 Gap analizi:
 ${focusGaps}
@@ -790,24 +826,28 @@ ${factArchive}
 Onceki koc hafizasi:
 ${coachMemory}
 
-Kurallar:
+Ton kurallari (cok onemli):
+- Sen koc, ben atletin. Yanima gel, basinda dur, "su an su" diye konus.
+- Datadump CUMLESI ASLA: "ana akisi strength %85 · core %9" tarzi yuzde dump yazma — yuzdeleri dogal cumleye yedir: "Bugun agirlik gucteydi, core'a 7 set ayirmissin — bu yeni."
+- Bos motivasyon yok ("Inanilmaz!", "Mukemmel iste!", "Bravo!"). Yerine spesifik gozlem: "Bench 65 ilk kez geldi, ust govde gercekten oturmus."
+- Klise ve magazin lafi yok. Sayilari cumlenin icine yedir.
+- Her satira bir somut nokta veya somut sonraki adim. Bos slogan = sil.
+
+Veri kurallari:
 - Her yorum satirini yukaridaki kanit veya bloklardan en az birine bagla.
-- Bugunku seans ile global performansi karistirma; global bilgi kullanirsan bunu acikca genel trend gibi yaz.
+- Bugunku seans ile global performansi karistirma; global bilgi kullanirsan bunu acikca "trend olarak" diye ayir.
 - Kanitta gecmeyen hareketi, PR'i, beceriyi veya kasi bugun yapilmis gibi anlatma.
-- Ana ekseni block agirligina gore sec.
-- Eksik halka ve sonraki odagi varsa missing zincir veya focus gap uzerinden kur.
-- Parkour ve custom hareket seanslarinda gym dili yerine teknik, landing, reactive legs ve trunk tension dili kullan.
-- Teknik prompt etiketlerini kullaniciya yansitma. "parse confidence", "yuklenen zincirler", "ana eksen" gibi ham basliklar yazma.
-- Basliklar ve cumleler duz, dogal ve sporcuya anlatir gibi Turkce olsun.
+- Ana ekseni block agirligina gore sec ama jargon yazma: "block_mix", "ana eksen", "parse confidence", "yuklenen zincirler" — hicbiri kullaniciya yansimasin.
+- Parkour ve custom hareket seanslarinda gym dili yerine teknik dili kullan (landing, reactive legs, trunk tension, air sense).
 
 Asagidaki JSON disinda hicbir sey yazma:
 {
-  "telegram_msg": "2-4 cumle. Kisa, net ve dogal Turkce kullan. Once bugunun ana yorumu, sonra gerekirse risk ve sonraki adim gelsin.",
+  "telegram_msg": "2-4 cumle. Bir koc gibi konus: bugun ne gordum, neye dikkat, yarin ne. Sayilar cumle icinde, jargon yok.",
   "coach_note": {
     "sections": [
-      { "title": "BUGUNUN OZETI", "mood": "fire|calm|warn|danger", "lines": ["", ""] },
-      { "title": "RISK VE DENGE", "mood": "warn|danger|calm", "lines": [""] },
-      { "title": "SIRADAKI ADIM", "mood": "calm|fire|warn", "lines": [""] },
+      { "title": "BUGUNUN OZETI", "mood": "fire|calm|warn|danger", "lines": ["1 cumle: bugunku seans seninle ne soyledi (sayi yedirilmis, dogal)", "1 cumle: kucuk bir teknik gozlem"] },
+      { "title": "RISK VE DENGE", "mood": "warn|danger|calm", "lines": ["1 cumle: dikkat etmen gereken nokta veya acik taraf, somut nedenle"] },
+      { "title": "SIRADAKI ADIM", "mood": "calm|fire|warn", "lines": ["1 cumle: yarin/sonraki seans icin tek somut yonlendirme — set/sn/kg seviyesinde"] },
       {
         "title": "STATE_SYNC",
         "hidden": true,
@@ -1714,6 +1754,12 @@ export default async function handler(req, res) {
     const questionHistory = (questionRows || []).map(row => normalizeQuestionRow(row))
     const currentPrs = buildCurrentPrs(workouts)
 
+    const bodyWeightKg = Number(profile.body_metrics?.weightKg) || 0
+    const effectiveVolumeKg = bodyWeightKg
+      ? computeVolumeWithBodyweight(parsed.exercises, bodyWeightKg)
+      : Number(parsed.volume_kg) || 0
+    parsed.volume_kg = effectiveVolumeKg
+
     const draftSession = normalizeSession({
       date: sessionDate,
       type: parsed.type,
@@ -1722,7 +1768,7 @@ export default async function handler(req, res) {
       elevationM: parsed.elevation_m,
       tags: parsed.tags || [],
       exercises: parsed.exercises || [],
-      volumeKg: parsed.volume_kg,
+      volumeKg: effectiveVolumeKg,
       sets: parsed.total_sets,
       highlight: parsed.highlight || '',
       hasPr: parsed.has_pr,

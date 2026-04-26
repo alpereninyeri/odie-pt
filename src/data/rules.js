@@ -1052,6 +1052,26 @@ export function applyStatDelta(currentStats = {}, delta = {}) {
   return next
 }
 
+export function computeStatSnapshotDaysAgo(workouts = [], currentStats = {}, daysAgo = 30, todayStr = getLocalDateString()) {
+  const today = new Date(`${normalizeDateString(todayStr)}T00:00:00`).getTime()
+  const cutoff = today - (daysAgo * 86400000)
+  const totalDelta = { str: 0, agi: 0, end: 0, dex: 0, con: 0, sta: 0 }
+  for (const workout of (workouts || [])) {
+    const ts = new Date(`${normalizeDateString(workout.date)}T00:00:00`).getTime()
+    if (ts < cutoff) continue
+    const delta = workout.statDelta || {}
+    for (const key of Object.keys(totalDelta)) {
+      totalDelta[key] += Number(delta[key]) || 0
+    }
+  }
+  const snapshot = {}
+  for (const key of Object.keys(totalDelta)) {
+    const current = Number(currentStats[key]) || 0
+    snapshot[key] = Math.max(0, Math.min(100, Math.round((current - totalDelta[key]) * 10) / 10))
+  }
+  return snapshot
+}
+
 export function streakMultiplier(days = 0) {
   if (days >= 30) return 2.0
   if (days >= 14) return 1.5

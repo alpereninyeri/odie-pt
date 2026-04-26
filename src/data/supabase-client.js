@@ -181,6 +181,20 @@ export async function fetchWorkouts(limit = 100) {
   return data || []
 }
 
+export async function deleteWorkout(id) {
+  if (isMockMode) return false
+  if (!id) return false
+  const profileId = await _resolveProfileId()
+  let query = supabase.from('workouts').delete().eq('id', id)
+  if (profileId) query = query.eq('profile_id', profileId)
+  const { error } = await query
+  if (error) {
+    console.warn('[supabase] deleteWorkout:', error.message)
+    return false
+  }
+  return true
+}
+
 export async function insertWorkout(workout) {
   if (isMockMode) return null
   const profileId = await _resolveProfileId()

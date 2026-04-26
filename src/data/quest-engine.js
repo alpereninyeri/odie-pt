@@ -1,13 +1,15 @@
 import { getLocalDateString, normalizeDateString, normalizeSession } from './rules.js'
 import { buildSemanticProfile } from './semantic-profile.js'
 
-function daysAgo(dateStr) {
-  if (!dateStr) return Infinity
-  return Math.round((Date.now() - new Date(`${normalizeDateString(dateStr)}T00:00:00`).getTime()) / 86400000)
+function daysBetween(fromStr, toStr) {
+  if (!fromStr || !toStr) return Infinity
+  const from = new Date(`${normalizeDateString(fromStr)}T00:00:00`).getTime()
+  const to = new Date(`${normalizeDateString(toStr)}T00:00:00`).getTime()
+  return Math.round((to - from) / 86400000)
 }
 
-function isThisWeek(dateStr) {
-  return daysAgo(dateStr) <= 7
+function isThisWeek(dateStr, todayStr) {
+  return daysBetween(dateStr, todayStr) <= 7
 }
 
 function todayLog(dailyLogs = [], today = getLocalDateString()) {
@@ -91,7 +93,7 @@ export function updateQuests(questsSeed, workouts = [], dailyLogs = [], today = 
 
   const normalizedWorkouts = workouts.map(workout => normalizeSession(workout))
   const todaySessions = normalizedWorkouts.filter(workout => normalizeDateString(workout.date) === today)
-  const thisWeek = normalizedWorkouts.filter(workout => isThisWeek(workout.date))
+  const thisWeek = normalizedWorkouts.filter(workout => isThisWeek(workout.date, today))
   const todayDailyLog = todayLog(dailyLogs, today)
   const dayProfile = buildSemanticProfile(todaySessions, [todayDailyLog])
   const weekProfile = buildSemanticProfile(thisWeek, dailyLogs)
@@ -103,7 +105,10 @@ export function updateQuests(questsSeed, workouts = [], dailyLogs = [], today = 
 }
 
 export function appendCoachQuests(quests, coachHints = []) {
-  if (!Array.isArray(coachHints) || !coachHints.length) return quests
+  const baseWeekly = (quests?.weekly || []).filter(quest => !quest.fromCoach)
+  if (!Array.isArray(coachHints) || !coachHints.length) {
+    return { ...quests, weekly: baseWeekly }
+  }
   const hintQuests = coachHints.map(hint => {
     const match = String(hint).match(/(.+?)\s*[—-]\s*(\d+)\s*\/\s*(\d+)/)
     if (match) {
@@ -133,6 +138,6 @@ export function appendCoachQuests(quests, coachHints = []) {
 
   return {
     ...quests,
-    weekly: [...(quests.weekly || []), ...hintQuests],
+    weekly: [...baseWeekly, ...hintQuests],
   }
 }

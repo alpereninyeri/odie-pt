@@ -1,6 +1,7 @@
 import { store } from '../data/store.js'
 import { detectPRs } from '../data/pr-detector.js'
 import { getLocalDateString } from '../data/rules.js'
+import { computeVolumeWithBodyweight } from '../data/volume-utils.js'
 import { closeModal, openModal } from './modal.js'
 import { showBadgeToasts, showPRToast, showXPToast } from './toast.js'
 
@@ -173,11 +174,13 @@ function collectExercises() {
   }).filter(Boolean)
 }
 
+function getBodyWeight() {
+  return Number(store.getState()?.bodyMetrics?.weightKg) || Number(store.getProfile?.()?.bodyMetrics?.weightKg) || 0
+}
+
 function updateVolumePreview() {
   const exercises = collectExercises()
-  const totalVolume = exercises.reduce((sum, exercise) => (
-    sum + (exercise.sets || []).reduce((acc, set) => acc + ((set.weightKg || 0) * (set.reps || 1)), 0)
-  ), 0)
+  const totalVolume = computeVolumeWithBodyweight(exercises, getBodyWeight())
 
   const preview = document.getElementById('wf-volume-preview')
   const value = document.getElementById('wf-volume-val')
@@ -189,9 +192,7 @@ function updateVolumePreview() {
 
 async function saveWorkout() {
   const exercises = collectExercises()
-  const volumeKg = exercises.reduce((sum, exercise) => (
-    sum + (exercise.sets || []).reduce((acc, set) => acc + ((set.weightKg || 0) * (set.reps || 1)), 0)
-  ), 0)
+  const volumeKg = computeVolumeWithBodyweight(exercises, getBodyWeight())
   const sets = exercises.reduce((sum, exercise) => sum + (exercise.sets || []).length, 0)
 
   const session = {

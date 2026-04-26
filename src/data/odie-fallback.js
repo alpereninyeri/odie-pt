@@ -37,10 +37,29 @@ function topBlockMix(blockMix = []) {
   return (blockMix || []).slice(0, 3)
 }
 
+const KIND_LABEL_TR = {
+  strength: 'guc',
+  core: 'core',
+  locomotion: 'hareket',
+  mobility: 'mobilite',
+  recovery: 'toparlanma',
+  skill: 'teknik',
+  explosive: 'patlayici',
+  mixed: 'karma',
+  conditioning: 'kondisyon',
+}
+
+function localizeKind(kind = '') {
+  return KIND_LABEL_TR[String(kind).toLowerCase()] || kind
+}
+
 function mainAxisSentence(parsed = {}) {
   const leading = topBlockMix(parsed.block_mix || [])
   if (!leading.length) return `${parsed.type} seansi temel haliyle kayda girdi.`
-  return `Seansin ana akisi ${leading.map(item => `${item.kind} ${item.percent}%`).join(' · ')}.`
+  const top = leading[0]
+  const rest = leading.slice(1)
+  const restPart = rest.length ? `, ${rest.map(item => `${localizeKind(item.kind)} ${item.percent}%`).join(' · ')}` : ''
+  return `Bugun agirlik ${localizeKind(top.kind)} %${top.percent}${restPart}.`
 }
 
 function evidenceSentence(parsed = {}) {

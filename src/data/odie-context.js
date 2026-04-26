@@ -1,4 +1,5 @@
 import { profile as seedProfile } from './profile.js'
+import { appendClassQuests } from './class-quests.js'
 import {
   summarizeBlockArchive,
   summarizeBodyMetricsTrend,
@@ -188,6 +189,105 @@ function summarizeLoadProfile(workouts = []) {
   }
 }
 
+function _windowDays(workouts = [], startOffsetDays, endOffsetDays, todayStr = getLocalDateString()) {
+  const today = new Date(`${todayStr}T00:00:00`)
+  const startTs = today.getTime() - (startOffsetDays * 86400000)
+  const endTs = today.getTime() - (endOffsetDays * 86400000)
+  const lo = Math.min(startTs, endTs)
+  const hi = Math.max(startTs, endTs)
+  return workouts.filter(workout => {
+    const ts = new Date(`${normalizeDateString(workout.date)}T00:00:00`).getTime()
+    return ts >= lo && ts < hi
+  })
+}
+
+function _windowStats(workouts = []) {
+  return workouts.reduce((acc, workout) => {
+    acc.sessions += 1
+    acc.minutes += Number(workout.durationMin) || 0
+    acc.volume += Number(workout.volumeKg) || 0
+    acc.km += Number(workout.distanceKm) || 0
+    return acc
+  }, { sessions: 0, minutes: 0, volume: 0, km: 0 })
+}
+
+function _topExercises(workouts = [], limit = 3) {
+  const counts = {}
+  for (const workout of workouts) {
+    for (const exercise of (workout.exercises || [])) {
+      const name = String(exercise.name || '').trim()
+      if (!name) continue
+      counts[name] = (counts[name] || 0) + 1
+    }
+  }
+  return Object.entries(counts)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, limit)
+    .map(([name, count]) => ({ name, count }))
+}
+
+function summarizeHistoricalEcho(workouts = [], prs = {}, todayStr = getLocalDateString()) {
+  const last30 = _windowDays(workouts, 30, 0, todayStr)
+  const prev30 = _windowDays(workouts, 60, 30, todayStr)
+  const oneYearWindow = _windowDays(workouts, 372, 358, todayStr)
+
+  const current = _windowStats(last30)
+  const previous = _windowStats(prev30)
+  const yearAgo = _windowStats(oneYearWindow)
+  const fmtDelta = (curr, prev) => {
+    if (!prev && !curr) return null
+    const diff = curr - prev
+    return { current: curr, previous: prev, delta: diff }
+  }
+
+  const monthlyDeltas = {
+    sessions: fmtDelta(current.sessions, previous.sessions),
+    minutes: fmtDelta(current.minutes, previous.minutes),
+    volume: fmtDelta(Math.round(current.volume), Math.round(previous.volume)),
+    km: fmtDelta(Math.round(current.km * 10) / 10, Math.round(previous.km * 10) / 10),
+  }
+
+  const recentPrs = Object.entries(prs)
+    .map(([name, pr]) => ({ name, ...pr }))
+    .filter(pr => pr.date)
+    .sort((left, right) => String(right.date).localeCompare(String(left.date)))
+  const last30Cutoff = new Date(`${todayStr}T00:00:00`).getTime() - (30 * 86400000)
+  const last30Prs = recentPrs.filter(pr => new Date(`${normalizeDateString(pr.date)}T00:00:00`).getTime() >= last30Cutoff)
+
+  const sentence = []
+  if (monthlyDeltas.sessions?.delta) {
+    sentence.push(`Son 30 gun ${monthlyDeltas.sessions.current} seans (oncesi ${monthlyDeltas.sessions.previous}, fark ${monthlyDeltas.sessions.delta >= 0 ? '+' : ''}${monthlyDeltas.sessions.delta}).`)
+  }
+  if (monthlyDeltas.volume?.delta && Math.abs(monthlyDeltas.volume.delta) >= 200) {
+    sentence.push(`Hacim ${monthlyDeltas.volume.current.toLocaleString('tr-TR')}kg (oncesi ${monthlyDeltas.volume.previous.toLocaleString('tr-TR')}kg).`)
+  }
+  if (yearAgo.sessions) {
+    sentence.push(`1 yil once ayni hafta ${yearAgo.sessions} seans / ${Math.round(yearAgo.minutes)}dk yapilmisti.`)
+  }
+  if (last30Prs.length) {
+    sentence.push(`Son 30 gunde ${last30Prs.length} egzersizde PR guncellendi: ${last30Prs.slice(0, 3).map(pr => pr.name).join(', ')}.`)
+  }
+
+  return {
+    last30: current,
+    prev30: previous,
+    yearAgo,
+    monthlyDeltas,
+    recentPrs: last30Prs.slice(0, 5).map(pr => ({
+      name: pr.name,
+      date: pr.date,
+      kind: pr.kind || null,
+      metric: pr.metric ?? pr.score,
+      weightKg: pr.weightKg,
+      reps: pr.reps,
+      durationSec: pr.durationSec,
+    })),
+    topExercisesLast30: _topExercises(last30, 3),
+    topExercisesPrev30: _topExercises(prev30, 3),
+    summarySentences: sentence.slice(0, 4),
+  }
+}
+
 function summarizeFocusGaps(workouts = [], dailyLogs = []) {
   const recent = workouts.slice(0, 10)
   const tags = new Set(recent.flatMap(workout => workout.tags || []))
@@ -232,13 +332,20 @@ export function buildOdieContext({
     ? sortByDateDesc([normalizeSession(session), ...normalizedWorkouts])
     : normalizedWorkouts
   const stats = nextStats || profile.stats || {}
-  const quests = appendCoachQuests(
-    updateQuests(seedProfile.quests, contextWorkouts, dailyLogs, session?.date || getLocalDateString()),
-    coachNote?.quest_hints || [],
+  const quests = appendClassQuests(
+    appendCoachQuests(
+      updateQuests(seedProfile.quests, contextWorkouts, dailyLogs, session?.date || getLocalDateString()),
+      coachNote?.quest_hints || [],
+    ),
+    nextClass?.id || profile.classId,
+    contextWorkouts,
+    dailyLogs,
+    session?.date || getLocalDateString(),
   )
   const skills = updateSkills(seedProfile.skills, contextWorkouts, coachNote?.skill_progress || [])
   const performance = updatePerformance(seedProfile.performance, contextWorkouts)
   const loadProfile = summarizeLoadProfile(contextWorkouts)
+  const historicalEcho = summarizeHistoricalEcho(contextWorkouts, prs, session?.date || getLocalDateString())
 
   return {
     athlete: {
@@ -273,6 +380,7 @@ export function buildOdieContext({
     blockArchive: summarizeBlockArchive(workoutBlocks),
     factArchive: summarizeFactArchive(workoutFacts),
     loadProfile,
+    historicalEcho,
     focusGaps: summarizeFocusGaps(contextWorkouts, dailyLogs),
   }
 }

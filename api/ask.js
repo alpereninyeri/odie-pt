@@ -10,11 +10,37 @@ import {
   normalizeWorkoutFactRow,
 } from '../src/data/memory-engine.js'
 
-const ODIE_SYSTEM = `Sen ODIE'sin. Tum yanitlar Turkce olmali.
-Gercek koç gibi net, spesifik ve sakin konus.
-Abartili motivasyon, yapay hype ve uydurma veri kullanma.
-Sadece verilen baglama dayan; eksik olan yerde eminlik seviyesini dusur ama yine de yardimci ol.
-Cevaplar mobil uygulamada okunacak kadar scan edilebilir olsun.`
+const ODIE_SYSTEM = `Sen ODIE'sin — bu sporcunun yillardir tanidigi kisisel performans kocu. Tum cevaplar Turkce, gunluk konusma dili.
+
+KIM:
+- Yillarca ayni sporcuyu izlemis koc gibi konus. Tarih, ritim ve kisisel duzeni biliyorsun.
+- Sakin, akilli, direkt. Sahte cosku ("Mukemmel!", "Bravo!"), klise motivasyon ("Kendine guven!", "Asla pes etme!") yok.
+- Salonda yan duruyormus gibi: pasif "yapilmali" degil aktif "yarin sunu yap".
+- Bilmedigini soyle: "elde net X yok ama Y'den okuyorum..." de. Veriyi uydurma.
+
+DUSUNME SIRASI (bozma):
+1. GOZLEM — bagdaki sayilara dayali: "Son 14 gunde core 3 set, daha once 12 setteydi."
+2. HIPOTEZ — "Galiba bench gunu uzayinca core sona kaliyor."
+3. ONERI — "Yarin seansa core ile basla, 8 dk yeter."
+Kanit zayifsa hipoteze gecme; soyle: "Bunu netlestirmek icin bir hafta veriye daha bakmaliyim."
+
+KARSILASTIRMA REFLEKSI:
+- Cevabi zaman icine yerlestir. "Bu hafta..." degil "gecen aya gore", "Subat'ta da benzer sey olmustu", "3 ay onceki bench gununde de boyleydin".
+- Numerik ozgulluk: yuzde dump degil, cumlenin icinde sayi: "65kg dun dogru hizda kalkti" dogru; "Bench peak 65kg, trend +5kg" dump.
+
+YAPMA:
+- "Ana akis strength %85" yuzde dump.
+- Kanitta gecmeyen lift/PR/beceri uydurma.
+- Jargon ("block_mix", "parse confidence", "ana eksen", "trunk control chain") yansitma.
+- "Harika", "supper", "muhtesem" gibi otomatik begeni.
+- Risk ve uyariyi dramatize etme — "armor 30, bugun agir seans riskli" yeter; tehdit/buyuk harf yok.
+
+YAP:
+- HER cevapta TEK somut sonraki adim. Birden fazlaysa oncelik sirali.
+- Sporcu corrective_memory'de bir konuda seni duzelttiyse, ayni hataya bir daha girme.
+- athlete_memory'deki kalici bilgileri (eski sakatlik, eski hedef, eski tercih) cevaba sessizce yedir; "memory diyor ki" diye liste yapma.
+- Kanit zayifsa kesin konusma: "belki", "gorunuse gore", "elde X yok ama" kullan.
+- 3-5 cumle. Mobil HUD'da okunacak — scan-edilebilir.`
 
 const ASK_RESPONSE_SCHEMA = {
   type: 'OBJECT',
@@ -236,6 +262,12 @@ function buildAskPrompt(question, context) {
   const trendSignals = (odie.loadProfile?.trendSignals || [])
     .map(item => `- ${item}`)
     .join('\n') || '- trend sinyali zayif'
+  const historicalEcho = (odie.historicalEcho?.summarySentences || [])
+    .map(item => `- ${item}`)
+    .join('\n') || '- karsilastirmali gecmis verisi yok'
+  const last30Prs = (odie.historicalEcho?.recentPrs || [])
+    .map(pr => `- ${pr.name} ${pr.weightKg ? `${pr.weightKg}kg×${pr.reps || 1}` : pr.reps ? `${pr.reps} rep` : `${pr.durationSec}sn`} (${pr.date})`)
+    .join('\n') || '- son 30 gunde PR yok'
   const athleteMemory = (odie.athleteMemory || [])
     .map(item => `- [${item.scope}] ${item.summary}`)
     .join('\n') || '- athlete memory yok'
@@ -266,8 +298,14 @@ ${recentWorkouts}
 Son PR izi:
 ${recentPrs}
 
-Trend sinyali:
+Trend sinyali (son 14 gun vs onceki 14):
 ${trendSignals}
+
+Karsilastirmali gecmis (son 30 gun, onceki 30, 1 yil once ayni hafta):
+${historicalEcho}
+
+Son 30 gunde guncellenen PR'lar:
+${last30Prs}
 
 Focus gap:
 ${focusGaps}
@@ -287,13 +325,14 @@ ${feedbackMemory}
 Soru hafizasi:
 ${questionMemory}
 
-JSON disinda bir sey donme.
-title kisa olsun.
-answer 3-5 cumlelik net cevap olsun.
-evidence dizisi yalnizca baglamdaki net kanitlardan olussun.
-next_steps 2-4 maddelik uygulanabilir mini plan olsun.
-memory_note varsa kalici kaygi veya hedef ozetini tek satir yaz.
-tags dizisi en fazla 4 kisa etiket icersin.`
+JSON disinda bir sey donme. Tum tonlama kurallari sistem promptunda; burada sadece sema:
+
+- title: sorunun ozune deger, kisa ("Core Olcumune Bakis" gibi).
+- answer: 3-5 cumlelik koc cevabi. Sirasi: gozlem -> hipotez -> oneri. Sayilari cumle icinde tut.
+- evidence: yalnizca bagdaki kanitlardan 2-4 madde. Uydurma.
+- next_steps: 2-4 madde, her biri tek somut aksiyon (set/sn/kg/gun seviyesinde), oncelik sirali.
+- memory_note: varsa kalici kaygi/hedef/tercih ozetini tek satir.
+- tags: en fazla 4 kisa etiket.`
 }
 
 function buildFallbackAnswer(question, context) {

@@ -81,6 +81,13 @@ body::after { content:''; position:fixed; inset:0; background:linear-gradient(18
 .dc-input { background:var(--bg2); border:1px solid var(--border); border-radius:6px;
   color:var(--fg); font-family:'Share Tech Mono',monospace; font-size:11px;
   padding:4px 6px; width:70px; }
+.dc-mood-row { align-items:flex-start; }
+.dc-mood-options { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+.dc-mood-btn { background:var(--bg2); border:1px solid var(--border); border-radius:6px;
+  color:var(--dim); font-family:'Share Tech Mono',monospace; font-size:10px;
+  padding:4px 8px; cursor:pointer; white-space:nowrap; transition:all .15s; }
+.dc-mood-btn:hover { border-color:var(--grn); color:var(--grn); }
+.dc-mood-btn.active { background:var(--grn); border-color:var(--grn); color:var(--bg); }
 
 /* ── Workout Form ────────────────────────────────────────────────────────── */
 .wf-row { margin-bottom:12px; }

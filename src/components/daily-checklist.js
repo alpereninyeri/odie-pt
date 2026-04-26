@@ -1,14 +1,23 @@
 import { store } from '../data/store.js'
 import { getLocalDateString } from '../data/rules.js'
 
+const MOOD_OPTIONS = [
+  { value: 1, label: 'Kotu' },
+  { value: 2, label: 'Dusuk' },
+  { value: 3, label: 'Orta' },
+  { value: 4, label: 'Iyi' },
+  { value: 5, label: 'Harika' },
+]
+
 export function renderDailyChecklist() {
   const today = getLocalDateString()
   const logs = store.getState()?.dailyLogs || []
-  const log = logs.find(item => item.date === today) || { waterMl: 0, sleepHours: 0, steps: 0 }
+  const log = logs.find(item => item.date === today) || { waterMl: 0, sleepHours: 0, steps: 0, mood: 0 }
 
   const waterPct = Math.min(100, Math.round((log.waterMl / 2500) * 100))
   const sleepPct = Math.min(100, Math.round((log.sleepHours / 8) * 100))
   const stepsPct = Math.min(100, Math.round((log.steps / 12000) * 100))
+  const currentMood = Number(log.mood) || 0
 
   return `
     <div class="daily-checklist" id="daily-checklist">
@@ -52,6 +61,21 @@ export function renderDailyChecklist() {
           <button class="dc-btn" data-action="steps">Kaydet</button>
         </div>
       </div>
+
+      <div class="dc-row dc-mood-row">
+        <div class="dc-icon">🎭</div>
+        <div class="dc-info">
+          <div class="dc-lbl">Mood</div>
+          <div class="dc-mood-options">
+            ${MOOD_OPTIONS.map(option => `
+              <button class="dc-mood-btn ${currentMood === option.value ? 'active' : ''}"
+                      data-action="mood" data-mood="${option.value}"
+                      aria-pressed="${currentMood === option.value}">${option.label}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="dc-val" id="dc-mood-val">${currentMood ? MOOD_OPTIONS[currentMood - 1].label : '—'}</div>
+      </div>
     </div>
   `
 }
@@ -67,7 +91,7 @@ export function initDailyChecklist() {
 
     const today = getLocalDateString()
     const logs = store.getState()?.dailyLogs || []
-    const existing = logs.find(item => item.date === today) || { date: today, waterMl: 0, sleepHours: 0, steps: 0, mood: 3 }
+    const existing = logs.find(item => item.date === today) || { date: today, waterMl: 0, sleepHours: 0, steps: 0, mood: 0 }
     const next = { ...existing }
 
     switch (button.dataset.action) {
@@ -78,7 +102,7 @@ export function initDailyChecklist() {
         break
       case 'sleep': {
         const value = Number(document.getElementById('dc-sleep-input')?.value)
-        if (!Number.isFinite(value) || value < 0 || value > 20) return
+        if (!Number.isFinite(value) || value < 0 || value > 16) return
         next.sleepHours = value
         _updateDisplay('dc-sleep-val', `${value}h / 8h`)
         _updateBar(element, 1, Math.min(100, Math.round((value / 8) * 100)), 'var(--purple-accent)')
@@ -90,6 +114,19 @@ export function initDailyChecklist() {
         next.steps = value
         _updateDisplay('dc-steps-val', `${value.toLocaleString('tr-TR')} / 12k`)
         _updateBar(element, 2, Math.min(100, Math.round((value / 12000) * 100)), 'var(--amber)')
+        break
+      }
+      case 'mood': {
+        const value = Math.max(1, Math.min(5, Number(button.dataset.mood) || 0))
+        if (!value) return
+        next.mood = value
+        const label = ['', 'Kotu', 'Dusuk', 'Orta', 'Iyi', 'Harika'][value]
+        _updateDisplay('dc-mood-val', label)
+        element.querySelectorAll('.dc-mood-btn').forEach(node => {
+          const active = Number(node.dataset.mood) === value
+          node.classList.toggle('active', active)
+          node.setAttribute('aria-pressed', active ? 'true' : 'false')
+        })
         break
       }
     }

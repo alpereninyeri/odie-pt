@@ -117,10 +117,12 @@ function renderTranscript(latest) {
 async function loadHistory() {
   const token = ++historyToken
   askState.loadingHistory = true
+  askState.historyError = ''
   requestRefresh()
 
   try {
     const response = await fetch('/api/ask')
+    if (!response.ok) throw new Error(`history ${response.status}`)
     const payload = await response.json()
     if (token !== historyToken) return
 
@@ -130,12 +132,8 @@ async function loadHistory() {
   } catch (error) {
     console.error('[ask] history load failed:', error)
     if (token === historyToken) {
-      showToast({
-        icon: 'OD',
-        title: 'Ask history alinamadi',
-        msg: 'API baglantisi kurulurken bir sorun oldu.',
-        rarity: 'common',
-      })
+      askState.loaded = true
+      askState.historyError = 'Gecmis su an yuklenemedi.'
     }
   } finally {
     if (token === historyToken) {
@@ -296,7 +294,8 @@ export function renderAsk(state, profile) {
                 <span>${formatWhen(item.createdAt)}</span>
               </button>
             `).join('')}
-            ${!askState.loadingHistory && !askState.items.length ? '<div class="ask-empty">Henuz soru gecmisi yok.</div>' : ''}
+            ${!askState.loadingHistory && !askState.items.length && !askState.historyError ? '<div class="ask-empty">Henuz soru gecmisi yok.</div>' : ''}
+            ${askState.historyError && !askState.items.length ? `<div class="ask-empty ask-empty-error">${escapeHtml(askState.historyError)}</div>` : ''}
           </div>
         </aside>
       </div>

@@ -1,15 +1,3 @@
-/**
- * PR (Personal Record) Dedektörü
- * Her egzersiz için en yüksek performans kaydını tutar ve yeni PR'ları tespit eder.
- * Score = weightKg × reps (güç egzersizleri) veya reps/durationSec (bodyweight/zaman)
- */
-
-/**
- * Yeni antrenmanı mevcut PR'larla karşılaştır.
- * @param {Object} session - yeni antrenman (exercises dizisi ile)
- * @param {Object} currentPrs - mevcut PR'lar { 'Exercise Name': { score, ... } }
- * @returns {{ hasPr: boolean, newPrs: Object, updatedPrs: Object }}
- */
 export function detectPRs(session, currentPrs = {}) {
   const updatedPrs = { ...currentPrs }
   const newPrs = {}
@@ -17,15 +5,17 @@ export function detectPRs(session, currentPrs = {}) {
   ;(session.exercises || []).forEach(ex => {
     ;(ex.sets || []).forEach(set => {
       const score = _calcScore(set)
-      if (score === 0) return
+      if (!score) return
 
       const current = updatedPrs[ex.name]
-      if (!current || score > current.score) {
+      if (!current || _beats(score, current)) {
         const pr = {
-          weightKg:    set.weightKg || null,
-          reps:        set.reps || null,
-          durationSec: set.durationSec || null,
-          score,
+          weightKg: set.weightKg ?? set.weight_kg ?? null,
+          reps: set.reps ?? null,
+          durationSec: set.durationSec ?? set.duration_sec ?? null,
+          kind: score.kind,
+          metric: score.metric,
+          score: score.metric,
           date: session.date,
         }
         updatedPrs[ex.name] = pr
@@ -41,23 +31,35 @@ export function detectPRs(session, currentPrs = {}) {
   }
 }
 
-/**
- * PR özetini Türkçe metin olarak oluştur (coach notu için).
- */
 export function prSummary(newPrs) {
   const entries = Object.entries(newPrs)
   if (!entries.length) return ''
   return entries.map(([name, pr]) => {
     if (pr.weightKg && pr.reps) return `${name}: ${pr.weightKg}kg × ${pr.reps} rep`
-    if (pr.reps)                return `${name}: ${pr.reps} rep`
-    if (pr.durationSec)         return `${name}: ${pr.durationSec}sn`
+    if (pr.reps) return `${name}: ${pr.reps} rep`
+    if (pr.durationSec) return `${name}: ${pr.durationSec}sn`
     return name
   }).join(', ')
 }
 
 function _calcScore(set) {
-  if (set.weightKg && set.reps) return set.weightKg * set.reps
-  if (set.reps)                 return set.reps
-  if (set.durationSec)          return set.durationSec
-  return 0
+  const weight = Number(set?.weightKg ?? set?.weight_kg) || 0
+  const reps = Number(set?.reps) || 0
+  const duration = Number(set?.durationSec ?? set?.duration_sec) || 0
+
+  if (weight > 0 && reps > 0) {
+    return { kind: 'loaded', metric: Math.round(weight * (1 + reps / 30) * 10) / 10 }
+  }
+  if (reps > 0) return { kind: 'reps', metric: reps }
+  if (duration > 0) return { kind: 'duration', metric: duration }
+  return null
+}
+
+function _beats(score, current) {
+  if (!current?.kind) return score.metric > (Number(current?.score) || 0)
+  if (current.kind !== score.kind) {
+    const order = { loaded: 3, reps: 2, duration: 1 }
+    return (order[score.kind] || 0) > (order[current.kind] || 0)
+  }
+  return score.metric > (Number(current.metric ?? current.score) || 0)
 }

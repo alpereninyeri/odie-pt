@@ -22,9 +22,21 @@ function _ensureContainer() {
  * Tek bir toast göster.
  * @param {Object} opts - { icon, title, sub, duration, rarity }
  */
+const TOAST_MAX = 3
+
 export function showToast({ icon = '🏆', title, sub = '', msg = '', duration = 3500, rarity = 'common' }) {
   sub = sub || msg  // msg alias (main.js uyumluluğu)
   const container = _ensureContainer()
+
+  const dupe = [...container.querySelectorAll('.toast')].find(node => {
+    return node.querySelector('.toast-title')?.textContent === String(title)
+  })
+  if (dupe) return
+
+  while (container.childElementCount >= TOAST_MAX) {
+    container.firstElementChild?.remove()
+  }
+
   const el = document.createElement('div')
   el.className = `toast toast-${rarity}`
   el.innerHTML = `
