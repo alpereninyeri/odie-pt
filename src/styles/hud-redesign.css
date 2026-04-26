@@ -770,29 +770,56 @@
   }
 }
 
-/* Combat Stats — mobile tek kolon (sağa taşma yok) */
+/* Combat Stats — mobile 2 kolon, sıkıştırılmış kartlar */
 @media (max-width: 560px) {
   .stat-grid-pixel {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 6px;
     padding: 6px;
   }
 
   .stat-pixel {
-    padding: 8px 10px;
-    gap: 8px;
+    padding: 6px 8px;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .stat-pixel-body {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .stat-pixel-icon {
-    font-size: 16px;
+    font-size: 14px;
+    flex: 0 0 auto;
+  }
+
+  .stat-pixel-row {
+    gap: 4px;
+    margin-bottom: 3px;
   }
 
   .stat-pixel-row strong {
-    font-size: 14px;
+    font-size: 13px;
+    white-space: nowrap;
   }
 
   .stat-pixel-row .pixel-label {
-    font-size: 9px;
+    font-size: 8px;
+    letter-spacing: .8px;
+  }
+
+  .stat-pixel .pix-bar,
+  .stat-pixel .pix-bar-thin {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 340px) {
+  .stat-grid-pixel {
+    grid-template-columns: 1fr !important;
   }
 }
 
