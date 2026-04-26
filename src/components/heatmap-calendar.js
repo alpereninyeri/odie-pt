@@ -5,6 +5,11 @@ const DAY_LABELS = ['Pzt', '', 'Çar', '', 'Cum', '', 'Paz']
 const CELL = 11
 const GAP = 2
 
+function _isMobile() {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(max-width: 560px)').matches
+}
+
 function escapeAttr(value = '') {
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -40,7 +45,8 @@ export function renderHeatmap(workouts = [], todayStr = getLocalDateString()) {
   const today = new Date(`${normalizeDateString(todayStr)}T00:00:00`)
   const todayDow = (today.getDay() + 6) % 7
 
-  const totalDays = 365
+  const mobile = _isMobile()
+  const totalDays = mobile ? 182 : 365
   const startTs = today.getTime() - ((totalDays - 1) * 86400000)
   const startDate = new Date(startTs)
   const startDow = (startDate.getDay() + 6) % 7
@@ -101,13 +107,14 @@ export function renderHeatmap(workouts = [], todayStr = getLocalDateString()) {
 
   const totals = (workouts || []).reduce((sum, workout) => sum + (Number(workout.durationMin) || 0), 0)
   const activeDayCount = aggregated.size
-  const stats = `${activeDayCount} aktif gun · ${Math.round(totals / 60)}s toplam · ${weekCount} hafta`
+  const periodLabel = mobile ? '6 ay' : '365 gun'
+  const stats = `${activeDayCount} aktif · ${Math.round(totals / 60)}s · ${weekCount}h`
 
   return `
     <article class="glass-card heatmap-card">
       <div class="section-top">
         <div>
-          <div class="eyebrow">365 Gun Aktivite</div>
+          <div class="eyebrow">${periodLabel} Aktivite</div>
           <h3>Aktivite haritasi</h3>
         </div>
         <div class="heatmap-summary">${stats}</div>

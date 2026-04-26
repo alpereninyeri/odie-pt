@@ -591,6 +591,147 @@
   border-radius: 2px;
 }
 
+/* Mobile responsive — radar / heatmap / quest / cards */
+
+@media (max-width: 560px) {
+  .character-page {
+    padding: 0 8px;
+    gap: 10px;
+  }
+
+  .character-page > article,
+  .character-page .glass-card {
+    padding: 10px !important;
+  }
+
+  .stat-radar-card,
+  .heatmap-card {
+    padding: 10px !important;
+  }
+
+  .stat-radar-svg {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .stat-radar-svg-wrap {
+    padding: 4px 0 0;
+  }
+
+  .stat-radar-summary {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+
+  .radar-label-key { font-size: 10px; }
+  .radar-label-val { font-size: 11px; }
+  .radar-label-delta { font-size: 9px; }
+
+  .heatmap-svg-wrap {
+    margin: 0 -4px;
+    padding: 4px 4px 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  .heatmap-svg::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .heatmap-summary {
+    font-size: 8px;
+    letter-spacing: .8px;
+  }
+
+  .heatmap-month-label {
+    font-size: 7px;
+  }
+
+  .heatmap-day-label {
+    font-size: 6px;
+  }
+
+  .heatmap-legend {
+    font-size: 7px;
+    gap: 3px;
+  }
+
+  .heatmap-legend i {
+    width: 9px;
+    height: 9px;
+  }
+
+  /* Quest ticket — mobil sıkışıklık */
+  .quest-ticket {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .quest-title-row {
+    gap: 4px;
+    row-gap: 2px;
+  }
+
+  .quest-title-row strong {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .quest-source {
+    font-size: 6px;
+    padding: 1px 3px;
+    flex-shrink: 0;
+  }
+
+  .quest-icon {
+    font-size: 18px;
+  }
+
+  /* Section başlıkları sıkıştır */
+  .character-page .section-top {
+    gap: 6px;
+  }
+
+  .character-page .section-top .eyebrow {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+
+  .character-page .section-top h3,
+  .character-page .panel-title {
+    font-size: 14px !important;
+    letter-spacing: 1px !important;
+  }
+
+  /* Stat radar legend kompakt */
+  .stat-radar-legend {
+    font-size: 8px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .character-page > article,
+  .character-page .glass-card {
+    padding: 8px !important;
+  }
+
+  .stat-radar-svg {
+    max-width: 100%;
+  }
+
+  .radar-label-key { font-size: 9px; }
+  .radar-label-val { font-size: 10px; }
+  .radar-label-delta { font-size: 8px; }
+
+  .quest-title-row strong {
+    font-size: 10px;
+  }
+}
+
 /* Portrait banner */
 
 .portrait-banner {
