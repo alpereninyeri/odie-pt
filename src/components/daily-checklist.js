@@ -21,10 +21,10 @@ export function renderDailyChecklist() {
 
   return `
     <div class="daily-checklist" id="daily-checklist">
-      <div class="dc-title">BUGUN · ${_formatDate(today)}</div>
+      <div class="dc-title">BUGUN / ${_formatDate(today)}</div>
 
       <div class="dc-row">
-        <div class="dc-icon">💧</div>
+        <div class="dc-icon">H2O</div>
         <div class="dc-info">
           <div class="dc-lbl">Su</div>
           <div class="dc-bar"><div class="dc-fill" style="width:${waterPct}%;background:var(--cobalt)"></div></div>
@@ -37,10 +37,10 @@ export function renderDailyChecklist() {
       </div>
 
       <div class="dc-row">
-        <div class="dc-icon">😴</div>
+        <div class="dc-icon">SLP</div>
         <div class="dc-info">
           <div class="dc-lbl">Uyku</div>
-          <div class="dc-bar"><div class="dc-fill" style="width:${sleepPct}%;background:var(--purple-accent)"></div></div>
+          <div class="dc-bar"><div class="dc-fill" style="width:${sleepPct}%;background:var(--violet)"></div></div>
         </div>
         <div class="dc-val" id="dc-sleep-val">${log.sleepHours || 0}h / 8h</div>
         <div class="dc-btns">
@@ -50,7 +50,7 @@ export function renderDailyChecklist() {
       </div>
 
       <div class="dc-row">
-        <div class="dc-icon">👟</div>
+        <div class="dc-icon">STP</div>
         <div class="dc-info">
           <div class="dc-lbl">Adim</div>
           <div class="dc-bar"><div class="dc-fill" style="width:${stepsPct}%;background:var(--amber)"></div></div>
@@ -63,7 +63,7 @@ export function renderDailyChecklist() {
       </div>
 
       <div class="dc-row dc-mood-row">
-        <div class="dc-icon">🎭</div>
+        <div class="dc-icon">M</div>
         <div class="dc-info">
           <div class="dc-lbl">Mood</div>
           <div class="dc-mood-options">
@@ -74,7 +74,7 @@ export function renderDailyChecklist() {
             `).join('')}
           </div>
         </div>
-        <div class="dc-val" id="dc-mood-val">${currentMood ? MOOD_OPTIONS[currentMood - 1].label : '—'}</div>
+        <div class="dc-val" id="dc-mood-val">${currentMood ? MOOD_OPTIONS[currentMood - 1].label : '-'}</div>
       </div>
     </div>
   `
@@ -105,7 +105,7 @@ export function initDailyChecklist() {
         if (!Number.isFinite(value) || value < 0 || value > 16) return
         next.sleepHours = value
         _updateDisplay('dc-sleep-val', `${value}h / 8h`)
-        _updateBar(element, 1, Math.min(100, Math.round((value / 8) * 100)), 'var(--purple-accent)')
+        _updateBar(element, 1, Math.min(100, Math.round((value / 8) * 100)), 'var(--violet)')
         break
       }
       case 'steps': {
@@ -151,6 +151,6 @@ function _updateBar(container, index, pct, color) {
 
 function _formatDate(isoDate) {
   const [year, month, day] = isoDate.split('-')
-  const months = ['Ock', 'Sub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Agu', 'Eyl', 'Eki', 'Kas', 'Ara']
+  const months = ['Oca', 'Sub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Agu', 'Eyl', 'Eki', 'Kas', 'Ara']
   return `${day} ${months[Number(month) - 1]} ${year}`
 }

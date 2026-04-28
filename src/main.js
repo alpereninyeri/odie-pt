@@ -1,8 +1,4 @@
-import './style.css'
-import './styles/legacy-overrides.css'
-import './styles/theme-mmo.css'
-import './styles/hud-ask.css'
-import './styles/hud-redesign.css'
+import './styles/odie-ui.css'
 import { store } from './data/store.js'
 import { computeStatSnapshotDaysAgo, formatMonthShort } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
@@ -11,7 +7,7 @@ import { renderAsk, initAsk } from './components/panel-ask.js'
 import { renderDailyChecklist, initDailyChecklist } from './components/daily-checklist.js'
 import { renderHeatmap } from './components/heatmap-calendar.js'
 import { openWorkoutForm } from './components/workout-form.js'
-import { initModal, closeModal, openAvatarModal, openArchetypeModal, openFocusModal, openUnlockModal } from './components/modal.js'
+import { initModal, closeModal, openAvatarModal, openArchetypeModal, openFocusModal, openStatModal, openUnlockModal } from './components/modal.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
 
@@ -120,7 +116,7 @@ function renderApp() {
     <div class="app-shell app-shell-v6">
       <aside class="app-nav glass-card">
         <div class="nav-brand">
-          <div class="nav-brand-mark">${profile.avatar}</div>
+          <div class="nav-brand-mark">${avatarMark(profile)}</div>
           <div>
             <div class="nav-brand-title">OdiePT</div>
             <div class="nav-brand-sub">${state.profile.classObj?.name || profile.class}</div>
@@ -146,7 +142,7 @@ function renderApp() {
           </div>
           <div class="topbar-actions">
             <button class="avatar-chip" data-action="open-avatar" aria-label="Profili ac">
-              <span class="avatar-chip-icon">${profile.avatar}</span>
+              <span class="avatar-chip-icon">${avatarMark(profile)}</span>
               <span>${profile.nick}</span>
             </button>
           </div>
@@ -196,7 +192,7 @@ function renderMobileHud(state, profile) {
   return `
     <div class="mobile-hud-wrap">
       <div class="mobile-hud mobile-hud-v6">
-        <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${profile.avatar}</button>
+        <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${avatarMark(profile)}</button>
         <div class="mobile-hud-center">
           <div class="mobile-hud-nick">${profile.nick}<span>L${level}</span></div>
           <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
@@ -230,6 +226,11 @@ function renderNavGlyph(kind) {
     default:
       return kind
   }
+}
+
+function avatarMark(profile = {}) {
+  const nick = String(profile.nick || 'OD')
+  return escapeHtml(nick.replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase() || 'OD')
 }
 
 function renderPage(tabKey, state, profile, semantic) {
@@ -434,7 +435,7 @@ function renderPortraitBanner(state, profile) {
   return `
     <article class="glass-card portrait-banner">
       <button class="portrait-img-frame" data-action="open-avatar" aria-label="Profili ac">
-        ${profile.avatar}
+        <span>${avatarMark(profile)}</span>
         <span class="portrait-level-chip">L${profile.level}</span>
       </button>
       <div class="portrait-info">
@@ -519,8 +520,8 @@ function renderStatPixelCard(stat, latestDelta = {}) {
   const upFlag = delta > 0 ? `<span class="stat-pixel-flag" style="background:var(--mmo-emerald)">UP</span>` : ''
   const critFlag = stat.critical ? `<span class="stat-pixel-flag">F</span>` : ''
   return `
-    <button class="stat-pixel ${stat.critical ? 'crit' : ''}" data-action="open-focus" aria-label="${stat.name}">
-      <span class="stat-pixel-icon">${stat.icon || '*'}</span>
+    <button class="stat-pixel ${stat.critical ? 'crit' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" aria-label="${escapeHtml(stat.name)} detayini ac">
+      <span class="stat-pixel-icon">${escapeHtml(stat.label || stat.key || '*')}</span>
       <div class="stat-pixel-body">
         <div class="stat-pixel-row">
           <span class="pixel-label">${stat.label}</span>
@@ -857,6 +858,14 @@ document.addEventListener('click', event => {
       semantic,
       profile: { ...profile, streak: state.profile.streak },
     })
+    return
+  }
+
+  if (action === 'open-stat') {
+    const key = event.target.closest('[data-stat-key]')?.dataset.statKey
+    const profile = store.getProfile()
+    const stat = (profile.stats || []).find(item => String(item.key) === String(key))
+    if (stat) openStatModal({ ...stat, icon: stat.label || stat.key || 'ST' })
     return
   }
 

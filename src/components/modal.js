@@ -1,5 +1,10 @@
 let _onClose = null
 
+function avatarMark(profile = {}) {
+  const nick = String(profile.nick || 'OD')
+  return nick.replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase() || 'OD'
+}
+
 export function initModal() {
   const bg = document.getElementById('statModal')
   bg.addEventListener('click', event => {
@@ -128,7 +133,7 @@ function gradePillClass(value = '') {
 
 export function openStatModal(stat) {
   openDetailModal({
-    icon: stat.icon,
+    icon: stat.label || stat.key || 'ST',
     title: `${stat.name} Codex`,
     body: `
       <div class="modal-stat-big" style="color:${stat.color}">
@@ -334,11 +339,11 @@ export function openAvatarModal(profile) {
     : (profile.currentFocus ? `Su an odak: ${profile.currentFocus}.` : 'Hybrid denge korunuyor.')
 
   openDetailModal({
-    icon: profile.avatar,
+    icon: avatarMark(profile),
     title: profile.nick,
     body: `
       <div style="text-align:center;padding:16px 0 12px">
-        <div style="font-size:72px;margin-bottom:8px">${profile.avatar}</div>
+        <div style="font-size:56px;margin-bottom:8px">${avatarMark(profile)}</div>
         <div style="font-family:'Cinzel',serif;font-size:18px;color:var(--gold);margin-bottom:4px">${profile.class}</div>
         <div style="font-size:12px;color:var(--dim)">${profile.subClass} · ${profile.rank}</div>
       </div>

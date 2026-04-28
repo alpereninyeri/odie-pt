@@ -1,7 +1,7 @@
 import { getLocalDateString, normalizeDateString } from '../data/rules.js'
 
-const MONTH_LABELS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
-const DAY_LABELS = ['Pzt', '', 'Çar', '', 'Cum', '', 'Paz']
+const MONTH_LABELS = ['Oca', 'Sub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Agu', 'Eyl', 'Eki', 'Kas', 'Ara']
+const DAY_LABELS = ['Pzt', '', 'Car', '', 'Cum', '', 'Paz']
 const CELL = 11
 const GAP = 2
 
@@ -75,8 +75,8 @@ export function renderHeatmap(workouts = [], todayStr = getLocalDateString()) {
       const sessions = entry?.sessions || 0
       const types = entry ? [...entry.types].slice(0, 2).join(' / ') : ''
       const tooltip = entry
-        ? `${_formatDateLabel(dateStr)} · ${entry.durationMin}dk · ${sessions} seans${types ? ` · ${types}` : ''}`
-        : `${_formatDateLabel(dateStr)} · seans yok`
+        ? `${_formatDateLabel(dateStr)} / ${entry.durationMin}dk / ${sessions} seans${types ? ` / ${types}` : ''}`
+        : `${_formatDateLabel(dateStr)} / seans yok`
 
       cells.push(`<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="2" ry="2" class="heatmap-cell tone-${t}${isToday ? ' today' : ''}" data-date="${escapeAttr(dateStr)}"><title>${escapeAttr(tooltip)}</title></rect>`)
 
@@ -108,7 +108,7 @@ export function renderHeatmap(workouts = [], todayStr = getLocalDateString()) {
   const totals = (workouts || []).reduce((sum, workout) => sum + (Number(workout.durationMin) || 0), 0)
   const activeDayCount = aggregated.size
   const periodLabel = mobile ? '6 ay' : '365 gun'
-  const stats = `${activeDayCount} aktif · ${Math.round(totals / 60)}s · ${weekCount}h`
+  const stats = `${activeDayCount} aktif / ${Math.round(totals / 60)}s / ${weekCount}h`
 
   return `
     <article class="glass-card heatmap-card">
