@@ -150,6 +150,7 @@ svg {
 .character-page,
 .odie-page {
   min-width: 0;
+  max-width: 100%;
 }
 
 .app-main {
@@ -388,6 +389,14 @@ svg {
 .surface-stack {
   display: grid;
   gap: 14px;
+}
+
+.today-page > *,
+.character-page > *,
+.odie-page > *,
+.surface-stack > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .card-hero {
@@ -718,6 +727,7 @@ svg {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .trio-card {
@@ -749,6 +759,7 @@ svg {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 9px;
+  min-width: 0;
 }
 
 .stat-pixel {
@@ -831,6 +842,10 @@ svg {
 .recovery-pixel,
 .heatmap-card {
   padding: 15px;
+}
+
+.heatmap-card {
+  overflow: hidden;
 }
 
 .stat-radar-svg-wrap {
@@ -1092,6 +1107,8 @@ svg {
 }
 
 .heatmap-svg-wrap {
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   padding: 6px 0;
 }
