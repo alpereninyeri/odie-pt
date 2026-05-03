@@ -1,7 +1,7 @@
 import './styles/odie-ui.css'
 import './styles/heroic-rpg.css'
 import { store } from './data/store.js'
-import { computeProfileStatsSnapshotDaysAgo, formatMonthShort } from './data/rules.js'
+import { computeProfileStatsSnapshotDaysAgo, formatMonthShort, getLocalDateString, normalizeDateString } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
 import { renderAsk, initAsk } from './components/panel-ask.js'
@@ -306,12 +306,12 @@ function buildTodayLead(state, latestWorkout = null) {
   }
   const score = Number(state.health?.readiness?.score)
   if (Number.isFinite(score)) {
-    if (score >= 80) return 'Bugun ana blok icin iyi gorunuyor. Seansi ekle, ODIE sonuca gore karakteri guncellesin.'
-    if (score >= 60) return 'Normal tempo uygun. Seans gir veya ODIEden bugunun planini iste.'
+    if (score >= 80) return 'Bugun ana blok icin iyi gorunuyor. Hevy ve Telegram akisi geldikce kart kendini yeniler.'
+    if (score >= 60) return 'Normal tempo uygun. Son veriler yuk, kaynak ve ritim panellerine dusuyor.'
     if (score >= 40) return 'Kontrollu git. Teknik, core veya daha kisa bir seans mantikli.'
     return 'Yorgunluk yuksek gorunuyor. Bugun hafif teknik veya kisa hareket yeter.'
   }
-  return 'Bugunku seansi gir; karakter karti, skill agaci ve gorevler canli veriden guncellensin.'
+  return 'Hevy ve Telegram kayitlari geldikce karakter karti, skill agaci ve gorevler canli veriden guncellenir.'
 }
 
 function renderTodayPage(state, profile, semantic) {
@@ -382,10 +382,7 @@ function renderTodayPage(state, profile, semantic) {
           <div><span>Seri</span><strong>${streak}g</strong></div>
         </div>
 
-        <div class="today-hero-cta-row">
-          <button class="cta-primary" data-action="open-workout">SEANS EKLE</button>
-          <button class="cta-secondary" data-tab="odie">ODIE'YE SOR</button>
-        </div>
+        ${renderHomeDataDeck(state, profile)}
       </article>
 
       ${activeQuest ? `
@@ -420,11 +417,176 @@ function renderTodayPage(state, profile, semantic) {
             ${recentSessions.map(renderTodaySessionItem).join('')}
           </ul>
         ` : `
-          <div class="today-session-empty">Henuz seans kaydi yok. Ilk seansini ekle.</div>
+          <div class="today-session-empty">Hevy veya Telegram kaydi bekleniyor.</div>
         `}
       </article>
     </section>
   `
+}
+
+function renderHomeDataDeck(state, profile) {
+  const workouts = state.workouts || []
+  const bars = buildHomeLoadBars(workouts, profile)
+  const sourceMix = buildHomeSourceMix(workouts)
+  const rhythm = buildHomeRhythm(state)
+  const totalVolume = workouts.slice(0, 7).reduce((sum, workout) => sum + (Number(workout.volumeKg) || 0), 0)
+  const totalMinutes = workouts.slice(0, 7).reduce((sum, workout) => sum + (Number(workout.durationMin) || 0), 0)
+  const loadValue = totalVolume > 0
+    ? `${formatCompactMetric(totalVolume)} kg`
+    : totalMinutes > 0
+      ? `${Math.round(totalMinutes)} dk`
+      : `${Math.round(avgStatValue(profile))}/100`
+  const loadLabel = workouts.length ? 'Son 7 seans yuku' : 'Profil sim'
+
+  return `
+    <div class="home-data-deck" aria-label="Datalarim">
+      <div class="home-data-card home-data-card-wide">
+        <div class="home-data-head">
+          <span>DATALARIM</span>
+          <strong>${escapeHtml(loadValue)}</strong>
+        </div>
+        <div class="home-data-sub">${escapeHtml(loadLabel)}</div>
+        <div class="home-load-bars">
+          ${bars.map(bar => `
+            <div class="home-load-bar" title="${escapeHtml(bar.title)}">
+              <span style="height:${bar.height}%"></span>
+              <small>${escapeHtml(bar.label)}</small>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="home-data-card">
+        <div class="home-data-head">
+          <span>KAYNAK</span>
+          <strong>${sourceMix.total}</strong>
+        </div>
+        <div class="home-source-stack">
+          ${sourceMix.parts.map(part => `<span class="${part.key}" style="width:${part.pct}%"></span>`).join('')}
+        </div>
+        <div class="home-source-legend">
+          ${sourceMix.parts.map(part => `<small>${escapeHtml(part.label)} ${part.count}</small>`).join('')}
+        </div>
+      </div>
+
+      <div class="home-data-card">
+        <div class="home-data-head">
+          <span>RITIM</span>
+          <strong>${rhythm.active}/7</strong>
+        </div>
+        <div class="home-day-dots">
+          ${rhythm.days.map(day => `<span class="${day.active ? 'active' : ''}" title="${escapeHtml(day.title)}">${day.label}</span>`).join('')}
+        </div>
+        <div class="home-data-sub">${escapeHtml(rhythm.summary)}</div>
+      </div>
+    </div>
+  `
+}
+
+function buildHomeLoadBars(workouts = [], profile = {}) {
+  const recent = workouts.slice(0, 7).reverse()
+  const source = recent.length
+    ? recent.map(workout => {
+      const volume = Number(workout.volumeKg) || 0
+      const minutes = Number(workout.durationMin) || 0
+      const sets = Number(workout.sets) || 0
+      const value = volume || (minutes * 70) || (sets * 180) || (Number(workout.xpEarned) || 1)
+      return {
+        value,
+        label: shortDateLabel(workout.date),
+        title: `${formatMonthShort(workout.date)} / ${workout.type || 'Seans'} / ${volume ? `${formatCompactMetric(volume)} kg` : `${Math.round(minutes)} dk`}`,
+      }
+    })
+    : (profile.stats || []).slice(0, 7).map(stat => ({
+      value: Number(stat.val) || 0,
+      label: stat.label || stat.key,
+      title: `${stat.label || stat.key} ${Math.round(Number(stat.val) || 0)}`,
+    }))
+
+  const max = Math.max(1, ...source.map(item => item.value))
+  return source.map(item => ({
+    ...item,
+    height: Math.max(16, Math.round((item.value / max) * 100)),
+  }))
+}
+
+function buildHomeSourceMix(workouts = []) {
+  const counts = workouts.reduce((acc, workout) => {
+    const source = String(workout.source || 'manual').toLowerCase()
+    if (source === 'hevy') acc.hevy += 1
+    else if (source === 'telegram') acc.telegram += 1
+    else acc.manual += 1
+    return acc
+  }, { hevy: 0, telegram: 0, manual: 0 })
+  const total = counts.hevy + counts.telegram + counts.manual
+  const rawParts = [
+    { key: 'hevy', label: 'Hevy', count: counts.hevy },
+    { key: 'telegram', label: 'TG', count: counts.telegram },
+    { key: 'manual', label: 'Web', count: counts.manual },
+  ]
+  const parts = total
+    ? rawParts.map(part => ({ ...part, pct: Math.max(part.count ? 8 : 0, Math.round((part.count / total) * 100)) }))
+    : [{ key: 'manual', label: 'Bekliyor', count: 0, pct: 100 }]
+  return { total, parts }
+}
+
+function buildHomeRhythm(state) {
+  const workouts = state.workouts || []
+  const dailyLogs = state.dailyLogs || []
+  const activeDates = new Set(workouts.map(workout => normalizeDateString(workout.date)))
+  const logDates = new Set(dailyLogs.map(log => normalizeDateString(log.date)))
+  const anchor = parseLocalDate(workouts[0]?.date || dailyLogs[0]?.date || getLocalDateString())
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = shiftDate(anchor, index - 6)
+    const key = normalizeDateString(date.toISOString())
+    const active = activeDates.has(key) || logDates.has(key)
+    return {
+      active,
+      label: String(date.getDate()).padStart(2, '0'),
+      title: `${key}${active ? ' aktif' : ' bos'}`,
+    }
+  })
+  const active = days.filter(day => day.active).length
+  const latestLog = dailyLogs[0]
+  const sleepHours = Number(latestLog?.sleepHours) || 0
+  const steps = Number(latestLog?.steps) || 0
+  const waterMl = Number(latestLog?.waterMl) || 0
+  const summary = sleepHours > 0 || steps > 0
+    ? `Uyku ${sleepHours.toFixed(1)}s / ${formatCompactMetric(steps)} adim`
+    : waterMl > 0
+      ? `${formatCompactMetric(waterMl)} ml su`
+      : active ? 'Son hafta hareket izi' : 'Ritim verisi bekliyor'
+  return { days, active, summary }
+}
+
+function avgStatValue(profile = {}) {
+  const stats = (profile.stats || []).map(stat => Number(stat.val)).filter(Number.isFinite)
+  if (!stats.length) return 0
+  return stats.reduce((sum, value) => sum + value, 0) / stats.length
+}
+
+function formatCompactMetric(value = 0) {
+  const num = Math.round(Number(value) || 0)
+  if (Math.abs(num) >= 1000000) return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}m`
+  if (Math.abs(num) >= 1000) return `${Math.round(num / 1000)}k`
+  return String(num)
+}
+
+function parseLocalDate(value) {
+  const normalized = normalizeDateString(value)
+  const parsed = new Date(`${normalized}T12:00:00`)
+  return Number.isNaN(parsed.getTime()) ? new Date(`${getLocalDateString()}T12:00:00`) : parsed
+}
+
+function shiftDate(date, offset) {
+  const next = new Date(date.getTime())
+  next.setDate(next.getDate() + offset)
+  return next
+}
+
+function shortDateLabel(value) {
+  const label = formatMonthShort(value)
+  return label.split(' ')[0] || label
 }
 
 function renderHomeRadar(profile) {
