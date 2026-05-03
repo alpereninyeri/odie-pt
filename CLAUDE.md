@@ -32,10 +32,14 @@ Yani yeni workout, memory, coach note, ask history gibi seyler her zaman `profil
 ### Server routes
 - `api/telegram.js`
 - `api/ask.js`
+- `api/hevy-webhook.js` (Hevy yeni workout)
+- `api/hevy-sync.js`    (gunluk delta cron)
+- `api/hevy-backfill.js` (manuel tarihsel backfill)
 
 ## Current User Flows
 ### Workout logging
 - Telegram message
+- Hevy app (webhook + cron delta)
 - site icinde manual workout form
 
 ### Recovery logging
@@ -53,6 +57,15 @@ Mevcut zincir:
 - `supabase-schema-v2.sql`
 - `supabase-memory-v3.sql`
 - `supabase-odie-ask-v4.sql`
+- `supabase-rls-fix-v5.sql`
+- `supabase-hevy-v6.sql`  (Hevy: external_source/external_id/raw_external + hevy_sync_state)
+
+## Hevy Entegrasyonu (V6)
+- Webhook payload'i sadece `{ id }` — biz `lib/hevy/client.js` ile detayi cekeriz.
+- `lib/hevy/normalize.js`: Hevy workout -> OdiePt session shape; type'i egzersiz adlarindan tahmin eder.
+- `lib/hevy/persist.js`: telegram.js ile ayni XP / survival / stat / profile pipeline'ini calistirir, ama coach yorumu uretmez (sessiz). Idempotency external_id index'inden gelir.
+- Cron: `vercel.json` -> `/api/hevy-sync` her gun 03:00 UTC. Webhook gercek zamanli, cron guvence.
+- Env vars: `HEVY_API_KEY`, `HEVY_WEBHOOK_SECRET`, `HEVY_INTERNAL_SECRET` (bkz. `.env`).
 
 ## Verification
 Her anlamli degisiklikten sonra:

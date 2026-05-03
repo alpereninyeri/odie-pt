@@ -5,5 +5,8 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/(.*)",       "destination": "/dist/$1" }
+  ],
+  "crons": [
+    { "path": "/api/hevy-sync", "schedule": "0 3 * * *" }
   ]
 }
