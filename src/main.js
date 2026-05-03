@@ -334,24 +334,54 @@ function renderTodayPage(state, profile, semantic) {
 
   return `
     <section class="today-page">
-      <article class="card-hero">
-        <div class="today-hero-top">
+      <article class="home-cockpit">
+        <div class="home-cockpit-main">
+          <button class="home-avatar-frame" data-action="open-avatar" aria-label="Profili ac">
+            <span>${avatarMark(profile)}</span>
+            <small>L${profile.level || 1}</small>
+          </button>
+
+          <div class="home-identity">
+            <div class="today-hero-eyebrow">${escapeHtml(state.profile.classObj?.name || profile.class || 'OdiePT')}</div>
+            <h2>${escapeHtml(profile.nick)}</h2>
+            <div class="home-xp-line">
+              <span>XP</span>
+              <div class="pix-bar pix-bar-thin"><div class="pix-bar-fill" style="width:${Math.max(0, Math.min(100, Math.round(((profile.xp?.current || 0) / (profile.xp?.max || 1)) * 100)))}%"></div></div>
+              <strong>${profile.xp?.current || 0}/${profile.xp?.max || 2000}</strong>
+            </div>
+          </div>
+
+          ${renderHomeRadar(profile)}
+        </div>
+
+        <div class="home-stat-strip">
+          ${(profile.stats || []).slice(0, 6).map(stat => `
+            <button class="home-stat-mini ${stat.critical ? 'crit' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}">
+              <span>${escapeHtml(stat.label || stat.key)}</span>
+              <strong>${Math.round(Number(stat.val) || 0)}</strong>
+            </button>
+          `).join('')}
+        </div>
+
+        <div class="home-session-card">
           <div>
-            <div class="today-hero-eyebrow">${sourceLabel}</div>
-            <h2 class="today-hero-title">${title}</h2>
+            <span>${sourceLabel}</span>
+            <strong>${escapeHtml(title)}</strong>
+            <p>${escapeHtml(lead)}</p>
           </div>
           <div class="today-hero-score">
             <strong>${heroMetric || '--'}</strong>
             <small>${heroMetricLabel}</small>
           </div>
         </div>
-        <p class="today-hero-lead">${escapeHtml(lead)}</p>
+
         <div class="home-metrics-grid">
-          <div><span>Level</span><strong>${profile.level || 1}</strong></div>
-          <div><span>Seans</span><strong>${profile.sessions || 0}</strong></div>
+          <div><span>Can</span><strong>${armor}</strong></div>
+          <div><span>Yorgunluk</span><strong>${fatigue}</strong></div>
           <div><span>Hacim</span><strong>${escapeHtml(profile.totalVolume || '0 kg')}</strong></div>
           <div><span>Seri</span><strong>${streak}g</strong></div>
         </div>
+
         <div class="today-hero-cta-row">
           <button class="cta-primary" data-action="open-workout">SEANS EKLE</button>
           <button class="cta-secondary" data-tab="odie">ODIE'YE SOR</button>
@@ -394,6 +424,48 @@ function renderTodayPage(state, profile, semantic) {
         `}
       </article>
     </section>
+  `
+}
+
+function renderHomeRadar(profile) {
+  const stats = profile.stats || []
+  const order = ['str', 'agi', 'end', 'dex', 'con', 'sta']
+  const ordered = order.map(key => stats.find(stat => stat.key === key)).filter(Boolean)
+  if (ordered.length < 6) return ''
+
+  const size = 132
+  const cx = size / 2
+  const cy = size / 2
+  const radius = 42
+  const angleFor = index => (-Math.PI / 2) + (index * (2 * Math.PI / 6))
+  const point = (value, index, scale = 1) => {
+    const angle = angleFor(index)
+    const r = (Math.max(0, Math.min(100, value)) / 100) * radius * scale
+    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)]
+  }
+  const polygon = ordered.map((stat, index) => point(Number(stat.val) || 0, index).join(',')).join(' ')
+  const rings = [0.35, 0.7, 1].map(scale => {
+    const points = ordered.map((_, index) => point(100, index, scale).join(',')).join(' ')
+    return `<polygon points="${points}" class="home-radar-ring"/>`
+  }).join('')
+  const axis = ordered.map((_, index) => {
+    const [x, y] = point(100, index)
+    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" class="home-radar-axis"/>`
+  }).join('')
+  const labels = ordered.map((stat, index) => {
+    const [x, y] = point(100, index, 1.28)
+    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle">${escapeHtml(stat.label || stat.key)}</text>`
+  }).join('')
+
+  return `
+    <div class="home-radar">
+      <svg viewBox="0 0 ${size} ${size}" aria-hidden="true">
+        ${rings}
+        ${axis}
+        <polygon points="${polygon}" class="home-radar-shape"/>
+        ${labels}
+      </svg>
+    </div>
   `
 }
 
