@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  computeProfileStatsFromWorkouts,
+  computeProfileStatsSnapshotDaysAgo,
   computeSessionStatDelta,
   computeSessionXp,
   computeStreakInfo,
@@ -60,6 +62,40 @@ test('hanging leg raise produces direct and advanced core delta', () => {
 
   const delta = computeSessionStatDelta(core)
   assert.equal(delta.con, 3)
+})
+
+test('profile stat calibration soft-caps large Hevy/backfill histories', () => {
+  const workouts = Array.from({ length: 80 }, (_, index) => ({
+    date: `2026-04-${String((index % 28) + 1).padStart(2, '0')}`,
+    statDelta: { str: 3, agi: 2, end: 1, dex: 3, con: 0, sta: 2 },
+  }))
+
+  const stats = computeProfileStatsFromWorkouts(workouts, { str: 100, agi: 100, end: 100, dex: 100, con: 18, sta: 100 }, {
+    todayStr: '2026-04-30',
+  })
+
+  assert.ok(stats.str < 100)
+  assert.ok(stats.dex < 100)
+  assert.ok(stats.str <= 94)
+  assert.ok(stats.dex <= 91)
+  assert.ok(stats.con < stats.str)
+})
+
+test('profile stat snapshot uses calibrated history instead of raw delta subtraction', () => {
+  const oldWorkouts = Array.from({ length: 45 }, (_, index) => ({
+    date: `2026-03-${String((index % 20) + 1).padStart(2, '0')}`,
+    statDelta: { str: 2, agi: 1, end: 1, dex: 2, con: 0, sta: 1 },
+  }))
+  const recentWorkouts = Array.from({ length: 20 }, (_, index) => ({
+    date: `2026-04-${String((index % 20) + 1).padStart(2, '0')}`,
+    statDelta: { str: 3, agi: 2, end: 1, dex: 3, con: 1, sta: 2 },
+  }))
+  const workouts = [...recentWorkouts, ...oldWorkouts]
+  const current = computeProfileStatsFromWorkouts(workouts, {}, { todayStr: '2026-04-30' })
+  const snapshot = computeProfileStatsSnapshotDaysAgo(workouts, current, 30, '2026-04-30')
+
+  assert.ok(snapshot.str > 0)
+  assert.ok(current.str - snapshot.str < 40)
 })
 
 test('manual and telegram normalization lead to same deterministic output', () => {

@@ -16,7 +16,7 @@ import { buildOdieContext } from '../src/data/odie-context.js'
 import { buildFallbackCoachResponse } from '../src/data/odie-fallback.js'
 import { detectPRs } from '../src/data/pr-detector.js'
 import {
-  applyStatDelta,
+  computeProfileStatsFromWorkouts,
   computeSessionStatDelta,
   computeSessionXp,
   computeStreakInfo,
@@ -1804,7 +1804,7 @@ export default async function handler(req, res) {
       doubleSession: workouts.some(workout => normalizeDateString(workout.date) === sessionDate),
     })
     const statDelta = computeSessionStatDelta(session)
-    const nextStats = applyStatDelta(profile.stats || {}, statDelta)
+    const nextStats = computeProfileStatsFromWorkouts([session, ...workouts], profile.stats || {})
 
     const existingTotalXp = Number(profile.xp_total)
       || (((Number(profile.level) || 1) - 1) * (Number(profile.xp_max) || 2000) + (Number(profile.xp_current) || 0))

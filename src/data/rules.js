@@ -285,6 +285,20 @@ const DISTANCE_RATES = {
   Koşu: 9,
 }
 
+export const STAT_KEYS = ['str', 'agi', 'end', 'dex', 'con', 'sta']
+
+const STAT_SCORE_CONFIG = {
+  str: { base: 26, saturation: 48, ceiling: 94, recentWeight: 0.35, recentCap: 5 },
+  agi: { base: 24, saturation: 38, ceiling: 92, recentWeight: 0.42, recentCap: 5 },
+  end: { base: 24, saturation: 42, ceiling: 93, recentWeight: 0.38, recentCap: 5 },
+  dex: { base: 22, saturation: 40, ceiling: 91, recentWeight: 0.42, recentCap: 5 },
+  con: { base: 12, saturation: 34, ceiling: 86, recentWeight: 0.5, recentCap: 6 },
+  sta: { base: 23, saturation: 42, ceiling: 93, recentWeight: 0.38, recentCap: 5 },
+}
+
+const STAT_RECENT_WINDOW_DAYS = 28
+const STAT_BLEND_FULL_SAMPLE = 30
+
 function _number(value) {
   const num = Number(value)
   return Number.isFinite(num) ? num : 0
@@ -1044,12 +1058,97 @@ export function computeSessionStatDelta(session = {}) {
 
 export function applyStatDelta(currentStats = {}, delta = {}) {
   const next = {}
-  for (const key of ['str', 'agi', 'end', 'dex', 'con', 'sta']) {
+  for (const key of STAT_KEYS) {
     const current = Number(currentStats[key]) || 0
     const change = Number(delta[key]) || 0
     next[key] = Math.max(0, Math.min(100, Math.round((current + change) * 10) / 10))
   }
   return next
+}
+
+function _normalizeStatDelta(delta = {}) {
+  const out = {}
+  for (const key of STAT_KEYS) out[key] = Math.max(0, Number(delta?.[key]) || 0)
+  return out
+}
+
+function _hasStatSignal(delta = {}) {
+  return STAT_KEYS.some(key => Number(delta?.[key]) > 0)
+}
+
+function _statDeltaForWorkout(workout = {}) {
+  const explicit = workout.statDelta || workout.stat_delta
+  if (explicit && typeof explicit === 'object' && _hasStatSignal(explicit)) {
+    return _normalizeStatDelta(explicit)
+  }
+  return _normalizeStatDelta(computeSessionStatDelta(workout))
+}
+
+function _statScoreFromLoad(totalLoad, recentLoad, config) {
+  const total = Math.max(0, Number(totalLoad) || 0)
+  const recent = Math.max(0, Number(recentLoad) || 0)
+  const curve = (config.ceiling - config.base) * (1 - Math.exp(-total / config.saturation))
+  const recentBonus = Math.min(config.recentCap, recent * config.recentWeight)
+  return Math.max(0, Math.min(config.ceiling, Math.round((config.base + curve + recentBonus) * 10) / 10))
+}
+
+export function computeStatLoadFromWorkouts(workouts = [], todayStr = getLocalDateString()) {
+  const totals = Object.fromEntries(STAT_KEYS.map(key => [key, 0]))
+  const recent = Object.fromEntries(STAT_KEYS.map(key => [key, 0]))
+  const today = new Date(`${normalizeDateString(todayStr)}T00:00:00`).getTime()
+  const recentCutoff = today - (STAT_RECENT_WINDOW_DAYS * 86400000)
+
+  for (const workout of (workouts || [])) {
+    const delta = _statDeltaForWorkout(workout)
+    const ts = new Date(`${normalizeDateString(workout.date)}T00:00:00`).getTime()
+    const isRecent = Number.isFinite(ts) && ts >= recentCutoff
+
+    for (const key of STAT_KEYS) {
+      totals[key] += delta[key]
+      if (isRecent) recent[key] += delta[key]
+    }
+  }
+
+  return { totals, recent, sampleSize: (workouts || []).length }
+}
+
+export function computeProfileStatsFromWorkouts(workouts = [], currentStats = {}, options = {}) {
+  const sampleSize = (workouts || []).length
+  if (!sampleSize) return _normalizeStatDelta(currentStats)
+
+  const { totals, recent } = computeStatLoadFromWorkouts(workouts, options.todayStr || getLocalDateString())
+  const blendWeight = Math.max(0, Math.min(1, sampleSize / (options.fullSampleSize || STAT_BLEND_FULL_SAMPLE)))
+  const blendCurrent = options.blendCurrent !== false
+  const next = {}
+
+  for (const key of STAT_KEYS) {
+    const config = STAT_SCORE_CONFIG[key]
+    const derived = _statScoreFromLoad(totals[key], recent[key], config)
+    const current = Number(currentStats?.[key])
+    const hasCurrent = Number.isFinite(current) && current > 0
+    const blended = blendCurrent && hasCurrent && blendWeight < 1
+      ? (derived * blendWeight) + (Math.min(config.ceiling, current) * (1 - blendWeight))
+      : derived
+    next[key] = Math.max(0, Math.min(config.ceiling, Math.round(blended * 10) / 10))
+  }
+
+  return next
+}
+
+export function computeProfileStatsSnapshotDaysAgo(workouts = [], currentStats = {}, daysAgo = 30, todayStr = getLocalDateString()) {
+  const today = new Date(`${normalizeDateString(todayStr)}T00:00:00`).getTime()
+  const cutoff = today - (daysAgo * 86400000)
+  const historical = (workouts || []).filter(workout => {
+    const ts = new Date(`${normalizeDateString(workout.date)}T00:00:00`).getTime()
+    return Number.isFinite(ts) && ts < cutoff
+  })
+
+  if (!historical.length) return computeStatSnapshotDaysAgo(workouts, currentStats, daysAgo, todayStr)
+
+  return computeProfileStatsFromWorkouts(historical, currentStats, {
+    todayStr,
+    blendCurrent: false,
+  })
 }
 
 export function computeStatSnapshotDaysAgo(workouts = [], currentStats = {}, daysAgo = 30, todayStr = getLocalDateString()) {
@@ -1059,7 +1158,7 @@ export function computeStatSnapshotDaysAgo(workouts = [], currentStats = {}, day
   for (const workout of (workouts || [])) {
     const ts = new Date(`${normalizeDateString(workout.date)}T00:00:00`).getTime()
     if (ts < cutoff) continue
-    const delta = workout.statDelta || {}
+    const delta = _statDeltaForWorkout(workout)
     for (const key of Object.keys(totalDelta)) {
       totalDelta[key] += Number(delta[key]) || 0
     }

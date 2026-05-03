@@ -3,6 +3,7 @@ import { updatePerformance } from './performance-engine.js'
 import { appendCoachQuests, updateQuests } from './quest-engine.js'
 import { updateSkills } from './skill-engine.js'
 import {
+  computeProfileStatsFromWorkouts,
   countAllSets,
   getLocalDateString,
   hasLegFocus,
@@ -82,6 +83,8 @@ export function recalculate(state) {
   state.profile.xp.max = xpPerLevel
   state.profile.xp.current = xpIntoLevel
   state.profile.xp.total = lifetimeXp
+
+  state.profile.stats = computeProfileStatsFromWorkouts(workouts, state.profile.stats || {})
 
   _updateMuscleBalance(state)
   _updateMuscleCards(state)

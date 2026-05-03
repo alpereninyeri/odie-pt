@@ -1,6 +1,7 @@
 import './styles/odie-ui.css'
+import './styles/heroic-rpg.css'
 import { store } from './data/store.js'
-import { computeStatSnapshotDaysAgo, formatMonthShort } from './data/rules.js'
+import { computeProfileStatsSnapshotDaysAgo, formatMonthShort } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
 import { renderAsk, initAsk } from './components/panel-ask.js'
@@ -188,18 +189,37 @@ function renderMobileHud(state, profile) {
   const level = profile.level ?? '-'
   const readiness = state.health?.readiness?.score
   const streak = state.profile?.streak?.current ?? 0
+  const source = String(state.workouts?.[0]?.source || 'manual').toUpperCase()
+  const statValue = key => Math.round(Number((profile.stats || []).find(stat => stat.key === key)?.val ?? state.profile?.stats?.[key]) || 0)
+  const hudStats = [
+    { key: 'STR', val: statValue('str') },
+    { key: 'DEX', val: statValue('dex') },
+    { key: 'CON', val: statValue('con') },
+  ]
 
   return `
     <div class="mobile-hud-wrap">
       <div class="mobile-hud mobile-hud-v6">
         <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${avatarMark(profile)}</button>
         <div class="mobile-hud-center">
+          <div class="mobile-hud-topline">
+            <span>${escapeHtml(state.profile.classObj?.name || profile.class || 'OdiePT')}</span>
+            <span class="source-pill">${escapeHtml(source === 'HEVY' ? 'HEVY LIVE' : 'CANLI')}</span>
+          </div>
           <div class="mobile-hud-nick">${profile.nick}<span>L${level}</span></div>
           <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
+          <div class="mobile-hud-stats">
+            ${hudStats.map(stat => `
+              <span class="hud-stat-chip">
+                <b>${stat.key}</b>
+                <em>${stat.val}</em>
+              </span>
+            `).join('')}
+          </div>
         </div>
         <div class="mobile-hud-side">
-          <strong>${Number.isFinite(readiness) ? readiness : streak}</strong>
-          <small>${Number.isFinite(readiness) ? 'hazirlik' : 'seri'}</small>
+          <strong>${streak}</strong>
+          <small>seri</small>
         </div>
       </div>
     </div>
@@ -250,10 +270,10 @@ function renderPage(tabKey, state, profile, semantic) {
 
 function readinessTitle(score) {
   if (!Number.isFinite(score)) return 'BASLANGIC'
-  if (score >= 80) return 'TAM HAZIRSIN'
-  if (score >= 60) return 'HAZIR'
-  if (score >= 40) return 'ORTA TEMPO'
-  return 'TOPARLANMA'
+  if (score >= 80) return 'AGIRLIK ACILIR'
+  if (score >= 60) return 'SEANS HAZIR'
+  if (score >= 40) return 'KONTROLLU GUN'
+  return 'HAFIF GUN'
 }
 
 const KIND_TR_MAP = {
@@ -275,29 +295,23 @@ function localizeKindWords(text = '') {
   return out
 }
 
-function buildTodayLead(state) {
-  const sections = (state.coachNote?.sections || []).filter(section => !section?.hidden)
-  const ordered = [...sections].sort((a, b) => {
-    const aNext = /SONRAKI|ADIM|HEDEF|FOKUS/i.test(a.title || '') ? 0 : 1
-    const bNext = /SONRAKI|ADIM|HEDEF|FOKUS/i.test(b.title || '') ? 0 : 1
-    return aNext - bNext
-  })
-  for (const section of ordered) {
-    const lines = (section.lines || []).map(item => String(item || '').trim()).filter(Boolean)
-    const goodLine = lines.find(line => (line.match(/%/g) || []).length < 2) || lines[0]
-    if (goodLine) {
-      const localized = localizeKindWords(goodLine)
-      return localized.length > 180 ? `${localized.slice(0, 177)}...` : localized
-    }
+function buildTodayLead(state, latestWorkout = null) {
+  if (latestWorkout) {
+    const meta = [
+      latestWorkout.durationMin ? `${latestWorkout.durationMin} dakika` : null,
+      latestWorkout.volumeKg ? `${Math.round(latestWorkout.volumeKg).toLocaleString('tr-TR')} kg hacim` : null,
+      latestWorkout.source === 'hevy' ? 'Hevy senkron' : null,
+    ].filter(Boolean).join(' / ')
+    return `${formatMonthShort(latestWorkout.date)} ${latestWorkout.type || 'seans'} kaydi tamam. ${meta || 'Detay az, ama kayit geldi.'}`
   }
   const score = Number(state.health?.readiness?.score)
   if (Number.isFinite(score)) {
-    if (score >= 80) return 'Bugun guclu form. Plana gore agir bir blok itebilirsin.'
-    if (score >= 60) return 'Stabil durum. Plani normal tempoda surdur.'
-    if (score >= 40) return 'Biraz yoruk. Hafif tempo veya teknik calisma daha verimli.'
-    return 'Toparlanma onde. Dinlenme, mobilite ve dusuk yogunluk seans mantikli.'
+    if (score >= 80) return 'Bugun ana blok icin iyi gorunuyor. Seansi ekle, ODIE sonuca gore karakteri guncellesin.'
+    if (score >= 60) return 'Normal tempo uygun. Seans gir veya ODIEden bugunun planini iste.'
+    if (score >= 40) return 'Kontrollu git. Teknik, core veya daha kisa bir seans mantikli.'
+    return 'Yorgunluk yuksek gorunuyor. Bugun hafif teknik veya kisa hareket yeter.'
   }
-  return 'ODIE seni okumaya hazir. Ilk seansini gir, kisisel ritim cikmaya baslasin.'
+  return 'Bugunku seansi gir; karakter karti, skill agaci ve gorevler canli veriden guncellensin.'
 }
 
 function renderTodayPage(state, profile, semantic) {
@@ -305,25 +319,39 @@ function renderTodayPage(state, profile, semantic) {
   const armor = Math.round(Number(state.profile?.armor) || 0)
   const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
   const streak = Number(state.profile?.streak?.current) || 0
-  const lead = buildTodayLead(state)
-  const title = readinessTitle(readiness)
   const activeQuest = [...(profile.quests?.daily || []), ...(profile.quests?.weekly || [])].find(quest => !quest.done)
   const recentSessions = (state.workouts || []).slice(0, 3)
+  const latestWorkout = recentSessions[0] || null
+  const lead = buildTodayLead(state, latestWorkout)
+  const title = latestWorkout ? `${formatMonthShort(latestWorkout.date)} / ${latestWorkout.type || 'Seans'}` : readinessTitle(readiness)
+  const heroMetric = latestWorkout?.durationMin
+    ? latestWorkout.durationMin
+    : Number.isFinite(readiness)
+      ? readiness
+      : profile.sessions || 0
+  const heroMetricLabel = latestWorkout?.durationMin ? 'dk' : Number.isFinite(readiness) ? '/100' : 'seans'
+  const sourceLabel = latestWorkout?.source === 'hevy' ? 'HEVY SON KAYIT' : latestWorkout ? 'SON SEANS' : 'BUGUN'
 
   return `
     <section class="today-page">
       <article class="card-hero">
         <div class="today-hero-top">
           <div>
-            <div class="today-hero-eyebrow">BUGUN ${state.profile.currentFocus ? `/ ${escapeHtml(state.profile.currentFocus)}` : ''}</div>
+            <div class="today-hero-eyebrow">${sourceLabel}</div>
             <h2 class="today-hero-title">${title}</h2>
           </div>
           <div class="today-hero-score">
-            <strong>${Number.isFinite(readiness) ? readiness : '--'}</strong>
-            <small>/100</small>
+            <strong>${heroMetric || '--'}</strong>
+            <small>${heroMetricLabel}</small>
           </div>
         </div>
         <p class="today-hero-lead">${escapeHtml(lead)}</p>
+        <div class="home-metrics-grid">
+          <div><span>Level</span><strong>${profile.level || 1}</strong></div>
+          <div><span>Seans</span><strong>${profile.sessions || 0}</strong></div>
+          <div><span>Hacim</span><strong>${escapeHtml(profile.totalVolume || '0 kg')}</strong></div>
+          <div><span>Seri</span><strong>${streak}g</strong></div>
+        </div>
         <div class="today-hero-cta-row">
           <button class="cta-primary" data-action="open-workout">SEANS EKLE</button>
           <button class="cta-secondary" data-tab="odie">ODIE'YE SOR</button>
@@ -342,10 +370,10 @@ function renderTodayPage(state, profile, semantic) {
       ` : ''}
 
       <article class="card-strip">
-        <div class="mini-label">Toparlanma Durumu</div>
+        <div class="mini-label">Vucut Durumu</div>
         <div class="card-strip-row">
-          <span>Armor ${armor}</span>
-          <span>Fatigue ${fatigue}</span>
+          <span>Can ${armor}</span>
+          <span>Yorgunluk ${fatigue}</span>
           <span>Seri ${streak}g</span>
         </div>
       </article>
@@ -375,6 +403,7 @@ function renderTodaySessionItem(workout) {
     workout.durationMin ? `${workout.durationMin}dk` : null,
     workout.distanceKm ? `${workout.distanceKm}km` : null,
     workout.volumeKg ? `${Math.round(workout.volumeKg).toLocaleString('tr-TR')}kg` : null,
+    workout.source === 'hevy' ? 'Hevy' : null,
   ].filter(Boolean).join(' / ')
   const safeId = escapeHtml(String(workout.id || ''))
   return `
@@ -411,8 +440,8 @@ function renderCharacterPage(state, profile, semantic) {
       <article class="glass-card recovery-pixel">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Recovery Hud</div>
-            <h3>Gunluk toparlanma</h3>
+            <div class="eyebrow">Gunluk Durum</div>
+            <h3>Su / uyku / adim</h3>
           </div>
         </div>
         ${renderDailyChecklist()}
@@ -542,7 +571,7 @@ function renderStatRadar(state, profile) {
 
   const currentMap = {}
   ordered.forEach(stat => { currentMap[stat.key] = Number(stat.val) || 0 })
-  const snapshot = computeStatSnapshotDaysAgo(state.workouts || [], currentMap, 30)
+  const snapshot = computeProfileStatsSnapshotDaysAgo(state.workouts || [], currentMap, 30)
 
   const size = 220
   const cx = size / 2
@@ -803,6 +832,7 @@ document.addEventListener('click', event => {
   if (tab) {
     closeModal()
     activeTab = tab.dataset.tab
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
     scheduleRender({ immediate: true })
     return
   }

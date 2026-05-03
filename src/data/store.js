@@ -33,7 +33,7 @@ import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from '.
 import { computeGeographyTier, computeVolumeTier } from './epic-volume-engine.js'
 import { detectPRs } from './pr-detector.js'
 import {
-  applyStatDelta,
+  computeProfileStatsFromWorkouts,
   computeSessionStatDelta,
   computeSessionXp,
   computeStreakInfo,
@@ -419,7 +419,7 @@ function _buildWorkoutLog(workouts = []) {
 
 function _deriveCurrentFocus(state) {
   const criticalStat = (state.stats || []).find(stat => stat.critical)
-  if (criticalStat) return `${criticalStat.label} toparlama`
+  if (criticalStat) return `${criticalStat.label} denge`
 
   const coreBalance = (state.muscleBalance || []).find(item => item.label === 'Core')
   if ((coreBalance?.sets || 0) < 16) return 'Core stabilitesi'
@@ -852,7 +852,7 @@ export const store = {
     }
     const xp = computeSessionXp(normalized, xpContext)
     const statDelta = computeSessionStatDelta(normalized)
-    const nextStats = applyStatDelta(_state.profile.stats || {}, statDelta)
+    const nextStats = computeProfileStatsFromWorkouts([normalized, ...(_state.workouts || [])], _state.profile.stats || {})
 
     const workout = {
       ...normalized,
