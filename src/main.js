@@ -671,8 +671,8 @@ const EXPLAINERS = {
     summary: 'Seansin parcalara ayrilmis calisma hatlari: strength, core, locomotion, mobility, skill gibi.',
   },
   fact: {
-    title: 'Kanit / Fact',
-    summary: "Parser'in seans notundan ayikladigi somut ipuclari. Coach cevabinin dayanaklarindan biridir.",
+    title: 'Seans Izi',
+    summary: "ODIE'nin seans notu veya Hevy verisinden okudugu somut hareket/sure/yuk sinyalleri.",
   },
   pr: {
     title: 'PR',
@@ -716,23 +716,23 @@ const EXPLAINERS = {
   },
   'session-reading': {
     title: 'Seans Okumasi',
-    summary: 'ODIE parserinin son seansi ne kadar net anladigini ve hangi verilere dayandigini gosterir.',
+    summary: 'ODIE son seansi hangi hareket, sure, yuk ve blok sinyalleriyle okudugunu gosterir.',
   },
   confidence: {
-    title: 'Netlik',
-    summary: 'Seans kaydinin ne kadar iyi parse edildigini gosteren guven skoru.',
+    title: 'Okuma',
+    summary: 'Seans kaydinda Odie yorumunu besleyecek ne kadar somut veri oldugunu gosterir.',
   },
   'parsed-piece': {
-    title: 'Okunan Parca',
-    summary: 'Seans notundan veya Hevy verisinden ayiklanan somut ipucu sayisi.',
+    title: 'Seans Sinyali',
+    summary: 'Seans notundan veya Hevy verisinden okunan hareket, set, sure ve mesafe parcalari.',
   },
   'main-load': {
     title: 'Ana Yuk',
     summary: 'Seansin baskin calisma tipi ve blok dagilimi.',
   },
   evidence: {
-    title: 'Dayanak',
-    summary: 'Coach veya Ask cevabinin hangi veri parcalarina baktigini gosterir.',
+    title: 'Bakilan Sinyal',
+    summary: 'Coach veya Ask cevabinda dikkate alinan somut seans ve trend parcalari.',
   },
   memory: {
     title: 'Kalici Hafiza',
@@ -748,7 +748,7 @@ const EXPLAINERS = {
   },
   'ask-answer': {
     title: 'Kisa Yorum',
-    summary: 'Son soruya verilen ana cevap. Detaylar dayanak ve sonraki adim kartlarinda ayrilir.',
+    summary: 'Son soruya verilen ana cevap. Detaylar sinyal ve sonraki adim kartlarinda ayrilir.',
   },
   'ask-next': {
     title: 'Ne Yapalim',
@@ -792,7 +792,7 @@ const EXPLAINERS = {
   },
   notes: {
     title: 'Notlar',
-    summary: 'Coach parserinin okuyabilecegi serbest metin alani.',
+    summary: "ODIE'nin okuyabilecegi serbest metin alani.",
   },
   exercises: {
     title: 'Egzersizler',
@@ -1350,12 +1350,12 @@ function openSessionDetailModal(workout, state) {
       ${renderSessionStatDelta(statDelta)}
       <div class="modal-section-label">${renderExplainButton('bloklar', 'BLOKLAR', 'explain-link metric-explain')}</div>
       ${renderSessionBlocks(blocks)}
-      <div class="modal-section-label">${renderExplainButton('fact', 'KANIT / FACT', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('fact', 'SEANS IZI', 'explain-link metric-explain')}</div>
       ${facts.length ? `
         <div class="session-fact-list">
           ${facts.map(fact => `<span>${escapeHtml(fact.label || fact.raw || fact.blockKind || 'fact')}</span>`).join('')}
         </div>
-      ` : '<div class="modal-coach">Bu seans icin ayri fact kaydi yok; bloklar workout verisinden okunuyor.</div>'}
+      ` : '<div class="modal-coach">Bu seans icin ayri seans izi yok; bloklar workout verisinden okunuyor.</div>'}
     </div>
   `)
 }

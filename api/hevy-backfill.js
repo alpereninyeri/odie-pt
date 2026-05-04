@@ -66,7 +66,7 @@ export default async function handler(req, res) {
       for (const workout of ordered) {
         try {
           const normalized = normalizeHevyWorkout(workout)
-          const result = await ingestNormalizedExternalWorkout(normalized, { onUpdate })
+          const result = await ingestNormalizedExternalWorkout(normalized, { onUpdate, generateCoach: false })
           if (result.status === 'inserted') summary.inserted += 1
           else if (result.status === 'updated') summary.updated += 1
           else summary.skipped += 1

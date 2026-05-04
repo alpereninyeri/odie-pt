@@ -101,6 +101,6 @@ test('fallback coach response stays structured when gemini is unavailable', () =
 
   assert.match(response.telegramMsg, /Push seansi 70dk/)
   assert.equal(response.coachNote.sections[0].title, 'ANA EKSEN')
-  assert.equal(response.coachNote.sections[1].title, 'KANIT')
+  assert.equal(response.coachNote.sections[1].title, 'SEANS IZI')
   assert.equal(response.coachNote.sections.at(-1).title, 'STATE_SYNC')
 })

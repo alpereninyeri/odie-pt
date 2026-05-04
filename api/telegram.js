@@ -332,7 +332,7 @@ ZORUNLU:
 - Section basliklarini degistirme; verilen baslik altina yaz.
 - corrective_memory'de yanlis demisse ayni yorumu tekrarlama.
 - athlete_memory'deki uzun sureli bilgileri (eski sakatlik, hedef, tercih) sessizce yedir; "memory diyor ki" diye liste yapma.
-- Kanit zayifsa kesin konusma: "elde X yok ama Y olasi" gibi.
+- Veri zayifsa kesin konusma: "elde X yok ama Y olasi" gibi.
 - Risk uyarisi sade: "armor 30, bugun agir seans riskli" — "DIKKAT!" veya buyuk harf yok.`
 
 const PARSE_RESPONSE_SCHEMA = {
@@ -509,7 +509,7 @@ function fmtBlocks(blocks = []) {
 }
 
 function fmtEvidence(evidence = []) {
-  if (!evidence?.length) return '- seans kaniti yok'
+  if (!evidence?.length) return '- seans sinyali yok'
   return evidence.slice(0, 6).map(item => `- ${item}`).join('\n')
 }
 
@@ -710,7 +710,7 @@ function buildCoachPromptV2(parsed, context) {
     .join('\n') || '- blok arsivi yok'
   const factArchive = (odie.factArchive || [])
     .map(item => `- ${item.label}: ${item.raw}`)
-    .join('\n') || '- atomik kanit arsivi yok'
+    .join('\n') || '- atomik seans arsivi yok'
   const disciplineMix = Object.entries(odie.disciplineMix || {})
     .map(([key, value]) => `${key}:${value}`)
     .join(' · ') || 'karisik'
@@ -751,7 +751,7 @@ ${blockSummary}
 Blok agirligi:
 ${blockMixSummary}
 
-Kanit:
+Seans sinyalleri:
 ${evidenceSummary}
 
 Yuklenen zincirler:
@@ -777,7 +777,7 @@ Baglam:
 - Survival XP: x${recovery.xpMultiplier ?? 1}
 - Son 7 gun: uyku ${recovery.avgSleep ?? 0}s · su ${recovery.avgWaterL ?? 0}L · adim ${recovery.avgSteps ?? 0}
 - Disiplin mix: ${disciplineMix}
-- Parse confidence: ${confidence.level || 'unknown'} ${confidence.score != null ? `(${confidence.score}/100)` : ''}
+- Okuma netligi: ${confidence.level || 'unknown'} ${confidence.score != null ? `(${confidence.score}/100)` : ''}
 
 Trend sinyalleri (son 14 gun vs onceki 14):
 ${trendSignals}
@@ -835,9 +835,9 @@ Ton kurallari (cok onemli):
 - Her satira bir somut nokta veya somut sonraki adim. Bos slogan = sil.
 
 Veri kurallari:
-- Her yorum satirini yukaridaki kanit veya bloklardan en az birine bagla.
+- Her yorum satirini yukaridaki seans sinyali veya bloklardan en az birine bagla.
 - Bugunku seans ile global performansi karistirma; global bilgi kullanirsan bunu acikca "trend olarak" diye ayir.
-- Kanitta gecmeyen hareketi, PR'i, beceriyi veya kasi bugun yapilmis gibi anlatma.
+- Seans sinyalinde gecmeyen hareketi, PR'i, beceriyi veya kasi bugun yapilmis gibi anlatma.
 - Ana ekseni block agirligina gore sec ama jargon yazma: "block_mix", "ana eksen", "parse confidence", "yuklenen zincirler" — hicbiri kullaniciya yansimasin.
 - Parkour ve custom hareket seanslarinda gym dili yerine teknik dili kullan (landing, reactive legs, trunk tension, air sense).
 
@@ -888,9 +888,9 @@ Asagidaki JSON disinda hicbir sey yazma:
 STATE_SYNC icindeki alanlar UI kartlarini guncellemek icin kullanilir.
 Guncel peak neyse onu yaz; eski bench, eski core, eski PR gibi stale bilgi verme.
 Stat delta sayma, XP hesaplama veya streak karari verme. Onlari kural motoru zaten hesapliyor.
-Asla kanitta gecmeyen lift, PR veya beceri uydurma.
+Asla seans sinyalinde gecmeyen lift, PR veya beceri uydurma.
 Bu seans dogrudan bench, muscle-up, hang veya benzeri bir olcum icermiyorsa performansi genel trend olarak ayir.
-ANA EKSEN ve KANIT satirlarini bu seansin bloklari, block agirligi ve kanit satirlarina bagla.`
+Coach satirlarini bu seansin bloklari, block agirligi ve seans sinyallerine bagla.`
 }
 
 function buildStateSyncPrompt(parsed, context, coachNote) {
@@ -911,11 +911,11 @@ Seans:
 - Notlar: ${parsed.notes || '-'}
 - Bloklar: ${(parsed.blocks || []).map(block => `${block.kind}:${block.label}`).join(' | ') || '-'}
 - Blok agirligi: ${(parsed.block_mix || []).map(item => `${item.kind}:${item.percent}%`).join(' | ') || '-'}
-- Kanit: ${(parsed.evidence || []).join(' | ') || '-'}
+- Seans sinyalleri: ${(parsed.evidence || []).join(' | ') || '-'}
 - Zincirler: ${(parsed.chains || []).map(item => `${item.name}:${item.status}`).join(' | ') || '-'}
 - Eksik zincirler: ${(parsed.missing_chains || []).join(' | ') || '-'}
 - Risk sinyalleri: ${(parsed.risk_signals || []).join(' | ') || '-'}
-- Parse confidence: ${parsed.confidence?.level || '-'} ${parsed.confidence?.score != null ? `(${parsed.confidence.score}/100)` : ''}
+- Okuma netligi: ${parsed.confidence?.level || '-'} ${parsed.confidence?.score != null ? `(${parsed.confidence.score}/100)` : ''}
 
 Baglam:
 - Class: ${context.className}
@@ -934,7 +934,7 @@ Coach note:
 ${sections}
 
 Kurallar:
-- Bugun seans kanitinda gecmeyen hareketi, beceriyi veya performans metricini sync'e yazma.
+- Bugun seans sinyalinde gecmeyen hareketi, beceriyi veya performans metricini sync'e yazma.
 - Global trendi ancak baglamda acik bir sureklilik varsa kullan; bugunku seans gibi yazma.
 - Body metrics yalnizca kullanici metninde acik kilo/boy guncellemesi varsa dolsun.
 - Parkour ve custom teknik seanslarda landing, reactive legs, balance, trunk tension gibi semantic ifadeleri tercih et.
@@ -1356,7 +1356,7 @@ async function parseWithGemini(text) {
   }
 }
 
-async function getCoachResponse(parsed, context) {
+export async function getCoachResponse(parsed, context) {
   const cacheKey = JSON.stringify({
     parsed,
     streak: context.streak,

@@ -63,7 +63,7 @@ Mevcut zincir:
 ## Hevy Entegrasyonu (V6)
 - Webhook payload'i sadece `{ id }` — biz `lib/hevy/client.js` ile detayi cekeriz.
 - `lib/hevy/normalize.js`: Hevy workout -> OdiePt session shape; type'i egzersiz adlarindan tahmin eder.
-- `lib/hevy/persist.js`: telegram.js ile ayni XP / survival / stat / profile pipeline'ini calistirir, ama coach yorumu uretmez (sessiz). Idempotency external_id index'inden gelir.
+- `lib/hevy/persist.js`: telegram.js ile ayni XP / survival / stat / profile pipeline'ini calistirir ve yeni Hevy kaydi icin coach note uretir. Backfill tarihsel importta coach'u kapatir. Idempotency external_id index'inden gelir.
 - Cron: `vercel.json` -> `/api/hevy-sync` her gun 03:00 UTC. Webhook gercek zamanli, cron guvence.
 - Env vars: `HEVY_API_KEY`, `HEVY_WEBHOOK_SECRET`, `HEVY_INTERNAL_SECRET` (bkz. `.env`).
 

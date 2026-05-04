@@ -25,4 +25,7 @@ test('Hevy normalization preserves cardio set distance', () => {
   assert.equal(normalized.distanceKm, 5.2)
   assert.equal(normalized.durationMin, 35)
   assert.ok(normalized.tags.includes('endurance'))
+  assert.ok(normalized.evidence.some(item => item.includes('5.2km')))
+  assert.ok(normalized.facts.some(item => item.label === 'Treadmill Run'))
+  assert.equal(normalized.confidence.level, 'high')
 })

@@ -72,10 +72,10 @@ function _memoryTone(item) {
 
 function _confidenceLabel(level = 'low') {
   return {
-    high: 'NET',
-    medium: 'ORTA',
-    low: 'DUSUK',
-  }[level] || 'DUSUK'
+    high: 'TEMIZ',
+    medium: 'YETERLI',
+    low: 'KISA',
+  }[level] || 'KISA'
 }
 
 function _explain(key, label, className = 'explain-link metric-explain') {
@@ -148,11 +148,20 @@ function _renderCoachConfidence(p) {
   const latestWorkout = (p.workouts || [])[0] || null
   const latestWorkoutId = String(latestWorkout?.id || '')
   const factRows = (p.workoutFacts || []).filter(item => String(item.workoutId || '') === latestWorkoutId)
-  const evidenceCount = Array.isArray(latestWorkout?.evidence) ? latestWorkout.evidence.length : 0
+  const storedSignalCount = Array.isArray(latestWorkout?.evidence) ? latestWorkout.evidence.length : 0
   const blockCount = Array.isArray(latestWorkout?.blocks) ? latestWorkout.blocks.length : 0
-  const confidenceScore = Number(latestWorkout?.confidence?.score) || 0
-  const confidenceLevel = latestWorkout?.confidence?.level || 'low'
-  const reasons = (latestWorkout?.confidence?.reasons || []).slice(0, 3)
+  const inferredScore = Math.min(95, 42 + (factRows.length * 7) + (blockCount * 5))
+  const confidenceScore = Number(latestWorkout?.confidence?.score) || (factRows.length || blockCount ? inferredScore : 0)
+  const confidenceLevel = latestWorkout?.confidence?.level || (confidenceScore >= 72 ? 'high' : confidenceScore >= 52 ? 'medium' : 'low')
+  const signalCount = Math.max(storedSignalCount, factRows.length)
+  const reasons = (latestWorkout?.confidence?.reasons?.length
+    ? latestWorkout.confidence.reasons
+    : [
+      factRows.length ? `${factRows.length} seans izi` : null,
+      blockCount ? `${blockCount} calisma blogu` : null,
+      latestWorkout?.source === 'hevy' ? 'Hevy structured veri' : null,
+    ].filter(Boolean)
+  ).slice(0, 3)
   const blockMix = (latestWorkout?.blockMix || []).slice(0, 3)
 
   if (!latestWorkout) {
@@ -174,21 +183,21 @@ function _renderCoachConfidence(p) {
       <div class="coach-memory-head">
         <div>
           <div class="eyebrow">${_explain('session-reading', 'Seans Okumasi', 'explain-link eyebrow-explain')}</div>
-          <h3>${_explain('session-reading', 'ODIE bu seansi ne kadar net okudu', 'explain-link explain-heading')}</h3>
+          <h3>${_explain('session-reading', 'ODIE bu seansi nasil okudu', 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${_explain('confidence', _confidenceLabel(confidenceLevel))}</span>
-          <span class="coach-pill">${confidenceScore}/100 ${_explain('confidence', 'netlik')}</span>
+          <span class="coach-pill">${confidenceScore}/100 ${_explain('confidence', 'okuma')}</span>
         </div>
       </div>
 
       <div class="coach-memory-grid coach-confidence-grid">
         <div class="coach-memory-card tone-${confidenceLevel === 'high' ? 'fire' : confidenceLevel === 'medium' ? 'warn' : 'danger'}">
           <div class="coach-memory-top">
-            <strong>${_explain('parsed-piece', 'Okunan Parca', 'explain-link')}</strong>
+            <strong>${_explain('parsed-piece', 'Seans Sinyali', 'explain-link')}</strong>
             <span>${factRows.length}</span>
           </div>
-          <p>Seans notundan ${evidenceCount} ayri ipucu ve ${blockCount} calisma blogu ayiklandi.</p>
+          <p>Hevy veya nottan ${signalCount} sinyal ve ${blockCount} calisma blogu okundu.</p>
         </div>
         <div class="coach-memory-card tone-calm">
           <div class="coach-memory-top">
@@ -199,9 +208,9 @@ function _renderCoachConfidence(p) {
         </div>
       </div>
 
-      <div class="mini-label">${_explain('evidence', 'Neye Dayaniyor')}</div>
+      <div class="mini-label">${_explain('evidence', 'Odie Neye Bakti')}</div>
       <div class="coach-confidence-reasons">
-        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${reason}</span>`).join('') : '<span class="coach-memory-empty">Daha net parse icin set, sure, mesafe veya drill bilgisi yardimci olur.</span>'}
+        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${reason}</span>`).join('') : '<span class="coach-memory-empty">Daha iyi okuma icin set, sure, mesafe veya drill bilgisi yardimci olur.</span>'}
       </div>
     </div>
   `

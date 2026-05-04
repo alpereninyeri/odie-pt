@@ -42,7 +42,7 @@ ZORUNLU:
 - Cevap 3-4 cumle. Sonuncu cumle daima TEK net aksiyon: "yarin Push'a 3 set face pull ekle".
 - Sayilari cumleye yedir: "65kg x3 dun dogru hizda kalkti, 67.5'a 2 hafta var" — liste/dump degil.
 - Sporcu memory_feedback'te seni duzelttiyse ayni hatayi tekrarlama.
-- Kanit zayifsa: "Net X yok, ama Y'den hareketle..." de. Veri uydurma.
+- Veri zayifsa: "Net X yok, ama Y'den hareketle..." de. Veri uydurma.
 - Risk uyarisi sade: "armor 30, agir seans bugun risk" — tehdit veya buyuk harf yok.`
 
 const ASK_RESPONSE_SCHEMA = {
@@ -332,7 +332,7 @@ JSON disinda bir sey donme. Tum tonlama kurallari sistem promptunda; burada sade
 
 - title: sorunun ozune deger, kisa ("Core Olcumune Bakis" gibi). "Yorumum" veya "Notum" yazma.
 - answer: 3-4 cumle. Sirasi: gozlem (sayili) -> sebep -> EMIR. Son cumle her zaman tek net aksiyon: "yarin Push'a 3 set face pull ekle" gibi. "Not aldim", "okudum", "yorumum", "akiyor" yasak.
-- evidence: yalnizca bagdaki kanitlardan 2-4 madde. Uydurma.
+- evidence: yalnizca bagdaki somut sinyallerden 2-4 madde. Uydurma.
 - next_steps: 2-3 madde, her biri tek emir (set/sn/kg/gun seviyesinde), oncelik sirali.
 - memory_note: varsa kalici kaygi/hedef/tercih ozetini tek satir.
 - tags: en fazla 4 kisa etiket.`
@@ -343,7 +343,7 @@ function buildFallbackAnswer(question, context) {
   const gaps = context.odie?.focusGaps || []
   return {
     title: 'Temkinli Okuma',
-    answer: `${question} icin tum baglam mevcut degil ama su anki tablo ${weakest?.key || 'denge'} tarafinda baski oldugunu gosteriyor. Cevabi recovery ve son yuk sinyallerine yaslayarak verdim; kesin olmayan yerde agresif yonlendirme yapmadim.`,
+    answer: `${question} icin tum baglam mevcut degil ama su anki tablo ${weakest?.key || 'denge'} tarafinda baski oldugunu gosteriyor. Cevabi recovery ve son yuk sinyallerine yasladim; kesin olmayan yerde agresif yonlendirme yapmadim.`,
     evidence: [
       ...(gaps.slice(0, 2)),
       ...(context.odie?.loadProfile?.trendSignals || []).slice(0, 2),

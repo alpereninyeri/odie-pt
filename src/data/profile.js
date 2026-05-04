@@ -176,7 +176,7 @@ export const profile = {
     {
       icon: '💪', name: 'Biseps & Triceps', tag: 'Stabil', tagClass: 'ts',
       sets: 'Tri: 163.5 | Bi: 156', rank: 'A-', color: 'var(--blu)',
-      detail: 'Kol kuvveti çok dengeli. Dead hang ve muscle-up performansı bunu kanıtlıyor.',
+      detail: 'Kol kuvveti çok dengeli. Dead hang ve muscle-up performansı bunu gösteriyor.',
       exercises: ['Pull-Up', 'Curl Varyasyonları', 'Tricep Extension', 'Close-Grip Push'],
       tip: 'Curl çalışmak yerine compound hareketlerle koru. Büyüme zaten compound\'dan geliyor.',
     },

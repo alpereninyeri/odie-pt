@@ -439,7 +439,7 @@ function collectSignalIds(facts) {
 }
 
 const CHAIN_RULES = [
-  { name: 'vault chain', test: ({ ids, regex, tagSet }) => regex.vault.test(regex.text) || tagSet.has('parkour') || ids.has('vault') || ids.has('underbar') || ids.has('cat_leap') || ids.has('climb_up_pk') || ids.has('tic_tac') || ids.has('wall_run'), reason: 'vault/parkour drill kaniti var' },
+  { name: 'vault chain', test: ({ ids, regex, tagSet }) => regex.vault.test(regex.text) || tagSet.has('parkour') || ids.has('vault') || ids.has('underbar') || ids.has('cat_leap') || ids.has('climb_up_pk') || ids.has('tic_tac') || ids.has('wall_run'), reason: 'vault/parkour drill sinyali var' },
   { name: 'landing chain', test: ({ ids, regex, tagSet }) => regex.landing.test(regex.text) || tagSet.has('terrain') || ids.has('landing') || ids.has('drop'), reason: 'precision/terrain inis sinyali var' },
   { name: 'reactive legs', test: ({ ids, regex, tagSet }) => regex.reactive.test(regex.text) || tagSet.has('explosive') || ids.has('box_jump') || ids.has('precision') || ids.has('tic_tac') || ids.has('wall_run'), reason: 'explosive lower-chain sinyali var' },
   { name: 'spatial control', test: ({ regex, tagSet }) => regex.spatial.test(regex.text) || tagSet.has('balance'), reason: 'denge ve rota okuma sinyali var' },
@@ -663,13 +663,13 @@ function buildConfidence(facts = [], { explicitDurationMin = 0, rawText = '', we
   const reasons = []
   if (hasDistance) reasons.push('mesafe sinyali net')
   if (hasDuration) reasons.push('sure sinyali net')
-  if (drillFacts) reasons.push(`drill kaniti ${drillFacts} adet`)
+  if (drillFacts) reasons.push(`drill sinyali ${drillFacts} adet`)
   if (!signalCount) reasons.push('serbest metin yorumu agirlikli')
 
   const boosts = []
   if (quantitativeFacts) boosts.push(`set/rep/yuk kaydi ${quantitativeFacts} adet`)
   if (modifierAttachments) boosts.push(`modifier eslesmesi ${modifierAttachments} adet`)
-  if (prAttempt && (quantitativeFacts > 0 || hasDistance || hasDuration)) boosts.push('PR denemesi kanitla destekli')
+  if (prAttempt && (quantitativeFacts > 0 || hasDistance || hasDuration)) boosts.push('PR denemesi veriyle destekli')
 
   const gaps = []
   if (!quantitativeFacts) gaps.push('set/rep/yuk yok')

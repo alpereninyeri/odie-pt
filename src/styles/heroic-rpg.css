@@ -2026,3 +2026,253 @@ textarea:focus-visible {
     transition-duration: .001ms !important;
   }
 }
+
+/* Frosted app shell pass */
+:root,
+[data-theme="dark"] {
+  --glass-bg: linear-gradient(180deg, rgba(20, 31, 42, .68), rgba(7, 12, 18, .76));
+  --glass-bg-strong: linear-gradient(180deg, rgba(23, 35, 47, .82), rgba(8, 13, 20, .88));
+  --glass-bg-soft: rgba(255, 255, 255, .052);
+  --glass-edge: rgba(205, 229, 238, .2);
+  --glass-edge-strong: rgba(205, 229, 238, .34);
+  --glass-highlight: rgba(255, 255, 255, .105);
+  --glass-shadow: 0 18px 42px rgba(0, 0, 0, .34), inset 0 1px 0 var(--glass-highlight);
+}
+
+body {
+  background:
+    linear-gradient(145deg, rgba(94, 231, 255, .1) 0%, rgba(94, 231, 255, 0) 34%),
+    linear-gradient(218deg, rgba(255, 181, 69, .09) 0%, rgba(255, 181, 69, 0) 38%),
+    linear-gradient(180deg, #04070c 0%, #07111a 48%, #05080d 100%);
+}
+
+.glass-card,
+.app-nav,
+.topbar,
+.modal,
+.coach-terminal,
+.survival-console,
+.coach-confidence-surface,
+.coach-memory-surface,
+.card-hero,
+.card-strip,
+.home-cockpit,
+.bottom-tabs,
+.mobile-hud,
+.mobile-hud-v6 {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(22px) saturate(1.32);
+  backdrop-filter: blur(22px) saturate(1.32);
+}
+
+.glass-subtle,
+.home-session-card,
+.home-metrics-grid div,
+.home-data-card,
+.today-session-item,
+.today-insight-card,
+.stat-pixel,
+.trio-card,
+.skill-node,
+.quest-ticket,
+.survival-meter-card,
+.survival-warning-card,
+.coach-memory-card,
+.ask-detail-card,
+.ask-response-card,
+.ask-empty-state,
+.ask-memory-note,
+.hud-stat-chip {
+  background: var(--glass-bg-soft);
+  border-color: rgba(205, 229, 238, .16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .055);
+}
+
+.glass-card::before,
+.card-hero::before,
+.card-strip::before,
+.stat-pixel::before,
+.trio-card::before,
+.skill-node::before,
+.quest-ticket::before,
+.today-session-item::before,
+.home-cockpit::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .09), transparent 34%),
+    linear-gradient(90deg, rgba(255, 255, 255, .045), transparent 42%, rgba(94, 231, 255, .035));
+  opacity: .55;
+}
+
+.nav-button,
+.bottom-tab,
+.avatar-chip,
+.cta-secondary,
+.branch-tab,
+.odie-switcher-btn,
+.ask-sample-chip,
+.coach-feedback-btn,
+.today-session-del,
+.wf-add-set,
+.wf-remove-ex,
+.wf-add-ex,
+.modal-close {
+  background: rgba(255, 255, 255, .058);
+  border-color: rgba(205, 229, 238, .18);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+
+.nav-button.active,
+.bottom-tab.active,
+.branch-tab.active,
+.odie-switcher-btn.active {
+  background: linear-gradient(135deg, rgba(94, 231, 255, .96), rgba(255, 225, 141, .92));
+  border-color: rgba(255, 255, 255, .46);
+  box-shadow: 0 10px 28px rgba(94, 231, 255, .2), inset 0 1px 0 rgba(255, 255, 255, .45);
+}
+
+.app-shell-v6 {
+  min-height: 100svh;
+}
+
+@media (max-width: 980px) {
+  body::before {
+    opacity: .38;
+  }
+
+  .app-shell,
+  .app-shell-v6 {
+    padding: calc(148px + env(safe-area-inset-top, 0px)) 12px calc(104px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .mobile-hud-wrap {
+    background:
+      linear-gradient(180deg, rgba(4, 7, 12, .78), rgba(4, 7, 12, .38)) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.25);
+    backdrop-filter: blur(20px) saturate(1.25);
+  }
+
+  .mobile-hud,
+  .mobile-hud-v6 {
+    grid-template-columns: 44px minmax(0, 1fr) 50px;
+    background:
+      linear-gradient(135deg, rgba(94, 231, 255, .11), transparent 34%),
+      linear-gradient(180deg, rgba(24, 37, 49, .74), rgba(8, 13, 20, .82));
+    border-color: var(--glass-edge-strong);
+  }
+
+  .bottom-tabs {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 8px !important;
+    gap: 8px !important;
+    background:
+      linear-gradient(180deg, rgba(18, 28, 38, .76), rgba(6, 10, 16, .86));
+    border-color: var(--glass-edge-strong);
+    -webkit-backdrop-filter: blur(24px) saturate(1.35);
+    backdrop-filter: blur(24px) saturate(1.35);
+  }
+
+  .bottom-tab {
+    min-height: 54px;
+    background: rgba(255, 255, 255, .06);
+  }
+
+  .today-page,
+  .character-page,
+  .odie-page,
+  .surface-stack {
+    gap: 12px;
+  }
+
+  .coach-support-grid,
+  .survival-console-grid,
+  .coach-memory-grid,
+  .ask-response-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .glass-card,
+  .card-strip,
+  .survival-console,
+  .coach-confidence-surface,
+  .coach-memory-surface,
+  .coach-terminal,
+  .home-cockpit {
+    padding: 12px;
+  }
+
+  .home-cockpit-main {
+    grid-template-columns: 62px minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .home-radar {
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 90px;
+    margin-top: 6px;
+  }
+
+  .home-stat-strip,
+  .home-metrics-grid,
+  .home-data-deck {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-session-card {
+    grid-template-columns: 1fr;
+  }
+
+  .home-session-card .today-hero-score {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .mobile-hud-topline {
+    font-size: .6rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .source-pill {
+    display: none;
+  }
+
+  .mobile-hud,
+  .mobile-hud-v6 {
+    grid-template-columns: 42px minmax(0, 1fr) 44px;
+  }
+
+  .mobile-hud-side {
+    text-align: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell,
+  .app-shell-v6 {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .mobile-hud,
+  .mobile-hud-v6 {
+    grid-template-columns: 38px minmax(0, 1fr) 44px;
+    gap: 7px;
+  }
+
+  .mobile-hud-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .hud-stat-chip {
+    min-height: 22px;
+  }
+}

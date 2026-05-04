@@ -65,7 +65,7 @@ function mainAxisSentence(parsed = {}) {
 function evidenceSentence(parsed = {}) {
   const evidence = (parsed.evidence || []).slice(0, 3)
   if (!evidence.length) return 'Metin kisa oldugu icin yorum genel seans akisina gore kuruldu.'
-  return `Okunan ana ipuclari: ${evidence.join(' | ')}.`
+  return `Seans sinyali: ${evidence.join(' | ')}.`
 }
 
 function chainSentence(parsed = {}) {
@@ -100,8 +100,8 @@ function performanceSentence(parsed = {}, firstPerf = null, context = {}) {
 
 function claritySentence(parsed = {}) {
   const confidence = parsed.confidence || null
-  if (!confidence) return 'Okuma netligi sinirli.'
-  return `Okuma netligi ${confidence.level}${confidence.score != null ? ` (${confidence.score}/100)` : ''}.`
+  if (!confidence) return 'Odie okumasini blok ve hareket isimlerinden kurdu.'
+  return `Odie okumasini ${confidence.level}${confidence.score != null ? ` seviyede (${confidence.score}/100)` : ' seviyede'} kurdu.`
 }
 
 export function buildFallbackCoachResponse(parsed, context = {}) {
@@ -132,7 +132,7 @@ export function buildFallbackCoachResponse(parsed, context = {}) {
       ],
     },
     {
-      title: 'KANIT',
+      title: 'SEANS IZI',
       mood: 'calm',
       lines: [
         evidenceSentence(parsed),

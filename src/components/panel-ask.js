@@ -263,8 +263,8 @@ export function renderAsk(state, profile) {
               <p class="ask-response-answer">${escapeHtml(latest.answer || 'Cevap metni yok.')}</p>
               <div class="ask-response-grid">
                 <div class="ask-detail-card">
-                  <div class="mini-label">${explainButton('evidence', 'Neye Baktim')}</div>
-                  <ul>${renderList(latest.evidence, 'Ek dayanak cikarilmadi.')}</ul>
+                  <div class="mini-label">${explainButton('evidence', 'Bakilan Sinyal')}</div>
+                  <ul>${renderList(latest.evidence, 'Ek sinyal cikarilmadi.')}</ul>
                 </div>
                 <div class="ask-detail-card">
                   <div class="mini-label">${explainButton('ask-next', 'Ne Yapalim')}</div>
