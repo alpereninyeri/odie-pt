@@ -21,6 +21,10 @@ function escapeHtml(value = '') {
     .replace(/'/g, '&#39;')
 }
 
+function explainButton(key, label, className = 'explain-link metric-explain') {
+  return `<button type="button" class="${className}" data-explain="${escapeHtml(key)}" aria-haspopup="dialog" aria-label="${escapeHtml(label)} aciklamasini ac">${escapeHtml(label)}</button>`
+}
+
 function renderList(items = [], empty = 'Veri yok.') {
   if (!items.length) return `<div class="ask-empty">${empty}</div>`
   return items.map(item => `<li>${escapeHtml(item)}</li>`).join('')
@@ -198,14 +202,14 @@ export function renderAsk(state, profile) {
     <section class="surface-stack ask-page">
       <article class="glass-card ask-hero">
           <div>
-          <div class="eyebrow">ODIE'ye Sor</div>
-          <h3>Kisa soru, net cevap, kalici baglam</h3>
+          <div class="eyebrow">${explainButton('ask-line', "ODIE'ye Sor", 'explain-link eyebrow-explain')}</div>
+          <h3>${explainButton('ask-line', 'Kisa soru, net cevap, kalici baglam', 'explain-link explain-heading')}</h3>
           <p>Bu alan coach feed'den ayridir. Sorular ayri kaydolur; tekrar eden hedefler ve kaygilar zamanla daha iyi okunur.</p>
         </div>
         <div class="ask-hero-pills">
-          <span class="ask-pill">${state.profile?.classObj?.name || profile.class}</span>
-          <span class="ask-pill">${Number.isFinite(readiness) ? `${readiness}/100 hazirlik` : `${profile.sessions || 0} seans`}</span>
-          <span class="ask-pill">${escapeHtml(focus)}</span>
+          <span class="ask-pill">${explainButton('class', state.profile?.classObj?.name || profile.class || 'Class')}</span>
+          <span class="ask-pill">${Number.isFinite(readiness) ? `${readiness}/100 ${explainButton('readiness', 'hazirlik')}` : `${profile.sessions || 0} ${explainButton('session-detail', 'seans')}`}</span>
+          <span class="ask-pill">${explainButton('current-focus', focus)}</span>
         </div>
       </article>
 
@@ -213,8 +217,8 @@ export function renderAsk(state, profile) {
         <section class="glass-card ask-console">
           <div class="ask-console-head">
             <div>
-              <div class="mini-label">ODIE Hatti</div>
-              <strong>Sorunu yaz</strong>
+              <div class="mini-label">${explainButton('ask-line', 'ODIE Hatti')}</div>
+              <strong>${explainButton('ask-line', 'Sorunu yaz', 'explain-link')}</strong>
             </div>
             <span class="ask-status-chip ${askState.loadingAnswer ? 'live' : ''}">${askState.loadingAnswer ? 'DUSUNUYOR' : 'HAZIR'}</span>
           </div>
@@ -251,7 +255,7 @@ export function renderAsk(state, profile) {
             <article class="ask-response-card">
               <div class="ask-response-top">
                 <div>
-                  <div class="mini-label">Kisa Yorum</div>
+                  <div class="mini-label">${explainButton('ask-answer', 'Kisa Yorum')}</div>
                   <strong>${escapeHtml(latest.title)}</strong>
                 </div>
                 <span>${formatWhen(latest.createdAt)} / ${escapeHtml(latest.model || 'aktif mod')}</span>
@@ -259,15 +263,15 @@ export function renderAsk(state, profile) {
               <p class="ask-response-answer">${escapeHtml(latest.answer || 'Cevap metni yok.')}</p>
               <div class="ask-response-grid">
                 <div class="ask-detail-card">
-                  <div class="mini-label">Neye Baktim</div>
+                  <div class="mini-label">${explainButton('evidence', 'Neye Baktim')}</div>
                   <ul>${renderList(latest.evidence, 'Ek dayanak cikarilmadi.')}</ul>
                 </div>
                 <div class="ask-detail-card">
-                  <div class="mini-label">Ne Yapalim</div>
+                  <div class="mini-label">${explainButton('ask-next', 'Ne Yapalim')}</div>
                   <ul>${renderList(latest.nextSteps, 'Net sonraki adim onerisi yok.')}</ul>
                 </div>
               </div>
-              ${latest.memoryNote ? `<div class="ask-memory-note"><span class="mini-label">Aklimda Tutsun</span><p>${escapeHtml(latest.memoryNote)}</p></div>` : ''}
+              ${latest.memoryNote ? `<div class="ask-memory-note"><span class="mini-label">${explainButton('ask-memory', 'Aklimda Tutsun')}</span><p>${escapeHtml(latest.memoryNote)}</p></div>` : ''}
             </article>
           ` : `
             <div class="ask-empty-state">
@@ -280,8 +284,8 @@ export function renderAsk(state, profile) {
         <aside class="glass-card ask-history">
           <div class="ask-history-head">
             <div>
-              <div class="mini-label">Soru Gecmisi</div>
-              <strong>Son sorular</strong>
+              <div class="mini-label">${explainButton('ask-history', 'Soru Gecmisi')}</div>
+              <strong>${explainButton('ask-history', 'Son sorular', 'explain-link')}</strong>
             </div>
             <span class="ask-status-chip">${askState.loadingHistory ? 'ESITLENIYOR' : `${askState.items.length} kayit`}</span>
           </div>

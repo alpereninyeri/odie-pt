@@ -23,6 +23,10 @@ const WORKOUT_TYPES = [
   'Custom',
 ]
 
+function explainButton(key, label, className = 'explain-link metric-explain') {
+  return `<button type="button" class="${className}" data-explain="${key}" aria-haspopup="dialog" aria-label="${label} aciklamasini ac">${label}</button>`
+}
+
 export function openWorkoutForm() {
   openModal(renderForm(getLocalDateString()))
   bindForm()
@@ -32,18 +36,18 @@ function renderForm(date) {
   return `
     <div class="modal-head">
       <span style="font-size:22px">+</span>
-      <div class="modal-head-title">Yeni seans ekle</div>
+      <div class="modal-head-title">${explainButton('workout-form', 'Yeni seans ekle', 'explain-link modal-title-explain')}</div>
       <button class="modal-close" data-close-modal aria-label="Kapat">×</button>
     </div>
     <div class="modal-body">
       <form id="workout-form" autocomplete="off">
         <div class="wf-row">
-          <label class="wf-label">Tarih</label>
+          <label class="wf-label">${explainButton('workout-date', 'Tarih')}</label>
           <input class="wf-input" type="date" id="wf-date" value="${date}" required>
         </div>
 
         <div class="wf-row">
-          <label class="wf-label">Seans tipi</label>
+          <label class="wf-label">${explainButton('workout-type', 'Seans tipi')}</label>
           <select class="wf-input wf-select" id="wf-type">
             ${WORKOUT_TYPES.map(type => `<option value="${type}">${type}</option>`).join('')}
           </select>
@@ -51,35 +55,35 @@ function renderForm(date) {
 
         <div class="wf-set-row">
           <div class="wf-row">
-            <label class="wf-label">Sure (dk)</label>
+            <label class="wf-label">${explainButton('duration', 'Sure (dk)')}</label>
             <input class="wf-input" type="number" id="wf-duration" min="1" max="720" placeholder="60" required>
           </div>
           <div class="wf-row">
-            <label class="wf-label">Mesafe km</label>
+            <label class="wf-label">${explainButton('distance', 'Mesafe km')}</label>
             <input class="wf-input" type="number" id="wf-distance" min="0" step="0.1" placeholder="Opsiyonel">
           </div>
           <div class="wf-row">
-            <label class="wf-label">Yukselti m</label>
+            <label class="wf-label">${explainButton('elevation', 'Yukselti m')}</label>
             <input class="wf-input" type="number" id="wf-elevation" min="0" step="1" placeholder="Opsiyonel">
           </div>
         </div>
 
         <div class="wf-row">
-          <label class="wf-label">Highlight</label>
+          <label class="wf-label">${explainButton('highlight', 'Highlight')}</label>
           <input class="wf-input" type="text" id="wf-highlight" placeholder="PR, teknik blok, set kalitesi...">
         </div>
 
         <div class="wf-row">
-          <label class="wf-label">Notlar</label>
+          <label class="wf-label">${explainButton('notes', 'Notlar')}</label>
           <textarea class="wf-input" id="wf-notes" rows="3" placeholder="Yorgunluk, zemin, denge, carry, teknik his..."></textarea>
         </div>
 
-        <div class="wf-section-title">Egzersizler <span class="wf-optional">(opsiyonel)</span></div>
+        <div class="wf-section-title">${explainButton('exercises', 'Egzersizler')} <span class="wf-optional">(opsiyonel)</span></div>
         <div id="wf-exercises"></div>
         <button type="button" class="wf-add-ex" id="wf-add-exercise">+ Egzersiz ekle</button>
 
         <div class="wf-volume-preview" id="wf-volume-preview" style="display:none">
-          Toplam hacim: <strong id="wf-volume-val">0 kg</strong>
+          ${explainButton('volume', 'Toplam hacim')}: <strong id="wf-volume-val">0 kg</strong>
         </div>
 
         <div class="wf-actions">

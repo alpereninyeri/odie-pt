@@ -13,6 +13,93 @@ const ARMOR_REGEN_WALK = 6
 const ARMOR_REGEN_REST = 3
 
 const INJURY_DAYS_RANGE = { min: 3, max: 7 }
+export const RECOVERY_WINDOW_HOURS = 40
+export const RECOVERY_TICK_HOURS = 2
+
+function clampPercent(value, fallback = 0) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  return Math.max(0, Math.min(100, numeric))
+}
+
+function resolveTime(value) {
+  if (!value) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function resolveWorkoutEndTime(workout = null) {
+  if (!workout) return null
+  const explicitEnd = resolveTime(workout.endedAt || workout.ended_at || workout.endTime || workout.end_time)
+  if (explicitEnd) return explicitEnd
+
+  const started = resolveTime(workout.startedAt || workout.started_at || workout.startTime || workout.start_time)
+  if (started) {
+    const durationMs = Math.max(0, Number(workout.durationMin ?? workout.duration_min) || 0) * 60000
+    return new Date(started.getTime() + durationMs)
+  }
+
+  const created = resolveTime(workout.createdAt || workout.created_at)
+  if (created) return created
+
+  const date = workout.date ? resolveTime(`${String(workout.date).slice(0, 10)}T18:00:00`) : null
+  return date
+}
+
+export function hoursSinceWorkout(workout = null, now = new Date()) {
+  const endTime = resolveWorkoutEndTime(workout)
+  const nowTime = resolveTime(now) || new Date()
+  if (!endTime) return 0
+  return Math.max(0, (nowTime.getTime() - endTime.getTime()) / 3600000)
+}
+
+export function survivalStatusFrom({ armor = ARMOR_MAX, fatigue = 0, injuryUntil = null, now = new Date() } = {}) {
+  const date = resolveTime(now) || new Date()
+  const injuryDate = injuryUntil ? resolveTime(`${String(injuryUntil).slice(0, 10)}T23:59:59`) : null
+  if (injuryDate && date <= injuryDate) return 'injured'
+  if (Number(armor) <= 0) return 'injured'
+  if (Number(armor) < 20) return 'critical_wear'
+  if (Number(armor) < 50) return 'tendon_alarm'
+  if (Number(fatigue) >= 75) return 'cns_overloaded'
+  return 'healthy'
+}
+
+export function applyTimedRecovery(prev = {}, latestWorkout = null, { now = new Date() } = {}) {
+  const baseArmor = clampPercent(prev.armor, ARMOR_MAX)
+  const baseFatigue = clampPercent(prev.fatigue, 0)
+  const elapsedHours = hoursSinceWorkout(latestWorkout, now)
+  const ticks = Math.max(0, Math.min(
+    RECOVERY_WINDOW_HOURS / RECOVERY_TICK_HOURS,
+    Math.floor(elapsedHours / RECOVERY_TICK_HOURS),
+  ))
+  const progress = ticks / (RECOVERY_WINDOW_HOURS / RECOVERY_TICK_HOURS)
+
+  const fatigue = Math.round(baseFatigue * (1 - progress))
+  const armor = Math.round(baseArmor + ((ARMOR_MAX - baseArmor) * progress))
+  const status = survivalStatusFrom({
+    armor,
+    fatigue,
+    injuryUntil: prev.injuryUntil,
+    now,
+  })
+
+  return {
+    armor,
+    fatigue,
+    consecutiveHeavy: Number(prev.consecutiveHeavy) || 0,
+    injuryUntil: prev.injuryUntil || null,
+    status,
+    recovery: {
+      elapsedHours: Math.round(elapsedHours * 10) / 10,
+      ticks,
+      tickHours: RECOVERY_TICK_HOURS,
+      windowHours: RECOVERY_WINDOW_HOURS,
+      progressPct: Math.round(progress * 100),
+      fatigueRecovered: Math.max(0, Math.round(baseFatigue - fatigue)),
+      armorRecovered: Math.max(0, Math.round(armor - baseArmor)),
+    },
+  }
+}
 
 export function applySurvival(prev, session, classBuff = {}) {
   const normalized = normalizeSession(session)

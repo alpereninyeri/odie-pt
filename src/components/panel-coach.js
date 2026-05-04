@@ -78,12 +78,17 @@ function _confidenceLabel(level = 'low') {
   }[level] || 'DUSUK'
 }
 
+function _explain(key, label, className = 'explain-link metric-explain') {
+  return `<button type="button" class="${className}" data-explain="${key}" aria-haspopup="dialog" aria-label="${label} aciklamasini ac">${label}</button>`
+}
+
 function _meter(label, value, tone = 'armor') {
   const safeValue = Math.max(0, Math.min(100, Number(value) || 0))
+  const key = String(label).toLowerCase() === 'armor' ? 'armor' : 'fatigue'
   return `
     <div class="survival-meter-card">
       <div class="survival-meter-top">
-        <span>${label}</span>
+        <span>${_explain(key, label)}</span>
         <strong>${safeValue}</strong>
       </div>
       <div class="survival-meter ${tone}">
@@ -106,12 +111,12 @@ function _renderSurvivalConsole(p) {
     <section class="survival-console">
       <div class="section-top">
         <div>
-          <div class="eyebrow">Durum Hatti</div>
-          <h3>Yorgunluk, toparlanma ve risk ozeti</h3>
+          <div class="eyebrow">${_explain('survival-console', 'Durum Hatti', 'explain-link eyebrow-explain')}</div>
+          <h3>${_explain('survival-console', 'Yorgunluk, toparlanma ve risk ozeti', 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${p.sessions || 0} seans</span>
-          <span class="coach-pill">${readinessText} hazirlik</span>
+          <span class="coach-pill">${readinessText} ${_explain('readiness', 'hazirlik')}</span>
         </div>
       </div>
 
@@ -123,13 +128,13 @@ function _renderSurvivalConsole(p) {
 
         <div class="survival-warning-stack">
           <div class="survival-warning-card">
-            <span class="mini-label">Yuk Birikimi</span>
+            <span class="mini-label">${_explain('heavy-load', 'Yuk Birikimi')}</span>
             <strong>${heavyLabel}</strong>
             <small>${injury}</small>
           </div>
           ${(warnings.length ? warnings : ['Aktif survival warning yok.']).slice(0, 3).map(item => `
             <div class="survival-warning-card ${warnings.length ? 'warn' : ''}">
-              <span class="mini-label">Saha Notu</span>
+              <span class="mini-label">${_explain('field-note', 'Saha Notu')}</span>
               <strong>${item}</strong>
             </div>
           `).join('')}
@@ -155,8 +160,8 @@ function _renderCoachConfidence(p) {
       <div class="coach-confidence-surface compact">
         <div class="coach-memory-head">
           <div>
-            <div class="eyebrow">Seans Okumasi</div>
-            <h3>Yeni seans geldikce burasi dolacak</h3>
+            <div class="eyebrow">${_explain('session-reading', 'Seans Okumasi', 'explain-link eyebrow-explain')}</div>
+            <h3>${_explain('session-reading', 'Yeni seans geldikce burasi dolacak', 'explain-link explain-heading')}</h3>
           </div>
         </div>
         <div class="coach-memory-empty">ODIE yeni seans geldiginde ne kadar net okudugunu ve neye dayandigini burada gosterecek.</div>
@@ -168,33 +173,33 @@ function _renderCoachConfidence(p) {
     <div class="coach-confidence-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">Seans Okumasi</div>
-          <h3>ODIE bu seansi ne kadar net okudu</h3>
+          <div class="eyebrow">${_explain('session-reading', 'Seans Okumasi', 'explain-link eyebrow-explain')}</div>
+          <h3>${_explain('session-reading', 'ODIE bu seansi ne kadar net okudu', 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
-          <span class="coach-pill">${_confidenceLabel(confidenceLevel)}</span>
-          <span class="coach-pill">${confidenceScore}/100 netlik</span>
+          <span class="coach-pill">${_explain('confidence', _confidenceLabel(confidenceLevel))}</span>
+          <span class="coach-pill">${confidenceScore}/100 ${_explain('confidence', 'netlik')}</span>
         </div>
       </div>
 
       <div class="coach-memory-grid coach-confidence-grid">
         <div class="coach-memory-card tone-${confidenceLevel === 'high' ? 'fire' : confidenceLevel === 'medium' ? 'warn' : 'danger'}">
           <div class="coach-memory-top">
-            <strong>Okunan Parca</strong>
+            <strong>${_explain('parsed-piece', 'Okunan Parca', 'explain-link')}</strong>
             <span>${factRows.length}</span>
           </div>
           <p>Seans notundan ${evidenceCount} ayri ipucu ve ${blockCount} calisma blogu ayiklandi.</p>
         </div>
         <div class="coach-memory-card tone-calm">
           <div class="coach-memory-top">
-            <strong>Ana Yuk</strong>
+            <strong>${_explain('main-load', 'Ana Yuk', 'explain-link')}</strong>
             <span>${latestWorkout?.type || '-'}</span>
           </div>
           <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' / ') : 'Yuk dagilimi okunamadi.'}</p>
         </div>
       </div>
 
-      <div class="mini-label">Neye Dayaniyor</div>
+      <div class="mini-label">${_explain('evidence', 'Neye Dayaniyor')}</div>
       <div class="coach-confidence-reasons">
         ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${reason}</span>`).join('') : '<span class="coach-memory-empty">Daha net parse icin set, sure, mesafe veya drill bilgisi yardimci olur.</span>'}
       </div>
@@ -217,8 +222,8 @@ function _renderMemoryLedger(p) {
     <div class="coach-memory-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">Kalici Hafiza</div>
-          <h3>ODIE senden ne ogrenmis</h3>
+          <div class="eyebrow">${_explain('memory', 'Kalici Hafiza', 'explain-link eyebrow-explain')}</div>
+          <h3>${_explain('memory', 'ODIE senden ne ogrenmis', 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${memories.length} aktif</span>
@@ -240,8 +245,8 @@ function _renderMemoryLedger(p) {
 
       <div class="coach-feedback-strip">
         <div>
-          <div class="mini-label">Geri Bildirim</div>
-          <strong>Son coach yorumunu isaretle</strong>
+          <div class="mini-label">${_explain('coach-feedback', 'Geri Bildirim')}</div>
+          <strong>${_explain('coach-feedback', 'Son coach yorumunu isaretle', 'explain-link')}</strong>
         </div>
         <div class="coach-feedback-actions">
           <button class="coach-feedback-btn" data-memory-feedback="correct">DOGRU</button>
@@ -314,9 +319,9 @@ export function renderCoach(p) {
         </div>
       </div>
       <div class="coach-strip">
-        <span class="coach-pill">CANLI BAGLAM</span>
-        <span class="coach-pill">${warningCount} uyari</span>
-        <span class="coach-pill">${questCount} acik hedef</span>
+        <span class="coach-pill">${_explain('live-context', 'CANLI BAGLAM')}</span>
+        <span class="coach-pill">${warningCount} ${_explain('field-note', 'uyari')}</span>
+        <span class="coach-pill">${questCount} ${_explain('active-quests', 'acik hedef')}</span>
       </div>
       <div class="coach-body" id="coach-body">
         <div class="coach-init-line" id="coach-init">

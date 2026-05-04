@@ -8,7 +8,7 @@ import { renderAsk, initAsk } from './components/panel-ask.js'
 import { renderDailyChecklist, initDailyChecklist } from './components/daily-checklist.js'
 import { renderHeatmap } from './components/heatmap-calendar.js'
 import { openWorkoutForm } from './components/workout-form.js'
-import { initModal, closeModal, openAvatarModal, openArchetypeModal, openFocusModal, openStatModal, openUnlockModal } from './components/modal.js'
+import { initModal, closeModal, openModal, openAvatarModal, openArchetypeModal, openFocusModal, openStatModal, openUnlockModal } from './components/modal.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
 
@@ -36,6 +36,7 @@ initTelegramMiniApp()
 
 store.init().then(() => {
   renderApp()
+  window.setInterval(() => store.refreshRecovery(), 5 * 60 * 1000)
 
   store.subscribe('*', () => {
     scheduleRender()
@@ -120,7 +121,7 @@ function renderApp() {
           <div class="nav-brand-mark">${avatarMark(profile)}</div>
           <div>
             <div class="nav-brand-title">OdiePT</div>
-            <div class="nav-brand-sub">${state.profile.classObj?.name || profile.class}</div>
+            <div class="nav-brand-sub">${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'Class', 'explain-link nav-explain')}</div>
           </div>
         </div>
 
@@ -129,9 +130,9 @@ function renderApp() {
         </nav>
 
         <div class="nav-status glass-subtle">
-          <div class="mini-label">Current Focus</div>
+          <div class="mini-label">${renderExplainButton('current-focus', 'Current Focus', 'explain-link metric-explain')}</div>
             <div class="nav-status-title">${state.profile.currentFocus || 'Hybrid denge'}</div>
-          <div class="nav-status-sub">${Number(state.health?.readiness?.score) || '--'}/100 hazirlik</div>
+          <div class="nav-status-sub">${Number(state.health?.readiness?.score) || '--'}/100 ${renderExplainButton('readiness', 'hazirlik', 'explain-link metric-explain')}</div>
         </div>
       </aside>
 
@@ -203,8 +204,8 @@ function renderMobileHud(state, profile) {
         <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${avatarMark(profile)}</button>
         <div class="mobile-hud-center">
           <div class="mobile-hud-topline">
-            <span>${escapeHtml(state.profile.classObj?.name || profile.class || 'OdiePT')}</span>
-            <span class="source-pill">${escapeHtml(source === 'HEVY' ? 'HEVY LIVE' : 'CANLI')}</span>
+            <span>${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'OdiePT', 'explain-link hud-explain')}</span>
+            <span class="source-pill">${renderExplainButton(source === 'HEVY' ? 'hevy' : 'kaynak', source === 'HEVY' ? 'HEVY LIVE' : 'CANLI', 'explain-link source-explain')}</span>
           </div>
           <div class="mobile-hud-nick">${profile.nick}<span>L${level}</span></div>
           <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
@@ -219,7 +220,7 @@ function renderMobileHud(state, profile) {
         </div>
         <div class="mobile-hud-side">
           <strong>${streak}</strong>
-          <small>seri</small>
+          <small>${renderExplainButton('seri', 'seri', 'explain-link metric-explain')}</small>
         </div>
       </div>
     </div>
@@ -342,10 +343,10 @@ function renderTodayPage(state, profile, semantic) {
           </button>
 
           <div class="home-identity">
-            <div class="today-hero-eyebrow">${escapeHtml(state.profile.classObj?.name || profile.class || 'OdiePT')}</div>
+            <div class="today-hero-eyebrow">${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'OdiePT', 'explain-link eyebrow-explain')}</div>
             <h2>${escapeHtml(profile.nick)}</h2>
             <div class="home-xp-line">
-              <span>XP</span>
+              <span>${renderExplainButton('xp', 'XP', 'explain-link metric-explain')}</span>
               <div class="pix-bar pix-bar-thin"><div class="pix-bar-fill" style="width:${Math.max(0, Math.min(100, Math.round(((profile.xp?.current || 0) / (profile.xp?.max || 1)) * 100)))}%"></div></div>
               <strong>${profile.xp?.current || 0}/${profile.xp?.max || 2000}</strong>
             </div>
@@ -365,7 +366,7 @@ function renderTodayPage(state, profile, semantic) {
 
         <div class="home-session-card">
           <div>
-            <span>${sourceLabel}</span>
+            <span>${renderExplainButton(latestWorkout?.source === 'hevy' ? 'hevy' : 'kaynak', sourceLabel, 'explain-link metric-explain')}</span>
             <strong>${escapeHtml(title)}</strong>
             <p>${escapeHtml(lead)}</p>
           </div>
@@ -376,18 +377,26 @@ function renderTodayPage(state, profile, semantic) {
         </div>
 
         <div class="home-metrics-grid">
-          <div><span>Can</span><strong>${armor}</strong></div>
-          <div><span>Yorgunluk</span><strong>${fatigue}</strong></div>
-          <div><span>Hacim</span><strong>${escapeHtml(profile.totalVolume || '0 kg')}</strong></div>
-          <div><span>Seri</span><strong>${streak}g</strong></div>
+          <div><span>${renderExplainButton('armor', 'Can', 'explain-link metric-explain')}</span><strong>${armor}</strong></div>
+          <div><span>${renderExplainButton('fatigue', 'Yorgunluk', 'explain-link metric-explain')}</span><strong>${fatigue}</strong></div>
+          <div><span>${renderExplainButton('hacim', 'Hacim', 'explain-link metric-explain')}</span><strong>${escapeHtml(profile.totalVolume || '0 kg')}</strong></div>
+          <div><span>${renderExplainButton('seri', 'Seri', 'explain-link metric-explain')}</span><strong>${streak}g</strong></div>
         </div>
 
         ${renderHomeDataDeck(state, profile)}
       </article>
 
+      ${renderTodayDecisionCard(state, profile, activeQuest)}
+
+      <div class="today-insight-grid">
+        ${renderRecoveryTrendCard(state)}
+        ${renderDisciplineBalanceCard(state)}
+        ${renderCoachFeedbackDashboard(state)}
+      </div>
+
       ${activeQuest ? `
         <article class="card-strip" data-tab="character">
-          <div class="mini-label">Siradaki Gorev</div>
+          <div class="mini-label">${renderExplainButton('active-quests', 'Siradaki Gorev', 'explain-link metric-explain')}</div>
           <div class="card-strip-row">
             <strong>${escapeHtml(activeQuest.name)}</strong>
             <span>${activeQuest.progress}/${activeQuest.total}</span>
@@ -397,19 +406,19 @@ function renderTodayPage(state, profile, semantic) {
       ` : ''}
 
       <article class="card-strip">
-        <div class="mini-label">Vucut Durumu</div>
+        <div class="mini-label">${renderExplainButton('daily-status', 'Vucut Durumu', 'explain-link metric-explain')}</div>
         <div class="card-strip-row">
-          <span>Can ${armor}</span>
-          <span>Yorgunluk ${fatigue}</span>
-          <span>Seri ${streak}g</span>
+          <span>${renderExplainButton('armor', 'Can', 'explain-link metric-explain')} ${armor}</span>
+          <span>${renderExplainButton('fatigue', 'Yorgunluk', 'explain-link metric-explain')} ${fatigue}</span>
+          <span>${renderExplainButton('seri', 'Seri', 'explain-link metric-explain')} ${streak}g</span>
         </div>
       </article>
 
       <article class="glass-card today-sessions">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Son Seanslar</div>
-            <strong>Yakin gecmis</strong>
+            <div class="eyebrow">${renderExplainButton('session-detail', 'Son Seanslar', 'explain-link eyebrow-explain')}</div>
+            <strong>${renderExplainButton('session-detail', 'Yakin gecmis', 'explain-link explain-heading')}</strong>
           </div>
         </div>
         ${recentSessions.length ? `
@@ -421,6 +430,651 @@ function renderTodayPage(state, profile, semantic) {
         `}
       </article>
     </section>
+  `
+}
+
+function clamp(value, min = 0, max = 100) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return min
+  return Math.max(min, Math.min(max, numeric))
+}
+
+const EXPLAINERS = {
+  'today-decision': {
+    title: 'Bugunun Karari',
+    summary: 'ODIE bu kartta bugunku ana tercihi tek cumleye indirir: agir seans, teknik gun, recovery veya denge kapatma.',
+    bullets: [
+      'Fatigue, armor, son seans, recovery sayaci ve acik gorevler birlikte okunur.',
+      'Bu bir yasak listesi degil; bugunku en mantikli ilk hamledir.',
+      'Karar degisirse sebebi genelde yeni seans, yeni daily log veya zamanla dusen fatigue olur.',
+    ],
+  },
+  'denge-kapatma': {
+    title: 'Denge Kapatma',
+    summary: 'Son 30 gunde geride kalan hattin kisa bir blokla tamamlanmasi demek.',
+    bullets: [
+      'Ornek: push/pull cok yuksek ama core azsa seansa 8-10 dk core ile baslamak.',
+      'Amac ana programi bozmak degil; acik kalan halkayi kapatmak.',
+      'Bu kart genelde Core, Bacak, mobilite veya recovery eksigi gorunurse cikar.',
+    ],
+  },
+  'recovery-gunu': {
+    title: 'Recovery Gunu',
+    summary: 'Yuk bindirmek yerine toparlanmayi hizlandiran gun.',
+    bullets: [
+      'Fatigue yuksekken agir push/pull yerine yuruyus, mobilite veya hafif teknik secilir.',
+      'Hedef XP kasmak degil; bir sonraki verimli seansi acmaktir.',
+      '40 saatlik toparlanma sayaci ilerledikce karar tekrar normale donebilir.',
+    ],
+  },
+  'kontrollu-teknik': {
+    title: 'Kontrollu Teknik',
+    summary: 'Risk varken tamamen durmadan, yuk yerine kalite calismak.',
+    bullets: [
+      'PR denemesi veya hacim kovalamak yerine form, accessory ve dusuk riskli bloklar.',
+      'Armor dusuk veya readiness zayifken kullanilir.',
+      'Seans kisa kalabilir; veri girisi yine de build ritmini korur.',
+    ],
+  },
+  'normal-seans': {
+    title: 'Normal Seans',
+    summary: 'Recovery riski dusuk, ana blok acilabilir demek.',
+    bullets: [
+      'Fatigue kabul edilebilir seviyededir ve armor kritik degildir.',
+      'Yine de acik denge gap varsa kisa tamamlayici blok eklenebilir.',
+    ],
+  },
+  fatigue: {
+    title: 'Fatigue',
+    summary: 'Sinir sistemi ve genel yorgunluk sayaci. Yuksekse agir seans verimi duser.',
+    bullets: [
+      'Agir, uzun veya PR iceren seanslardan sonra artar.',
+      'Son antrenman bittikten sonra 2 saatlik ticklerle azalir.',
+      '40 saat dolunca fatigue sifira iner.',
+    ],
+  },
+  armor: {
+    title: 'Armor',
+    summary: 'Tendon/eklem toleransi gibi dusun. Dusuk armor, ayni yukun daha riskli olmasi demek.',
+    bullets: [
+      'Yuksek fatigue ustune agir seans armor azaltabilir.',
+      "Recovery, mobilite ve zaman armor'u tekrar 100'e yaklastirir.",
+      'Armor kritik dusunce ODIE daha temkinli karar verir.',
+    ],
+  },
+  'recovery-trend': {
+    title: 'Recovery Trend',
+    summary: 'Son seans bittikten sonra 40 saatlik toparlanma ilerlemesini gosterir.',
+    bullets: [
+      'Her 2 saatte bir fatigue biraz duser, armor biraz dolar.',
+      'Uyku, su ve adim ortalamalari kartin altinda destek sinyali olarak durur.',
+      'Bu kart anlik hissi degil, kayitli veriye gore matematiksel toparlanmayi gosterir.',
+    ],
+  },
+  'denge-paneli': {
+    title: 'Denge Paneli',
+    summary: 'Son 30 gunde Push, Pull, Bacak ve Core hatlarinin ne kadar calistigini karsilastirir.',
+    bullets: [
+      'Bar uzunlugu en yuksek hatta gore normalize edilir.',
+      'Sari bar en geride kalan hatti isaret eder.',
+      'Amac simetrik olmak degil; ihmal edilen hatti erken yakalamak.',
+    ],
+  },
+  push: {
+    title: 'Push',
+    summary: 'Itis hatti: bench, press, dips, push-up, triceps ve gogus/omuz baskin isler.',
+  },
+  pull: {
+    title: 'Pull',
+    summary: 'Cekis hatti: row, pull-up, pulldown, curl, dead hang ve sirt/biceps isleri.',
+  },
+  legs: {
+    title: 'Bacak',
+    summary: 'Alt vucut hatti: squat, lunge, leg press, calf, posterior chain ve kosu/yuruyus bacak etkisi.',
+  },
+  core: {
+    title: 'Core',
+    summary: 'Govde stabilitesi hatti: hollow, plank, leg raise, L-sit, anti-rotation ve trunk kontrolu.',
+    bullets: [
+      "ODIE core'u sadece yuruyusten saymaz; direkt core veya block sinyali arar.",
+      'Core gerideyse skill ve sakatlik toleransi da etkilenebilir.',
+    ],
+  },
+  xp: {
+    title: 'XP',
+    summary: 'Seansin karakter ilerlemesine yazdigi puan.',
+    bullets: [
+      "Seans tipi, streak, class carpani, PR ve survival durumu XP'yi etkiler.",
+      'Fatigue asiri yuksekse agir seans XP verimi dusebilir.',
+    ],
+  },
+  hacim: {
+    title: 'Hacim',
+    summary: 'Kaldirilan toplam yuk. Genelde kilo x tekrar toplamidir.',
+    bullets: [
+      'Bodyweight hareketlerde kilo bilgisi varsa daha dogru hesaplanir.',
+      'Hacim tek basina kalite degildir; sure, set ve recovery ile birlikte okunur.',
+    ],
+  },
+  seri: {
+    title: 'Seri',
+    summary: 'Arka arkaya gelen antrenman gunleri. Bosluk uzarsa seri kirilir.',
+  },
+  kaynak: {
+    title: 'Kaynak',
+    summary: 'Workout verisinin nereden geldigini gosterir: Hevy, Telegram veya web/manual.',
+  },
+  ritim: {
+    title: 'Ritim',
+    summary: 'Son 7 gunde workout veya daily log izi olan gun sayisi.',
+    bullets: [
+      'Ritim sadece agir antrenman degil; recovery logu da davranis zincirini gosterir.',
+    ],
+  },
+  datalarim: {
+    title: 'Datalarim',
+    summary: 'Son 7 seansin yuk grafigi. Hacim varsa kilo, yoksa sure/set/XP sinyali kullanilir.',
+  },
+  readiness: {
+    title: 'Readiness',
+    summary: 'Bugunku hazirlik skoru. Armor/fatigue, yuk ve daily log sinyallerinden turetilir.',
+  },
+  'daily-status': {
+    title: 'Vucut Durumu',
+    summary: 'Bugunku can, yorgunluk ve seri ozetidir. Kart, karakterin seansa ne kadar acik oldugunu hizli okutur.',
+    bullets: [
+      'Can armor degerinden, yorgunluk fatigue degerinden gelir.',
+      'Seri davranis zincirini gosterir; tek basina agir calismak zorunda degildir.',
+    ],
+  },
+  'current-focus': {
+    title: 'Current Focus',
+    summary: "ODIE'nin su an en cok dikkat edilmesi gereken hat olarak okudugu alan.",
+    bullets: [
+      'Kritik stat, kas dengesi, son seans tipi ve class sinyali birlikte okunur.',
+      'Yeni workout veya daily log geldikce focus degisebilir.',
+    ],
+  },
+  class: {
+    title: 'Class',
+    summary: 'Son antrenman deseninden tureyen aktif RPG arketipi.',
+    bullets: [
+      'Push/pull/core/movement dagilimi degistikce class da degisebilir.',
+      'Class XP ve recovery carpani gibi kucuk pasif etkiler tasir.',
+    ],
+  },
+  'active-quests': {
+    title: 'Aktif Gorevler',
+    summary: 'Bugun veya bu hafta kapanabilecek kucuk hedeflerdir.',
+    bullets: [
+      'Class veya coach tarafindan acilabilir.',
+      'Progress tamamlaninca XP, stat ya da ritim etkisi yazilir.',
+    ],
+  },
+  'combat-stats': {
+    title: 'Combat Stats',
+    summary: 'STR, AGI, END, DEX, CON ve STA karakter parametrelerinin canli ozetidir.',
+    bullets: [
+      'Stat kartina basinca ilgili statin neden yukseldigi veya kritik oldugu acilir.',
+      'Son seans delta verisi varsa kartta UP veya kritik flag gorunur.',
+    ],
+  },
+  'stat-radar': {
+    title: 'Stat Radar',
+    summary: 'Bugunku stat profilini 30 gun onceki tahmini profil ile karsilastirir.',
+    bullets: [
+      'Mavi alan simdiki buildi, soluk alan onceki buildi temsil eder.',
+      'Toplam fark pozitifse son 30 gun karakter tarafi genislemis demektir.',
+    ],
+  },
+  'skill-tree': {
+    title: 'Skill Tree',
+    summary: 'Uzun vadeli hareket yeteneklerini branch mantigiyla takip eder.',
+    bullets: [
+      'Done node tamamlanmis, prog node ilerleyen, lock node henuz acilmamis beceridir.',
+      'Class ve workout verisi bazi branchleri one cikarabilir.',
+    ],
+  },
+  'daily-checklist': {
+    title: 'Gunluk Durum',
+    summary: 'Su, uyku, adim ve mood kaydi recovery hesabina destek sinyali verir.',
+    bullets: [
+      'Bu kayitlar tek seans yerine genel hazirlik trendini duzeltir.',
+      'Eksik log, ODIE kararini daha temkinli yapabilir.',
+    ],
+  },
+  'coach-feedback': {
+    title: 'Coach Feedback',
+    summary: 'ODIE yorumlarina verdigin DOGRU/YANLIS/ESKI/TONU IYI isaretlerinin ozeti.',
+    bullets: [
+      'Yanlis isaretleri coach hafizasini temizlemek icin sinyal olur.',
+      "Tonu iyi isareti ODIE'nin konusma bicimini korumasina yardim eder.",
+    ],
+  },
+  'session-detail': {
+    title: 'Seans Detayi',
+    summary: 'Kaydedilen antrenmanin ham veriye en yakin ozeti.',
+    bullets: [
+      'Sure, hacim, set, XP, PR ve kaynak burada birlikte gorunur.',
+      'Bloklar egzersizlerin hangi hatta yazildigini gosterir.',
+    ],
+  },
+  'stat-delta': {
+    title: 'Stat Delta',
+    summary: 'Bu seansin STR/AGI/END/DEX/CON/STA tarafina yazdigi etkidir.',
+    bullets: [
+      'Delta tek seans etkisidir; toplam stat kalibrasyonu tum gecmise bakar.',
+    ],
+  },
+  bloklar: {
+    title: 'Bloklar',
+    summary: 'Seansin parcalara ayrilmis calisma hatlari: strength, core, locomotion, mobility, skill gibi.',
+  },
+  fact: {
+    title: 'Kanit / Fact',
+    summary: "Parser'in seans notundan ayikladigi somut ipuclari. Coach cevabinin dayanaklarindan biridir.",
+  },
+  pr: {
+    title: 'PR',
+    summary: 'Personal record sinyali. Hareket, tekrar, kilo veya surede yeni en iyi performans olabilir.',
+  },
+  water: {
+    title: 'Su',
+    summary: 'Gunluk su kaydi. Recovery yorumunda destek sinyali olarak kullanilir.',
+  },
+  sleep: {
+    title: 'Uyku',
+    summary: 'Son gun uyku saati. Hazirlik ve recovery kararlarinda en guclu yan sinyallerden biridir.',
+  },
+  steps: {
+    title: 'Adim',
+    summary: 'Gunluk hareket miktari. Dusuk yogunluklu toparlanma ve genel ritim icin okunur.',
+  },
+  mood: {
+    title: 'Mood',
+    summary: 'Bugunku his skoru. Coach kararini tek basina degil, fatigue ve armor ile birlikte etkiler.',
+  },
+  'activity-map': {
+    title: 'Aktivite Haritasi',
+    summary: 'Takvim uzerinde hangi gunlerde kayitli hareket oldugunu ve yogunlugunu gosterir.',
+    bullets: [
+      'Koyu hucre daha uzun veya yuklu gun demektir.',
+      'Bosluklar ritim kopuslarini ve recovery donemlerini yakalamaya yarar.',
+    ],
+  },
+  'survival-console': {
+    title: 'Durum Hatti',
+    summary: 'Armor, fatigue, readiness ve risk uyarilarinin coach ekranindaki teknik ozeti.',
+  },
+  'heavy-load': {
+    title: 'Yuk Birikimi',
+    summary: 'Ardisik agir seanslarin ve risk lock durumunun kisa kontroludur.',
+  },
+  'field-note': {
+    title: 'Saha Notu',
+    summary: 'Survival motorunun yakaladigi pratik uyari veya olumlu sinyal.',
+  },
+  'session-reading': {
+    title: 'Seans Okumasi',
+    summary: 'ODIE parserinin son seansi ne kadar net anladigini ve hangi verilere dayandigini gosterir.',
+  },
+  confidence: {
+    title: 'Netlik',
+    summary: 'Seans kaydinin ne kadar iyi parse edildigini gosteren guven skoru.',
+  },
+  'parsed-piece': {
+    title: 'Okunan Parca',
+    summary: 'Seans notundan veya Hevy verisinden ayiklanan somut ipucu sayisi.',
+  },
+  'main-load': {
+    title: 'Ana Yuk',
+    summary: 'Seansin baskin calisma tipi ve blok dagilimi.',
+  },
+  evidence: {
+    title: 'Dayanak',
+    summary: 'Coach veya Ask cevabinin hangi veri parcalarina baktigini gosterir.',
+  },
+  memory: {
+    title: 'Kalici Hafiza',
+    summary: "ODIE'nin senden ogrendigi kalici tercih, risk ve hedef notlari.",
+  },
+  'live-context': {
+    title: 'Canli Baglam',
+    summary: 'Coach yorumunun o anki seans, uyarilar ve acik hedeflerle beslendigini gosterir.',
+  },
+  'ask-line': {
+    title: 'ODIE Hatti',
+    summary: 'Sorularin ayri kaydoldugu ve cevaplarin workout/recovery baglamindan uretildigi panel.',
+  },
+  'ask-answer': {
+    title: 'Kisa Yorum',
+    summary: 'Son soruya verilen ana cevap. Detaylar dayanak ve sonraki adim kartlarinda ayrilir.',
+  },
+  'ask-next': {
+    title: 'Ne Yapalim',
+    summary: 'Ask cevabindan cikan uygulanabilir sonraki adimlar.',
+  },
+  'ask-memory': {
+    title: 'Aklimda Tutsun',
+    summary: "ODIE'nin ileride kullanabilecegi tercih veya hedef notu.",
+  },
+  'ask-history': {
+    title: 'Soru Gecmisi',
+    summary: 'Onceki soru-cevap kayitlari. Eski soruya basinca o cevap tekrar acilir.',
+  },
+  'workout-form': {
+    title: 'Yeni Seans Ekle',
+    summary: 'Web uzerinden manuel workout kaydi girme modali.',
+  },
+  'workout-date': {
+    title: 'Tarih',
+    summary: 'Seansin hangi gune yazilacagini belirler.',
+  },
+  'workout-type': {
+    title: 'Seans Tipi',
+    summary: 'Workoutun ana kategorisi. Class, denge paneli ve stat delta hesabina sinyal verir.',
+  },
+  duration: {
+    title: 'Sure',
+    summary: 'Seansin dakika cinsinden suresi. Hacim yoksa yuk tahmininde destek sinyali olur.',
+  },
+  distance: {
+    title: 'Mesafe',
+    summary: 'Kosma, yuruyus, bisiklet gibi hareketlerde kilometre verisi.',
+  },
+  elevation: {
+    title: 'Yukselti',
+    summary: 'Tirmanis veya parkur gibi islerde yukseklik kazanimi.',
+  },
+  highlight: {
+    title: 'Highlight',
+    summary: 'Seansin en onemli notu: PR, teknik kalite, zorlanan bolge veya ozel durum.',
+  },
+  notes: {
+    title: 'Notlar',
+    summary: 'Coach parserinin okuyabilecegi serbest metin alani.',
+  },
+  exercises: {
+    title: 'Egzersizler',
+    summary: 'Hareket, tekrar, kilo veya sure detaylari. Hacim ve PR hesaplarini guclendirir.',
+  },
+  volume: {
+    title: 'Toplam Hacim',
+    summary: 'Formdaki egzersizlerden hesaplanan toplam kg yukudur.',
+  },
+  hevy: {
+    title: 'Hevy',
+    summary: 'Hevy uygulamasindan gelen structured workout kaydi.',
+  },
+}
+
+function explainerFor(key) {
+  return EXPLAINERS[key] || {
+    title: key,
+    summary: 'Bu terim icin henuz kisa aciklama eklenmedi.',
+  }
+}
+
+function renderExplainButton(key, label, className = 'explain-link') {
+  return `<button type="button" class="${className}" data-explain="${escapeHtml(key)}" aria-haspopup="dialog" aria-label="${escapeHtml(label)} aciklamasini ac">${escapeHtml(label)}</button>`
+}
+
+function openExplainModal(key) {
+  const item = explainerFor(key)
+  openModal(`
+    <div class="modal-head">
+      <span style="font-size:18px">?</span>
+      <div class="modal-head-title">${escapeHtml(item.title)}</div>
+      <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
+    </div>
+    <div class="modal-body explain-modal">
+      <div class="modal-desc">${escapeHtml(item.summary || '')}</div>
+      ${Array.isArray(item.bullets) && item.bullets.length ? `
+        <div class="explain-list">
+          ${item.bullets.map(line => `<div>${escapeHtml(line)}</div>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `)
+}
+
+function recentWorkoutsSince(workouts = [], days = 30) {
+  const today = new Date(`${getLocalDateString()}T00:00:00`).getTime()
+  const cutoff = today - (days * 86400000)
+  return (workouts || []).filter(workout => {
+    const ts = new Date(`${normalizeDateString(workout.date)}T00:00:00`).getTime()
+    return Number.isFinite(ts) && ts >= cutoff
+  })
+}
+
+function buildTodayDecision(state, activeQuest = null) {
+  const fatigue = Number(state.profile?.fatigue) || 0
+  const armor = Number(state.profile?.armor) || 0
+  const readiness = Number(state.health?.readiness?.score)
+  const latest = state.workouts?.[0] || null
+  const recovery = state.profile?.recovery || null
+  const balance = buildDisciplineBalance(state)
+  const nextQuest = activeQuest?.name ? `${activeQuest.name} ${activeQuest.progress}/${activeQuest.total}` : ''
+
+  if (fatigue >= 75 || state.profile?.survivalStatus === 'cns_overloaded') {
+    return {
+      key: 'recovery-gunu',
+      tone: 'danger',
+      title: 'Recovery gunu',
+      command: 'Agir push/pull yok; 25-35 dk yuruyus veya mobilite.',
+      reason: `Fatigue ${Math.round(fatigue)}. ${recovery ? `${recovery.progressPct}% toparlanma isledi.` : 'Toparlanma verisi sinirli.'}`,
+      next: balance.lowest?.key === 'core' ? '8 dk core aktivasyon eklenebilir.' : 'Yuk degil, ritim koru.',
+    }
+  }
+
+  if (armor < 55 || (Number.isFinite(readiness) && readiness < 45)) {
+    return {
+      key: 'kontrollu-teknik',
+      tone: 'warn',
+      title: 'Kontrollu teknik',
+      command: 'Kisa teknik blok veya accessory; PR denemesi yok.',
+      reason: `Armor ${Math.round(armor)} ve hazirlik ${Number.isFinite(readiness) ? Math.round(readiness) : '--'}/100.`,
+      next: nextQuest || 'Gunluk logu kapat, uyku/su sinyalini tamamla.',
+    }
+  }
+
+  if (balance.lowest?.key === 'legs' || balance.lowest?.key === 'core') {
+    return {
+      key: 'denge-kapatma',
+      tone: 'warn',
+      title: 'Denge kapatma',
+      command: balance.lowest.key === 'legs'
+        ? 'Bacak veya posterior chain blok ekle.'
+        : 'Seansa direkt core ile basla.',
+      reason: `${balance.lowest.label} son 30 gunde en geride kalan hat.`,
+      next: nextQuest || 'Kisa ama net blok yeter.',
+    }
+  }
+
+  return {
+    key: 'normal-seans',
+    tone: 'calm',
+    title: 'Normal seans',
+    command: latest ? `${latest.type || 'Ana blok'} temposu acilabilir.` : 'Ilk seansi net logla.',
+    reason: `Fatigue ${Math.round(fatigue)}, armor ${Math.round(armor)}.`,
+    next: nextQuest || 'Set, sure ve hareketleri temiz gir.',
+  }
+}
+
+function renderTodayDecisionCard(state, profile, activeQuest) {
+  const decision = buildTodayDecision(state, activeQuest)
+  const recovery = state.profile?.recovery
+  const recoveryLabel = recovery
+    ? `${Math.floor(recovery.elapsedHours)}s gecmis / ${recovery.progressPct}%`
+    : 'toparlanma bekliyor'
+
+  return `
+    <article class="glass-card today-decision-card tone-${decision.tone}">
+      <div class="today-decision-main">
+        <div>
+          <div class="eyebrow">${renderExplainButton('today-decision', 'Bugunun Karari', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton(decision.key, decision.title, 'explain-link explain-heading')}</h3>
+          <p>${escapeHtml(decision.command)}</p>
+        </div>
+        <div class="today-decision-meter">
+          <strong>${Math.round(Number(state.profile?.fatigue) || 0)}</strong>
+          <span>${renderExplainButton('fatigue', 'fatigue', 'explain-link metric-explain')}</span>
+        </div>
+      </div>
+      <div class="today-decision-foot">
+        <span>${escapeHtml(decision.reason)}</span>
+        <span>${escapeHtml(decision.next)}</span>
+        <span>${escapeHtml(recoveryLabel)}</span>
+      </div>
+    </article>
+  `
+}
+
+function averageRecentLogs(logs = [], limit = 14) {
+  const recent = [...(logs || [])]
+    .sort((a, b) => normalizeDateString(b.date).localeCompare(normalizeDateString(a.date)))
+    .slice(0, limit)
+  const avg = key => recent.length
+    ? recent.reduce((sum, item) => sum + (Number(item[key]) || 0), 0) / recent.length
+    : 0
+  return {
+    samples: recent.length,
+    sleep: Math.round(avg('sleepHours') * 10) / 10,
+    waterL: Math.round((avg('waterMl') / 1000) * 10) / 10,
+    steps: Math.round(avg('steps')),
+    mood: Math.round(avg('mood') * 10) / 10,
+  }
+}
+
+function renderRecoveryTrendCard(state) {
+  const recovery = state.profile?.recovery || null
+  const avg = averageRecentLogs(state.dailyLogs || [], 14)
+  const fatigue = clamp(state.profile?.fatigue)
+  const armor = clamp(state.profile?.armor)
+  const progress = clamp(recovery?.progressPct)
+  const subtitle = recovery
+    ? `${Math.floor(recovery.elapsedHours)} saat gecti, ${recovery.fatigueRecovered} fatigue dustu`
+    : 'Yeni seans geldikce 40 saatlik toparlanma sayaci baslar.'
+
+  return `
+    <article class="glass-card today-insight-card recovery-trend-card">
+      <div class="insight-card-head">
+        <div>
+          <div class="eyebrow">${renderExplainButton('recovery-trend', 'Recovery Trend', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('recovery-trend', '40 saatlik toparlanma', 'explain-link explain-heading')}</h3>
+        </div>
+        <strong>${progress}%</strong>
+      </div>
+      <p>${escapeHtml(subtitle)}</p>
+      <div class="insight-meter-list">
+        ${renderInsightMeter('Fatigue', fatigue, 'danger')}
+        ${renderInsightMeter('Armor', armor, 'ok')}
+      </div>
+      <div class="insight-mini-grid">
+        <span><b>${avg.sleep || '-'}</b> uyku</span>
+        <span><b>${avg.waterL || '-'}</b>L su</span>
+        <span><b>${formatCompactMetric(avg.steps)}</b> adim</span>
+        <span><b>${avg.samples}</b> log</span>
+      </div>
+    </article>
+  `
+}
+
+function renderInsightMeter(label, value, tone = 'ok') {
+  return `
+    <div class="insight-meter-row">
+      <div>
+        <span>${renderExplainButton(label.toLocaleLowerCase('tr-TR') === 'armor' ? 'armor' : 'fatigue', label, 'explain-link metric-explain')}</span>
+        <strong>${Math.round(value)}</strong>
+      </div>
+      <div class="insight-meter-track"><i class="${tone}" style="width:${clamp(value)}%"></i></div>
+    </div>
+  `
+}
+
+function buildDisciplineBalance(state) {
+  const recent = recentWorkoutsSince(state.workouts || [], 30)
+  const totals = {
+    push: { key: 'push', label: 'Push', value: 0 },
+    pull: { key: 'pull', label: 'Pull', value: 0 },
+    legs: { key: 'legs', label: 'Bacak', value: 0 },
+    core: { key: 'core', label: 'Core', value: 0 },
+  }
+
+  for (const workout of recent) {
+    const sets = Number(workout.sets) || 1
+    const type = String(workout.type || '').toLowerCase()
+    const tags = new Set(workout.tags || [])
+    if (type.includes('push') || tags.has('push')) totals.push.value += sets
+    if (type.includes('pull') || tags.has('pull')) totals.pull.value += sets
+    if (type.includes('bacak') || tags.has('legs')) totals.legs.value += sets
+    const coreBlocks = (workout.blocks || []).filter(block => block.kind === 'core')
+    const coreSets = coreBlocks.reduce((sum, block) => sum + (Number(block.sets) || 0), 0)
+    if (coreSets || tags.has('core')) totals.core.value += coreSets || Math.max(1, Math.round(sets * 0.35))
+  }
+
+  const items = Object.values(totals)
+  const max = Math.max(1, ...items.map(item => item.value))
+  const normalized = items.map(item => ({
+    ...item,
+    pct: Math.max(item.value ? 8 : 0, Math.round((item.value / max) * 100)),
+  }))
+  const lowest = [...normalized].sort((a, b) => a.value - b.value)[0] || null
+  return { items: normalized, lowest, sample: recent.length }
+}
+
+function renderDisciplineBalanceCard(state) {
+  const balance = buildDisciplineBalance(state)
+  return `
+    <article class="glass-card today-insight-card balance-card">
+      <div class="insight-card-head">
+        <div>
+          <div class="eyebrow">${renderExplainButton('denge-paneli', 'Denge Paneli', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('denge-paneli', 'Push / Pull / Bacak / Core', 'explain-link explain-heading')}</h3>
+        </div>
+        <strong>${balance.sample}</strong>
+      </div>
+      <div class="balance-lanes">
+        ${balance.items.map(item => `
+          <div class="balance-lane ${item.key === balance.lowest?.key ? 'low' : ''}">
+            <span>${renderExplainButton(item.key, item.label, 'explain-link lane-explain')}</span>
+            <div><i style="width:${item.pct}%"></i></div>
+            <strong>${Math.round(item.value)}</strong>
+          </div>
+        `).join('')}
+      </div>
+      <p>${balance.lowest ? `${balance.lowest.label} hatti geride; bir sonraki plana kisa blok olarak girebilir.` : 'Denge verisi bekleniyor.'}</p>
+    </article>
+  `
+}
+
+function renderCoachFeedbackDashboard(state) {
+  const feedback = state.memoryFeedback || []
+  const counts = feedback.reduce((acc, item) => {
+    const key = item.feedbackType || 'correct'
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+  const total = feedback.length
+  const latest = feedback[0]
+
+  return `
+    <article class="glass-card today-insight-card coach-feedback-card">
+      <div class="insight-card-head">
+        <div>
+          <div class="eyebrow">${renderExplainButton('coach-feedback', 'Coach Feedback', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('coach-feedback', 'ODIE kalite dongusu', 'explain-link explain-heading')}</h3>
+        </div>
+        <strong>${total}</strong>
+      </div>
+      <div class="feedback-count-grid">
+        <span><b>${counts.correct || 0}</b>DOGRU</span>
+        <span><b>${counts.wrong || 0}</b>YANLIS</span>
+        <span><b>${counts.outdated || 0}</b>ESKI</span>
+        <span><b>${counts.prefer || 0}</b>TON</span>
+      </div>
+      <p>${latest ? `${latest.feedbackType} / ${latest.note || 'son isaret'}` : 'Coach kartlarindan isaret geldikce ODIE tonu ve hafizasi temizlenir.'}</p>
+    </article>
   `
 }
 
@@ -442,7 +1096,7 @@ function renderHomeDataDeck(state, profile) {
     <div class="home-data-deck" aria-label="Datalarim">
       <div class="home-data-card home-data-card-wide">
         <div class="home-data-head">
-          <span>DATALARIM</span>
+          <span>${renderExplainButton('datalarim', 'DATALARIM', 'explain-link metric-explain')}</span>
           <strong>${escapeHtml(loadValue)}</strong>
         </div>
         <div class="home-data-sub">${escapeHtml(loadLabel)}</div>
@@ -458,7 +1112,7 @@ function renderHomeDataDeck(state, profile) {
 
       <div class="home-data-card">
         <div class="home-data-head">
-          <span>KAYNAK</span>
+          <span>${renderExplainButton('kaynak', 'KAYNAK', 'explain-link metric-explain')}</span>
           <strong>${sourceMix.total}</strong>
         </div>
         <div class="home-source-stack">
@@ -471,7 +1125,7 @@ function renderHomeDataDeck(state, profile) {
 
       <div class="home-data-card">
         <div class="home-data-head">
-          <span>RITIM</span>
+          <span>${renderExplainButton('ritim', 'RITIM', 'explain-link metric-explain')}</span>
           <strong>${rhythm.active}/7</strong>
         </div>
         <div class="home-day-dots">
@@ -642,12 +1296,107 @@ function renderTodaySessionItem(workout) {
   const safeId = escapeHtml(String(workout.id || ''))
   return `
     <li class="today-session-item">
-      <div class="today-session-text">
+      <button class="today-session-open" data-action="open-session-detail" data-workout-id="${safeId}">
+        <div class="today-session-text">
         <strong>${escapeHtml(title)}</strong>
         <span>${escapeHtml(meta || 'detay yok')}</span>
-      </div>
+        </div>
+      </button>
       ${safeId ? `<button class="today-session-del" data-action="delete-workout" data-workout-id="${safeId}" aria-label="Seansi sil">Sil</button>` : ''}
     </li>
+  `
+}
+
+function openSessionDetailModal(workout, state) {
+  if (!workout) return
+  const blocks = workout.blocks || []
+  const statDelta = workout.statDelta || workout.stat_delta || {}
+  const facts = (state.workoutFacts || []).filter(item => String(item.workoutId || item.workout_id || '') === String(workout.id)).slice(0, 6)
+  const title = `${formatMonthShort(workout.date)} / ${workout.type || 'Seans'}`
+  const source = String(workout.source || 'manual').toUpperCase()
+  const metrics = [
+    { label: 'Sure', value: workout.durationMin ? `${workout.durationMin} dk` : '-', explain: 'session-detail' },
+    { label: 'Hacim', value: workout.volumeKg ? `${Math.round(workout.volumeKg).toLocaleString('tr-TR')} kg` : '-', explain: 'hacim' },
+    { label: 'Set', value: workout.sets || '-', explain: 'session-detail' },
+    { label: 'XP', value: workout.xpEarned ? `+${workout.xpEarned}` : '-', explain: 'xp' },
+    { label: 'Kaynak', value: source, explain: source === 'HEVY' ? 'hevy' : 'kaynak' },
+    { label: 'PR', value: workout.hasPr ? 'VAR' : 'YOK', explain: 'pr' },
+  ]
+
+  openModal(`
+    <div class="modal-head">
+      <span style="font-size:22px">LOG</span>
+      <div class="modal-head-title">${renderExplainButton('session-detail', title, 'explain-link modal-title-explain')}</div>
+      <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
+    </div>
+    <div class="modal-body session-detail-modal">
+      <div class="session-detail-hero">
+        <div>
+          <div class="mini-label">Highlight</div>
+          <strong>${escapeHtml(workout.highlight || 'Seans kaydi')}</strong>
+          <p>${escapeHtml(workout.notes || 'Ek not yok.')}</p>
+        </div>
+        <span>${escapeHtml(workout.primaryCategory || 'mixed')}</span>
+      </div>
+      <div class="modal-grid">
+        ${metrics.map(item => `
+          <div class="modal-item">
+            <div class="modal-item-label">${renderExplainButton(item.explain, item.label, 'explain-link metric-explain')}</div>
+            <div class="modal-item-val">${escapeHtml(item.value)}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="modal-section-label">${renderExplainButton('stat-delta', 'STAT DELTA', 'explain-link metric-explain')}</div>
+      ${renderSessionStatDelta(statDelta)}
+      <div class="modal-section-label">${renderExplainButton('bloklar', 'BLOKLAR', 'explain-link metric-explain')}</div>
+      ${renderSessionBlocks(blocks)}
+      <div class="modal-section-label">${renderExplainButton('fact', 'KANIT / FACT', 'explain-link metric-explain')}</div>
+      ${facts.length ? `
+        <div class="session-fact-list">
+          ${facts.map(fact => `<span>${escapeHtml(fact.label || fact.raw || fact.blockKind || 'fact')}</span>`).join('')}
+        </div>
+      ` : '<div class="modal-coach">Bu seans icin ayri fact kaydi yok; bloklar workout verisinden okunuyor.</div>'}
+    </div>
+  `)
+}
+
+function renderSessionStatDelta(delta = {}) {
+  const items = ['str', 'agi', 'end', 'dex', 'con', 'sta']
+    .map(key => ({ key: key.toUpperCase(), value: Number(delta?.[key]) || 0 }))
+    .filter(item => item.value > 0)
+  if (!items.length) return '<div class="modal-coach">Bu kayitta stat delta sinyali yok.</div>'
+  return `
+    <div class="session-delta-pills">
+      ${items.map(item => `<span>${item.key} +${item.value}</span>`).join('')}
+    </div>
+  `
+}
+
+function renderSessionBlocks(blocks = []) {
+  if (!blocks.length) return '<div class="modal-coach">Blok verisi yok.</div>'
+  const max = Math.max(1, ...blocks.map(block => Number(block.sets) || Number(block.durationMin) || Number(block.volumeKg) / 500 || 1))
+  return `
+    <div class="session-block-list">
+      ${blocks.slice(0, 10).map(block => {
+        const value = Number(block.sets) || Number(block.durationMin) || Math.round((Number(block.volumeKg) || 0) / 500) || 1
+        const width = Math.max(8, Math.round((value / max) * 100))
+        const meta = [
+          block.sets ? `${block.sets} set` : null,
+          block.durationMin ? `${block.durationMin} dk` : null,
+          block.volumeKg ? `${Math.round(block.volumeKg)} kg` : null,
+          block.distanceKm ? `${block.distanceKm} km` : null,
+        ].filter(Boolean).join(' / ')
+        return `
+          <div class="session-block-row">
+            <div>
+              <strong>${escapeHtml(block.label || block.kind)}</strong>
+              <span>${escapeHtml(block.kind || 'mixed')} ${meta ? `/ ${meta}` : ''}</span>
+            </div>
+            <div class="session-block-meter"><i style="width:${width}%"></i></div>
+          </div>
+        `
+      }).join('')}
+    </div>
   `
 }
 
@@ -674,8 +1423,8 @@ function renderCharacterPage(state, profile, semantic) {
       <article class="glass-card recovery-pixel">
         <div class="section-top">
           <div>
-            <div class="eyebrow">Gunluk Durum</div>
-            <h3>Su / uyku / adim</h3>
+            <div class="eyebrow">${renderExplainButton('daily-checklist', 'Gunluk Durum', 'explain-link eyebrow-explain')}</div>
+            <h3>${renderExplainButton('daily-checklist', 'Su / uyku / adim', 'explain-link explain-heading')}</h3>
           </div>
         </div>
         ${renderDailyChecklist()}
@@ -705,21 +1454,21 @@ function renderPortraitBanner(state, profile) {
         <div class="portrait-name">${escapeHtml(profile.nick)}</div>
         <div class="portrait-class-line">
           <span class="rank-pill">${escapeHtml(rank)}</span>
-          <span>${escapeHtml(className)}</span>
+          <span>${renderExplainButton('class', className, 'explain-link metric-explain')}</span>
         </div>
         <div class="portrait-bars">
           <div class="portrait-bar-row">
-            <span class="pixel-label">XP</span>
+            <span class="pixel-label">${renderExplainButton('xp', 'XP', 'explain-link metric-explain')}</span>
             <div class="pix-bar"><div class="pix-bar-fill" style="width:${xpPct}%"></div></div>
             <span class="bar-val">${xpCur}/${xpMax}</span>
           </div>
           <div class="portrait-bar-row">
-            <span class="pixel-label">ARMOR</span>
+            <span class="pixel-label">${renderExplainButton('armor', 'ARMOR', 'explain-link metric-explain')}</span>
             <div class="pix-bar"><div class="pix-bar-fill green" style="width:${armor}%"></div></div>
             <span class="bar-val">${armor}</span>
           </div>
           <div class="portrait-bar-row">
-            <span class="pixel-label">FATIGUE</span>
+            <span class="pixel-label">${renderExplainButton('fatigue', 'FATIGUE', 'explain-link metric-explain')}</span>
             <div class="pix-bar"><div class="pix-bar-fill red" style="width:${fatigue}%"></div></div>
             <span class="bar-val">${fatigue}</span>
           </div>
@@ -766,8 +1515,8 @@ function renderStatGridPixel(state, profile) {
     <article class="glass-card">
       <div class="section-top">
         <div>
-          <div class="eyebrow">Combat Stats</div>
-          <h3>Karakter parametreleri</h3>
+          <div class="eyebrow">${renderExplainButton('combat-stats', 'Combat Stats', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('combat-stats', 'Karakter parametreleri', 'explain-link explain-heading')}</h3>
         </div>
       </div>
       <div class="stat-grid-pixel">
@@ -856,8 +1605,8 @@ function renderStatRadar(state, profile) {
     <article class="glass-card stat-radar-card">
       <div class="section-top">
         <div>
-          <div class="eyebrow">Stat Radar</div>
-          <h3>Simdi vs 30 gun once</h3>
+          <div class="eyebrow">${renderExplainButton('stat-radar', 'Stat Radar', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('stat-radar', 'Simdi vs 30 gun once', 'explain-link explain-heading')}</h3>
         </div>
         <div class="stat-radar-summary ${totalDelta > 0 ? 'pos' : totalDelta < 0 ? 'neg' : ''}">${totalDeltaTxt}</div>
       </div>
@@ -888,8 +1637,8 @@ function renderSkillTreePixel(profile) {
     <article class="glass-card skill-pixel">
       <div class="panel-head">
         <div>
-          <div class="pixel-label">Skill Tree</div>
-          <div class="panel-title">Branch noktalari</div>
+          <div class="pixel-label">${renderExplainButton('skill-tree', 'Skill Tree', 'explain-link metric-explain')}</div>
+          <div class="panel-title">${renderExplainButton('skill-tree', 'Branch noktalari', 'explain-link explain-heading')}</div>
         </div>
       </div>
       <div class="branch-tabs">
@@ -938,8 +1687,8 @@ function renderQuestPixel(profile) {
     <article class="glass-card quest-pixel">
       <div class="section-top">
         <div>
-          <div class="eyebrow">Active Quests</div>
-          <h3>Gorev defteri</h3>
+          <div class="eyebrow">${renderExplainButton('active-quests', 'Active Quests', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('active-quests', 'Gorev defteri', 'explain-link explain-heading')}</h3>
         </div>
       </div>
       <div class="quest-pixel-tabs">
@@ -1041,6 +1790,14 @@ function initActivePage(tabKey, profile) {
 /* ---------- Global click handler ---------- */
 
 document.addEventListener('click', event => {
+  const explainBtn = event.target.closest('[data-explain]')
+  if (explainBtn) {
+    event.preventDefault()
+    event.stopPropagation()
+    openExplainModal(explainBtn.dataset.explain)
+    return
+  }
+
   const odieBtn = event.target.closest('[data-odie-mode]')
   if (odieBtn) {
     odieMode = odieBtn.dataset.odieMode
@@ -1081,6 +1838,14 @@ document.addEventListener('click', event => {
 
   if (action === 'open-workout') {
     openWorkoutForm()
+    return
+  }
+
+  if (action === 'open-session-detail') {
+    const id = event.target.closest('[data-workout-id]')?.dataset.workoutId
+    const state = store.getState()
+    const workout = (state.workouts || []).find(item => String(item.id) === String(id))
+    openSessionDetailModal(workout, state)
     return
   }
 

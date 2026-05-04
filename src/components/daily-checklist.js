@@ -9,6 +9,10 @@ const MOOD_OPTIONS = [
   { value: 5, label: 'Harika' },
 ]
 
+function explainButton(key, label) {
+  return `<button type="button" class="explain-link metric-explain" data-explain="${key}" aria-haspopup="dialog" aria-label="${label} aciklamasini ac">${label}</button>`
+}
+
 export function renderDailyChecklist() {
   const today = getLocalDateString()
   const logs = store.getState()?.dailyLogs || []
@@ -21,12 +25,12 @@ export function renderDailyChecklist() {
 
   return `
     <div class="daily-checklist" id="daily-checklist">
-      <div class="dc-title">BUGUN / ${_formatDate(today)}</div>
+      <div class="dc-title">${explainButton('daily-checklist', 'BUGUN')} / ${_formatDate(today)}</div>
 
       <div class="dc-row">
         <div class="dc-icon">H2O</div>
         <div class="dc-info">
-          <div class="dc-lbl">Su</div>
+          <div class="dc-lbl">${explainButton('water', 'Su')}</div>
           <div class="dc-bar"><div class="dc-fill" style="width:${waterPct}%;background:var(--cobalt)"></div></div>
         </div>
         <div class="dc-val" id="dc-water-val">${(log.waterMl / 1000).toFixed(1)}L / 2.5L</div>
@@ -39,7 +43,7 @@ export function renderDailyChecklist() {
       <div class="dc-row">
         <div class="dc-icon">SLP</div>
         <div class="dc-info">
-          <div class="dc-lbl">Uyku</div>
+          <div class="dc-lbl">${explainButton('sleep', 'Uyku')}</div>
           <div class="dc-bar"><div class="dc-fill" style="width:${sleepPct}%;background:var(--violet)"></div></div>
         </div>
         <div class="dc-val" id="dc-sleep-val">${log.sleepHours || 0}h / 8h</div>
@@ -52,7 +56,7 @@ export function renderDailyChecklist() {
       <div class="dc-row">
         <div class="dc-icon">STP</div>
         <div class="dc-info">
-          <div class="dc-lbl">Adim</div>
+          <div class="dc-lbl">${explainButton('steps', 'Adim')}</div>
           <div class="dc-bar"><div class="dc-fill" style="width:${stepsPct}%;background:var(--amber)"></div></div>
         </div>
         <div class="dc-val" id="dc-steps-val">${log.steps.toLocaleString('tr-TR')} / 12k</div>
@@ -65,7 +69,7 @@ export function renderDailyChecklist() {
       <div class="dc-row dc-mood-row">
         <div class="dc-icon">M</div>
         <div class="dc-info">
-          <div class="dc-lbl">Mood</div>
+          <div class="dc-lbl">${explainButton('mood', 'Mood')}</div>
           <div class="dc-mood-options">
             ${MOOD_OPTIONS.map(option => `
               <button class="dc-mood-btn ${currentMood === option.value ? 'active' : ''}"

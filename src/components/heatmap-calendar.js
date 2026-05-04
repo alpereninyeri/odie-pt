@@ -14,6 +14,10 @@ function escapeAttr(value = '') {
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+function explainButton(key, label, className = 'explain-link metric-explain') {
+  return `<button type="button" class="${className}" data-explain="${escapeAttr(key)}" aria-haspopup="dialog" aria-label="${escapeAttr(label)} aciklamasini ac">${escapeAttr(label)}</button>`
+}
+
 function tone(durationMin) {
   if (!durationMin) return 0
   if (durationMin < 30) return 1
@@ -114,8 +118,8 @@ export function renderHeatmap(workouts = [], todayStr = getLocalDateString()) {
     <article class="glass-card heatmap-card">
       <div class="section-top">
         <div>
-          <div class="eyebrow">${periodLabel} Aktivite</div>
-          <h3>Aktivite haritasi</h3>
+          <div class="eyebrow">${explainButton('activity-map', `${periodLabel} Aktivite`, 'explain-link eyebrow-explain')}</div>
+          <h3>${explainButton('activity-map', 'Aktivite haritasi', 'explain-link explain-heading')}</h3>
         </div>
         <div class="heatmap-summary">${stats}</div>
       </div>

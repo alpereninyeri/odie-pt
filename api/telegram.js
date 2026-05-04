@@ -24,7 +24,7 @@ import {
   normalizeDateString,
   normalizeSession,
 } from '../src/data/rules.js'
-import { applySurvival } from '../src/data/survival-engine.js'
+import { applySurvival, applyTimedRecovery } from '../src/data/survival-engine.js'
 import { computeVolumeWithBodyweight } from '../src/data/volume-utils.js'
 
 function sbHeaders() {
@@ -1785,11 +1785,18 @@ export default async function handler(req, res) {
     }
 
     const currentClass = computeClass(workouts)
-    const survival = applySurvival({
+    const currentSurvival = applyTimedRecovery({
       armor: Number(profile.armor_current) || 100,
       fatigue: Number(profile.fatigue_current) || 0,
       consecutiveHeavy: Number(profile.consecutive_heavy) || 0,
       injuryUntil: profile.injury_until || null,
+      status: profile.survival_status || 'healthy',
+    }, workouts[0] || null)
+    const survival = applySurvival({
+      armor: currentSurvival.armor,
+      fatigue: currentSurvival.fatigue,
+      consecutiveHeavy: currentSurvival.consecutiveHeavy,
+      injuryUntil: currentSurvival.injuryUntil,
     }, session, {
       armorRegen: classArmorRegen(currentClass),
       fatigueDecay: classFatigueDecay(currentClass),

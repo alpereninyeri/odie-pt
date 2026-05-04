@@ -42,7 +42,7 @@ import {
   normalizeDateString,
   normalizeSession,
 } from './rules.js'
-import { applySurvival } from './survival-engine.js'
+import { applySurvival, applyTimedRecovery } from './survival-engine.js'
 
 const LS_KEY = 'odiept-state-v8'
 const CURRENT_VERSION = 8
@@ -162,6 +162,8 @@ function _normalizeProfileSeed() {
     injuryUntil: null,
     survivalStatus: 'healthy',
     survivalWarnings: [],
+    recoveryBase: null,
+    recovery: null,
     classId: null,
     classObj: null,
     epicVolume: null,
@@ -259,6 +261,7 @@ function _normalizeWorkoutRow(row = {}) {
     notes: row.notes || '',
     source: row.source || 'manual',
     createdAt: row.createdAt || row.created_at || row.started_at,
+    startedAt: row.startedAt || row.started_at || null,
     elevationM: row.elevationM ?? row.elevation_m,
     distanceKm: row.distanceKm ?? row.distance_km,
     tags: row.tags || [],
@@ -336,6 +339,8 @@ function _normalizeProfileRow(row = {}) {
     injuryUntil: row.injury_until ?? row.injuryUntil ?? null,
     survivalStatus: row.survival_status ?? row.survivalStatus ?? 'healthy',
     survivalWarnings: Array.isArray(row.survival_warnings) ? row.survival_warnings : [],
+    recoveryBase: null,
+    recovery: null,
     classId: row.class_id ?? row.classId ?? null,
     classObj: null,
     epicVolume: null,
@@ -478,11 +483,78 @@ function _deriveMetaFields(state) {
   profile.epicGeography = computeGeographyTier(profile.totalKm || 0)
 }
 
+function _recoveryWorkoutKey(workout = null) {
+  if (!workout) return ''
+  return [
+    workout.id || '',
+    normalizeDateString(workout.date, ''),
+    workout.startedAt || workout.started_at || '',
+    workout.createdAt || workout.created_at || '',
+  ].join('|')
+}
+
+function _survivalBaseFromProfile(profile = {}, workoutKey = '') {
+  return {
+    workoutKey,
+    armor: Number(profile.armor ?? profile.armor_current) || 100,
+    fatigue: Number(profile.fatigue ?? profile.fatigue_current) || 0,
+    consecutiveHeavy: Number(profile.consecutiveHeavy ?? profile.consecutive_heavy) || 0,
+    injuryUntil: profile.injuryUntil || profile.injury_until || null,
+    status: profile.survivalStatus || profile.survival_status || 'healthy',
+    capturedAt: new Date().toISOString(),
+  }
+}
+
+function _ensureRecoveryBase(state, { reset = false } = {}) {
+  if (!state?.profile) return null
+  const latestWorkout = state.workouts?.[0] || null
+  if (!latestWorkout) {
+    state.profile.recoveryBase = null
+    state.profile.recovery = null
+    return null
+  }
+
+  const workoutKey = _recoveryWorkoutKey(latestWorkout)
+  const currentBase = state.profile.recoveryBase
+  if (reset || !currentBase || currentBase.workoutKey !== workoutKey) {
+    state.profile.recoveryBase = _survivalBaseFromProfile(state.profile, workoutKey)
+  }
+
+  return state.profile.recoveryBase
+}
+
+function _timedSurvivalForState(state) {
+  const base = _ensureRecoveryBase(state)
+  if (!base) {
+    return {
+      armor: Number(state?.profile?.armor) || 100,
+      fatigue: Number(state?.profile?.fatigue) || 0,
+      consecutiveHeavy: Number(state?.profile?.consecutiveHeavy) || 0,
+      injuryUntil: state?.profile?.injuryUntil || null,
+      status: state?.profile?.survivalStatus || 'healthy',
+      recovery: null,
+    }
+  }
+  return applyTimedRecovery(base, state.workouts?.[0] || null)
+}
+
+function _applyTimedRecoveryToProfile(state) {
+  if (!state?.profile) return
+  const survival = _timedSurvivalForState(state)
+  state.profile.armor = survival.armor
+  state.profile.fatigue = survival.fatigue
+  state.profile.consecutiveHeavy = survival.consecutiveHeavy
+  state.profile.injuryUntil = survival.injuryUntil
+  state.profile.survivalStatus = survival.status
+  state.profile.recovery = survival.recovery
+}
+
 function _refreshDerivedState(state) {
   _sortWorkouts(state.workouts)
   _sortDailyLogs(state.dailyLogs)
   state.prs = _rebuildPrs(state.workouts || [])
   _deriveMetaFields(state)
+  _applyTimedRecoveryToProfile(state)
   recalculate(state)
   state.workoutLog = _buildWorkoutLog(state.workouts || [])
   state.profile.currentFocus = _deriveCurrentFocus(state)
@@ -511,6 +583,7 @@ function _applySupabaseProfile(row) {
     ..._state.profile,
     ...normalizedProfile,
   }
+  _state.profile.recoveryBase = null
   _state.bodyMetrics = normalizedProfile.bodyMetrics || _state.bodyMetrics
 }
 
@@ -623,6 +696,7 @@ function _toSupabaseWorkout(workout) {
     survival_status: workout.survivalStatus || 'healthy',
     stat_delta: workout.statDelta || {},
     created_at: workout.createdAt || new Date().toISOString(),
+    started_at: workout.startedAt || workout.started_at || null,
   }
 }
 
@@ -714,6 +788,7 @@ function _mergeToProfile(state) {
     bodyMetricsHistory: state.bodyMetricsHistory || [],
     workoutBlocks: state.workoutBlocks || [],
     workoutFacts: state.workoutFacts || [],
+    recovery: profile.recovery || null,
   }
 }
 
@@ -819,6 +894,29 @@ export const store = {
     return _mergeToProfile(_state || _buildSeed())
   },
 
+  refreshRecovery() {
+    if (!_state) return null
+    const before = {
+      armor: _state.profile?.armor,
+      fatigue: _state.profile?.fatigue,
+      status: _state.profile?.survivalStatus,
+      progressPct: _state.profile?.recovery?.progressPct,
+    }
+    _refreshDerivedState(_state)
+    const after = {
+      armor: _state.profile?.armor,
+      fatigue: _state.profile?.fatigue,
+      status: _state.profile?.survivalStatus,
+      progressPct: _state.profile?.recovery?.progressPct,
+    }
+    const changed = JSON.stringify(before) !== JSON.stringify(after)
+    if (changed) {
+      _saveToLS()
+      _notify('*')
+    }
+    return _state.profile?.recovery || null
+  },
+
   subscribe(path, fn) {
     if (!_subscribers.has(path)) _subscribers.set(path, new Set())
     _subscribers.get(path).add(fn)
@@ -833,11 +931,12 @@ export const store = {
     const normalized = normalizeSession(session, { source: session.source || 'manual' })
     const currentClass = _state.profile.classObj || computeClass(_state.workouts || [])
     const streak = computeStreakInfo(_state.workouts || [], normalized.date)
+    const survivalInput = _timedSurvivalForState(_state)
     const survival = applySurvival({
-      armor: _state.profile.armor ?? 100,
-      fatigue: _state.profile.fatigue ?? 0,
-      consecutiveHeavy: _state.profile.consecutiveHeavy ?? 0,
-      injuryUntil: _state.profile.injuryUntil || null,
+      armor: survivalInput.armor ?? 100,
+      fatigue: survivalInput.fatigue ?? 0,
+      consecutiveHeavy: survivalInput.consecutiveHeavy ?? 0,
+      injuryUntil: survivalInput.injuryUntil || null,
     }, normalized, {
       armorRegen: classArmorRegen(currentClass),
       fatigueDecay: classFatigueDecay(currentClass),
@@ -876,6 +975,7 @@ export const store = {
     _state.profile.survivalStatus = survival.status
     _state.profile.survivalWarnings = survival.warnings || []
     _state.profile.lastUpdated = new Date().toISOString()
+    _state.profile.recoveryBase = null
 
     _refreshDerivedState(_state)
     const previousClassId = currentClass?.id
@@ -911,6 +1011,7 @@ export const store = {
       _state.profile.xp.total = total
     }
     _state.profile.lastUpdated = new Date().toISOString()
+    _state.profile.recoveryBase = null
 
     _refreshDerivedState(_state)
     _saveToLS()

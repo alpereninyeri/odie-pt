@@ -1,6 +1,7 @@
 import { buildOdieContext } from '../src/data/odie-context.js'
 import { detectPRs } from '../src/data/pr-detector.js'
 import { computeClass } from '../src/data/class-engine.js'
+import { applyTimedRecovery } from '../src/data/survival-engine.js'
 import { normalizeDateString, normalizeSession } from '../src/data/rules.js'
 import {
   normalizeAthleteMemoryRow,
@@ -405,6 +406,13 @@ export default async function handler(req, res) {
     const questionHistory = (questionRows || []).map(row => normalizeQuestionRow(row))
     const currentClass = computeClass(workouts)
     const currentPrs = buildCurrentPrs(workouts)
+    const currentSurvival = applyTimedRecovery({
+      armor: Number(profile.armor_current) || 100,
+      fatigue: Number(profile.fatigue_current) || 0,
+      consecutiveHeavy: Number(profile.consecutive_heavy) || 0,
+      injuryUntil: profile.injury_until || null,
+      status: profile.survival_status || 'healthy',
+    }, workouts[0] || null)
 
     const odie = buildOdieContext({
       profile,
@@ -422,9 +430,9 @@ export default async function handler(req, res) {
       streak: Number(profile.streak_current) || 0,
       xpEarned: 0,
       survival: {
-        armor: Number(profile.armor_current) || 100,
-        fatigue: Number(profile.fatigue_current) || 0,
-        status: profile.survival_status || 'healthy',
+        armor: currentSurvival.armor,
+        fatigue: currentSurvival.fatigue,
+        status: currentSurvival.status,
         warnings: Array.isArray(latestCoachNote?.warnings) ? latestCoachNote.warnings : [],
       },
     })
