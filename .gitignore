@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .vercel
+.hallmark/
+.playwright-mcp/
 .env
 .env.local
 .DS_Store

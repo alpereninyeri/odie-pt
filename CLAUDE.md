@@ -20,7 +20,10 @@ Yani yeni workout, memory, coach note, ask history gibi seyler her zaman `profil
 ## What To Touch First
 ### UI
 - `src/main.js`
-- `src/style.css`
+- `src/styles/odie-ui.css`
+- `src/styles/heroic-rpg.css`
+- `src/styles/infographic-game.css`
+- `src/styles/mobile-revolution.css`
 - `src/components/*`
 
 ### Data / derived logic

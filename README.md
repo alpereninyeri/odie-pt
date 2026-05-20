@@ -52,7 +52,11 @@ Kisa hali:
 ```text
 src/
   main.js
-  style.css
+  styles/
+    odie-ui.css
+    heroic-rpg.css
+    infographic-game.css
+    mobile-revolution.css
   components/
     panel-coach.js
     panel-ask.js
@@ -100,7 +104,6 @@ Bu migration uygulanmadan ask route cevap verebilir, ama soru gecmisi kalici yaz
 `main` branch push -> Vercel auto deploy.
 
 ## Current Debt
-- `src/style.css` hala buyuk ve katmanli
 - full rerender yaklasimi var
 - bazi schema/migration dosyalari version zinciri halinde duruyor
 - UI tests yok, logic tests var
