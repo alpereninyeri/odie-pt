@@ -126,7 +126,8 @@ async function loadHistory() {
 
   try {
     const response = await fetch('/api/ask')
-    if (!response.ok) throw new Error(`history ${response.status}`)
+    const contentType = response.headers.get('content-type') || ''
+    if (!response.ok || !contentType.includes('application/json')) throw new Error(`history ${response.status}`)
     const payload = await response.json()
     if (token !== historyToken) return
 
@@ -134,7 +135,6 @@ async function loadHistory() {
     askState.loaded = true
     askState.latest = askState.latest || summarizeLatest(askState.items[0] || null)
   } catch (error) {
-    console.error('[ask] history load failed:', error)
     if (token === historyToken) {
       askState.loaded = true
       askState.historyError = 'Gecmis su an yuklenemedi.'
@@ -204,10 +204,10 @@ export function renderAsk(state, profile) {
           <div>
           <div class="eyebrow">${explainButton('ask-line', "ODIE'ye Sor", 'explain-link eyebrow-explain')}</div>
           <h3>${explainButton('ask-line', 'Kisa soru, net cevap, kalici baglam', 'explain-link explain-heading')}</h3>
-          <p>Bu alan coach feed'den ayridir. Sorular ayri kaydolur; tekrar eden hedefler ve kaygilar zamanla daha iyi okunur.</p>
+          <p>Bu alan ana yorumdan ayridir. Sorular ayri kaydolur; tekrar eden hedefler ve kaygilar zamanla daha iyi okunur.</p>
         </div>
         <div class="ask-hero-pills">
-          <span class="ask-pill">${explainButton('class', state.profile?.classObj?.name || profile.class || 'Class')}</span>
+          <span class="ask-pill">${explainButton('class', state.profile?.classObj?.name || profile.class || 'Karakter')}</span>
           <span class="ask-pill">${Number.isFinite(readiness) ? `${readiness}/100 ${explainButton('readiness', 'hazirlik')}` : `${profile.sessions || 0} ${explainButton('session-detail', 'seans')}`}</span>
           <span class="ask-pill">${explainButton('current-focus', focus)}</span>
         </div>
@@ -217,10 +217,10 @@ export function renderAsk(state, profile) {
         <section class="glass-card ask-console">
           <div class="ask-console-head">
             <div>
-              <div class="mini-label">${explainButton('ask-line', 'ODIE Hatti')}</div>
+              <div class="mini-label">${explainButton('ask-line', 'ODIE Soru Hatti')}</div>
               <strong>${explainButton('ask-line', 'Sorunu yaz', 'explain-link')}</strong>
             </div>
-            <span class="ask-status-chip ${askState.loadingAnswer ? 'live' : ''}">${askState.loadingAnswer ? 'DUSUNUYOR' : 'HAZIR'}</span>
+            <span class="ask-status-chip ${askState.loadingAnswer ? 'live' : ''}">${askState.loadingAnswer ? 'OKUYOR' : 'HAZIR'}</span>
           </div>
 
           <div class="ask-terminal-shell">

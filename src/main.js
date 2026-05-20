@@ -1,7 +1,9 @@
 import './styles/odie-ui.css'
 import './styles/heroic-rpg.css'
 import './styles/infographic-game.css'
+import './styles/mobile-revolution.css'
 import { store } from './data/store.js'
+import { buildBodyMapState } from './data/body-map-engine.js'
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
 import { computeProfileStatsSnapshotDaysAgo, formatMonthShort, getLocalDateString, normalizeDateString } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
@@ -10,9 +12,10 @@ import { renderAsk, initAsk } from './components/panel-ask.js'
 import { renderDailyChecklist, initDailyChecklist } from './components/daily-checklist.js'
 import { renderHeatmap } from './components/heatmap-calendar.js'
 import { openWorkoutForm } from './components/workout-form.js'
-import { initModal, closeModal, openModal, openAvatarModal, openArchetypeModal, openFocusModal, openStatModal, openUnlockModal } from './components/modal.js'
+import { initModal, closeModal, openModal, openAvatarModal, openArchetypeModal, openFocusModal, openStatModal, openStatCalibrationModal, openUnlockModal } from './components/modal.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
+import { goalTitle, riskToneLabel, sourceLabel, uiLabel } from './data/ui-copy.js'
 
 const tabs = [
   { key: 'today', label: 'Bugun', icon: 'home' },
@@ -123,7 +126,7 @@ function renderApp() {
           <div class="nav-brand-mark">${avatarMark(profile)}</div>
           <div>
             <div class="nav-brand-title">OdiePT</div>
-            <div class="nav-brand-sub">${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'Class', 'explain-link nav-explain')}</div>
+            <div class="nav-brand-sub">${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'Karakter', 'explain-link nav-explain')}</div>
           </div>
         </div>
 
@@ -132,7 +135,7 @@ function renderApp() {
         </nav>
 
         <div class="nav-status glass-subtle">
-          <div class="mini-label">${renderExplainButton('current-focus', 'Current Focus', 'explain-link metric-explain')}</div>
+          <div class="mini-label">${renderExplainButton('current-focus', uiLabel('focus'), 'explain-link metric-explain')}</div>
             <div class="nav-status-title">${state.profile.currentFocus || 'Hybrid denge'}</div>
           <div class="nav-status-sub">${Number(state.health?.readiness?.score) || '--'}/100 ${renderExplainButton('readiness', 'hazirlik', 'explain-link metric-explain')}</div>
         </div>
@@ -197,7 +200,10 @@ function renderMobileHud(state, profile) {
   const hudSideValue = Number.isFinite(readinessScore) ? Math.round(readinessScore) : streak
   const hudSideKey = Number.isFinite(readinessScore) ? 'readiness' : 'seri'
   const hudSideLabel = Number.isFinite(readinessScore) ? 'hazir' : 'seri'
-  const statValue = key => Math.round(Number((profile.stats || []).find(stat => stat.key === key)?.val ?? state.profile?.stats?.[key]) || 0)
+  const statValue = key => {
+    const stat = (profile.stats || []).find(item => item.key === key)
+    return stat?.rank || Math.round(Number(stat?.val ?? state.profile?.stats?.[key]) || 0)
+  }
   const hudStats = [
     { key: 'STR', val: statValue('str') },
     { key: 'AGI', val: statValue('agi') },
@@ -207,7 +213,7 @@ function renderMobileHud(state, profile) {
   return `
     <div class="mobile-hud-wrap">
       <div class="mobile-hud mobile-hud-v6">
-        <button class="mobile-hud-avatar" data-action="open-avatar" aria-label="Profili ac">${avatarMark(profile)}</button>
+        <button class="mobile-hud-avatar mobile-hud-sigil" data-action="open-avatar" aria-label="Profili ac">${renderMiniSigil(profile)}</button>
         <div class="mobile-hud-center">
           <div class="mobile-hud-topline">
             <span>${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'OdiePT', 'explain-link hud-explain')}</span>
@@ -354,9 +360,7 @@ function getFrontStats(state, profile) {
 
 function renderInfographicStatBoard(state, profile, nextSession = {}) {
   const stats = getFrontStats(state, profile)
-  const avg = stats.length
-    ? Math.round(stats.reduce((sum, stat) => sum + stat.val, 0) / stats.length)
-    : 0
+  const avgRank = aggregateRank(stats)
   const readinessValue = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
   const readiness = Number.isFinite(readinessValue) ? Math.round(readinessValue) : '--'
   const hevyLabel = nextSession.sourceHealth?.latestHevyDate
@@ -377,7 +381,7 @@ function renderInfographicStatBoard(state, profile, nextSession = {}) {
           <strong>${escapeHtml(profile.nick)}</strong>
         </div>
         <div class="stat-board-readiness">
-          <span>${renderExplainButton('readiness', 'READY', 'explain-link metric-explain')}</span>
+          <span>${renderExplainButton('readiness', uiLabel('readiness'), 'explain-link metric-explain')}</span>
           <strong>${readiness}</strong>
         </div>
       </div>
@@ -388,7 +392,7 @@ function renderInfographicStatBoard(state, profile, nextSession = {}) {
 
       <div class="stat-board-livebar">
         <span class="live-sync-pill"><i aria-hidden="true"></i>${renderExplainButton('hevy-live', hevyLabel, 'explain-link metric-explain')}</span>
-        <span>${renderExplainButton('combat-stats', `AVG ${avg}`, 'explain-link metric-explain')}</span>
+        <span>${renderExplainButton('combat-stats', `RANK ${avgRank}`, 'explain-link metric-explain')}</span>
         <span>${escapeHtml(focus)}</span>
       </div>
     </article>
@@ -398,20 +402,344 @@ function renderInfographicStatBoard(state, profile, nextSession = {}) {
 function renderInfographicStatNode(stat) {
   const label = stat.label || stat.key.toUpperCase()
   const value = Math.round(Number(stat.val) || 0)
+  const rank = stat.rank || value
+  const confidence = String(stat.confidence || 'seed').toUpperCase()
   return `
     <button
       class="stat-node stat-tone-${escapeHtml(stat.tone || stat.key)} ${stat.critical ? 'is-critical' : ''}"
       style="--stat-pct:${value}%"
       data-action="open-stat"
       data-stat-key="${escapeHtml(stat.key)}"
-      aria-label="${escapeHtml(label)} ${value} detayini ac"
+      aria-label="${escapeHtml(label)} ${rank} detayini ac"
     >
       <span class="stat-node-ring" aria-hidden="true"></span>
       <span class="stat-node-label">${escapeHtml(label)}</span>
-      <strong>${value}</strong>
-      <small>${escapeHtml(stat.trait || stat.name || '')}</small>
+      <strong>${escapeHtml(rank)}</strong>
+      <small>${escapeHtml(`${stat.trait || stat.name || ''} / ${confidence}`)}</small>
       <span class="stat-node-bar" aria-hidden="true"><i style="width:${value}%"></i></span>
     </button>
+  `
+}
+
+function aggregateRank(stats = []) {
+  const rankScore = { F: 0, D: 1, C: 2, B: 3, A: 4, S: 5 }
+  const ranks = stats.map(stat => rankScore[stat.rank] ?? null).filter(Number.isFinite)
+  if (!ranks.length) return 'F'
+  const avg = Math.round(ranks.reduce((sum, value) => sum + value, 0) / ranks.length)
+  return Object.entries(rankScore).find(([, value]) => value === avg)?.[0] || 'F'
+}
+
+function percentOf(current = 0, max = 1) {
+  const total = Number(max) || 1
+  return clamp(Math.round(((Number(current) || 0) / total) * 100))
+}
+
+function renderMiniSigil(profile = {}) {
+  return `
+    <span class="mini-sigil-mark" aria-hidden="true">
+      <i></i>
+      <b></b>
+    </span>
+    <span class="sr-only">${escapeHtml(profile.nick || 'Profil')}</span>
+  `
+}
+
+function crestMarkFromClass(className = '') {
+  const letters = String(className || 'ODIE')
+    .split(/\s+/)
+    .map(part => part.trim()[0])
+    .filter(Boolean)
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+  return letters || 'OD'
+}
+
+function renderOdieCrest(state, profile, {
+  className = state.profile?.classObj?.name || profile.class || 'OdiePT',
+  rank = profile.rank || 'Unranked',
+  armor = Number(state.profile?.armor) || 0,
+  fatigue = Number(state.profile?.fatigue) || 0,
+  confidence = null,
+  modifier = '',
+} = {}) {
+  const xpPct = percentOf(profile?.xp?.current, profile?.xp?.max)
+  const readiness = Number(state.health?.readiness?.score)
+  const readinessPct = Number.isFinite(readiness) ? clamp(readiness) : xpPct
+  const dataNet = Number.isFinite(Number(confidence))
+    ? clamp(confidence)
+    : profile.calibration?.completedAt
+      ? 88
+      : 62
+  const vitals = [
+    { key: 'armor', label: uiLabel('armor'), value: armor, tone: 'armor' },
+    { key: 'fatigue', label: uiLabel('fatigue'), value: fatigue, tone: 'fatigue' },
+    { key: 'confidence', label: uiLabel('confidence'), value: dataNet, tone: 'confidence' },
+  ]
+
+  return `
+    <button
+      class="odie-crest ${modifier}"
+      data-action="open-avatar"
+      aria-label="${escapeHtml(profile.nick || 'Profil')} karakter muhrunu ac"
+      style="--xp-pct:${xpPct}%;--readiness-pct:${readinessPct}%"
+    >
+      <span class="crest-ring" aria-hidden="true">
+        <i></i>
+        <span class="crest-core">
+          <span>L${escapeHtml(profile.level || 1)} / ${escapeHtml(rank)}</span>
+          <strong>${escapeHtml(crestMarkFromClass(className))}</strong>
+          <small>${escapeHtml(className)}</small>
+        </span>
+      </span>
+      <span class="crest-vitals">
+        ${vitals.map(item => {
+          const value = clamp(item.value)
+          return `
+            <span class="crest-vital tone-${escapeHtml(item.tone)}" style="--vital:${value}%">
+              <b>${escapeHtml(item.label)}</b>
+              <strong>${Math.round(value)}</strong>
+              <i aria-hidden="true"><em></em></i>
+            </span>
+          `
+        }).join('')}
+      </span>
+    </button>
+  `
+}
+
+function renderRevMeter(explainKey, label, value, tone = 'ok') {
+  const pct = clamp(value)
+  const display = Number.isFinite(Number(value)) ? Math.round(Number(value)) : '--'
+  return `
+    <div class="rev-meter rev-tone-${tone}" style="--meter:${pct}%">
+      <div>
+        <span>${renderExplainButton(explainKey, label, 'explain-link rev-explain')}</span>
+        <strong>${display}</strong>
+      </div>
+      <i aria-hidden="true"><b></b></i>
+    </div>
+  `
+}
+
+function renderRevStatStrip(stats = [], className = '') {
+  return `
+    <div class="rev-stat-strip ${className}">
+      ${stats.map(stat => {
+        const value = clamp(stat.val)
+        const rank = stat.rank || Math.round(value)
+        return `
+          <button
+            class="rev-stat-pill stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'is-critical' : ''}"
+            data-action="open-stat"
+            data-stat-key="${escapeHtml(stat.key)}"
+            style="--stat-pct:${value}%"
+            aria-label="${escapeHtml(stat.name || stat.label || stat.key)} detayini ac"
+          >
+            <span>${escapeHtml(stat.label || stat.key?.toUpperCase() || 'ST')}</span>
+            <strong>${escapeHtml(rank)}</strong>
+            <i aria-hidden="true"><b></b></i>
+          </button>
+        `
+      }).join('')}
+    </div>
+  `
+}
+
+function regionById(bodyMapState, id) {
+  return (bodyMapState?.regions || []).find(region => region.id === id) || null
+}
+
+function movementById(bodyMapState, id) {
+  return (bodyMapState?.movementLines || []).find(line => line.id === id) || null
+}
+
+function renderBodyZone(bodyMapState, id, shape) {
+  const region = regionById(bodyMapState, id) || { id, label: id, load: 0, recovery: 0, risk: 0, trend: 'hazir' }
+  const tone = region.risk >= 68 ? 'risk' : region.trend === 'ihmal' ? 'gap' : region.trend === 'sicak' ? 'hot' : region.recovery >= 70 ? 'ready' : 'build'
+  const common = `
+    class="body-zone tone-${tone}"
+    data-action="open-body-region"
+    data-region-id="${escapeHtml(region.id)}"
+    role="button"
+    tabindex="0"
+    aria-label="${escapeHtml(region.label)} bolge detayi"
+    style="--load:${clamp(region.load)}%;--risk:${clamp(region.risk)}%"
+  `
+  if (shape.type === 'ellipse') {
+    return `<ellipse ${common} cx="${shape.cx}" cy="${shape.cy}" rx="${shape.rx}" ry="${shape.ry}" />`
+  }
+  if (shape.type === 'circle') {
+    return `<circle ${common} cx="${shape.cx}" cy="${shape.cy}" r="${shape.r}" />`
+  }
+  return `<path ${common} d="${shape.d}" />`
+}
+
+function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
+  const priorityRegion = bodyMapState?.priority?.region
+  const priorityMovement = bodyMapState?.priority?.movement
+  const quest = bodyMapState?.dailyQuest
+  const lines = (bodyMapState?.movementLines || []).slice().sort((a, b) => {
+    const aScore = (a.tone === 'gap' ? 40 : 0) + a.risk + (100 - a.progress)
+    const bScore = (b.tone === 'gap' ? 40 : 0) + b.risk + (100 - b.progress)
+    return bScore - aScore
+  }).slice(0, 4)
+
+  return `
+    <button class="anatomy-sheet" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}" aria-label="Canli vucut haritasini ac">
+      <span class="anatomy-hud">
+        <b>${escapeHtml(profile.nick || 'Atlet')}</b>
+        <em>${escapeHtml(className || 'Karakter')}</em>
+      </span>
+      <span class="anatomy-stage" aria-hidden="true">
+        <svg viewBox="0 0 260 320" class="anatomy-figure" focusable="false">
+          <defs>
+            <radialGradient id="bodyGlow" cx="50%" cy="38%" r="62%">
+              <stop offset="0%" stop-color="rgba(188, 255, 232, .34)" />
+              <stop offset="52%" stop-color="rgba(68, 202, 214, .16)" />
+              <stop offset="100%" stop-color="rgba(2, 7, 12, 0)" />
+            </radialGradient>
+          </defs>
+          <ellipse class="anatomy-aura" cx="130" cy="166" rx="88" ry="138" />
+          <path class="anatomy-back-ghost" d="M91 91 C73 121 73 166 82 207 C90 244 100 274 111 301 M169 91 C187 121 187 166 178 207 C170 244 160 274 149 301" />
+          <circle class="anatomy-base" cx="130" cy="45" r="24" />
+          <path class="anatomy-base" d="M103 76 C118 68 142 68 157 76 C170 103 174 145 164 184 C157 210 149 236 146 301 L124 301 C123 258 121 233 116 207 C111 232 106 258 104 301 L82 301 C85 236 93 210 96 184 C86 145 90 103 103 76Z" />
+          <path class="anatomy-limb" d="M101 88 C70 101 56 132 45 173" />
+          <path class="anatomy-limb" d="M159 88 C190 101 204 132 215 173" />
+          <path class="anatomy-muscle-line" d="M130 75 L130 199 M111 94 C121 108 139 108 149 94 M104 132 C120 142 140 142 156 132 M103 174 C119 164 141 164 157 174" />
+          ${renderBodyZone(bodyMapState, 'shoulder', { type: 'ellipse', cx: 100, cy: 88, rx: 18, ry: 12 })}
+          ${renderBodyZone(bodyMapState, 'shoulder', { type: 'ellipse', cx: 160, cy: 88, rx: 18, ry: 12 })}
+          ${renderBodyZone(bodyMapState, 'chest', { type: 'ellipse', cx: 130, cy: 110, rx: 34, ry: 20 })}
+          ${renderBodyZone(bodyMapState, 'lat', { type: 'ellipse', cx: 90, cy: 126, rx: 15, ry: 28 })}
+          ${renderBodyZone(bodyMapState, 'upper-back', { type: 'ellipse', cx: 170, cy: 126, rx: 15, ry: 28 })}
+          ${renderBodyZone(bodyMapState, 'core', { type: 'ellipse', cx: 130, cy: 160, rx: 26, ry: 34 })}
+          ${renderBodyZone(bodyMapState, 'forearm', { type: 'ellipse', cx: 54, cy: 168, rx: 10, ry: 22 })}
+          ${renderBodyZone(bodyMapState, 'forearm', { type: 'ellipse', cx: 206, cy: 168, rx: 10, ry: 22 })}
+          ${renderBodyZone(bodyMapState, 'hips', { type: 'ellipse', cx: 130, cy: 204, rx: 33, ry: 18 })}
+          ${renderBodyZone(bodyMapState, 'quads', { type: 'ellipse', cx: 108, cy: 244, rx: 13, ry: 36 })}
+          ${renderBodyZone(bodyMapState, 'quads', { type: 'ellipse', cx: 152, cy: 244, rx: 13, ry: 36 })}
+          ${renderBodyZone(bodyMapState, 'knees', { type: 'circle', cx: 105, cy: 276, r: 9 })}
+          ${renderBodyZone(bodyMapState, 'knees', { type: 'circle', cx: 155, cy: 276, r: 9 })}
+          ${renderBodyZone(bodyMapState, 'calves', { type: 'ellipse', cx: 98, cy: 300, rx: 10, ry: 17 })}
+          ${renderBodyZone(bodyMapState, 'calves', { type: 'ellipse', cx: 162, cy: 300, rx: 10, ry: 17 })}
+        </svg>
+      </span>
+      <span class="anatomy-side">
+        <span class="anatomy-priority">
+          <b>${escapeHtml(priorityRegion?.label || 'Core')}</b>
+          <small>${escapeHtml(priorityMovement?.label || 'Mobilite')} hattı</small>
+        </span>
+        <span class="movement-stack">
+          ${lines.map(line => `
+            <span class="movement-line tone-${escapeHtml(line.tone)}" style="--move:${clamp(line.progress)}%">
+              <b>${escapeHtml(line.label)}</b>
+              <i><em></em></i>
+              <strong>${Math.round(line.progress)}</strong>
+            </span>
+          `).join('')}
+        </span>
+        <span class="anatomy-quest">
+          <b>${escapeHtml(quest?.name || 'Ara Gorev')}</b>
+          <small>${escapeHtml(quest?.desc || 'Bugunun mini hamlesi')}</small>
+        </span>
+      </span>
+    </button>
+  `
+}
+
+function renderXpRoute(bodyMapState) {
+  const parts = bodyMapState?.xpPreview?.parts || []
+  if (!parts.length) return ''
+  return `
+    <div class="xp-route" aria-label="Bugun XP nereden gelir">
+      <span>Bugun XP nereden gelir?</span>
+      <div>
+        ${parts.slice(0, 4).map(part => `<b>+${Math.round(part.value)} ${escapeHtml(part.label)}</b>`).join('')}
+      </div>
+    </div>
+  `
+}
+
+function renderMobileCommandCenter(state, profile, semantic, nextSession = {}, latestWorkout = null, activeQuest = null, bodyMapState = null) {
+  const stats = getFrontStats(state, profile)
+  const readinessValue = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
+  const readiness = Number.isFinite(readinessValue) ? Math.round(readinessValue) : null
+  const armor = Math.round(Number(state.profile?.armor) || 0)
+  const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
+  const xpPct = percentOf(profile?.xp?.current, profile?.xp?.max)
+  const decision = buildTodayDecision(state, activeQuest)
+  const goal = nextSession.primaryGoal || {}
+  const blocks = nextSession.blocks || []
+  const primaryBlock = blocks[0] || {}
+  const supportBlock = blocks[1] || {}
+  const hevy = nextSession.sourceHealth || buildHevyLiveSummary(state.workouts || [], profile)
+  const latestSource = sourceLabel(latestWorkout?.source)
+  const loadValue = latestWorkout?.volumeKg
+    ? `${formatCompactMetric(latestWorkout.volumeKg)} kg`
+    : latestWorkout?.durationMin
+      ? `${Math.round(latestWorkout.durationMin)} dk`
+      : `${profile.sessions || 0} seans`
+  const riskLabel = riskToneLabel({ fatigue, armor, readiness })
+  const pulseLabel = latestWorkout?.date ? formatMonthShort(latestWorkout.date) : `${profile.sessions || 0} seans`
+  const className = state.profile.classObj?.name || profile.class || 'OdiePT'
+  const focus = state.profile.currentFocus || goal.title || decision.title
+  const risk = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || decision.reason
+  const confidence = Number(nextSession.confidence)
+  const confidenceLabel = Number.isFinite(confidence) ? `${Math.round(confidence)}%` : '--'
+  const gameQuest = bodyMapState?.dailyQuest || activeQuest
+
+  return `
+    <article class="mobile-command-center tone-${nextSession.tone || decision.tone || 'calm'}" style="--xp-pct:${xpPct}%">
+      <div class="command-identity-row">
+        <div class="command-id">
+          <span>${renderExplainButton('class', className, 'explain-link command-class')}</span>
+          <h2>${escapeHtml(profile.nick)}</h2>
+          <small>${escapeHtml(profile.rank || 'Unranked')} / ${escapeHtml(focus)}</small>
+        </div>
+        <div class="command-readiness">
+          <span>${renderExplainButton('readiness', uiLabel('readiness'), 'explain-link rev-explain')}</span>
+          <strong>${readiness ?? '--'}</strong>
+        </div>
+      </div>
+
+      <div class="command-stage">
+        ${renderAthleteAnatomySheet(bodyMapState, profile, className)}
+      </div>
+
+      <div class="command-life-strip">
+        <span><b>${escapeHtml(uiLabel('source'))}</b>${escapeHtml(latestSource)}</span>
+        <span><b>${escapeHtml(uiLabel('pulse'))}</b>${escapeHtml(pulseLabel)}</span>
+        <span><b>${escapeHtml(uiLabel('risk'))}</b>${escapeHtml(riskLabel)}</span>
+      </div>
+
+      <div class="command-order">
+        <div>
+          <span>${renderExplainButton('next-session', uiLabel('command'), 'explain-link command-label')}</span>
+          <h3>${escapeHtml(goalTitle(goal) || decision.title)}</h3>
+        </div>
+        <p>${escapeHtml(nextSession.coachCommand || decision.command)}</p>
+        ${renderXpRoute(bodyMapState)}
+      </div>
+
+      <div class="command-blocks">
+        <div>
+          <span>${escapeHtml(primaryBlock.label || 'Ana hamle')}</span>
+          <strong>${escapeHtml(primaryBlock.target || decision.next)}</strong>
+        </div>
+        <div>
+          <span>${escapeHtml(gameQuest?.fromGame ? 'Ara gorev' : (supportBlock.label || 'Risk'))}</span>
+          <strong>${escapeHtml(gameQuest?.name || risk)}</strong>
+        </div>
+      </div>
+
+      ${renderRevStatStrip(stats, 'command-stat-strip')}
+
+      <div class="command-footer">
+        <span>${renderExplainButton('hevy-live', hevy.latestHevyDate ? `HEVY ${formatMonthShort(hevy.latestHevyDate)}` : 'HEVY bekliyor', 'explain-link metric-explain')}</span>
+        <span>${escapeHtml(latestSource)} / ${escapeHtml(loadValue)}</span>
+        <span>${renderExplainButton('confidence', `${uiLabel('confidence')} ${confidenceLabel}`, 'explain-link metric-explain')}</span>
+      </div>
+    </article>
   `
 }
 
@@ -427,7 +755,8 @@ function renderTodayPage(state, profile, semantic) {
   const armor = Math.round(Number(state.profile?.armor) || 0)
   const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
   const streak = Number(state.profile?.streak?.current) || 0
-  const activeQuest = [...(profile.quests?.daily || []), ...(profile.quests?.weekly || [])].find(quest => !quest.done)
+  const bodyMapState = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
+  const activeQuest = bodyMapState?.dailyQuest || [...(profile.quests?.daily || []), ...(profile.quests?.weekly || [])].find(quest => !quest.done)
   const recentSessions = (state.workouts || []).slice(0, 3)
   const latestWorkout = recentSessions[0] || null
   const lead = buildTodayLead(state, latestWorkout)
@@ -442,6 +771,7 @@ function renderTodayPage(state, profile, semantic) {
 
   return `
     <section class="today-page today-infographic-page">
+      ${renderMobileCommandCenter(state, profile, semantic, nextSession, latestWorkout, activeQuest, bodyMapState)}
       ${renderInfographicStatBoard(state, profile, nextSession)}
       ${renderNextSessionCard(nextSession)}
 
@@ -541,11 +871,11 @@ function clamp(value, min = 0, max = 100) {
 const EXPLAINERS = {
   'today-decision': {
     title: 'Bugunun Karari',
-    summary: 'ODIE bu kartta bugunku ana tercihi tek cumleye indirir: agir seans, teknik gun, recovery veya denge kapatma.',
+    summary: 'ODIE bugunku ana tercihi tek cumleye indirir: yuklen, form tut, toparlan veya eksik hatti kapat.',
     bullets: [
-      'Fatigue, armor, son seans, recovery sayaci ve acik gorevler birlikte okunur.',
+      'Yorgunluk, kalkan, son seans, toparlanma sayaci ve acik gorevler birlikte okunur.',
       'Bu bir yasak listesi degil; bugunku en mantikli ilk hamledir.',
-      'Karar degisirse sebebi genelde yeni seans, yeni daily log veya zamanla dusen fatigue olur.',
+      'Karar degisirse sebebi genelde yeni seans, yeni gunluk log veya zamanla dusen yorgunluk olur.',
     ],
   },
   'denge-kapatma': {
@@ -558,54 +888,54 @@ const EXPLAINERS = {
     ],
   },
   'recovery-gunu': {
-    title: 'Recovery Gunu',
+    title: 'Toparlanma Gunu',
     summary: 'Yuk bindirmek yerine toparlanmayi hizlandiran gun.',
     bullets: [
-      'Fatigue yuksekken agir push/pull yerine yuruyus, mobilite veya hafif teknik secilir.',
+      'Yorgunluk yuksekken agir push/pull yerine yuruyus, mobilite veya hafif form isi secilir.',
       'Hedef XP kasmak degil; bir sonraki verimli seansi acmaktir.',
-      '40 saatlik toparlanma sayaci ilerledikce karar tekrar normale donebilir.',
+      'Toparlanma sayaci ilerledikce karar tekrar normale donebilir.',
     ],
   },
   'kontrollu-teknik': {
-    title: 'Kontrollu Teknik',
-    summary: 'Risk varken tamamen durmadan, yuk yerine kalite calismak.',
+    title: 'Form Gunu',
+    summary: 'Risk varken tamamen durmadan, yuk yerine hareket kalitesi calismak.',
     bullets: [
-      'PR denemesi veya hacim kovalamak yerine form, accessory ve dusuk riskli bloklar.',
-      'Armor dusuk veya readiness zayifken kullanilir.',
+      'Rekor denemesi veya hacim kovalamak yerine form, destek seti ve dusuk riskli bloklar.',
+      'Kalkan dusuk veya hazirlik zayifken kullanilir.',
       'Seans kisa kalabilir; veri girisi yine de build ritmini korur.',
     ],
   },
   'normal-seans': {
-    title: 'Normal Seans',
-    summary: 'Recovery riski dusuk, ana blok acilabilir demek.',
+    title: 'Kucuk Artis Gunu',
+    summary: 'Toparlanma riski dusuk, ana hamle acilabilir demek.',
     bullets: [
-      'Fatigue kabul edilebilir seviyededir ve armor kritik degildir.',
+      'Yorgunluk kabul edilebilir seviyededir ve kalkan kritik degildir.',
       'Yine de acik denge gap varsa kisa tamamlayici blok eklenebilir.',
     ],
   },
   fatigue: {
-    title: 'Fatigue',
-    summary: 'Sinir sistemi ve genel yorgunluk sayaci. Yuksekse agir seans verimi duser.',
+    title: 'Yorgunluk',
+    summary: 'Vucudun bugun ne kadar yuk tasidigini anlatan sayac. Yuksekse agir seans verimi duser.',
     bullets: [
       'Agir, uzun veya PR iceren seanslardan sonra artar.',
-      'Son antrenman bittikten sonra 2 saatlik ticklerle azalir.',
-      '40 saat dolunca fatigue sifira iner.',
+      'Son antrenman bittikten sonra zamanla azalir.',
+      'Toparlanma tamamlandikca sifira yaklasir.',
     ],
   },
   armor: {
-    title: 'Armor',
-    summary: 'Tendon/eklem toleransi gibi dusun. Dusuk armor, ayni yukun daha riskli olmasi demek.',
+    title: 'Kalkan',
+    summary: 'Tendon ve eklem toleransi gibi dusun. Dusuk kalkan, ayni yukun daha riskli olmasi demek.',
     bullets: [
-      'Yuksek fatigue ustune agir seans armor azaltabilir.',
-      "Recovery, mobilite ve zaman armor'u tekrar 100'e yaklastirir.",
-      'Armor kritik dusunce ODIE daha temkinli karar verir.',
+      'Yuksek yorgunluk ustune agir seans kalkan azaltabilir.',
+      "Mobilite, hafif hareket ve zaman kalkan'i tekrar 100'e yaklastirir.",
+      'Kalkan kritik dusunce ODIE daha temkinli karar verir.',
     ],
   },
   'recovery-trend': {
-    title: 'Recovery Trend',
+    title: 'Toparlanma Seyri',
     summary: 'Son seans bittikten sonra 40 saatlik toparlanma ilerlemesini gosterir.',
     bullets: [
-      'Her 2 saatte bir fatigue biraz duser, armor biraz dolar.',
+      'Zaman ilerledikce yorgunluk duser, kalkan dolar.',
       'Uyku, su ve adim ortalamalari kartin altinda destek sinyali olarak durur.',
       'Bu kart anlik hissi degil, kayitli veriye gore matematiksel toparlanmayi gosterir.',
     ],
@@ -644,7 +974,7 @@ const EXPLAINERS = {
     summary: 'Seansin karakter ilerlemesine yazdigi puan.',
     bullets: [
       "Seans tipi, streak, class carpani, PR ve survival durumu XP'yi etkiler.",
-      'Fatigue asiri yuksekse agir seans XP verimi dusebilir.',
+      'Yorgunluk asiri yuksekse agir seans XP verimi dusebilir.',
     ],
   },
   hacim: {
@@ -675,8 +1005,8 @@ const EXPLAINERS = {
     summary: 'Son 7 seansin yuk grafigi. Hacim varsa kilo, yoksa sure/set/XP sinyali kullanilir.',
   },
   readiness: {
-    title: 'Readiness',
-    summary: 'Bugunku hazirlik skoru. Armor/fatigue, yuk ve daily log sinyallerinden turetilir.',
+    title: 'Hazirlik',
+    summary: 'Bugun seansa ne kadar acik oldugunu anlatan kisa skor. Kalkan, yorgunluk ve gunluk loglardan gelir.',
   },
   'daily-status': {
     title: 'Vucut Durumu',
@@ -687,35 +1017,35 @@ const EXPLAINERS = {
     ],
   },
   'current-focus': {
-    title: 'Current Focus',
+    title: 'Bugunku Odak',
     summary: "ODIE'nin su an en cok dikkat edilmesi gereken hat olarak okudugu alan.",
     bullets: [
-      'Kritik stat, kas dengesi, son seans tipi ve class sinyali birlikte okunur.',
-      'Yeni workout veya daily log geldikce focus degisebilir.',
+      'Kritik stat, kas dengesi, son seans tipi ve karakter sinyali birlikte okunur.',
+      'Yeni seans veya gunluk log geldikce odak degisebilir.',
     ],
   },
   class: {
-    title: 'Class',
+    title: 'Karakter Tipi',
     summary: 'Son antrenman deseninden tureyen aktif RPG arketipi.',
     bullets: [
-      'Push/pull/core/movement dagilimi degistikce class da degisebilir.',
-      'Class XP ve recovery carpani gibi kucuk pasif etkiler tasir.',
+      'Push/pull/core/hareket dagilimi degistikce karakter tipi de degisebilir.',
+      'Karakter tipi XP ve toparlanma gibi kucuk pasif etkiler tasir.',
     ],
   },
   'active-quests': {
     title: 'Aktif Gorevler',
     summary: 'Bugun veya bu hafta kapanabilecek kucuk hedeflerdir.',
     bullets: [
-      'Class veya coach tarafindan acilabilir.',
-      'Progress tamamlaninca XP, stat ya da ritim etkisi yazilir.',
+      'Karakter tipi veya ODIE tarafindan acilabilir.',
+      'Ilerleme tamamlaninca XP, stat ya da ritim etkisi yazilir.',
     ],
   },
   'combat-stats': {
-    title: 'Combat Stats',
-    summary: 'STR, AGI, END, DEX, CON ve STA karakter parametrelerinin canli ozetidir.',
+    title: 'Karakter Statlari',
+    summary: 'Guclenme, hareket, dayaniklilik, beceri, kondisyon ve istikrar tarafinin canli ozetidir.',
     bullets: [
-      'Stat kartina basinca ilgili statin neden yukseldigi veya kritik oldugu acilir.',
-      'Son seans delta verisi varsa kartta UP veya kritik flag gorunur.',
+      'Stat kartina basinca ilgili alanin neden yukseldigi veya kritik oldugu acilir.',
+      'Son seans etkisi varsa kartta artis veya dikkat sinyali gorunur.',
     ],
   },
   'stat-radar': {
@@ -727,11 +1057,11 @@ const EXPLAINERS = {
     ],
   },
   'skill-tree': {
-    title: 'Skill Tree',
-    summary: 'Uzun vadeli hareket yeteneklerini branch mantigiyla takip eder.',
+    title: 'Skill Agaci',
+    summary: 'Uzun vadeli hareket yeteneklerini dal mantigiyla takip eder.',
     bullets: [
-      'Done node tamamlanmis, prog node ilerleyen, lock node henuz acilmamis beceridir.',
-      'Class ve workout verisi bazi branchleri one cikarabilir.',
+      'Acik dugum tamamlanmis, isinan dugum ilerleyen, kilitli dugum henuz acilmamis beceridir.',
+      'Karakter tipi ve seans verisi bazi dallari one cikarabilir.',
     ],
   },
   'daily-checklist': {
@@ -743,8 +1073,8 @@ const EXPLAINERS = {
     ],
   },
   'coach-feedback': {
-    title: 'Coach Feedback',
-    summary: 'ODIE yorumlarina verdigin DOGRU/YANLIS/ESKI/TONU IYI isaretlerinin ozeti.',
+    title: 'ODIE Kalite Dongusu',
+    summary: 'ODIE yorumlarina verdigin DOGRU/YANLIS/ESKI/TONU IYI isaretlerinin kisa ozeti.',
     bullets: [
       'Yanlis isaretleri coach hafizasini temizlemek icin sinyal olur.',
       "Tonu iyi isareti ODIE'nin konusma bicimini korumasina yardim eder.",
@@ -803,7 +1133,7 @@ const EXPLAINERS = {
   },
   'survival-console': {
     title: 'Durum Hatti',
-    summary: 'Armor, fatigue, readiness ve risk uyarilarinin coach ekranindaki teknik ozeti.',
+    summary: 'Kalkan, yorgunluk, hazirlik ve dikkat uyarilarinin coach ekranindaki kisa ozeti.',
   },
   'heavy-load': {
     title: 'Yuk Birikimi',
@@ -871,7 +1201,7 @@ const EXPLAINERS = {
   },
   'workout-type': {
     title: 'Seans Tipi',
-    summary: 'Workoutun ana kategorisi. Class, denge paneli ve stat delta hesabina sinyal verir.',
+    summary: 'Seansin ana kategorisi. Karakter tipi, denge paneli ve stat etkisine sinyal verir.',
   },
   duration: {
     title: 'Sure',
@@ -914,11 +1244,11 @@ const EXPLAINERS = {
     ],
   },
   'next-session': {
-    title: 'Bugunku Recete',
+    title: 'Bugunun Hamlesi',
     summary: 'Son Hevy/Telegram/manual veriden bugunku antrenman kararini cikarir.',
     bullets: [
-      'Fatigue, armor, readiness, son PR ve push/pull/bacak/core dengesi birlikte okunur.',
-      'Cikti ozet degil, uygulanabilir ODIE komutudur.',
+      'Yorgunluk, kalkan, hazirlik, son rekor ve push/pull/bacak/core dengesi birlikte okunur.',
+      'Cikti ozet degil, bugun uygulanacak net hamledir.',
     ],
   },
   'progression-cap': {
@@ -979,9 +1309,9 @@ function buildTodayDecision(state, activeQuest = null) {
     return {
       key: 'recovery-gunu',
       tone: 'danger',
-      title: 'Recovery gunu',
+      title: 'Toparlanma Gunu',
       command: 'Agir push/pull yok; 25-35 dk yuruyus veya mobilite.',
-      reason: `Fatigue ${Math.round(fatigue)}. ${recovery ? `${recovery.progressPct}% toparlanma isledi.` : 'Toparlanma verisi sinirli.'}`,
+      reason: `Yorgunluk ${Math.round(fatigue)}. ${recovery ? `${recovery.progressPct}% toparlanma isledi.` : 'Toparlanma verisi sinirli.'}`,
       next: balance.lowest?.key === 'core' ? '8 dk core aktivasyon eklenebilir.' : 'Yuk degil, ritim koru.',
     }
   }
@@ -990,9 +1320,9 @@ function buildTodayDecision(state, activeQuest = null) {
     return {
       key: 'kontrollu-teknik',
       tone: 'warn',
-      title: 'Kontrollu teknik',
-      command: 'Kisa teknik blok veya accessory; PR denemesi yok.',
-      reason: `Armor ${Math.round(armor)} ve hazirlik ${Number.isFinite(readiness) ? Math.round(readiness) : '--'}/100.`,
+      title: 'Form Gunu',
+      command: 'Kisa form blogu veya destek seti; rekor denemesi yok.',
+      reason: `Kalkan ${Math.round(armor)} ve hazirlik ${Number.isFinite(readiness) ? Math.round(readiness) : '--'}/100.`,
       next: nextQuest || 'Gunluk logu kapat, uyku/su sinyalini tamamla.',
     }
   }
@@ -1001,9 +1331,9 @@ function buildTodayDecision(state, activeQuest = null) {
     return {
       key: 'denge-kapatma',
       tone: 'warn',
-      title: 'Denge kapatma',
+      title: 'Hatti Kapat',
       command: balance.lowest.key === 'legs'
-        ? 'Bacak veya posterior chain blok ekle.'
+        ? 'Bacak veya arka zincir blogu ekle.'
         : 'Seansa direkt core ile basla.',
       reason: `${balance.lowest.label} son 30 gunde en geride kalan hat.`,
       next: nextQuest || 'Kisa ama net blok yeter.',
@@ -1013,9 +1343,9 @@ function buildTodayDecision(state, activeQuest = null) {
   return {
     key: 'normal-seans',
     tone: 'calm',
-    title: 'Normal seans',
+    title: 'Kucuk Artis Gunu',
     command: latest ? `${latest.type || 'Ana blok'} temposu acilabilir.` : 'Ilk seansi net logla.',
-    reason: `Fatigue ${Math.round(fatigue)}, armor ${Math.round(armor)}.`,
+    reason: `Yorgunluk ${Math.round(fatigue)}, kalkan ${Math.round(armor)}.`,
     next: nextQuest || 'Set, sure ve hareketleri temiz gir.',
   }
 }
@@ -1039,11 +1369,11 @@ function renderNextSessionCard(nextSession = {}) {
     <article class="glass-card next-session-card next-move-strip tone-${tone}">
       <div class="next-session-head next-move-head">
         <div>
-          <div class="eyebrow">${renderExplainButton('next-session', 'NEXT MOVE', 'explain-link eyebrow-explain')}</div>
-          <h3>${renderExplainButton('next-session', goal.title || 'ODIE komutu', 'explain-link explain-heading')}</h3>
+          <div class="eyebrow">${renderExplainButton('next-session', uiLabel('command'), 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('next-session', goalTitle(goal), 'explain-link explain-heading')}</h3>
         </div>
-        <div class="next-move-score" aria-label="Readiness skoru">
-          <span>R</span>
+        <div class="next-move-score" aria-label="Hazirlik skoru">
+          <span>H</span>
           <strong>${readiness.score ?? '--'}</strong>
         </div>
       </div>
@@ -1122,22 +1452,22 @@ function renderRecoveryTrendCard(state) {
   const armor = clamp(state.profile?.armor)
   const progress = clamp(recovery?.progressPct)
   const subtitle = recovery
-    ? `${Math.floor(recovery.elapsedHours)} saat gecti, ${recovery.fatigueRecovered} fatigue dustu`
+    ? `${Math.floor(recovery.elapsedHours)} saat gecti, ${recovery.fatigueRecovered} yorgunluk dustu`
     : 'Yeni seans geldikce 40 saatlik toparlanma sayaci baslar.'
 
   return `
     <article class="glass-card today-insight-card recovery-trend-card">
       <div class="insight-card-head">
         <div>
-          <div class="eyebrow">${renderExplainButton('recovery-trend', 'Recovery Trend', 'explain-link eyebrow-explain')}</div>
+          <div class="eyebrow">${renderExplainButton('recovery-trend', 'Toparlanma Seyri', 'explain-link eyebrow-explain')}</div>
           <h3>${renderExplainButton('recovery-trend', '40 saatlik toparlanma', 'explain-link explain-heading')}</h3>
         </div>
         <strong>${progress}%</strong>
       </div>
       <p>${escapeHtml(subtitle)}</p>
       <div class="insight-meter-list">
-        ${renderInsightMeter('Fatigue', fatigue, 'danger')}
-        ${renderInsightMeter('Armor', armor, 'ok')}
+        ${renderInsightMeter(uiLabel('fatigue'), fatigue, 'danger')}
+        ${renderInsightMeter(uiLabel('armor'), armor, 'ok')}
       </div>
       <div class="insight-mini-grid">
         <span><b>${avg.sleep || '-'}</b> uyku</span>
@@ -1231,7 +1561,7 @@ function renderCoachFeedbackDashboard(state) {
     <article class="glass-card today-insight-card coach-feedback-card">
       <div class="insight-card-head">
         <div>
-          <div class="eyebrow">${renderExplainButton('coach-feedback', 'Coach Feedback', 'explain-link eyebrow-explain')}</div>
+          <div class="eyebrow">${renderExplainButton('coach-feedback', 'ODIE Kalite', 'explain-link eyebrow-explain')}</div>
           <h3>${renderExplainButton('coach-feedback', 'ODIE kalite dongusu', 'explain-link explain-heading')}</h3>
         </div>
         <strong>${total}</strong>
@@ -1266,7 +1596,7 @@ function renderHomeDataDeck(state, profile, nextSession = null) {
     <div class="home-data-deck" aria-label="Datalarim">
       <div class="home-data-card home-data-card-wide">
         <div class="home-data-head">
-          <span>${renderExplainButton('datalarim', 'DATALARIM', 'explain-link metric-explain')}</span>
+          <span>${renderExplainButton('datalarim', 'Veri Izi', 'explain-link metric-explain')}</span>
           <strong>${escapeHtml(loadValue)}</strong>
         </div>
         <div class="home-data-sub">${escapeHtml(loadLabel)}</div>
@@ -1282,7 +1612,7 @@ function renderHomeDataDeck(state, profile, nextSession = null) {
 
       <div class="home-data-card">
         <div class="home-data-head">
-          <span>${renderExplainButton('kaynak', 'KAYNAK', 'explain-link metric-explain')}</span>
+          <span>${renderExplainButton('kaynak', uiLabel('source'), 'explain-link metric-explain')}</span>
           <strong>${sourceMix.total}</strong>
         </div>
         <div class="home-source-stack">
@@ -1307,7 +1637,7 @@ function renderHomeDataDeck(state, profile, nextSession = null) {
 
       <div class="home-data-card">
         <div class="home-data-head">
-          <span>${renderExplainButton('ritim', 'RITIM', 'explain-link metric-explain')}</span>
+          <span>${renderExplainButton('ritim', 'Ritim', 'explain-link metric-explain')}</span>
           <strong>${rhythm.active}/7</strong>
         </div>
         <div class="home-day-dots">
@@ -1543,9 +1873,9 @@ function openSessionDetailModal(workout, state) {
           </div>
         `).join('')}
       </div>
-      <div class="modal-section-label">${renderExplainButton('stat-delta', 'STAT DELTA', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('stat-delta', 'Stat Etkisi', 'explain-link metric-explain')}</div>
       ${renderSessionStatDelta(statDelta)}
-      <div class="modal-section-label">${renderExplainButton('bloklar', 'BLOKLAR', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('bloklar', 'Calisma Hatlari', 'explain-link metric-explain')}</div>
       ${renderSessionBlocks(blocks)}
       <div class="modal-section-label">${renderExplainButton('fact', 'SEANS IZI', 'explain-link metric-explain')}</div>
       ${facts.length ? `
@@ -1611,8 +1941,10 @@ function escapeHtml(value = '') {
 function renderCharacterPage(state, profile, semantic) {
   return `
     <section class="character-page">
+      ${renderCharacterArena(state, profile, semantic)}
       ${renderPortraitBanner(state, profile)}
       ${renderTrioCards(state, profile, semantic)}
+      ${renderCalibrationCallout(profile)}
       ${renderStatGridPixel(state, profile)}
       ${renderStatRadar(state, profile)}
       ${renderSkillTreePixel(profile)}
@@ -1628,6 +1960,94 @@ function renderCharacterPage(state, profile, semantic) {
       </article>
       ${renderHeatmap(state.workouts || [])}
     </section>
+  `
+}
+
+function renderCharacterArena(state, profile, semantic) {
+  const stats = getFrontStats(state, profile)
+  const liveClass = state.profile.classObj || {}
+  const className = liveClass.name || profile.class
+  const focus = state.profile.currentFocus || 'Hybrid denge'
+  const bodyMapState = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
+  const nextUnlock = bodyMapState?.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
+  const armor = Math.round(Number(state.profile?.armor) || 0)
+  const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
+  const readinessValue = Number(state.health?.readiness?.score)
+  const readiness = Number.isFinite(readinessValue) ? Math.round(readinessValue) : '--'
+  const xpCur = profile?.xp?.current ?? 0
+  const xpMax = profile?.xp?.max || 1
+  const xpPct = percentOf(xpCur, xpMax)
+  const skillSummary = summarizeSkillProgress(profile.skills || [])
+  const focusSignal = (liveClass.signals || []).slice(0, 1).join(' / ') || `Variety ${semantic.variety || 0}`
+
+  return `
+    <article class="character-arena" style="--xp-pct:${xpPct}%">
+      <div class="arena-hero-row">
+        ${renderOdieCrest(state, profile, { className, armor, fatigue, modifier: 'arena-crest' })}
+        <div class="arena-identity">
+          <span>${escapeHtml(profile.rank || 'Unranked')}</span>
+          <h2>${escapeHtml(profile.nick)}</h2>
+          <p>${renderExplainButton('class', className, 'explain-link command-class')}</p>
+        </div>
+      </div>
+
+      <div class="arena-vitals">
+        ${renderRevMeter('xp', `XP ${xpCur}/${xpMax}`, xpPct, 'xp')}
+        ${renderRevMeter('armor', uiLabel('armor'), armor, 'armor')}
+        ${renderRevMeter('fatigue', uiLabel('fatigue'), fatigue, 'fatigue')}
+      </div>
+
+      <div class="arena-life-strip">
+        <span><b>${escapeHtml(uiLabel('readiness'))}</b>${escapeHtml(readiness)}</span>
+        <span><b>${escapeHtml(uiLabel('focus'))}</b>${escapeHtml(focus)}</span>
+        <span><b>${escapeHtml(uiLabel('class'))}</b>${escapeHtml(className)}</span>
+      </div>
+
+      <div class="arena-focus-grid">
+        <button data-action="open-archetype">
+          <span>${escapeHtml(uiLabel('archetype'))}</span>
+          <strong>${escapeHtml(className)}</strong>
+          <small>${escapeHtml((liveClass.reason || 'Aktif build').slice(0, 64))}</small>
+        </button>
+        <button data-action="open-focus">
+          <span>${escapeHtml(uiLabel('focus'))}</span>
+          <strong>${escapeHtml(focus)}</strong>
+          <small>${escapeHtml(focusSignal.slice(0, 64))}</small>
+        </button>
+        <button data-action="open-unlock">
+          <span>${escapeHtml(uiLabel('unlock'))}</span>
+          <strong>${escapeHtml(nextUnlock?.name || 'Stable Build')}</strong>
+          <small>${escapeHtml((nextUnlock?.progress != null ? `%${Math.round(nextUnlock.progress)} / ${nextUnlock.missing || nextUnlock.todayStep || ''}` : summarizeUnlockHint(nextUnlock, profile.skills || []) || skillSummary).slice(0, 64))}</small>
+        </button>
+      </div>
+
+      ${renderRevStatStrip(stats, 'arena-stat-strip')}
+
+      <div class="arena-footer">
+        <span>${escapeHtml(skillSummary)}</span>
+        <span>${escapeHtml(profile.totalVolume || '0 kg')} total</span>
+        ${profile.calibration?.completedAt ? '<span>Rank kalibre</span>' : '<button data-action="open-stat-calibration">Ranklari kilitle</button>'}
+      </div>
+    </article>
+  `
+}
+
+function summarizeSkillProgress(skills = []) {
+  const nodes = skills.flatMap(branch => branch.items || [])
+  if (!nodes.length) return 'Skill verisi bekliyor'
+  const done = nodes.filter(node => node.status === 'done').length
+  const progress = nodes.filter(node => node.status === 'prog').length
+  return `${done} unlock / ${progress} aktif`
+}
+
+function renderCalibrationCallout(profile) {
+  if (profile.calibration?.completedAt) return ''
+  return `
+    <button class="stat-calibration-card" data-action="open-stat-calibration">
+      <span class="sec">Kurulum Kalibrasyonu</span>
+      <strong>Ranklari kilitle</strong>
+      <small>18 kisa cevap. Sadece baslangic guvenini ayarlar; workout verisine dokunmaz.</small>
+    </button>
   `
 }
 
@@ -1660,12 +2080,12 @@ function renderPortraitBanner(state, profile) {
             <span class="bar-val">${xpCur}/${xpMax}</span>
           </div>
           <div class="portrait-bar-row">
-            <span class="pixel-label">${renderExplainButton('armor', 'ARMOR', 'explain-link metric-explain')}</span>
+            <span class="pixel-label">${renderExplainButton('armor', uiLabel('armor'), 'explain-link metric-explain')}</span>
             <div class="pix-bar"><div class="pix-bar-fill green" style="width:${armor}%"></div></div>
             <span class="bar-val">${armor}</span>
           </div>
           <div class="portrait-bar-row">
-            <span class="pixel-label">${renderExplainButton('fatigue', 'FATIGUE', 'explain-link metric-explain')}</span>
+            <span class="pixel-label">${renderExplainButton('fatigue', uiLabel('fatigue'), 'explain-link metric-explain')}</span>
             <div class="pix-bar"><div class="pix-bar-fill red" style="width:${fatigue}%"></div></div>
             <span class="bar-val">${fatigue}</span>
           </div>
@@ -1686,17 +2106,17 @@ function renderTrioCards(state, profile, semantic) {
   return `
     <div class="trio-grid">
       <button class="trio-card" data-action="open-archetype">
-        <span class="pixel-label">Archetype</span>
+        <span class="pixel-label">${escapeHtml(uiLabel('archetype'))}</span>
         <strong>${escapeHtml(className)}</strong>
         <small>${escapeHtml((liveClass.reason || 'Aktif build').slice(0, 36))}</small>
       </button>
       <button class="trio-card" data-action="open-focus">
-        <span class="pixel-label">Focus</span>
+        <span class="pixel-label">${escapeHtml(uiLabel('focus'))}</span>
         <strong>${escapeHtml(focus)}</strong>
         <small>${escapeHtml(focusSignal.slice(0, 36))}</small>
       </button>
       <button class="trio-card" data-action="open-unlock">
-        <span class="pixel-label">Next</span>
+        <span class="pixel-label">${escapeHtml(uiLabel('unlock'))}</span>
         <strong>${escapeHtml(nextUnlock?.name || 'Stable Build')}</strong>
         <small>${escapeHtml((nextUnlockHint || 'Takipte').slice(0, 36))}</small>
       </button>
@@ -1712,7 +2132,7 @@ function renderStatGridPixel(state, profile) {
     <article class="glass-card">
       <div class="section-top">
         <div>
-          <div class="eyebrow">${renderExplainButton('combat-stats', 'Combat Stats', 'explain-link eyebrow-explain')}</div>
+          <div class="eyebrow">${renderExplainButton('combat-stats', 'Karakter Statlari', 'explain-link eyebrow-explain')}</div>
           <h3>${renderExplainButton('combat-stats', 'Karakter parametreleri', 'explain-link explain-heading')}</h3>
         </div>
       </div>
@@ -1725,6 +2145,8 @@ function renderStatGridPixel(state, profile) {
 
 function renderStatPixelCard(stat, latestDelta = {}) {
   const val = Math.round(Number(stat.val) || 0)
+  const rank = stat.rank || val
+  const confidence = String(stat.confidence || 'seed').toUpperCase()
   const delta = Number(latestDelta?.[stat.key]) || 0
   const upFlag = delta > 0 ? `<span class="stat-pixel-flag" style="background:var(--mmo-emerald)">UP</span>` : ''
   const critFlag = stat.critical ? `<span class="stat-pixel-flag">F</span>` : ''
@@ -1734,8 +2156,9 @@ function renderStatPixelCard(stat, latestDelta = {}) {
       <div class="stat-pixel-body">
         <div class="stat-pixel-row">
           <span class="pixel-label">${stat.label}</span>
-          <strong>${val}${critFlag}${upFlag}</strong>
+          <strong>${escapeHtml(rank)}${critFlag}${upFlag}</strong>
         </div>
+        <div class="stat-rank-meta">${escapeHtml(confidence)} / raw ${val}</div>
         <div class="pix-bar pix-bar-thin"><div class="pix-bar-fill ${stat.critical ? 'red' : ''}" style="width:${val}%"></div></div>
       </div>
     </button>
@@ -1789,7 +2212,7 @@ function renderStatRadar(state, profile) {
     return `
       <g class="radar-label">
         <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" class="radar-label-key">${stat.label}</text>
-        <text x="${x}" y="${y + 12}" text-anchor="middle" dominant-baseline="middle" class="radar-label-val">${current}</text>
+        <text x="${x}" y="${y + 12}" text-anchor="middle" dominant-baseline="middle" class="radar-label-val">${stat.rank || current}</text>
         ${deltaTxt ? `<text x="${x}" y="${y + 24}" text-anchor="middle" dominant-baseline="middle" class="radar-label-delta ${deltaClass}">${deltaTxt}</text>` : ''}
       </g>
     `
@@ -1884,7 +2307,7 @@ function renderQuestPixel(profile) {
     <article class="glass-card quest-pixel">
       <div class="section-top">
         <div>
-          <div class="eyebrow">${renderExplainButton('active-quests', 'Active Quests', 'explain-link eyebrow-explain')}</div>
+          <div class="eyebrow">${renderExplainButton('active-quests', 'Aktif Gorevler', 'explain-link eyebrow-explain')}</div>
           <h3>${renderExplainButton('active-quests', 'Gorev defteri', 'explain-link explain-heading')}</h3>
         </div>
       </div>
@@ -1961,6 +2384,7 @@ function renderOdiePage(state, profile) {
 
   return `
     <section class="odie-page">
+      ${renderOdieCommandRoom(state, profile, nextSession)}
       ${renderOdieHallmark(nextSession)}
       <div class="odie-switcher">
         <button class="odie-switcher-btn ${odieMode === 'coach' ? 'active' : ''}" data-odie-mode="coach">YORUM</button>
@@ -1976,6 +2400,46 @@ function renderOdiePage(state, profile) {
   `
 }
 
+function renderOdieCommandRoom(state, profile, nextSession = {}) {
+  const goal = nextSession.primaryGoal || {}
+  const readinessValue = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
+  const readiness = Number.isFinite(readinessValue) ? Math.round(readinessValue) : '--'
+  const armor = Math.round(Number(state.profile?.armor) || 0)
+  const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
+  const hevy = nextSession.sourceHealth || {}
+  const latestHevy = hevy.latestHevyDate ? formatMonthShort(hevy.latestHevyDate) : 'sync bekliyor'
+  const confidence = Number(nextSession.confidence)
+  const confidenceLabel = Number.isFinite(confidence) ? `${Math.round(confidence)}%` : '--'
+  const warning = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || 'Risk sinyali yok'
+  const command = nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.'
+
+  return `
+    <article class="odie-command-room tone-${nextSession.tone || 'calm'}">
+      <div class="odie-room-top">
+        <div class="odie-room-mark" aria-hidden="true"><i></i><b></b></div>
+        <div>
+          <span>ODIE Koc Odasi</span>
+          <h2>${escapeHtml(goalTitle(goal) || 'Bugunku karar')}</h2>
+        </div>
+      </div>
+
+      <p class="odie-room-order">${escapeHtml(command)}</p>
+
+      <div class="odie-room-grid">
+        ${renderRevMeter('readiness', uiLabel('readiness'), readiness, 'xp')}
+        ${renderRevMeter('armor', uiLabel('armor'), armor, 'armor')}
+        ${renderRevMeter('fatigue', uiLabel('fatigue'), fatigue, 'fatigue')}
+      </div>
+
+      <div class="odie-room-signals">
+        <span>${renderExplainButton('hevy-live', `HEVY ${latestHevy}`, 'explain-link metric-explain')}</span>
+        <span>${renderExplainButton('confidence', `${uiLabel('confidence')} ${confidenceLabel}`, 'explain-link metric-explain')}</span>
+        <span>${escapeHtml(warning)}</span>
+      </div>
+    </article>
+  `
+}
+
 function renderOdieHallmark(nextSession = {}) {
   const goal = nextSession.primaryGoal || {}
   const hevy = nextSession.sourceHealth || {}
@@ -1986,16 +2450,67 @@ function renderOdieHallmark(nextSession = {}) {
   return `
     <article class="odie-hallmark tone-${nextSession.tone || 'calm'}">
       <div class="odie-hallmark-main">
-        <span>HALLMARK / ODIE KOMUT HATTI</span>
-        <h2>${escapeHtml(goal.title || 'Bugunku karar')}</h2>
+        <span>ODIE Karar Hatti</span>
+        <h2>${escapeHtml(goalTitle(goal) || 'Bugunku karar')}</h2>
         <p>${escapeHtml(nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.')}</p>
       </div>
       <div class="odie-hallmark-meta">
         <div><span>HEVY</span><strong>${escapeHtml(latestHevy)}</strong></div>
-        <div><span>GUVEN</span><strong>${confidenceLabel}</strong></div>
+        <div><span>${escapeHtml(uiLabel('confidence'))}</span><strong>${confidenceLabel}</strong></div>
       </div>
     </article>
   `
+}
+
+function openBodyRegionModal(regionId) {
+  const state = store.getState()
+  const profile = store.getProfile()
+  const semantic = getSemanticProfile(state.workouts || [], state.dailyLogs || [])
+  const bodyMapState = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
+  const region = regionById(bodyMapState, regionId) || bodyMapState.priority?.region
+  if (!region) return
+  const linkedLines = (bodyMapState.movementLines || [])
+    .filter(line => (line.linkedRegions || []).includes(region.id))
+    .slice(0, 3)
+  const linkedUnlocks = (bodyMapState.unlockTargets || [])
+    .filter(target => (target.linkedRegions || []).includes(region.id))
+    .slice(0, 3)
+  const quest = bodyMapState.dailyQuest
+
+  openModal(`
+    <div class="modal-head">
+      <span style="font-size:18px">MAP</span>
+      <div class="modal-head-title">${escapeHtml(region.label)} Hatti</div>
+      <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
+    </div>
+    <div class="modal-body body-region-modal">
+      <div class="region-score-grid">
+        <div><span>Yuk</span><strong>${Math.round(region.load)}</strong></div>
+        <div><span>Toparlanma</span><strong>${Math.round(region.recovery)}</strong></div>
+        <div><span>Dikkat</span><strong>${Math.round(region.risk)}</strong></div>
+      </div>
+      <div class="modal-coach">${escapeHtml(region.source || 'Canli veri bekleniyor.')}</div>
+      ${linkedLines.length ? `
+        <div class="region-modal-list">
+          <strong>Hareket hattı</strong>
+          ${linkedLines.map(line => `<span>${escapeHtml(line.label)}: %${Math.round(line.progress)} / ${escapeHtml(line.todayStep)}</span>`).join('')}
+        </div>
+      ` : ''}
+      ${linkedUnlocks.length ? `
+        <div class="region-modal-list">
+          <strong>Açılıma etkisi</strong>
+          ${linkedUnlocks.map(target => `<span>${escapeHtml(target.name)}: %${Math.round(target.progress)} / ${escapeHtml(target.missing)}</span>`).join('')}
+        </div>
+      ` : ''}
+      ${quest ? `
+        <div class="region-modal-quest">
+          <span>Bugünkü ara görev</span>
+          <strong>${escapeHtml(quest.name)}</strong>
+          <small>${escapeHtml(quest.why || quest.desc || '')}</small>
+        </div>
+      ` : ''}
+    </div>
+  `)
 }
 
 /* ---------- Init dispatch ---------- */
@@ -2063,6 +2578,12 @@ document.addEventListener('click', event => {
     return
   }
 
+  if (action === 'open-body-region') {
+    const regionId = event.target.closest('[data-region-id]')?.dataset.regionId
+    openBodyRegionModal(regionId || 'core')
+    return
+  }
+
   if (action === 'open-workout') {
     openWorkoutForm()
     return
@@ -2125,9 +2646,24 @@ document.addEventListener('click', event => {
     return
   }
 
+  if (action === 'open-stat-calibration') {
+    const state = store.getState()
+    openStatCalibrationModal({
+      calibration: state.profile?.calibration || {},
+      onSave: async calibration => {
+        await store.saveStatCalibration(calibration)
+        showToast({ icon: 'RANK', title: 'Kalibrasyon kaydedildi', msg: 'Rank guveni yeniden hesaplandi.', rarity: 'rare', duration: 2400 })
+      },
+    })
+    return
+  }
+
   if (action === 'open-unlock') {
+    const state = store.getState()
     const profile = store.getProfile()
-    const nextUnlock = findNextUnlock(profile.skills || [])
+    const semantic = getSemanticProfile(state.workouts || [], state.dailyLogs || [])
+    const bodyMapState = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
+    const nextUnlock = bodyMapState?.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
     openUnlockModal({
       nextUnlock,
       skills: profile.skills || [],

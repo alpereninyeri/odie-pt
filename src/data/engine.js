@@ -1,4 +1,5 @@
 import { appendClassQuests } from './class-quests.js'
+import { buildBodyMapState } from './body-map-engine.js'
 import { updatePerformance } from './performance-engine.js'
 import { appendCoachQuests, updateQuests } from './quest-engine.js'
 import { updateSkills } from './skill-engine.js'
@@ -10,6 +11,7 @@ import {
   normalizeDateString,
   normalizeSession,
 } from './rules.js'
+import { attachStatScales } from './stat-scale.js'
 
 const EXERCISE_MUSCLES = {
   'Bench Press': ['Göğüs', 'Triceps', 'Omuz'],
@@ -93,8 +95,10 @@ export function recalculate(state) {
   _updateHealthAndGlobalStats(state)
   _updateQuests(state)
   _updateSkills(state)
+  _updateBodyMapState(state)
   _updateDebuffs(state)
   _updateDynamicNarratives(state)
+  _applyStatScales(state)
 }
 
 function _updateMuscleBalance(state) {
@@ -220,6 +224,13 @@ function _applyProfileStatsToArray(state) {
   })
 }
 
+function _applyStatScales(state) {
+  state.stats = attachStatScales(state.stats || [], {
+    workouts: state.workouts || [],
+    calibration: state.profile?.calibration || {},
+  })
+}
+
 function _updatePerformance(state) {
   state.performance = updatePerformance(state.performance, state.workouts || [], _extractCoachPayload(state))
 }
@@ -338,6 +349,13 @@ function _updateQuests(state) {
 
 function _updateSkills(state) {
   state.skills = updateSkills(state.skills, state.workouts || [], state.coachSkillProgress || [])
+}
+
+function _updateBodyMapState(state) {
+  state.bodyMapState = buildBodyMapState({
+    state,
+    profile: state.profile || {},
+  })
 }
 
 function _updateDebuffs(state) {

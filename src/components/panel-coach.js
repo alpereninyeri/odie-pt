@@ -82,9 +82,9 @@ function _explain(key, label, className = 'explain-link metric-explain') {
   return `<button type="button" class="${className}" data-explain="${key}" aria-haspopup="dialog" aria-label="${label} aciklamasini ac">${label}</button>`
 }
 
-function _meter(label, value, tone = 'armor') {
+function _meter(label, value, tone = 'armor', explainKey = null) {
   const safeValue = Math.max(0, Math.min(100, Number(value) || 0))
-  const key = String(label).toLowerCase() === 'armor' ? 'armor' : 'fatigue'
+  const key = explainKey || (String(label).toLowerCase() === 'kalkan' ? 'armor' : 'fatigue')
   return `
     <div class="survival-meter-card">
       <div class="survival-meter-top">
@@ -103,7 +103,7 @@ function _renderSurvivalConsole(p) {
   const fatigue = Number(p.fatigue ?? 0) || 0
   const readiness = Number(p.health?.readiness?.score)
   const warnings = Array.isArray(p.survivalWarnings) ? p.survivalWarnings : []
-  const injury = p.injuryUntil ? `Risk lock: ${p.injuryUntil}` : 'Injury flag clear'
+  const injury = p.injuryUntil ? `Risk kilidi: ${p.injuryUntil}` : 'Risk kilidi yok'
   const heavyLabel = Number(p.consecutiveHeavy) ? `${p.consecutiveHeavy} ardisik agir seans` : 'Agir yuk birikimi yok'
   const readinessText = Number.isFinite(readiness) ? `${readiness}/100` : '--'
 
@@ -122,8 +122,8 @@ function _renderSurvivalConsole(p) {
 
       <div class="survival-console-grid">
         <div class="survival-console-main">
-          ${_meter('Armor', armor, armor <= 35 ? 'injury' : armor <= 60 ? 'fatigue' : 'armor')}
-          ${_meter('Fatigue', fatigue, fatigue >= 70 ? 'injury' : 'fatigue')}
+          ${_meter('Kalkan', armor, armor <= 35 ? 'injury' : armor <= 60 ? 'fatigue' : 'armor', 'armor')}
+          ${_meter('Yorgunluk', fatigue, fatigue >= 70 ? 'injury' : 'fatigue', 'fatigue')}
         </div>
 
         <div class="survival-warning-stack">
@@ -132,7 +132,7 @@ function _renderSurvivalConsole(p) {
             <strong>${heavyLabel}</strong>
             <small>${injury}</small>
           </div>
-          ${(warnings.length ? warnings : ['Aktif survival warning yok.']).slice(0, 3).map(item => `
+          ${(warnings.length ? warnings : ['Aktif dikkat uyarisi yok.']).slice(0, 3).map(item => `
             <div class="survival-warning-card ${warnings.length ? 'warn' : ''}">
               <span class="mini-label">${_explain('field-note', 'Saha Notu')}</span>
               <strong>${item}</strong>

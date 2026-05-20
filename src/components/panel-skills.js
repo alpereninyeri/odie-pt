@@ -13,10 +13,10 @@ function branchSignal(branch = '', semantic = {}) {
   const counts = semantic.counts || {}
   const text = String(branch).toLowerCase()
 
-  if (text.includes('acro')) return `${counts.acrobatics || 0} acro / aerial ${chains.aerialControl || 0}${feats.baraniSeen ? ' / barani seen' : ''}`
-  if (text.includes('strength')) return `${counts.strength || 0} strength block / bench ${feats.benchMaxKg || 0}kg / MU ${feats.muscleUpMaxReps || 0}`
-  if (text.includes('mobility')) return `${counts.mobility || 0} mobility block / shoulder ${feats.shoulderMobilitySessions || 0} / split ${feats.splitSessions || 0}`
-  if (text.includes('core')) return `core ${counts.core || 0} / trunk ${chains.trunkControl || 0} / hollow ${feats.hollowMaxSec || 0}sn`
+  if (text.includes('acro')) return `${counts.acrobatics || 0} akro / hava kontrolu ${chains.aerialControl || 0}${feats.baraniSeen ? ' / barani goruldu' : ''}`
+  if (text.includes('strength')) return `${counts.strength || 0} guc blogu / bench ${feats.benchMaxKg || 0}kg / MU ${feats.muscleUpMaxReps || 0}`
+  if (text.includes('mobility')) return `${counts.mobility || 0} mobilite blogu / omuz ${feats.shoulderMobilitySessions || 0} / split ${feats.splitSessions || 0}`
+  if (text.includes('core')) return `core ${counts.core || 0} / govde ${chains.trunkControl || 0} / hollow ${feats.hollowMaxSec || 0}sn`
   return 'semantic signal yok'
 }
 
@@ -26,9 +26,9 @@ function branchNext(branch) {
 
 export function renderSkills(p, semantic = {}) {
   const statusMap = {
-    done: { cls: 'ss-done', icon: 'OK', label: 'Unlocked' },
-    prog: { cls: 'ss-prog', icon: 'UP', label: 'Warm' },
-    lock: { cls: 'ss-lock', icon: 'LOCK', label: 'Locked' },
+    done: { cls: 'ss-done', icon: 'OK', label: 'Acik' },
+    prog: { cls: 'ss-prog', icon: 'UP', label: 'Isiniyor' },
+    lock: { cls: 'ss-lock', icon: 'LOCK', label: 'Kilitli' },
   }
 
   const allItems = p.skills.flatMap(branch => branch.items)
@@ -59,7 +59,7 @@ export function renderSkills(p, semantic = {}) {
 
         ${nextNode ? `
           <div class="next-node-card compact">
-            <span class="mini-label">Next Node</span>
+            <span class="mini-label">Siradaki Dugum</span>
             <strong>${nextNode.name}</strong>
             <p>${nextNode.req || nextNode.desc}</p>
           </div>
@@ -83,32 +83,32 @@ export function renderSkills(p, semantic = {}) {
                 </div>
               `
             }).join('')
-            : '<div class="skill-node compact stable"><div class="skill-node-copy"><div class="skill-node-top"><strong>Stable branch</strong><span class="skill-node-label">No pressure</span></div></div></div>'}
+            : '<div class="skill-node compact stable"><div class="skill-node-copy"><div class="skill-node-top"><strong>Dal stabil</strong><span class="skill-node-label">Baski yok</span></div></div></div>'}
         </div>
       </div>
     `
   }).join('')
 
   return `
-    <div class="sec">Skill Tree Control</div>
+    <div class="sec">Skill Agaci</div>
     <div class="skill-summary tactical-summary">
       <div class="skill-summary-card">
         <div class="skill-summary-val" style="color:var(--grn)">${totalDone}</div>
-        <div class="skill-summary-lbl">Unlocked</div>
+        <div class="skill-summary-lbl">Acik</div>
       </div>
       <div class="skill-summary-card">
         <div class="skill-summary-val" style="color:var(--gold)">${totalProg}</div>
-        <div class="skill-summary-lbl">Heating Up</div>
+        <div class="skill-summary-lbl">Isiniyor</div>
       </div>
       <div class="skill-summary-card">
         <div class="skill-summary-val" style="color:var(--dim)">${totalLock}</div>
-        <div class="skill-summary-lbl">Locked</div>
+        <div class="skill-summary-lbl">Kilitli</div>
       </div>
     </div>
 
     <div class="ready-row compact">
       ${readySoon.length
-        ? readySoon.map(item => `<div class="ready-chip"><span>READY SOON</span><strong>${item.name}</strong></div>`).join('')
+        ? readySoon.map(item => `<div class="ready-chip"><span>YAKINDA ACILIR</span><strong>${item.name}</strong></div>`).join('')
         : '<div class="ready-chip"><span>STABLE</span><strong>Yeni unlock baskisi dusuk</strong></div>'}
     </div>
 

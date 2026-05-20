@@ -118,6 +118,44 @@ test('manual and telegram normalization lead to same deterministic output', () =
   )
 })
 
+test('session XP exposes a user-facing breakdown', () => {
+  const session = normalizeSession({
+    type: 'Calisthenics',
+    durationMin: 45,
+    exercises: [{ name: 'Hollow Body', sets: [{ durationSec: 25 }] }],
+  })
+  const xp = computeSessionXp(session, {
+    streakDays: 4,
+    classMultiplier: 1,
+    survivalMultiplier: 1,
+    fatigue: 35,
+    armor: 90,
+    closingGap: true,
+    questCompleted: true,
+    activeQuest: { xpReward: 35 },
+  })
+
+  assert.ok(xp.breakdown.some(part => part.label === 'Ana Hamle XP'))
+  assert.ok(xp.breakdown.some(part => part.label === 'Kapanan Hat Bonusu'))
+  assert.ok(xp.breakdown.some(part => part.label === 'Ara Gorev XP'))
+  assert.ok(xp.xpEarned > 100)
+})
+
+test('PR bonus is limited when fatigue is high and locked when armor is low', () => {
+  const prSession = normalizeSession({ type: 'Push', hasPr: true, durationMin: 70 })
+  const fresh = computeSessionXp(prSession, { survivalMultiplier: 1, fatigue: 40, armor: 90 })
+  const tired = computeSessionXp(prSession, { survivalMultiplier: 1, fatigue: 82, armor: 90 })
+  const fragile = computeSessionXp(prSession, { survivalMultiplier: 1, fatigue: 40, armor: 32 })
+
+  const prFresh = fresh.breakdown.find(part => part.key === 'pr')?.value || 0
+  const prTired = tired.breakdown.find(part => part.key === 'pr')?.value || 0
+  const prFragile = fragile.breakdown.find(part => part.key === 'pr')?.value || 0
+
+  assert.equal(prFresh, 50)
+  assert.equal(prTired, 15)
+  assert.equal(prFragile, 0)
+})
+
 test('streak allows adjacent days only and breaks after one empty day', () => {
   const workouts = [
     { date: '2026-04-10' },

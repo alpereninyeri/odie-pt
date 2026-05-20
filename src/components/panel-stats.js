@@ -11,23 +11,26 @@ function gradeClass(value = '') {
 }
 
 function statStatus(stat) {
-  if (stat.critical) return 'FOCUS'
-  if ((Number(stat.val) || 0) >= 80) return 'STRONG'
-  if ((Number(stat.val) || 0) >= 60) return 'STABLE'
-  return 'BUILD'
+  if (stat.critical) return 'ODAK'
+  if (stat.rank === 'S' || stat.rank === 'A') return 'GUCLU'
+  if (stat.rank === 'B' || stat.rank === 'C') return 'STABIL'
+  return 'GELISIYOR'
 }
 
 function renderStatCard(stat) {
+  const rank = stat.rank || Math.round(Number(stat.val) || 0)
+  const confidence = String(stat.confidence || 'seed').toUpperCase()
   return `
     <button class="stat-card-v6 ${stat.critical ? 'critical' : ''}" data-stat-key="${stat.key}" aria-label="${stat.name} detayini ac">
       <div class="stat-card-v6-top">
         <span class="stat-card-v6-icon">${stat.icon}</span>
         <span class="stat-card-v6-key">${stat.label}</span>
-        <strong>${Math.round(Number(stat.val) || 0)}</strong>
+        <strong>${rank}</strong>
       </div>
       <div class="stat-card-v6-name">${stat.name}</div>
       <div class="stat-card-v6-meta">
         <span class="stat-card-v6-status">${statStatus(stat)}</span>
+        <span class="grade-pill ${gradeClass(rank)}">${confidence}</span>
         ${(stat.detail || []).slice(0, 2).map(item => `<span class="grade-pill ${gradeClass(item.val)}">${item.val}</span>`).join('')}
       </div>
     </button>
@@ -75,7 +78,7 @@ function renderForgeCard(perf) {
       <p>${perf.note}</p>
       ${renderSparkline(perf.history)}
       <div class="forge-card-foot">
-        <span class="mini-label">Next</span>
+        <span class="mini-label">Siradaki</span>
         <strong>${nextTarget}</strong>
       </div>
     </button>
@@ -137,7 +140,15 @@ function renderAchievements(achievements = []) {
 }
 
 export function renderStats(profile, semantic = {}) {
+  const calibrationDone = Boolean(profile.calibration?.completedAt)
   return `
+    ${calibrationDone ? '' : `
+      <button class="stat-calibration-card" data-action="open-stat-calibration">
+        <span class="sec">Kurulum Kalibrasyonu</span>
+        <strong>Ranklari kilitle</strong>
+        <small>18 kisa cevap. Sadece baslangic guvenini ayarlar; workout verisine dokunmaz.</small>
+      </button>
+    `}
     <div class="sec">Character Stats</div>
     <div class="stat-grid-v6">
       ${(profile.stats || []).map(renderStatCard).join('')}

@@ -2,6 +2,35 @@ function getWebApp() {
   return window.Telegram?.WebApp || null
 }
 
+const TELEGRAM_SDK_SRC = 'https://telegram.org/js/telegram-web-app.js'
+
+function hasTelegramLaunchParams() {
+  if (typeof window === 'undefined') return false
+  const haystack = `${window.location.search || ''}${window.location.hash || ''}`
+  return /tgWebApp/i.test(haystack)
+}
+
+function loadTelegramSdk() {
+  if (typeof document === 'undefined') return Promise.resolve(null)
+  if (getWebApp()) return Promise.resolve(getWebApp())
+  const existing = document.querySelector(`script[src="${TELEGRAM_SDK_SRC}"]`)
+  if (existing) {
+    return new Promise(resolve => {
+      existing.addEventListener('load', () => resolve(getWebApp()), { once: true })
+      existing.addEventListener('error', () => resolve(null), { once: true })
+    })
+  }
+
+  return new Promise(resolve => {
+    const script = document.createElement('script')
+    script.src = TELEGRAM_SDK_SRC
+    script.async = true
+    script.onload = () => resolve(getWebApp())
+    script.onerror = () => resolve(null)
+    document.head.appendChild(script)
+  })
+}
+
 export function isTelegramMiniAppAvailable() {
   return Boolean(getWebApp())
 }
@@ -25,8 +54,8 @@ function applyTelegramTheme(webApp) {
   })
 }
 
-export function initTelegramMiniApp() {
-  const webApp = getWebApp()
+export async function initTelegramMiniApp() {
+  const webApp = getWebApp() || (hasTelegramLaunchParams() ? await loadTelegramSdk() : null)
   if (!webApp) return null
 
   try {

@@ -7,3 +7,7 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+.agents/
+skills-lock.json
+stitch-brief/
+stitch_heroic_fitness_rpg/

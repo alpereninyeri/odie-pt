@@ -116,20 +116,20 @@ function buildBlock(kind, label, target, reason, intensity = 'moderate') {
 function commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hoursSinceLatest }) {
   const latestType = latest?.type || 'ana blok'
   if (goalKey === 'recovery') {
-    return `${Math.round(fatigue)} fatigue var; 30 dk yuruyus + 10 dk mobility yap. Agir ana lift yok, armor ${Math.round(armor)} ustune cikmadan ritmi koru.`
+    return `Bugun agir yuk yok. 30 dk yuruyus + 10 dk mobilite yap; kalkan ${Math.round(armor)} ustune cikana kadar ritmi koru.`
   }
   if (goalKey === 'technical') {
-    return `${Math.round(readiness)} readiness dusuk; ${latestType} icin PR denemesi yok. 3 teknik set, 2 accessory set ve 8 dk core ile kapat.`
+    return `Bugun rekor kovalamiyoruz. ${latestType} icin 3 kontrollu set, 2 destek seti ve 8 dk core ile kapat.`
   }
   if (goalKey === 'pr-hold') {
-    return `Son PR'dan ${hoursSinceLatest ?? '--'} saat gecti; ayni kiloda kal. ${latestType} icin +0kg, sadece 1 temiz tekrar veya 1 set kalite ekle.`
+    return `Rekor yeni; ${hoursSinceLatest ?? '--'} saat gecmis. ${latestType} ayni kiloda kalsin, sadece 1 temiz tekrar veya 1 kaliteli set ekle.`
   }
   if (goalKey === 'balance') {
     const low = balance.lowest?.label || 'Core'
     const target = balance.lowest?.key === 'core' ? '8-12 dk' : '3 net set'
-    return `${low} hatti geride; bugun ana bloktan once ${target} ${low.toLowerCase()} koy. Ego artisi yok.`
+    return `${low} geride kalmis. Ana isten once ${target} ${low.toLowerCase()} koy; sonra normale don.`
   }
-  return `${latestType} hatti acik; 1 ana hareketi koru, sadece 2.5kg veya 1 tekrar artir. Sonra 8 dk core ile karakter kartini dengede tut.`
+  return `${latestType} acik. Tek kucuk artis yeter: +1 tekrar veya +2.5kg. Sonuna 8 dk core ekle.`
 }
 
 export function buildNextSessionRecommendation({
@@ -155,19 +155,19 @@ export function buildNextSessionRecommendation({
   const activeFeedbackRisk = (memoryFeedback || []).some(item => ['wrong', 'outdated'].includes(item.feedbackType || item.feedback_type))
   const evidence = []
 
-  if (latest) evidence.push(`${String(latest.source || '').toLowerCase() === 'hevy' ? 'Hevy' : latest.source || 'Manual'} son seans: ${latest.type || 'seans'} / ${latest.durationMin || latest.duration_min || 0}dk`)
-  evidence.push(`Son 14 gun ${recent14.length} seans, son 30 gun ${recent30.length} seans`)
-  evidence.push(`Fatigue ${Math.round(fatigue)}, armor ${Math.round(armor)}, readiness ${Math.round(readiness)}`)
-  if (balance.lowest) evidence.push(`En geri hat: ${balance.lowest.label} (${Math.round(balance.lowest.sets)} set)`)
+  if (latest) evidence.push(`Son seans: ${String(latest.source || '').toLowerCase() === 'hevy' ? 'Hevy' : latest.source || 'Manual'} / ${latest.type || 'seans'} / ${latest.durationMin || latest.duration_min || 0} dk`)
+  evidence.push(`Ritim: 14 gunde ${recent14.length} seans, 30 gunde ${recent30.length} seans`)
+  evidence.push(`Hazir ${Math.round(readiness)}, kalkan ${Math.round(armor)}, yorgunluk ${Math.round(fatigue)}`)
+  if (balance.lowest) evidence.push(`Geride kalan hat: ${balance.lowest.label} (${Math.round(balance.lowest.sets)} set)`)
   if (sourceHealth.latestHevyDate) evidence.push(`Son Hevy: ${sourceHealth.latestHevyDate}`)
 
   let goalKey = 'progress'
   let tone = 'go'
-  let title = 'Progressive overload'
-  let subtitle = 'Ana hareketi koru, kucuk artis yap.'
+  let title = 'Kucuk Artis Gunu'
+  let subtitle = 'Ana hareketi koru, sadece ufak bir artis yap.'
   let blocks = [
-    buildBlock('strength', latest?.type || 'Ana blok', '+1 rep veya +2.5kg tavan', 'Son veri agirligi kaldirabilecek kadar temiz.', 'moderate'),
-    buildBlock('core', 'Core kilidi', '8 dk', 'RPG stat dengesi core olmadan bozuluyor.', 'easy'),
+    buildBlock('strength', latest?.type || 'Ana hamle', '+1 rep veya +2.5kg tavan', 'Son veri bugun kucuk artisa izin veriyor.', 'moderate'),
+    buildBlock('core', 'Core kilidi', '8 dk', 'Karakter dengesi core olmadan eksik kaliyor.', 'easy'),
   ]
   const progressionCaps = []
   const warnings = []
@@ -175,63 +175,63 @@ export function buildNextSessionRecommendation({
   if (!latest) {
     goalKey = 'onboarding'
     tone = 'calm'
-    title = 'Ilk net seans'
+    title = 'Ilk Temiz Kayit'
     subtitle = 'Hevy veya Telegram kaydi ile karakteri canlandir.'
     blocks = [
-      buildBlock('strength', 'Ana hareket', '3 set', 'Karar motorunun baslangic verisine ihtiyaci var.', 'moderate'),
+      buildBlock('strength', 'Ana hamle', '3 set', 'Ilk guclu kayit icin net hareket yeter.', 'moderate'),
       buildBlock('mobility', 'Kapanis', '8 dk', 'Ilk gunu temiz veriyle kapat.', 'easy'),
     ]
-    progressionCaps.push('Veri yokken PR veya agresif artis yok.')
+    progressionCaps.push('Ilk kayitta rekor kovalamiyoruz.')
   } else if (fatigue >= 75 || profile.survivalStatus === 'cns_overloaded' || profile.survival_status === 'cns_overloaded') {
     goalKey = 'recovery'
     tone = 'danger'
-    title = 'Recovery lock'
-    subtitle = 'Bugun agir yuk degil, sistemi resetle.'
+    title = 'Toparlanma Gunu'
+    subtitle = 'Bugun agir yuk degil, vucudu yeniden kur.'
     blocks = [
-      buildBlock('locomotion', 'Zone 2 yuruyus', '25-35 dk', 'Fatigue yuksek; kan dolasimi yeter.', 'easy'),
-      buildBlock('mobility', 'Mobility + nefes', '10 dk', 'Armor toparlanmadan ana lift risk.', 'easy'),
+      buildBlock('locomotion', 'Hafif yuruyus', '25-35 dk', 'Yorgunluk yuksek; kan dolasimi yeter.', 'easy'),
+      buildBlock('mobility', 'Mobilite + nefes', '10 dk', 'Kalkan toparlanmadan agir yuk riskli.', 'easy'),
     ]
-    progressionCaps.push('Ana lift +0kg, PR denemesi yok.')
-    warnings.push(`${Math.round(fatigue)} fatigue agir seansi kilitliyor.`)
+    progressionCaps.push('Agirlik artisi yok, PR denemesi yok.')
+    warnings.push(`Yorgunluk ${Math.round(fatigue)}; agir seans bugun kilitli.`)
   } else if (armor < 55 || readiness < 45) {
     goalKey = 'technical'
     tone = 'warn'
-    title = 'Kontrollu teknik'
+    title = 'Form Gunu'
     subtitle = 'Kalite seti var, ego seti yok.'
     blocks = [
-      buildBlock('skill', latest.type || 'Teknik blok', '3 kontrollu set', 'Readiness dusuk; hareket kalitesi once.', 'easy'),
-      buildBlock('core', 'Core aktivasyon', '8 dk', 'Dusuk readiness gununde en guvenli ilerleme.', 'easy'),
+      buildBlock('skill', latest.type || 'Form blogu', '3 kontrollu set', 'Hazirlik dusuk; hareket kalitesi once.', 'easy'),
+      buildBlock('core', 'Core aktivasyon', '8 dk', 'Dusuk hazirlik gununde en guvenli ilerleme.', 'easy'),
     ]
     progressionCaps.push('Yuk artisi yok; form notu gir.')
   } else if (hasRecentPr) {
     goalKey = 'pr-hold'
     tone = 'warn'
-    title = 'PR sonrasi kilit'
+    title = 'Rekor Sonrasi Temkin'
     subtitle = 'Yeni rekoru sindir, ayni hatta kalite ekle.'
     blocks = [
-      buildBlock('strength', latest.type || 'PR hatti', 'Ayni kg / +1 rep tavan', 'PR sonrasi agresif artis sakatlik riskini buyutur.', 'moderate'),
-      buildBlock('accessory', 'Destek blok', '2 set', 'Ana yuku artirmadan patterni koru.', 'easy'),
+      buildBlock('strength', latest.type || 'Rekor hatti', 'Ayni kg / +1 rep tavan', 'Rekor sonrasi agresif artis riski buyutur.', 'moderate'),
+      buildBlock('accessory', 'Destek blogu', '2 set', 'Ana yuku artirmadan hareketi koru.', 'easy'),
     ]
-    progressionCaps.push('PR sonrasi 96 saat icinde +kg yok.')
+    progressionCaps.push('Rekor sonrasi 96 saat icinde +kg yok.')
   } else if (balance.lowest && ['push', 'pull', 'legs', 'core'].includes(balance.lowest.key)) {
     goalKey = 'balance'
     tone = 'warn'
-    title = `${balance.lowest.label} acigi`
-    subtitle = 'Karakter kartinda en geri hat bugun once gelir.'
+    title = `${balance.lowest.label} Hattini Kapat`
+    subtitle = 'Karakterde en geri kalan hat bugun once gelir.'
     const isLegs = balance.lowest.key === 'legs'
     const isCore = balance.lowest.key === 'core'
     const blockKind = isCore ? 'core' : 'strength'
-    const blockLabel = isLegs ? 'Posterior chain' : isCore ? 'Direct core' : `${balance.lowest.label} accessory`
+    const blockLabel = isLegs ? 'Arka zincir' : isCore ? 'Core kilidi' : `${balance.lowest.label} destek`
     const blockTarget = isCore ? '8-12 dk' : '3-4 set'
     blocks = [
       buildBlock(blockKind, blockLabel, blockTarget, `${balance.lowest.label} son 30 gunde geride.`, 'moderate'),
-      buildBlock('mobility', isLegs ? 'Kalca/hamstring' : isCore ? 'Spine control' : 'Eklem hazirligi', '6-8 dk', 'Denge blokunu sakatliksiz kapat.', 'easy'),
+      buildBlock('mobility', isLegs ? 'Kalca/hamstring' : isCore ? 'Govde kontrolu' : 'Eklem hazirligi', '6-8 dk', 'Denge blogunu temiz kapat.', 'easy'),
     ]
-    progressionCaps.push(`${balance.lowest.label} tamamlanmadan ana yuke ekstra set yok.`)
+    progressionCaps.push(`${balance.lowest.label} kapanmadan ana yuke ekstra set yok.`)
   }
 
-  if (activeFeedbackRisk) warnings.push('Coach feedback icinde yanlis/eski isaret var; ODIE iddia kurarken temkinli kalmali.')
-  if (!sourceHealth.hevyCount) warnings.push('Hevy verisi son 30 kayitta gorunmuyor; API/sync kontrol edilmeli.')
+  if (activeFeedbackRisk) warnings.push('Bazi eski ODIE yorumlari isaretlenmis; bugun daha temkinli okuyorum.')
+  if (!sourceHealth.hevyCount) warnings.push('Son kayitlarda Hevy yok; sync hattini kontrol etmek iyi olur.')
 
   const confidence = clamp(
     42
@@ -258,7 +258,7 @@ export function buildNextSessionRecommendation({
     progressionCaps,
     warnings,
     questImpact: {
-      pressure: balance.lowest ? `${balance.lowest.label} hatti quest/state tarafinda one alinmali.` : 'Quest baskisi dengeli.',
+      pressure: balance.lowest ? `${balance.lowest.label} hattini one almak mantikli.` : 'Gorev baskisi dengeli.',
       balance,
     },
     coachCommand: commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hoursSinceLatest: hours }),

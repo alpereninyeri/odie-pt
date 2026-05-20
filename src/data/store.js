@@ -29,6 +29,7 @@ import {
 } from './memory-engine.js'
 import { recalculate } from './engine.js'
 import { checkBadges } from './badge-engine.js'
+import { sessionClosesBodyMapPriority, sessionClosesGameQuest } from './body-map-engine.js'
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from './class-engine.js'
 import { computeGeographyTier, computeVolumeTier } from './epic-volume-engine.js'
 import { detectPRs } from './pr-detector.js'
@@ -42,6 +43,7 @@ import {
   normalizeDateString,
   normalizeSession,
 } from './rules.js'
+import { normalizeStatCalibration } from './stat-scale.js'
 import { applySurvival, applyTimedRecovery } from './survival-engine.js'
 
 const LS_KEY = 'odiept-state-v8'
@@ -166,6 +168,7 @@ function _normalizeProfileSeed() {
     recovery: null,
     classId: null,
     classObj: null,
+    calibration: normalizeStatCalibration(mockProfile.calibration || {}),
     epicVolume: null,
     epicGeography: null,
     currentFocus: '',
@@ -274,6 +277,8 @@ function _normalizeWorkoutRow(row = {}) {
     ...normalized,
     id: row.id || normalized.id || `w-${normalized.date}-${Date.now()}`,
     xpEarned: Number(row.xpEarned ?? row.xp_earned) || 0,
+    xpBreakdown: Array.isArray(row.xpBreakdown) ? row.xpBreakdown : [],
+    xpPreview: row.xpPreview || '',
     xpMultiplier: Number(row.xpMultiplier ?? row.xp_multiplier) || 1,
     classMult: Number(row.classMult ?? row.class_mult) || 1,
     survivalStatus: row.survivalStatus ?? row.survival_status ?? 'healthy',
@@ -326,6 +331,7 @@ function _normalizeProfileRow(row = {}) {
       con: Number(row.stats?.con) || 0,
       sta: Number(row.stats?.sta) || 0,
     },
+    calibration: normalizeStatCalibration(row.calibration || {}),
     streak: {
       current: Number(row.streak_current) || 0,
       max: Number(row.streak_max) || 0,
@@ -579,6 +585,9 @@ function _applyCoachNote(row) {
 function _applySupabaseProfile(row) {
   if (!_state || !row) return
   const normalizedProfile = _normalizeProfileRow(row)
+  if (!Object.prototype.hasOwnProperty.call(row, 'calibration')) {
+    normalizedProfile.calibration = _state.profile?.calibration || normalizedProfile.calibration
+  }
   _state.profile = {
     ..._state.profile,
     ...normalizedProfile,
@@ -616,6 +625,7 @@ function _hydrateState(state) {
         ...seed.profile.stats,
         ...(state?.profile?.stats || {}),
       },
+      calibration: normalizeStatCalibration(state?.profile?.calibration || seed.profile.calibration || {}),
       xp: {
         ...seed.profile.xp,
         ...(state?.profile?.xp || {}),
@@ -719,6 +729,7 @@ function _toSupabaseProfile(profile, bodyMetrics = null) {
     total_minutes: profile.totalMinutes,
     total_km: profile.totalKm || 0,
     stats: profile.stats,
+    calibration: normalizeStatCalibration(profile.calibration || {}),
     streak_current: profile.streak?.current || 0,
     streak_max: profile.streak?.max || 0,
     last_workout_date: profile.streak?.lastWorkoutDate || null,
@@ -737,6 +748,7 @@ function _maybeRefreshPath(path) {
     'workouts',
     'dailyLogs',
     'profile.stats',
+    'profile.calibration',
     'profile.xp',
     'profile.armor',
     'profile.fatigue',
@@ -788,7 +800,9 @@ function _mergeToProfile(state) {
     bodyMetricsHistory: state.bodyMetricsHistory || [],
     workoutBlocks: state.workoutBlocks || [],
     workoutFacts: state.workoutFacts || [],
+    bodyMapState: state.bodyMapState || null,
     recovery: profile.recovery || null,
+    calibration: normalizeStatCalibration(profile.calibration || {}),
   }
 }
 
@@ -917,6 +931,24 @@ export const store = {
     return _state.profile?.recovery || null
   },
 
+  async saveStatCalibration(calibration) {
+    if (!_state?.profile) return null
+    _state.profile.calibration = normalizeStatCalibration({
+      ...(calibration || {}),
+      completedAt: calibration?.completedAt || new Date().toISOString(),
+    })
+    _state.profile.lastUpdated = new Date().toISOString()
+    _refreshDerivedState(_state)
+    _saveToLS()
+    _notify('*')
+
+    if (!isMockMode) {
+      await updateProfile(_toSupabaseProfile(_state.profile, _state.bodyMetrics))
+    }
+
+    return _state.profile.calibration
+  },
+
   subscribe(path, fn) {
     if (!_subscribers.has(path)) _subscribers.set(path, new Set())
     _subscribers.get(path).add(fn)
@@ -948,6 +980,11 @@ export const store = {
       survivalMultiplier: survival.xpMultiplier,
       prBonusMultiplier: currentClass?.passive?.prBonus || 1,
       doubleSession: (_state.workouts || []).some(workout => normalizeDateString(workout.date) === normalized.date),
+      fatigue: survivalInput.fatigue ?? _state.profile.fatigue,
+      armor: survivalInput.armor ?? _state.profile.armor,
+      closingGap: sessionClosesBodyMapPriority(normalized, _state.bodyMapState),
+      questCompleted: sessionClosesGameQuest(normalized, _state.bodyMapState?.dailyQuest),
+      activeQuest: _state.bodyMapState?.dailyQuest || null,
     }
     const xp = computeSessionXp(normalized, xpContext)
     const statDelta = computeSessionStatDelta(normalized)
@@ -957,6 +994,8 @@ export const store = {
       ...normalized,
       id: normalized.id || `w${Date.now()}`,
       xpEarned: xp.xpEarned,
+      xpBreakdown: xp.breakdown || [],
+      xpPreview: xp.xpPreview || '',
       xpMultiplier: xp.streakMult,
       classMult: xpContext.classMultiplier,
       survivalStatus: survival.status,

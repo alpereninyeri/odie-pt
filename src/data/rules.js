@@ -1248,20 +1248,46 @@ export function computeSessionXp(session = {}, context = {}) {
   const survivalMultiplier = Number(context.survivalMultiplier) || 1
   const prBonusMultiplier = Number(context.prBonusMultiplier) || 1
   const doubleSession = Boolean(context.doubleSession)
+  const fatigue = Number(context.fatigue) || 0
+  const armor = Number(context.armor) || 100
+  const closingGap = Boolean(context.closingGap)
+  const questCompleted = Boolean(context.questCompleted)
+  const activeQuest = context.activeQuest || null
   const baseXp = TYPE_BASE_XP[normalized.type] || CATEGORY_BASE_XP[normalized.primaryCategory] || TYPE_BASE_XP.Custom
   const base = Math.round(baseXp * streakMultiplier(streakDays) * classMultiplier * survivalMultiplier)
+  const breakdown = [
+    { key: 'base', label: 'Ana Hamle XP', value: base },
+  ]
 
-  let bonus = 0
-  if (survivalMultiplier > 0) {
-    if (normalized.hasPr) bonus += Math.round(50 * prBonusMultiplier)
-    if (hasDirectCoreStimulus(normalized)) bonus += 20
-    if (doubleSession) bonus += 30
+  const addPart = (key, label, value) => {
+    const clean = Math.max(0, Math.round(Number(value) || 0))
+    if (clean > 0) breakdown.push({ key, label, value: clean })
   }
+
+  if (survivalMultiplier > 0) {
+    if (normalized.hasPr) {
+      if (armor < 45) addPart('pr_locked', 'PR Bonusu Kilitli', 0)
+      else if (fatigue >= 75) addPart('pr', 'PR Bonusu', 15 * prBonusMultiplier)
+      else addPart('pr', 'PR Bonusu', 50 * prBonusMultiplier)
+    }
+    if (hasDirectCoreStimulus(normalized)) addPart('form', 'Form Bonusu', 20)
+    if (closingGap) addPart('gap', 'Kapanan Hat Bonusu', 25)
+    if (normalized.primaryCategory === 'recovery' && fatigue >= 60) addPart('recovery', 'Toparlanma XP', 35)
+    if (questCompleted) {
+      const questXp = Number(activeQuest?.xpReward) || Number(String(activeQuest?.reward || '').match(/\d+/)?.[0]) || 30
+      addPart('quest', 'Ara Gorev XP', questXp)
+    }
+    if (doubleSession) addPart('double', 'Cift Seans Bonusu', 30)
+  }
+
+  const xpEarned = Math.max(0, breakdown.reduce((sum, item) => sum + item.value, 0))
 
   return {
     baseXp,
     streakMult: streakMultiplier(streakDays),
-    xpEarned: Math.max(0, base + bonus),
+    xpEarned,
+    breakdown,
+    xpPreview: breakdown.map(part => `+${part.value} ${part.label}`).join(' / '),
   }
 }
 

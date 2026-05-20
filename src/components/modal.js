@@ -1,3 +1,5 @@
+import { LIKERT_RESPONSE_LABELS, STAT_CALIBRATION_QUESTIONS, normalizeStatCalibration } from '../data/stat-scale.js'
+
 let _onClose = null
 
 function avatarMark(profile = {}) {
@@ -132,23 +134,89 @@ function gradePillClass(value = '') {
 }
 
 export function openStatModal(stat) {
+  const rank = stat.rank || 'F'
+  const progress = Math.round(Number(stat.progressToNext) || 0)
+  const confidence = String(stat.confidence || 'seed').toUpperCase()
+  const rawScore = Math.round(Number(stat.rawVal ?? stat.val) || 0)
   openDetailModal({
     icon: stat.label || stat.key || 'ST',
     title: `${stat.name} Codex`,
     body: `
       <div class="modal-stat-big" style="color:${stat.color}">
-        ${stat.val}<span style="font-size:20px;color:var(--dim)">/100</span>
+        ${rank}<span style="font-size:16px;color:var(--dim);margin-left:8px">${stat.rankLabel || 'Rank'}</span>
       </div>
       ${stat.critical ? '<div style="text-align:center;margin-bottom:8px"><span class="grade-pill grade-crit">CRITICAL</span></div>' : ''}
       <div class="modal-desc">${stat.desc}</div>
       <div class="modal-coach">${stat.coach}</div>
+      ${renderModalGrid([
+        { label: 'Rank ici ilerleme', value: `${progress}%` },
+        { label: 'Guven', value: confidence },
+        { label: 'Motor skoru', value: `${rawScore}/100` },
+        { label: 'S Rank kapisi', value: stat.sUnlocked ? 'acik' : 'kanit bekliyor' },
+      ])}
       ${renderModalGrid((stat.detail || []).map(detail => ({
         label: detail.label,
         value: detail.val,
         pillClass: `grade-pill ${gradePillClass(detail.val)}`,
       })))}
-      <div class="modal-tip">Field note: Bu stat ${stat.label} skorunun guncel bilesenlerini gosterir.</div>
+      <div class="modal-tip">Field note: Ana okuma ranktir; 0-100 motor skoru sadece hesaplama ve radar icin tutulur.</div>
     `,
+  })
+}
+
+export function openStatCalibrationModal({ calibration = {}, onSave } = {}) {
+  const normalized = normalizeStatCalibration(calibration)
+  const currentAnswers = normalized.answers || {}
+  const grouped = STAT_CALIBRATION_QUESTIONS.reduce((acc, question) => {
+    if (!acc[question.stat]) acc[question.stat] = []
+    acc[question.stat].push(question)
+    return acc
+  }, {})
+  const statLabels = { str: 'STR', agi: 'AGI', end: 'END', dex: 'DEX', con: 'CON', sta: 'STA' }
+
+  openDetailModal({
+    icon: 'RANK',
+    title: 'Kurulum Kalibrasyonu',
+    body: `
+      <form id="stat-calibration-form" class="stat-calibration-form">
+        <div class="modal-desc">Bu test bir kere yapilir. Cevaplar workout verisinin yerine gecmez; sadece baslangic rank guvenini yumusatir.</div>
+        ${Object.entries(grouped).map(([key, questions]) => `
+          <div class="stat-calibration-group">
+            <div class="modal-section-label">${statLabels[key] || key.toUpperCase()}</div>
+            ${questions.map(question => `
+              <fieldset class="stat-calibration-question">
+                <legend>${question.prompt}</legend>
+                <div class="stat-calibration-options">
+                  ${LIKERT_RESPONSE_LABELS.map((label, index) => {
+                    const value = index + 1
+                    const checked = Number(currentAnswers[question.id]) === value ? 'checked' : ''
+                    return `
+                      <label>
+                        <input type="radio" name="${question.id}" value="${value}" ${checked} required>
+                        <span>${label}</span>
+                      </label>
+                    `
+                  }).join('')}
+                </div>
+              </fieldset>
+            `).join('')}
+          </div>
+        `).join('')}
+        <button class="modal-primary-action" type="submit">Kalibrasyonu kaydet</button>
+      </form>
+    `,
+  })
+
+  const form = document.getElementById('stat-calibration-form')
+  form?.addEventListener('submit', async event => {
+    event.preventDefault()
+    const answers = {}
+    for (const question of STAT_CALIBRATION_QUESTIONS) {
+      const selected = form.querySelector(`input[name="${question.id}"]:checked`)
+      answers[question.id] = Number(selected?.value) || 0
+    }
+    await onSave?.({ version: 1, completedAt: new Date().toISOString(), answers })
+    closeModal()
   })
 }
 
@@ -278,7 +346,7 @@ export function openFocusModal({ focus, classObj, criticalStats, semantic, profi
 
   openDetailModal({
     icon: '◈',
-    title: 'Current Focus',
+    title: 'Bugunku Odak',
     body: `
       <div style="text-align:center;padding:6px 0 14px">
         <div style="font-family:'Cinzel Decorative',serif;font-size:22px;color:var(--mmo-gold-2, var(--gold));letter-spacing:.5px">${focus || 'Hybrid denge'}</div>
@@ -288,7 +356,7 @@ export function openFocusModal({ focus, classObj, criticalStats, semantic, profi
       ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu odak:</strong> ${classObj.reason}</div>` : ''}
       ${renderModalSection('AKTİF SİNYAL', renderSignalGrid(signals))}
       ${renderModalSection('DURUM', stateGrid)}
-      <div class="modal-tip">Focus, kritik stat + seans deseni + sınıf sinyalinin bileşimidir. Bir sonraki seçimin bunu nasıl iter öngörüsü ODIE'dedir.</div>
+      <div class="modal-tip">Odak, kritik stat + seans deseni + sinif sinyalinin bilesimidir. Bir sonraki secimin bunu nasil iter ongorusu ODIE'dedir.</div>
     `,
   })
 }
@@ -297,7 +365,7 @@ export function openUnlockModal({ nextUnlock, skills }) {
   if (!nextUnlock) {
     openDetailModal({
       icon: '✦',
-      title: 'Next Unlock',
+      title: 'Siradaki Acilim',
       body: '<div class="modal-coach">Bütün yakın kilitler açık — yeni skill dalları ODIE üzerinden tetiklenecek.</div>',
     })
     return
@@ -307,6 +375,8 @@ export function openUnlockModal({ nextUnlock, skills }) {
   const status = nextUnlock.status || 'locked'
   const statusLabel = status === 'prog' ? 'AKTİF BASKI' : status === 'done' ? 'AÇIK' : 'KİLİTLİ'
   const statusColor = status === 'prog' ? 'var(--mmo-gold-2, var(--gold))' : status === 'done' ? 'var(--mmo-emerald, var(--grn))' : 'var(--mmo-ink-dim, var(--dim))'
+  const progress = Number(nextUnlock.progress)
+  const linkedRegions = Array.isArray(nextUnlock.linkedRegions) ? nextUnlock.linkedRegions : []
   const siblings = (skills || [])
     .find(item => (item.items || []).some(node => node.name === nextUnlock.name))
     ?.items?.filter(item => item.name !== nextUnlock.name)
@@ -323,11 +393,22 @@ export function openUnlockModal({ nextUnlock, skills }) {
       </div>
       ${nextUnlock.desc ? `<div class="modal-desc">${nextUnlock.desc}</div>` : ''}
       ${nextUnlock.req ? `<div class="modal-coach"><strong>Gereksinim:</strong> ${nextUnlock.req}</div>` : ''}
+      ${Number.isFinite(progress) ? `
+        <div class="modal-coach">
+          <strong>Yakinlik:</strong> %${Math.round(progress)}<br>
+          <strong>Eksik:</strong> ${nextUnlock.missing || 'Bir temiz iz daha gerekli.'}<br>
+          <strong>Bugunku mini adim:</strong> ${nextUnlock.todayStep || 'Kisa teknik blok ekle.'}
+        </div>
+      ` : ''}
+      ${linkedRegions.length ? renderModalSection('BAGLI HATLAR', renderModalGrid([
+        { label: 'Vucut', value: linkedRegions.join(' / ') },
+        { label: 'Hareket', value: nextUnlock.linkedMovement || '-' },
+      ])) : ''}
       ${renderModalSection('AYNI DAL', renderModalGrid(siblings.map(node => ({
         label: node.status === 'done' ? 'AÇIK' : node.status === 'prog' ? 'AKTİF' : 'KİLİT',
         value: node.name,
       }))))}
-      <div class="modal-tip">Next Unlock, skill ağacındaki en yakın ilerleme nodu. Koşulu karşıladığında otomatik açılır.</div>
+      <div class="modal-tip">Siradaki acilim, skill agacindaki en yakin ilerleme nodu. Kosulu karsiladiginda otomatik acilir.</div>
     `,
   })
 }
