@@ -24,7 +24,8 @@ const tabs = [
   { key: 'odie', label: 'ODIE', icon: 'pulse' },
 ]
 
-let activeTab = 'today'
+const requestedTab = new URLSearchParams(window.location.search).get('tab')
+let activeTab = tabs.some(tab => tab.key === requestedTab) ? requestedTab : 'today'
 let odieMode = 'coach'
 let activeSkillBranch = 0
 let activeQuestTab = 'daily'
@@ -1992,49 +1993,64 @@ function renderCharacterArena(state, profile, semantic) {
   const xpPct = percentOf(xpCur, xpMax)
   const skillSummary = summarizeSkillProgress(profile.skills || [])
   const focusSignal = (liveClass.signals || []).slice(0, 1).join(' / ') || `Variety ${semantic.variety || 0}`
+  const statusEffect = buildCharacterStatusEffect(bodyMapState, state)
+  const unlockProgress = nextUnlock?.progress != null ? Math.round(nextUnlock.progress) : null
+  const unlockMeta = unlockProgress != null
+    ? unlockProgress >= 100
+      ? `Hazir / ${nextUnlock.todayStep || nextUnlock.missing || 'kilit acilabilir'}`
+      : `%${unlockProgress} yakin / ${nextUnlock.missing || nextUnlock.todayStep || 'mini adim bekliyor'}`
+    : summarizeUnlockHint(nextUnlock, profile.skills || []) || skillSummary
 
   return `
-    <article class="character-arena" style="--xp-pct:${xpPct}%">
-      <div class="arena-hero-row">
-        ${renderOdieCrest(state, profile, { className, armor, fatigue, modifier: 'arena-crest' })}
-        <div class="arena-identity">
-          <span>${escapeHtml(profile.rank || 'Unranked')}</span>
+    <article class="character-arena character-passport" style="--xp-pct:${xpPct}%">
+      <div class="passport-topline">
+        <div class="passport-id">
+          <span>Karakter pasaportu</span>
           <h2>${escapeHtml(profile.nick)}</h2>
-          <p>${renderExplainButton('class', className, 'explain-link command-class')}</p>
+          <p>${escapeHtml(profile.rank || 'Unranked')} / ${renderExplainButton('class', className, 'explain-link command-class')} / ${escapeHtml(focus)}</p>
+        </div>
+        <button class="passport-rank" data-action="open-archetype" aria-label="Karakter tipini ac">
+          <span>L${escapeHtml(profile.level || 1)}</span>
+          <strong>${escapeHtml(profile.rank || 'Rank')}</strong>
+        </button>
+      </div>
+
+      <div class="passport-stage">
+        ${renderAthleteAnatomySheet(bodyMapState, profile, className)}
+        <div class="passport-side">
+          <div class="passport-build">
+            <span>Bugunku build</span>
+            <strong>${escapeHtml(className)}</strong>
+            <small>${escapeHtml((focusSignal || liveClass.reason || 'Aktif build').slice(0, 92))}</small>
+          </div>
+          <button class="passport-effect tone-${escapeHtml(statusEffect.tone)}" data-action="open-body-region" data-region-id="${escapeHtml(statusEffect.regionId || bodyMapState?.priority?.region?.id || 'core')}">
+            <span>${escapeHtml(statusEffect.label)}</span>
+            <strong>${escapeHtml(statusEffect.title)}</strong>
+            <small>${escapeHtml(statusEffect.detail)}</small>
+          </button>
+          <button class="passport-unlock" data-action="open-unlock">
+            <span>${escapeHtml(uiLabel('unlock'))}</span>
+            <strong>${escapeHtml(nextUnlock?.name || 'Stable Build')}</strong>
+            <small>${escapeHtml(unlockMeta.slice(0, 96))}</small>
+          </button>
         </div>
       </div>
 
-      <div class="arena-vitals">
+      <div class="passport-vitals">
         ${renderRevMeter('xp', `XP ${xpCur}/${xpMax}`, xpPct, 'xp')}
         ${renderRevMeter('armor', uiLabel('armor'), armor, 'armor')}
         ${renderRevMeter('fatigue', uiLabel('fatigue'), fatigue, 'fatigue')}
       </div>
 
-      <div class="arena-life-strip">
+      <div class="passport-life-strip">
         <span><b>${escapeHtml(uiLabel('readiness'))}</b>${escapeHtml(readiness)}</span>
-        <span><b>${escapeHtml(uiLabel('focus'))}</b>${escapeHtml(focus)}</span>
-        <span><b>${escapeHtml(uiLabel('class'))}</b>${escapeHtml(className)}</span>
+        <span><b>XP yolu</b>${escapeHtml(bodyMapState?.xpPreview?.text || `XP ${xpCur}/${xpMax}`)}</span>
+        <span><b>Gorev</b>${escapeHtml(bodyMapState?.dailyQuest?.name || skillSummary)}</span>
       </div>
 
-      <div class="arena-focus-grid">
-        <button data-action="open-archetype">
-          <span>${escapeHtml(uiLabel('archetype'))}</span>
-          <strong>${escapeHtml(className)}</strong>
-          <small>${escapeHtml((liveClass.reason || 'Aktif build').slice(0, 64))}</small>
-        </button>
-        <button data-action="open-focus">
-          <span>${escapeHtml(uiLabel('focus'))}</span>
-          <strong>${escapeHtml(focus)}</strong>
-          <small>${escapeHtml(focusSignal.slice(0, 64))}</small>
-        </button>
-        <button data-action="open-unlock">
-          <span>${escapeHtml(uiLabel('unlock'))}</span>
-          <strong>${escapeHtml(nextUnlock?.name || 'Stable Build')}</strong>
-          <small>${escapeHtml((nextUnlock?.progress != null ? `%${Math.round(nextUnlock.progress)} / ${nextUnlock.missing || nextUnlock.todayStep || ''}` : summarizeUnlockHint(nextUnlock, profile.skills || []) || skillSummary).slice(0, 64))}</small>
-        </button>
+      <div class="passport-stat-grid">
+        ${stats.map(stat => renderPassportStat(stat, nextUnlock, bodyMapState)).join('')}
       </div>
-
-      ${renderRevStatStrip(stats, 'arena-stat-strip')}
 
       <div class="arena-footer">
         <span>${escapeHtml(skillSummary)}</span>
@@ -2042,6 +2058,76 @@ function renderCharacterArena(state, profile, semantic) {
         ${profile.calibration?.completedAt ? '<span>Rank kalibre</span>' : '<button data-action="open-stat-calibration">Ranklari kilitle</button>'}
       </div>
     </article>
+  `
+}
+
+function buildCharacterStatusEffect(bodyMapState = {}, state = {}) {
+  const injury = bodyMapState.priority?.region?.injury || bodyMapState.injuries?.[0]
+  if (injury) {
+    return {
+      label: 'Aktif etki',
+      title: injury.label || 'Sakatlik korumasi',
+      detail: `%${Math.round(injury.recoveryPct ?? 0)} toparlandi, %${Math.round(injury.remainingPct ?? 0)} kaldi. ${Math.round(injury.etaDays ?? 0)} gun temkin.`,
+      regionId: injury.regionId,
+      tone: 'injury',
+    }
+  }
+
+  const fatigue = Number(state.profile?.fatigue) || 0
+  const armor = Number(state.profile?.armor) || 100
+  if (fatigue >= 70) {
+    return {
+      label: 'Aktif etki',
+      title: 'Yorgunluk kilidi',
+      detail: 'Bugun XP toparlanmadan gelir; agir yuk karaktere zarar yazar.',
+      regionId: bodyMapState.priority?.region?.id || 'core',
+      tone: 'risk',
+    }
+  }
+  if (armor < 60) {
+    return {
+      label: 'Aktif etki',
+      title: 'Kalkan ince',
+      detail: 'Form ve mobilite bugun ana ilerleme hattidir.',
+      regionId: bodyMapState.priority?.region?.id || 'shoulder',
+      tone: 'guard',
+    }
+  }
+  return {
+    label: 'Aktif etki',
+    title: 'Temiz ilerleme',
+    detail: 'Build stabil; kucuk artis, temiz tekrar ve ara gorev XP getirir.',
+    regionId: bodyMapState.priority?.region?.id || 'core',
+    tone: 'ready',
+  }
+}
+
+function renderPassportStat(stat, nextUnlock = null, bodyMapState = {}) {
+  const val = clamp(stat.val)
+  const unlockLinked = nextUnlock?.linkedRegions?.some(regionId => {
+    const region = regionById(bodyMapState, regionId)
+    if (!region) return false
+    const statKey = String(stat.key || '')
+    return (
+      (statKey === 'con' && region.id === 'core') ||
+      (statKey === 'str' && ['chest', 'lat', 'upper-back', 'forearm', 'wrist'].includes(region.id)) ||
+      (statKey === 'agi' && ['hips', 'knees', 'ankles', 'calves'].includes(region.id)) ||
+      (statKey === 'dex' && ['core', 'hips', 'ankles', 'wrist'].includes(region.id)) ||
+      (statKey === 'end' && ['calves', 'quads', 'hamstrings'].includes(region.id)) ||
+      (statKey === 'sta' && region.recovery >= 65)
+    )
+  })
+  const note = unlockLinked
+    ? `Acilima bagli: ${nextUnlock.name}`
+    : (stat.critical ? 'Zayif halka: once kontrol' : `${stat.trait || stat.name || 'Build'} hatti`)
+
+  return `
+    <button class="passport-stat stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'is-critical' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" style="--stat-pct:${val}%" aria-label="${escapeHtml(stat.name || stat.label)} detayini ac">
+      <span>${escapeHtml(stat.label || stat.key?.toUpperCase())}</span>
+      <strong>${escapeHtml(stat.rank || Math.round(val))}</strong>
+      <small>${escapeHtml(note.slice(0, 52))}</small>
+      <i aria-hidden="true"><b></b></i>
+    </button>
   `
 }
 
