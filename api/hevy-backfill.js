@@ -15,6 +15,7 @@
 // Her workout zaten external_id index'i sayesinde idempotent.
 
 import { listWorkouts } from '../lib/hevy/client.js'
+import { recordIngestEvent } from '../lib/hevy/ingest-events.js'
 import { normalizeHevyWorkout } from '../lib/hevy/normalize.js'
 import { ingestNormalizedExternalWorkout, resolveProfile, updateSyncState } from '../lib/hevy/persist.js'
 
@@ -50,6 +51,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    const profile = await resolveProfile()
     let pageCount = startPage + pages
     for (let page = startPage; page < startPage + pages; page++) {
       const data = await listWorkouts(page, 10)
@@ -65,13 +67,38 @@ export default async function handler(req, res) {
 
       for (const workout of ordered) {
         try {
+          await recordIngestEvent({
+            profileId: profile?.id,
+            externalId: workout?.id,
+            eventType: 'backfill',
+            operation: 'received',
+            status: 'received',
+            payload: { id: workout?.id, page },
+          })
           const normalized = normalizeHevyWorkout(workout)
           const result = await ingestNormalizedExternalWorkout(normalized, { onUpdate, generateCoach: false })
           if (result.status === 'inserted') summary.inserted += 1
           else if (result.status === 'updated') summary.updated += 1
           else summary.skipped += 1
+          await recordIngestEvent({
+            profileId: profile?.id,
+            externalId: workout?.id,
+            eventType: 'backfill',
+            operation: result.status,
+            status: result.status === 'skipped' ? 'skipped' : 'processed',
+            payload: { workoutId: result.workoutId || null, page },
+          })
         } catch (error) {
           summary.errors.push({ id: workout?.id, message: String(error?.message || error) })
+          await recordIngestEvent({
+            profileId: profile?.id,
+            externalId: workout?.id,
+            eventType: 'backfill',
+            operation: 'failed',
+            status: 'failed',
+            error: String(error?.message || error),
+            payload: { id: workout?.id, page },
+          })
         }
       }
 
@@ -86,7 +113,6 @@ export default async function handler(req, res) {
 
     // Backfill bitince sync cursor'u "simdi"ye al ki delta sync gereksiz eski event cekmesin
     if (!summary.nextPage) {
-      const profile = await resolveProfile()
       if (profile) {
         await updateSyncState(profile.id, {
           events_since: new Date().toISOString(),

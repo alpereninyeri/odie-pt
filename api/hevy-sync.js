@@ -10,6 +10,7 @@
 // bu durumda secret atlanir (Vercel sadece kendi cron'larina izin verir).
 
 import { getWorkout, getWorkoutEvents } from '../lib/hevy/client.js'
+import { recordIngestEvent } from '../lib/hevy/ingest-events.js'
 import { normalizeHevyWorkout } from '../lib/hevy/normalize.js'
 import {
   deleteByExternalId,
@@ -66,11 +67,27 @@ export default async function handler(req, res) {
         try {
           const eventTime = event.updated_at || event.created_at
           if (eventTime && eventTime > latestEventTime) latestEventTime = eventTime
+          await recordIngestEvent({
+            profileId: profile.id,
+            externalId: event.id,
+            eventType: event.type || 'sync',
+            operation: 'received',
+            status: 'received',
+            payload: event,
+          })
 
           if (event.type === 'deleted') {
             const result = await deleteByExternalId(SOURCE, String(event.id))
             if (result.status === 'deleted') summary.deleted += 1
             else summary.skipped += 1
+            await recordIngestEvent({
+              profileId: profile.id,
+              externalId: event.id,
+              eventType: 'deleted',
+              operation: result.status,
+              status: result.status === 'deleted' ? 'processed' : 'skipped',
+              payload: { result },
+            })
             continue
           }
 
@@ -78,6 +95,14 @@ export default async function handler(req, res) {
           const hevyWorkout = await getWorkout(event.id)
           if (!hevyWorkout) {
             summary.skipped += 1
+            await recordIngestEvent({
+              profileId: profile.id,
+              externalId: event.id,
+              eventType: event.type || 'sync',
+              operation: 'fetch',
+              status: 'skipped',
+              payload: { reason: 'Hevy workout bulunamadi' },
+            })
             continue
           }
           const normalized = normalizeHevyWorkout(hevyWorkout)
@@ -85,8 +110,25 @@ export default async function handler(req, res) {
           if (result.status === 'inserted') summary.ingested += 1
           else if (result.status === 'updated') summary.updated += 1
           else summary.skipped += 1
+          await recordIngestEvent({
+            profileId: profile.id,
+            externalId: event.id,
+            eventType: event.type || 'sync',
+            operation: result.status,
+            status: result.status === 'skipped' ? 'skipped' : 'processed',
+            payload: { workoutId: result.workoutId || null, type: result.type, date: result.date },
+          })
         } catch (error) {
           summary.errors.push({ id: event?.id, message: String(error?.message || error) })
+          await recordIngestEvent({
+            profileId: profile.id,
+            externalId: event?.id,
+            eventType: event?.type || 'sync',
+            operation: 'failed',
+            status: 'failed',
+            error: String(error?.message || error),
+            payload: event || {},
+          })
         }
       }
 

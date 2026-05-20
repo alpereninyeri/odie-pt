@@ -1,6 +1,8 @@
 import './styles/odie-ui.css'
 import './styles/heroic-rpg.css'
+import './styles/infographic-game.css'
 import { store } from './data/store.js'
+import { buildNextSessionRecommendation } from './data/next-session-engine.js'
 import { computeProfileStatsSnapshotDaysAgo, formatMonthShort, getLocalDateString, normalizeDateString } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
@@ -189,12 +191,16 @@ function renderMobileHud(state, profile) {
   const pct = Math.max(0, Math.min(100, Math.round((xpCur / xpMax) * 100)))
   const level = profile.level ?? '-'
   const readiness = state.health?.readiness?.score
+  const readinessScore = Number(readiness)
   const streak = state.profile?.streak?.current ?? 0
   const source = String(state.workouts?.[0]?.source || 'manual').toUpperCase()
+  const hudSideValue = Number.isFinite(readinessScore) ? Math.round(readinessScore) : streak
+  const hudSideKey = Number.isFinite(readinessScore) ? 'readiness' : 'seri'
+  const hudSideLabel = Number.isFinite(readinessScore) ? 'hazir' : 'seri'
   const statValue = key => Math.round(Number((profile.stats || []).find(stat => stat.key === key)?.val ?? state.profile?.stats?.[key]) || 0)
   const hudStats = [
     { key: 'STR', val: statValue('str') },
-    { key: 'DEX', val: statValue('dex') },
+    { key: 'AGI', val: statValue('agi') },
     { key: 'CON', val: statValue('con') },
   ]
 
@@ -211,7 +217,7 @@ function renderMobileHud(state, profile) {
           <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
           <div class="mobile-hud-stats">
             ${hudStats.map(stat => `
-              <span class="hud-stat-chip">
+              <span class="hud-stat-chip stat-tone-${stat.key.toLowerCase()}">
                 <b>${stat.key}</b>
                 <em>${stat.val}</em>
               </span>
@@ -219,8 +225,8 @@ function renderMobileHud(state, profile) {
           </div>
         </div>
         <div class="mobile-hud-side">
-          <strong>${streak}</strong>
-          <small>${renderExplainButton('seri', 'seri', 'explain-link metric-explain')}</small>
+          <strong>${hudSideValue}</strong>
+          <small>${renderExplainButton(hudSideKey, hudSideLabel, 'explain-link metric-explain')}</small>
         </div>
       </div>
     </div>
@@ -315,7 +321,108 @@ function buildTodayLead(state, latestWorkout = null) {
   return 'Hevy ve Telegram kayitlari geldikce karakter karti, skill agaci ve gorevler canli veriden guncellenir.'
 }
 
+const FRONT_STAT_ORDER = ['str', 'agi', 'end', 'dex', 'con', 'sta']
+
+const STAT_UI_META = {
+  str: { trait: 'Power', tone: 'str' },
+  agi: { trait: 'Flow', tone: 'agi' },
+  end: { trait: 'Engine', tone: 'end' },
+  dex: { trait: 'Skill', tone: 'dex' },
+  con: { trait: 'Core', tone: 'con' },
+  sta: { trait: 'Energy', tone: 'sta' },
+}
+
+function getFrontStats(state, profile) {
+  const arrayStats = profile.stats || []
+  const liveStats = state.profile?.stats || {}
+  return FRONT_STAT_ORDER
+    .map(key => {
+      const stat = arrayStats.find(item => item.key === key)
+      if (!stat) return null
+      const liveValue = Number(liveStats[key])
+      const seedValue = Number(stat.val)
+      const value = Number.isFinite(liveValue) ? liveValue : seedValue
+      const meta = STAT_UI_META[key] || { trait: stat.name || key, tone: key }
+      return {
+        ...stat,
+        ...meta,
+        val: Math.max(0, Math.min(100, Math.round(Number.isFinite(value) ? value : 0))),
+      }
+    })
+    .filter(Boolean)
+}
+
+function renderInfographicStatBoard(state, profile, nextSession = {}) {
+  const stats = getFrontStats(state, profile)
+  const avg = stats.length
+    ? Math.round(stats.reduce((sum, stat) => sum + stat.val, 0) / stats.length)
+    : 0
+  const readinessValue = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
+  const readiness = Number.isFinite(readinessValue) ? Math.round(readinessValue) : '--'
+  const hevyLabel = nextSession.sourceHealth?.latestHevyDate
+    ? `HEVY LIVE ${formatMonthShort(nextSession.sourceHealth.latestHevyDate)}`
+    : 'HEVY LIVE bekliyor'
+  const className = state.profile.classObj?.name || profile.class || 'OdiePT'
+  const focus = state.profile.currentFocus || nextSession.primaryGoal?.title || 'Hybrid build'
+
+  return `
+    <article class="glass-card infographic-stat-board" aria-label="RPG karakter stat panosu">
+      <div class="stat-board-player">
+        <button class="stat-board-avatar" data-action="open-avatar" aria-label="Profili ac">
+          <span>${avatarMark(profile)}</span>
+          <small>L${profile.level || 1}</small>
+        </button>
+        <div class="stat-board-id">
+          <span>${renderExplainButton('class', className, 'explain-link stat-board-class')}</span>
+          <strong>${escapeHtml(profile.nick)}</strong>
+        </div>
+        <div class="stat-board-readiness">
+          <span>${renderExplainButton('readiness', 'READY', 'explain-link metric-explain')}</span>
+          <strong>${readiness}</strong>
+        </div>
+      </div>
+
+      <div class="stat-node-grid">
+        ${stats.map(renderInfographicStatNode).join('')}
+      </div>
+
+      <div class="stat-board-livebar">
+        <span class="live-sync-pill"><i aria-hidden="true"></i>${renderExplainButton('hevy-live', hevyLabel, 'explain-link metric-explain')}</span>
+        <span>${renderExplainButton('combat-stats', `AVG ${avg}`, 'explain-link metric-explain')}</span>
+        <span>${escapeHtml(focus)}</span>
+      </div>
+    </article>
+  `
+}
+
+function renderInfographicStatNode(stat) {
+  const label = stat.label || stat.key.toUpperCase()
+  const value = Math.round(Number(stat.val) || 0)
+  return `
+    <button
+      class="stat-node stat-tone-${escapeHtml(stat.tone || stat.key)} ${stat.critical ? 'is-critical' : ''}"
+      style="--stat-pct:${value}%"
+      data-action="open-stat"
+      data-stat-key="${escapeHtml(stat.key)}"
+      aria-label="${escapeHtml(label)} ${value} detayini ac"
+    >
+      <span class="stat-node-ring" aria-hidden="true"></span>
+      <span class="stat-node-label">${escapeHtml(label)}</span>
+      <strong>${value}</strong>
+      <small>${escapeHtml(stat.trait || stat.name || '')}</small>
+      <span class="stat-node-bar" aria-hidden="true"><i style="width:${value}%"></i></span>
+    </button>
+  `
+}
+
 function renderTodayPage(state, profile, semantic) {
+  const nextSession = buildNextSessionRecommendation({
+    profile: { ...state.profile, ...profile },
+    workouts: state.workouts || [],
+    dailyLogs: state.dailyLogs || [],
+    memoryFeedback: state.memoryFeedback || [],
+    health: state.health || {},
+  })
   const readiness = Number(state.health?.readiness?.score)
   const armor = Math.round(Number(state.profile?.armor) || 0)
   const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
@@ -334,7 +441,10 @@ function renderTodayPage(state, profile, semantic) {
   const sourceLabel = latestWorkout?.source === 'hevy' ? 'HEVY SON KAYIT' : latestWorkout ? 'SON SEANS' : 'BUGUN'
 
   return `
-    <section class="today-page">
+    <section class="today-page today-infographic-page">
+      ${renderInfographicStatBoard(state, profile, nextSession)}
+      ${renderNextSessionCard(nextSession)}
+
       <article class="home-cockpit">
         <div class="home-cockpit-main">
           <button class="home-avatar-frame" data-action="open-avatar" aria-label="Profili ac">
@@ -353,15 +463,6 @@ function renderTodayPage(state, profile, semantic) {
           </div>
 
           ${renderHomeRadar(profile)}
-        </div>
-
-        <div class="home-stat-strip">
-          ${(profile.stats || []).slice(0, 6).map(stat => `
-            <button class="home-stat-mini ${stat.critical ? 'crit' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}">
-              <span>${escapeHtml(stat.label || stat.key)}</span>
-              <strong>${Math.round(Number(stat.val) || 0)}</strong>
-            </button>
-          `).join('')}
         </div>
 
         <div class="home-session-card">
@@ -383,10 +484,8 @@ function renderTodayPage(state, profile, semantic) {
           <div><span>${renderExplainButton('seri', 'Seri', 'explain-link metric-explain')}</span><strong>${streak}g</strong></div>
         </div>
 
-        ${renderHomeDataDeck(state, profile)}
+        ${renderHomeDataDeck(state, profile, nextSession)}
       </article>
-
-      ${renderTodayDecisionCard(state, profile, activeQuest)}
 
       <div class="today-insight-grid">
         ${renderRecoveryTrendCard(state)}
@@ -806,6 +905,26 @@ const EXPLAINERS = {
     title: 'Hevy',
     summary: 'Hevy uygulamasindan gelen structured workout kaydi.',
   },
+  'hevy-live': {
+    title: 'Hevy Live',
+    summary: 'Hevy API, webhook ve gunluk events sync hattindan gelen son antrenman durumudur.',
+    bullets: [
+      'Webhook hizli tetik, cron events sync kacani yakalayan guvence hattidir.',
+      'Son Hevy tarihi yoksa API key, webhook veya cron loglari kontrol edilmeli.',
+    ],
+  },
+  'next-session': {
+    title: 'Bugunku Recete',
+    summary: 'Son Hevy/Telegram/manual veriden bugunku antrenman kararini cikarir.',
+    bullets: [
+      'Fatigue, armor, readiness, son PR ve push/pull/bacak/core dengesi birlikte okunur.',
+      'Cikti ozet degil, uygulanabilir ODIE komutudur.',
+    ],
+  },
+  'progression-cap': {
+    title: 'Artis Tavani',
+    summary: 'Bugun ne kadar artisa izin oldugunu belirleyen guvenlik siniridir.',
+  },
 }
 
 function explainerFor(key) {
@@ -899,6 +1018,56 @@ function buildTodayDecision(state, activeQuest = null) {
     reason: `Fatigue ${Math.round(fatigue)}, armor ${Math.round(armor)}.`,
     next: nextQuest || 'Set, sure ve hareketleri temiz gir.',
   }
+}
+
+function renderNextSessionCard(nextSession = {}) {
+  const readiness = nextSession.readiness || {}
+  const goal = nextSession.primaryGoal || {}
+  const tone = nextSession.tone || 'calm'
+  const blocks = nextSession.blocks || []
+  const caps = nextSession.progressionCaps || []
+  const warnings = nextSession.warnings || []
+  const evidence = nextSession.evidence || []
+  const hevyLabel = nextSession.sourceHealth?.latestHevyDate
+    ? `HEVY LIVE / ${formatMonthShort(nextSession.sourceHealth.latestHevyDate)}`
+    : 'HEVY LIVE / sync bekliyor'
+  const primaryBlock = blocks[0] || {}
+  const supportBlock = blocks[1] || {}
+  const command = nextSession.coachCommand || goal.subtitle || 'Veri geldikce recete olusur.'
+
+  return `
+    <article class="glass-card next-session-card next-move-strip tone-${tone}">
+      <div class="next-session-head next-move-head">
+        <div>
+          <div class="eyebrow">${renderExplainButton('next-session', 'NEXT MOVE', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('next-session', goal.title || 'ODIE komutu', 'explain-link explain-heading')}</h3>
+        </div>
+        <div class="next-move-score" aria-label="Readiness skoru">
+          <span>R</span>
+          <strong>${readiness.score ?? '--'}</strong>
+        </div>
+      </div>
+
+      <p class="next-move-command">${escapeHtml(command)}</p>
+
+      <div class="next-session-blocks">
+        <div class="next-block ${escapeHtml(primaryBlock.kind || 'main')}">
+          <span>${escapeHtml(primaryBlock.label || 'Ana gorev')}</span>
+          <strong>${escapeHtml(primaryBlock.target || '-')}</strong>
+        </div>
+        <div class="next-block ${escapeHtml(supportBlock.kind || 'support')}">
+          <span>${escapeHtml(supportBlock.label || 'Destek')}</span>
+          <strong>${escapeHtml(supportBlock.target || '-')}</strong>
+        </div>
+      </div>
+
+      <div class="next-session-foot">
+        <span>${renderExplainButton('hevy-live', hevyLabel, 'explain-link metric-explain')}</span>
+        <span>${renderExplainButton('progression-cap', caps[0] || 'Artis tavani temiz', 'explain-link metric-explain')}</span>
+        <span>${escapeHtml(warnings[0] || evidence[0] || 'Risk sinyali yok')}</span>
+      </div>
+    </article>
+  `
 }
 
 function renderTodayDecisionCard(state, profile, activeQuest) {
@@ -1078,11 +1247,12 @@ function renderCoachFeedbackDashboard(state) {
   `
 }
 
-function renderHomeDataDeck(state, profile) {
+function renderHomeDataDeck(state, profile, nextSession = null) {
   const workouts = state.workouts || []
   const bars = buildHomeLoadBars(workouts, profile)
   const sourceMix = buildHomeSourceMix(workouts)
   const rhythm = buildHomeRhythm(state)
+  const hevy = nextSession?.sourceHealth || buildHevyLiveSummary(workouts, profile)
   const totalVolume = workouts.slice(0, 7).reduce((sum, workout) => sum + (Number(workout.volumeKg) || 0), 0)
   const totalMinutes = workouts.slice(0, 7).reduce((sum, workout) => sum + (Number(workout.durationMin) || 0), 0)
   const loadValue = totalVolume > 0
@@ -1123,6 +1293,18 @@ function renderHomeDataDeck(state, profile) {
         </div>
       </div>
 
+      <div class="home-data-card home-data-card-hevy">
+        <div class="home-data-head">
+          <span>${renderExplainButton('hevy-live', 'HEVY LIVE', 'explain-link metric-explain')}</span>
+          <strong>${escapeHtml(hevy.latestHevyDate ? formatMonthShort(hevy.latestHevyDate) : 'YOK')}</strong>
+        </div>
+        <div class="home-data-sub">${escapeHtml(hevy.label || 'Hevy API sync bekleniyor')}</div>
+        <div class="home-sync-line">
+          <span>${escapeHtml(hevy.latestSource || 'manual')}</span>
+          <span>${escapeHtml(hevy.lastSync ? formatMonthShort(String(hevy.lastSync).slice(0, 10)) : 'sync yok')}</span>
+        </div>
+      </div>
+
       <div class="home-data-card">
         <div class="home-data-head">
           <span>${renderExplainButton('ritim', 'RITIM', 'explain-link metric-explain')}</span>
@@ -1135,6 +1317,21 @@ function renderHomeDataDeck(state, profile) {
       </div>
     </div>
   `
+}
+
+function buildHevyLiveSummary(workouts = [], profile = {}) {
+  const recent = (workouts || []).slice(0, 30)
+  const hevy = recent.filter(workout => String(workout.source || '').toLowerCase() === 'hevy')
+  const latest = recent[0] || null
+  const latestHevy = hevy[0] || null
+  return {
+    hevyCount: hevy.length,
+    totalRecent: recent.length,
+    latestHevyDate: latestHevy?.date || null,
+    latestSource: latest?.source || 'manual',
+    lastSync: profile.lastUpdated || latest?.createdAt || latest?.created_at || null,
+    label: hevy.length ? `Hevy ${hevy.length}/${recent.length || hevy.length}` : 'Hevy API sync bekleniyor',
+  }
 }
 
 function buildHomeLoadBars(workouts = [], profile = {}) {
@@ -1532,7 +1729,7 @@ function renderStatPixelCard(stat, latestDelta = {}) {
   const upFlag = delta > 0 ? `<span class="stat-pixel-flag" style="background:var(--mmo-emerald)">UP</span>` : ''
   const critFlag = stat.critical ? `<span class="stat-pixel-flag">F</span>` : ''
   return `
-    <button class="stat-pixel ${stat.critical ? 'crit' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" aria-label="${escapeHtml(stat.name)} detayini ac">
+    <button class="stat-pixel stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'crit' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" aria-label="${escapeHtml(stat.name)} detayini ac">
       <span class="stat-pixel-icon">${escapeHtml(stat.label || stat.key || '*')}</span>
       <div class="stat-pixel-body">
         <div class="stat-pixel-row">
@@ -1746,6 +1943,13 @@ function summarizeUnlockHint(nextUnlock, skills = []) {
 /* ---------- ODIE merged page (Yorum + Sor) ---------- */
 
 function renderOdiePage(state, profile) {
+  const nextSession = buildNextSessionRecommendation({
+    profile: { ...state.profile, ...profile },
+    workouts: state.workouts || [],
+    dailyLogs: state.dailyLogs || [],
+    memoryFeedback: state.memoryFeedback || [],
+    health: state.health || {},
+  })
   const coachProfile = {
     ...profile,
     armor: state.profile?.armor,
@@ -1757,6 +1961,7 @@ function renderOdiePage(state, profile) {
 
   return `
     <section class="odie-page">
+      ${renderOdieHallmark(nextSession)}
       <div class="odie-switcher">
         <button class="odie-switcher-btn ${odieMode === 'coach' ? 'active' : ''}" data-odie-mode="coach">YORUM</button>
         <button class="odie-switcher-btn ${odieMode === 'ask' ? 'active' : ''}" data-odie-mode="ask">SOR</button>
@@ -1768,6 +1973,28 @@ function renderOdiePage(state, profile) {
         </div>
       ` : renderAsk(state, profile)}
     </section>
+  `
+}
+
+function renderOdieHallmark(nextSession = {}) {
+  const goal = nextSession.primaryGoal || {}
+  const hevy = nextSession.sourceHealth || {}
+  const latestHevy = hevy.latestHevyDate ? formatMonthShort(hevy.latestHevyDate) : 'sync bekliyor'
+  const confidence = Number(nextSession.confidence)
+  const confidenceLabel = Number.isFinite(confidence) ? `${Math.round(confidence)}%` : '--'
+
+  return `
+    <article class="odie-hallmark tone-${nextSession.tone || 'calm'}">
+      <div class="odie-hallmark-main">
+        <span>HALLMARK / ODIE KOMUT HATTI</span>
+        <h2>${escapeHtml(goal.title || 'Bugunku karar')}</h2>
+        <p>${escapeHtml(nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.')}</p>
+      </div>
+      <div class="odie-hallmark-meta">
+        <div><span>HEVY</span><strong>${escapeHtml(latestHevy)}</strong></div>
+        <div><span>GUVEN</span><strong>${confidenceLabel}</strong></div>
+      </div>
+    </article>
   `
 }
 

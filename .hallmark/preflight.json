@@ -1,0 +1,25 @@
+{
+  "date": "2026-05-20",
+  "project": "OdiePt",
+  "scope": "single-page-app-surface",
+  "framework": {
+    "name": "Vite",
+    "evidence": "package.json scripts use vite build/dev"
+  },
+  "fontStack": {
+    "ui": "Work Sans, Space Grotesk, system-ui",
+    "mono": "JetBrains Mono, ui-monospace",
+    "evidence": "src/styles/heroic-rpg.css :root tokens"
+  },
+  "palette": {
+    "mode": "dark RPG athlete OS",
+    "tokens": ["--bg", "--panel", "--text", "--muted", "--accent", "--accent-2", "--cobalt", "--danger", "--ok"],
+    "evidence": "src/styles/heroic-rpg.css :root tokens"
+  },
+  "motion": {
+    "stance": "cut",
+    "evidence": "No motion dependency; CSS reduced-motion guard present"
+  },
+  "preserve": ["existing SPA tab flow", "RPG athlete card tone", "Hevy live source language", "8px card radius"],
+  "introduce": ["Quest Focus macrostructure", "Hallmark stamp", "mobile overflow guard", "minimal gamified first-screen hierarchy"]
+}

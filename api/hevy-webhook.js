@@ -3,6 +3,7 @@
 // Auth Hevy tarafinda ayarlanamadigi icin URL'deki ?secret= ile koruyoruz.
 
 import { getWorkout } from '../lib/hevy/client.js'
+import { recordIngestEvent } from '../lib/hevy/ingest-events.js'
 import { normalizeHevyWorkout } from '../lib/hevy/normalize.js'
 import { ingestNormalizedExternalWorkout, resolveProfile, updateSyncState } from '../lib/hevy/persist.js'
 
@@ -29,15 +30,34 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'body.id eksik' })
   }
 
+  let profile = null
   try {
+    profile = await resolveProfile()
+    await recordIngestEvent({
+      profileId: profile?.id,
+      externalId: id,
+      eventType: 'webhook',
+      operation: 'received',
+      status: 'received',
+      payload: { id },
+    })
+
     const hevyWorkout = await getWorkout(id)
     if (!hevyWorkout) {
+      await recordIngestEvent({
+        profileId: profile?.id,
+        externalId: id,
+        eventType: 'webhook',
+        operation: 'fetch',
+        status: 'failed',
+        error: 'Hevy workout bulunamadi',
+        payload: { id },
+      })
       return res.status(404).json({ ok: false, error: 'Hevy workout bulunamadi' })
     }
     const normalized = normalizeHevyWorkout(hevyWorkout)
     const result = await ingestNormalizedExternalWorkout(normalized, { onUpdate: 'replace' })
 
-    const profile = await resolveProfile()
     if (profile) {
       await updateSyncState(profile.id, {
         last_event_id: String(id),
@@ -46,8 +66,26 @@ export default async function handler(req, res) {
       })
     }
 
+    await recordIngestEvent({
+      profileId: profile?.id,
+      externalId: id,
+      eventType: 'webhook',
+      operation: result.status,
+      status: result.status === 'skipped' ? 'skipped' : 'processed',
+      payload: { workoutId: result.workoutId || null, type: result.type, date: result.date },
+    })
+
     return res.status(200).json({ ok: true, ...result })
   } catch (error) {
+    await recordIngestEvent({
+      profileId: profile?.id,
+      externalId: id,
+      eventType: 'webhook',
+      operation: 'failed',
+      status: 'failed',
+      error: String(error?.message || error),
+      payload: { id },
+    })
     console.error('[hevy-webhook] failed:', error?.message || error)
     return res.status(500).json({ ok: false, error: String(error?.message || error) })
   }
