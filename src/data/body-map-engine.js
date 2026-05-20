@@ -57,6 +57,15 @@ const REGION_CONFIG = [
     saturation: 22,
   },
   {
+    id: 'wrist',
+    label: 'Bilek',
+    group: 'joint',
+    muscleLabels: ['Bilek', 'El Bilegi', 'Wrist'],
+    tags: ['grip', 'push', 'mobility', 'parkour'],
+    patterns: ['bilek', 'wrist', 'el bilegi', 'handstand', 'dead hang', 'hang', 'grip', 'push up', 'push-up', 'vault'],
+    saturation: 18,
+  },
+  {
     id: 'lat',
     label: 'Kanat',
     group: 'muscle',
@@ -184,7 +193,7 @@ const MOVEMENT_CONFIG = [
   {
     id: 'grip',
     label: 'Grip',
-    linkedRegions: ['forearm', 'lat', 'upper-back'],
+    linkedRegions: ['forearm', 'wrist', 'lat', 'upper-back'],
     score: ({ counts, chains, feats }) => (chains.gripControl * 20) + (counts.climbing * 12) + Math.min(28, feats.hangMaxSec / 3),
     target: 82,
     todayStep: '2-3 temiz dead hang',
@@ -192,7 +201,7 @@ const MOVEMENT_CONFIG = [
   {
     id: 'mobility',
     label: 'Mobilite',
-    linkedRegions: ['shoulder', 'hips', 'lower-back', 'ankles'],
+    linkedRegions: ['shoulder', 'wrist', 'hips', 'lower-back', 'ankles'],
     score: ({ counts, chains, feats, recoveryDiscipline }) => (chains.mobilityBase * 14) + (counts.recovery * 8) + (feats.shoulderMobilitySessions * 8) + (feats.hipFlexorSessions * 8) + (recoveryDiscipline * 28),
     target: 86,
     todayStep: '10 dk omuz/kalca mobilite',
@@ -244,6 +253,58 @@ function hasAnyText(text, patterns = []) {
   return patterns.some(pattern => {
     const normalized = normalizeText(pattern)
     return normalized && text.includes(normalized)
+  })
+}
+
+function normalizeInjury(injury = {}) {
+  const regionId = String(injury.regionId || injury.region_id || '').trim()
+  if (!regionId || injury.active === false) return null
+  const remainingRaw = Number(injury.remainingPct ?? injury.remaining_pct ?? injury.remainingPercent ?? injury.remaining)
+  const recoveryRaw = Number(injury.recoveryPct ?? injury.recovery_pct ?? injury.recoveryPercent ?? injury.recovery)
+  const remainingPct = clamp(Number.isFinite(remainingRaw) ? remainingRaw : (Number.isFinite(recoveryRaw) ? 100 - recoveryRaw : 0))
+  const recoveryPct = clamp(Number.isFinite(recoveryRaw) ? recoveryRaw : 100 - remainingPct)
+  const etaDays = Math.max(0, Math.round(Number(injury.etaDays ?? injury.eta_days ?? injury.daysRemaining ?? injury.days_remaining) || 0))
+
+  return {
+    id: injury.id || `${regionId}_injury`,
+    regionId,
+    label: injury.label || injury.name || 'Sakatlik',
+    tissue: injury.tissue || injury.kind || 'Kas temelli',
+    remainingPct,
+    recoveryPct,
+    etaDays,
+    note: injury.note || '',
+    source: injury.source || 'ODIE veri notu',
+    active: true,
+  }
+}
+
+function getActiveInjuries(state = {}, profile = {}) {
+  return [
+    ...(Array.isArray(profile?.injuries) ? profile.injuries : []),
+    ...(Array.isArray(state?.profile?.injuries) ? state.profile.injuries : []),
+  ]
+    .map(injury => normalizeInjury(injury))
+    .filter(Boolean)
+    .filter((injury, index, list) => list.findIndex(item => item.id === injury.id || item.regionId === injury.regionId) === index)
+}
+
+function applyInjuryState(regions = [], injuries = []) {
+  if (!injuries.length) return regions
+  return regions.map(region => {
+    const injury = injuries.find(item => item.regionId === region.id)
+    if (!injury) return region
+    const injuryRisk = clamp(42 + injury.remainingPct)
+    const recovery = Math.min(region.recovery, injury.recoveryPct)
+
+    return {
+      ...region,
+      recovery,
+      risk: Math.max(region.risk, injuryRisk),
+      trend: 'sakatlik',
+      injury,
+      source: `${injury.label}: %${injury.recoveryPct} toparlandi, %${injury.remainingPct} kaldi. ${injury.etaDays} gun temkin.`,
+    }
   })
 }
 
@@ -534,6 +595,7 @@ export function scoreUnlockTargets(skills = [], semantic = buildSemanticProfile(
 
 function selectPriority(regions, movementLines, unlockTargets) {
   const repairWeight = { core: 28, quads: 20, hamstrings: 18, calves: 14, 'upper-back': 12, lat: 12 }
+  const injured = [...regions].filter(region => region.injury).sort((a, b) => b.risk - a.risk)[0]
   const risky = [...regions].filter(region => region.risk >= 64).sort((a, b) => b.risk - a.risk)[0]
   const neglected = [...regions]
     .filter(region => region.trend === 'ihmal' && region.group === 'muscle')
@@ -542,7 +604,7 @@ function selectPriority(regions, movementLines, unlockTargets) {
   const unlockRegion = linkedUnlock?.linkedRegions?.[0]
     ? regions.find(region => region.id === linkedUnlock.linkedRegions[0])
     : null
-  const region = risky || neglected || unlockRegion || [...regions].sort((a, b) => b.risk - a.risk)[0] || null
+  const region = injured || risky || neglected || unlockRegion || [...regions].sort((a, b) => b.risk - a.risk)[0] || null
   const movement = [...movementLines].sort((a, b) => {
     const aScore = (a.tone === 'gap' ? 25 : 0) + a.risk + (100 - a.progress)
     const bScore = (b.tone === 'gap' ? 25 : 0) + b.risk + (100 - b.progress)
@@ -583,6 +645,30 @@ function buildDailyGameQuest({ state, priority, classId }) {
   const region = priority.region
   const movement = priority.movement
   const unlock = priority.unlock
+
+  if (region?.injury) {
+    const injury = region.injury
+    const name = region.id === 'wrist' ? 'Bilek Kalkanini Onar' : `${region.label} Kalkanini Onar`
+    return {
+      id: `injury_${region.id}`,
+      kind: 'injury',
+      name,
+      desc: injury.etaDays
+        ? `${injury.etaDays} gun: agir grip/push yok, 10 dk nazik mobilite.`
+        : 'Agir yuk yok; nazik mobilite ve temiz kan dolasimi.',
+      why: `${injury.label}: %${injury.recoveryPct} toparlandi, %${injury.remainingPct} kaldi.`,
+      xpReward: 30,
+      reward: '+30 XP',
+      progress: 0,
+      total: 1,
+      done: false,
+      linkedRegion: region.id,
+      linkedMovement: 'mobility',
+      linkedUnlock: unlock?.name || '',
+      safeMode: true,
+      fromGame: true,
+    }
+  }
 
   if (fatigue >= 72 || armor < 55 || region?.risk >= 68) {
     const linkedRegion = region?.id || 'shoulder'
@@ -668,6 +754,7 @@ function buildXpPreview({ state, dailyQuest, priority }) {
   if (priority?.region?.trend === 'ihmal') parts.push({ key: 'gap', label: 'Kapanan Hat', value: 25 })
   if (priority?.unlock?.progress >= 45 && priority?.unlock?.progress < 100) parts.push({ key: 'unlock', label: 'Açılım İzi', value: 20 })
   if (dailyQuest?.xpReward) parts.push({ key: 'quest', label: 'Ara Görev', value: Number(dailyQuest.xpReward) || 0 })
+  if (dailyQuest?.kind === 'injury') parts.push({ key: 'guard', label: 'Kalkan Onarimi', value: 25 })
   if (fatigue >= 70) parts.push({ key: 'recovery', label: 'Toparlanma', value: 35 })
   else parts.push({ key: 'form', label: 'Form', value: 20 })
 
@@ -686,7 +773,8 @@ export function buildBodyMapState({
 } = {}) {
   const workouts = (state.workouts || profile.workouts || []).map(workout => normalizeSession(workout))
   const semanticProfile = semantic || buildSemanticProfile(workouts, state.dailyLogs || profile.dailyLogs || [])
-  const regions = REGION_CONFIG.map(region => buildRegionState(region, workouts, state, today))
+  const injuries = getActiveInjuries(state, profile)
+  const regions = applyInjuryState(REGION_CONFIG.map(region => buildRegionState(region, workouts, state, today)), injuries)
   const movementLines = buildMovementLines(semanticProfile, regions, state)
   const unlockTargets = scoreUnlockTargets(state.skills || profile.skills || [], semanticProfile)
   const priority = selectPriority(regions, movementLines, unlockTargets)
@@ -699,6 +787,7 @@ export function buildBodyMapState({
 
   return {
     generatedAt: today,
+    injuries,
     regions,
     movementLines,
     priority,
@@ -729,7 +818,7 @@ function sessionMatchesMovement(session = {}, movementId = '') {
     case 'explosive':
       return tags.has('explosive') || hasAnyText(text, ['jump', 'sprint', 'plyo', 'muscle up', 'muscle-up', 'flip'])
     case 'grip':
-      return tags.has('grip') || tags.has('climbing') || hasAnyText(text, ['dead hang', 'hang', 'grip', 'farmer'])
+      return tags.has('grip') || tags.has('climbing') || hasAnyText(text, ['dead hang', 'hang', 'grip', 'farmer', 'bilek', 'wrist'])
     case 'mobility':
       return tags.has('mobility') || normalized.primaryCategory === 'recovery' || hasAnyText(text, ['stretch', 'mobility', 'bridge', 'hip flexor'])
     default:
@@ -747,7 +836,7 @@ export function sessionClosesBodyMapPriority(session = {}, bodyMapState = null) 
 export function sessionClosesGameQuest(session = {}, quest = null) {
   if (!quest) return false
   const normalized = normalizeSession(session)
-  if (quest.kind === 'recovery') {
+  if (quest.kind === 'recovery' || quest.kind === 'injury') {
     return normalized.primaryCategory === 'recovery'
       || normalized.tags.includes('mobility')
       || normalized.tags.includes('walking')

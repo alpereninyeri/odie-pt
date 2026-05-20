@@ -122,7 +122,7 @@ function commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hours
     return `Bugun rekor kovalamiyoruz. ${latestType} icin 3 kontrollu set, 2 destek seti ve 8 dk core ile kapat.`
   }
   if (goalKey === 'pr-hold') {
-    return `Rekor yeni; ${hoursSinceLatest ?? '--'} saat gecmis. ${latestType} ayni kiloda kalsin, sadece 1 temiz tekrar veya 1 kaliteli set ekle.`
+    return `Rekor yeni; ${hoursSinceLatest ?? '--'} saat gecmis. ${latestType} ayni kiloda kalsin, sadece 1 temiz tekrar veya guvenli destek seti ekle.`
   }
   if (goalKey === 'balance') {
     const low = balance.lowest?.label || 'Core'
@@ -197,9 +197,9 @@ export function buildNextSessionRecommendation({
     goalKey = 'technical'
     tone = 'warn'
     title = 'Form Gunu'
-    subtitle = 'Kalite seti var, ego seti yok.'
+    subtitle = 'Form kilidi var, ego seti yok.'
     blocks = [
-      buildBlock('skill', latest.type || 'Form blogu', '3 kontrollu set', 'Hazirlik dusuk; hareket kalitesi once.', 'easy'),
+      buildBlock('skill', latest.type || 'Form blogu', '3 kontrollu set', 'Hazirlik dusuk; hareket temizligi once.', 'easy'),
       buildBlock('core', 'Core aktivasyon', '8 dk', 'Dusuk hazirlik gununde en guvenli ilerleme.', 'easy'),
     ]
     progressionCaps.push('Yuk artisi yok; form notu gir.')
@@ -207,7 +207,7 @@ export function buildNextSessionRecommendation({
     goalKey = 'pr-hold'
     tone = 'warn'
     title = 'Rekor Sonrasi Temkin'
-    subtitle = 'Yeni rekoru sindir, ayni hatta kalite ekle.'
+    subtitle = 'Yeni rekoru sindir, ayni hatta kontrollu tekrar ekle.'
     blocks = [
       buildBlock('strength', latest.type || 'Rekor hatti', 'Ayni kg / +1 rep tavan', 'Rekor sonrasi agresif artis riski buyutur.', 'moderate'),
       buildBlock('accessory', 'Destek blogu', '2 set', 'Ana yuku artirmadan hareketi koru.', 'easy'),

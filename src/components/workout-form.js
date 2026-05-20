@@ -70,7 +70,7 @@ function renderForm(date) {
 
         <div class="wf-row">
           <label class="wf-label">${explainButton('highlight', 'Highlight')}</label>
-          <input class="wf-input" type="text" id="wf-highlight" placeholder="PR, teknik blok, set kalitesi...">
+          <input class="wf-input" type="text" id="wf-highlight" placeholder="PR, teknik blok, temiz set notu...">
         </div>
 
         <div class="wf-row">

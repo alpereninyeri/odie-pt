@@ -162,6 +162,7 @@ function _normalizeProfileSeed() {
     fatigue: 0,
     consecutiveHeavy: 0,
     injuryUntil: null,
+    injuries: _clone(seedProfile.injuries || []),
     survivalStatus: 'healthy',
     survivalWarnings: [],
     recoveryBase: null,
@@ -343,6 +344,7 @@ function _normalizeProfileRow(row = {}) {
     fatigue: Number(row.fatigue_current ?? row.fatigue) || 0,
     consecutiveHeavy: Number(row.consecutive_heavy ?? row.consecutiveHeavy) || 0,
     injuryUntil: row.injury_until ?? row.injuryUntil ?? null,
+    injuries: Array.isArray(row.injuries) ? _clone(row.injuries) : _clone(seedProfile.injuries || []),
     survivalStatus: row.survival_status ?? row.survivalStatus ?? 'healthy',
     survivalWarnings: Array.isArray(row.survival_warnings) ? row.survival_warnings : [],
     recoveryBase: null,
@@ -802,6 +804,7 @@ function _mergeToProfile(state) {
     workoutFacts: state.workoutFacts || [],
     bodyMapState: state.bodyMapState || null,
     recovery: profile.recovery || null,
+    injuries: _clone(profile.injuries || seedProfile.injuries || []),
     calibration: normalizeStatCalibration(profile.calibration || {}),
   }
 }

@@ -519,7 +519,7 @@ function _updateStatNarratives(state, coachPayload) {
           { label: 'Bench Peak', val: benchBest.weight ? `${benchBest.weight}kg x${benchBest.reps}` : '-' },
           { label: '1RM Est.', val: benchBest.weight ? `${_estimateOneRm(benchBest.weight, benchBest.reps)}kg` : '-' },
           { label: 'MU Signal', val: muBest.reps ? `${muBest.reps} rep` : '-' },
-          { label: 'Next', val: benchBest.weight ? `${(benchBest.weight + 2.5).toFixed(benchBest.weight % 1 ? 1 : 0)}kg` : 'push kalite' },
+          { label: 'Next', val: benchBest.weight ? `${(benchBest.weight + 2.5).toFixed(benchBest.weight % 1 ? 1 : 0)}kg` : 'push formu' },
         ]
         return {
           ...stat,
@@ -539,7 +539,7 @@ function _updateStatNarratives(state, coachPayload) {
         return {
           ...stat,
           desc: coach?.desc || `AGI dogrudan movement hacmine bagli. Son ${movementWorkouts.length} seans parkour/akrobasi hizi ve zemin gecisini calistirdi.`,
-          coach: coach?.coach || `${latestMovement?.highlight || 'Son movement izi yok'}. Core ve landing kalite arttikca AGI daha rahat yukselecek.`,
+          coach: coach?.coach || `${latestMovement?.highlight || 'Son movement izi yok'}. Core ve landing temizlendikce AGI daha rahat yukselecek.`,
           detail,
         }
       }
@@ -571,7 +571,7 @@ function _updateStatNarratives(state, coachPayload) {
         return {
           ...stat,
           desc: coach?.desc || `DEX artik koordinasyon, denge ve skill baglantisina gore yaziliyor. Son ${dexSignals.length} teknik seans bu alani diri tutuyor.`,
-          coach: coach?.coach || `Parkour, akrobasi ve teknik gecisler DEX'i tasiyor. Core ve bacak kalitesi artarsa koordinasyon daha temiz okunur.`,
+          coach: coach?.coach || `Parkour, akrobasi ve teknik gecisler DEX'i tasiyor. Core ve bacak kontrolu artarsa koordinasyon daha temiz okunur.`,
           detail,
         }
       }

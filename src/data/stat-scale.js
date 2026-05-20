@@ -19,7 +19,7 @@ export const STAT_CALIBRATION_QUESTIONS = [
   { id: 'con-transfer', stat: 'con', prompt: 'Core kontrolunun flip, bar ve agirlik hareketlerine transferi nasil?' },
   { id: 'con-consistency', stat: 'con', prompt: 'Core calismasini programa tutarli koyma seviyen nasil?' },
   { id: 'sta-session', stat: 'sta', prompt: 'Tek seansi dusmeden bitirme enerjin nasil?' },
-  { id: 'sta-recovery', stat: 'sta', prompt: 'Yorgunken bile kaliteli tekrar uretebilme durumun nasil?' },
+  { id: 'sta-recovery', stat: 'sta', prompt: 'Yorgunken bile temiz tekrar uretebilme durumun nasil?' },
   { id: 'sta-week', stat: 'sta', prompt: 'Haftalik toplam yuk ve ritim tasima kapasiten nasil?' },
 ]
 

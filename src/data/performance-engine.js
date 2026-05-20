@@ -171,7 +171,7 @@ export function updatePerformance(performanceSeed, workouts, coachPayload = null
           trend: best.sec >= 75 ? 'Elite' : trend.text,
           trendColor: best.sec >= 75 ? 'var(--emerald)' : trend.color,
           note: _coachOverride(coachPerf, 'hang', 'note') || `Dead hang zirvesi ${display} - ${best.date}`,
-          tip: _coachOverride(coachPerf, 'hang', 'tip') || `Grip kalitesi yuksek. Bunu climb, pull ve carry gunlerinde koru; bir sonraki hedef 90sn bariyeri.`,
+          tip: _coachOverride(coachPerf, 'hang', 'tip') || `Grip kontrolu yuksek. Bunu climb, pull ve carry gunlerinde koru; bir sonraki hedef 90sn bariyeri.`,
           history: _mergeHistory(perf.history, best.sec, month),
           details: coachDetails || [
             { label: 'Peak', val: display },
@@ -194,7 +194,7 @@ export function updatePerformance(performanceSeed, workouts, coachPayload = null
           trend: recent.length >= 2 ? 'Yukseliyor' : 'Duraklama',
           trendColor: recent.length >= 2 ? 'var(--emerald)' : 'var(--amber)',
           note: _coachOverride(coachPerf, 'flip', 'note') || `Son ${recent.length} movement seansi - ${latest.date}`,
-          tip: _coachOverride(coachPerf, 'flip', 'tip') || `Parkour ve akrobasi aktif. Core ve landing kalitesi beraber ilerlerse skill hatti daha temiz acilir.`,
+          tip: _coachOverride(coachPerf, 'flip', 'tip') || `Parkour ve akrobasi aktif. Core ve landing kontrolu beraber ilerlerse skill hatti daha temiz acilir.`,
           details: coachDetails || [
             { label: 'Movement 5', val: String(recent.length) },
             { label: 'Latest', val: latest.type },

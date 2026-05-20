@@ -1073,6 +1073,15 @@
     stroke: rgba(255, 127, 142, .86);
   }
 
+  .body-zone.tone-injury {
+    fill: rgba(232, 93, 79, .5);
+    stroke: rgba(255, 176, 123, .92);
+    opacity: .7;
+    filter:
+      drop-shadow(0 0 16px rgba(232, 93, 79, .48))
+      drop-shadow(0 0 8px rgba(245, 194, 108, .32));
+  }
+
   .body-zone.tone-hot {
     fill: rgba(72, 210, 230, .48);
     stroke: rgba(181, 249, 255, .86);
@@ -1095,6 +1104,7 @@
   }
 
   .anatomy-priority,
+  .anatomy-injury,
   .anatomy-quest {
     min-width: 0;
     padding: 8px;
@@ -1103,7 +1113,15 @@
     background: rgba(255, 255, 255, .035);
   }
 
+  .anatomy-injury {
+    border-color: rgba(245, 194, 108, .28);
+    background:
+      linear-gradient(135deg, rgba(232, 93, 79, .13), rgba(245, 194, 108, .08)),
+      rgba(2, 7, 12, .38);
+  }
+
   .anatomy-priority b,
+  .anatomy-injury b,
   .anatomy-quest b {
     display: block;
     min-width: 0;
@@ -1117,6 +1135,7 @@
   }
 
   .anatomy-priority small,
+  .anatomy-injury small,
   .anatomy-quest small {
     display: block;
     margin-top: 3px;
@@ -1237,6 +1256,7 @@
   }
 
   .region-score-grid div,
+  .region-injury-note,
   .region-modal-quest {
     min-width: 0;
     padding: 10px;
@@ -1246,6 +1266,7 @@
   }
 
   .region-score-grid span,
+  .region-injury-note span,
   .region-modal-quest span {
     display: block;
     color: var(--rev-muted);
@@ -1255,12 +1276,29 @@
   }
 
   .region-score-grid strong,
+  .region-injury-note strong,
   .region-modal-quest strong {
     display: block;
     margin-top: 3px;
     color: var(--rev-bone);
     font-size: 1.05rem;
     font-weight: 950;
+  }
+
+  .region-injury-note {
+    border-color: rgba(245, 194, 108, .3);
+    background:
+      linear-gradient(135deg, rgba(232, 93, 79, .12), rgba(245, 194, 108, .08)),
+      rgba(255, 255, 255, .035);
+  }
+
+  .region-injury-note small {
+    display: block;
+    margin-top: 4px;
+    color: var(--rev-muted);
+    font-size: .72rem;
+    font-weight: 800;
+    line-height: 1.25;
   }
 
   .region-modal-list {
@@ -1390,11 +1428,13 @@
   }
 
   .anatomy-priority b,
+  .anatomy-injury b,
   .anatomy-quest b {
     font-size: .86rem;
   }
 
   .anatomy-priority small,
+  .anatomy-injury small,
   .anatomy-quest small {
     font-size: .64rem;
   }

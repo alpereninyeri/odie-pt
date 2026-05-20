@@ -15,6 +15,21 @@ export const profile = {
 
   bodyMetrics: { weightKg: 72, heightCm: 172, updatedAt: '2026-04-18' },
 
+  injuries: [
+    {
+      id: 'wrist_muscle_strain_2026_05',
+      regionId: 'wrist',
+      label: 'Bilek sakatligi',
+      tissue: 'Kas temelli',
+      recoveryPct: 70,
+      remainingPct: 30,
+      etaDays: 6,
+      note: 'Agir grip, push ve sert landing 6 gun temkinli; nazik mobilite serbest.',
+      source: 'ODIE manuel veri',
+      active: true,
+    },
+  ],
+
   globalStats: [
     { val: '12.292', label: 'Ort. Adım/Gün' },
     { val: '64dk', label: 'Ort. Egzersiz' },

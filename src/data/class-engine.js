@@ -109,7 +109,7 @@ function classReason(id, profile) {
     celik_omurga: 'Alt vucut ve dayanıklilik birlikte isleniyor; tasiyici bir build cikiyor.',
     cekirdek_alevi: 'Trunk control ve core zinciri buildin merkezine yerlesmeye baslamis.',
     ruzgar_kosucusu: 'Lokomotion, outdoor hacim ve hareket surekliligi buildin motoru.',
-    mermer_heykel: 'Mobilite ve toparlanma disiplini buildi sakin ama kaliteli bir profile cekiyor.',
+    mermer_heykel: 'Mobilite ve toparlanma disiplini buildi sakin ve temiz bir profile cekiyor.',
     golge_gezgini: 'Gece seanslari ve dusuk gürültülü süreklilik profile gizli bir ritim veriyor.',
     merakli_ruh: 'Tek bir bransa kitlenmek yerine birden cok disiplin birlikte tasiniyor.',
   }

@@ -70,6 +70,49 @@ test('body map selects a repair quest when a muscle line is neglected', () => {
   assert.match(bodyMapState.xpPreview.text, /Kapanan Hat/)
 })
 
+test('body map turns a wrist injury into a protected anatomy priority', () => {
+  const state = {
+    profile: {
+      fatigue: 26,
+      armor: 88,
+      classObj: { id: 'duvar_orucu' },
+      injuries: [
+        {
+          id: 'wrist_muscle_strain_2026_05',
+          regionId: 'wrist',
+          label: 'Bilek sakatligi',
+          tissue: 'Kas temelli',
+          recoveryPct: 70,
+          remainingPct: 30,
+          etaDays: 6,
+          active: true,
+        },
+      ],
+    },
+    health: { readiness: { score: 74 } },
+    workouts: [],
+    dailyLogs: [],
+    muscleBalance: [],
+    skills: clone(seedProfile.skills),
+  }
+
+  const bodyMapState = buildBodyMapState({ state, today: '2026-05-21' })
+  const wrist = bodyMapState.regions.find(region => region.id === 'wrist')
+  const grip = bodyMapState.movementLines.find(line => line.id === 'grip')
+
+  assert.equal(wrist.injury.label, 'Bilek sakatligi')
+  assert.equal(wrist.recovery, 70)
+  assert.equal(wrist.injury.remainingPct, 30)
+  assert.equal(wrist.injury.etaDays, 6)
+  assert.equal(bodyMapState.priority.region.id, 'wrist')
+  assert.equal(bodyMapState.dailyQuest.kind, 'injury')
+  assert.equal(bodyMapState.dailyQuest.safeMode, true)
+  assert.equal(bodyMapState.dailyQuest.linkedRegion, 'wrist')
+  assert.ok(grip.linkedRegions.includes('wrist'))
+  assert.match(bodyMapState.xpPreview.text, /Kalkan Onarimi/)
+  assert.equal(sessionClosesGameQuest(normalizeSession({ type: 'Stretching', durationMin: 10, highlight: 'wrist mobility' }), bodyMapState.dailyQuest), true)
+})
+
 test('unlock targets expose linked regions, movement lines and near-unlock progress', () => {
   const workouts = [
     normalizeSession({

@@ -312,7 +312,7 @@ export const RISK_SIGNAL_CONCEPTS = [
   { id: 'wellness_stress', label: 'Stress', patterns: ['stres', 'stresli', 'gergin gun', 'baski', 'is stresi'], tags: ['stress', 'wellness'], severity: 'wellness' },
 ]
 
-// ── Movement quality / intensity modifiers ────────────────────────────────────
+// ── Movement control / intensity modifiers ────────────────────────────────────
 export const MODIFIER_CONCEPTS = [
   // tempo
   { id: 'tempo_marker', label: 'Tempo', patterns: ['tempo', 'slow rep', 'slow eccentric', 'controlled', 'kontrollu'], category: 'tempo' },

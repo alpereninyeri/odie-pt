@@ -113,7 +113,7 @@ export function buildFallbackCoachResponse(parsed, context = {}) {
   const firstQuest = odie.questPressure?.[0]
   const firstSkill = odie.skillPressure?.[0]
   const firstPerf = odie.performance?.[0]
-  const warningLine = recovery.warnings?.[0] || firstGap || 'Risk sinyali dusuk; ayni kalitede devam et.'
+  const warningLine = recovery.warnings?.[0] || firstGap || 'Risk sinyali dusuk; ayni temiz ritimde devam et.'
 
   const telegramParts = [
     `${parsed.type} seansi ${parsed.duration_min || 0}dk${parsed.distance_km ? ` + ${parsed.distance_km}km` : ''} olarak kayda girdi.`,

@@ -157,7 +157,7 @@ export const CLASSES = [
     subName: 'Marble Statue',
     icon: '🗿',
     color: '#cfd6e4',
-    desc: 'Mobilite, esneklik ve toparlanma kalitesini yüksek tutan sabırlı profil.',
+    desc: 'Mobilite, esneklik ve toparlanma disiplinini yuksek tutan sabirli profil.',
     buff: 'Armor regen x2 · Fatigue gain x0.6',
     passive: {
       statMult: { dex: 1.08, end: 1.08 },

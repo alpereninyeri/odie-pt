@@ -557,7 +557,7 @@ function movementById(bodyMapState, id) {
 
 function renderBodyZone(bodyMapState, id, shape) {
   const region = regionById(bodyMapState, id) || { id, label: id, load: 0, recovery: 0, risk: 0, trend: 'hazir' }
-  const tone = region.risk >= 68 ? 'risk' : region.trend === 'ihmal' ? 'gap' : region.trend === 'sicak' ? 'hot' : region.recovery >= 70 ? 'ready' : 'build'
+  const tone = region.injury ? 'injury' : region.risk >= 68 ? 'risk' : region.trend === 'ihmal' ? 'gap' : region.trend === 'sicak' ? 'hot' : region.recovery >= 70 ? 'ready' : 'build'
   const common = `
     class="body-zone tone-${tone}"
     data-action="open-body-region"
@@ -580,11 +580,12 @@ function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
   const priorityRegion = bodyMapState?.priority?.region
   const priorityMovement = bodyMapState?.priority?.movement
   const quest = bodyMapState?.dailyQuest
+  const injury = priorityRegion?.injury || bodyMapState?.injuries?.[0] || null
   const lines = (bodyMapState?.movementLines || []).slice().sort((a, b) => {
     const aScore = (a.tone === 'gap' ? 40 : 0) + a.risk + (100 - a.progress)
     const bScore = (b.tone === 'gap' ? 40 : 0) + b.risk + (100 - b.progress)
     return bScore - aScore
-  }).slice(0, 4)
+  }).slice(0, injury ? 3 : 4)
 
   return `
     <button class="anatomy-sheet" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}" aria-label="Canli vucut haritasini ac">
@@ -619,6 +620,8 @@ function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
           ${renderBodyZone(bodyMapState, 'core', { type: 'ellipse', cx: 130, cy: 160, rx: 26, ry: 34 })}
           ${renderBodyZone(bodyMapState, 'forearm', { type: 'ellipse', cx: 54, cy: 168, rx: 10, ry: 22 })}
           ${renderBodyZone(bodyMapState, 'forearm', { type: 'ellipse', cx: 206, cy: 168, rx: 10, ry: 22 })}
+          ${renderBodyZone(bodyMapState, 'wrist', { type: 'circle', cx: 47, cy: 189, r: 8 })}
+          ${renderBodyZone(bodyMapState, 'wrist', { type: 'circle', cx: 213, cy: 189, r: 8 })}
           ${renderBodyZone(bodyMapState, 'hips', { type: 'ellipse', cx: 130, cy: 204, rx: 33, ry: 18 })}
           ${renderBodyZone(bodyMapState, 'quads', { type: 'ellipse', cx: 108, cy: 244, rx: 13, ry: 36 })}
           ${renderBodyZone(bodyMapState, 'quads', { type: 'ellipse', cx: 152, cy: 244, rx: 13, ry: 36 })}
@@ -633,6 +636,12 @@ function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
           <b>${escapeHtml(priorityRegion?.label || 'Core')}</b>
           <small>${escapeHtml(priorityMovement?.label || 'Mobilite')} hattı</small>
         </span>
+        ${injury ? `
+          <span class="anatomy-injury">
+            <b>${escapeHtml(injury.label || 'Sakatlik')}</b>
+            <small>%${Math.round(injury.recoveryPct ?? 0)} toparlandi / ${Math.round(injury.etaDays ?? 0)} gun</small>
+          </span>
+        ` : ''}
         <span class="movement-stack">
           ${lines.map(line => `
             <span class="movement-line tone-${escapeHtml(line.tone)}" style="--move:${clamp(line.progress)}%">
@@ -902,7 +911,7 @@ const EXPLAINERS = {
   },
   'kontrollu-teknik': {
     title: 'Form Gunu',
-    summary: 'Risk varken tamamen durmadan, yuk yerine hareket kalitesi calismak.',
+    summary: 'Risk varken tamamen durmadan, yuk yerine form temizligi calismak.',
     bullets: [
       'Rekor denemesi veya hacim kovalamak yerine form, destek seti ve dusuk riskli bloklar.',
       'Kalkan dusuk veya hazirlik zayifken kullanilir.',
@@ -986,7 +995,7 @@ const EXPLAINERS = {
     summary: 'Kaldirilan toplam yuk. Genelde kilo x tekrar toplamidir.',
     bullets: [
       'Bodyweight hareketlerde kilo bilgisi varsa daha dogru hesaplanir.',
-      'Hacim tek basina kalite degildir; sure, set ve recovery ile birlikte okunur.',
+      'Hacim tek basina iyi seans demek degildir; sure, set ve recovery ile birlikte okunur.',
     ],
   },
   seri: {
@@ -1077,11 +1086,11 @@ const EXPLAINERS = {
     ],
   },
   'coach-feedback': {
-    title: 'ODIE Kalite Dongusu',
+    title: 'ODIE Hafiza Ayari',
     summary: 'ODIE yorumlarina verdigin DOGRU/YANLIS/ESKI/TONU IYI isaretlerinin kisa ozeti.',
     bullets: [
-      'Yanlis isaretleri coach hafizasini temizlemek icin sinyal olur.',
-      "Tonu iyi isareti ODIE'nin konusma bicimini korumasina yardim eder.",
+      'Yanlis isareti hatali yorumu kenara alir.',
+      "Tonu iyi isareti ODIE'nin ayni konusma ritmini korumasina yardim eder.",
     ],
   },
   'session-detail': {
@@ -1221,7 +1230,7 @@ const EXPLAINERS = {
   },
   highlight: {
     title: 'Highlight',
-    summary: 'Seansin en onemli notu: PR, teknik kalite, zorlanan bolge veya ozel durum.',
+    summary: 'Seansin en onemli notu: PR, temiz tekrar, zorlanan bolge veya ozel durum.',
   },
   notes: {
     title: 'Notlar',
@@ -1565,8 +1574,8 @@ function renderCoachFeedbackDashboard(state) {
     <article class="glass-card today-insight-card coach-feedback-card">
       <div class="insight-card-head">
         <div>
-          <div class="eyebrow">${renderExplainButton('coach-feedback', 'ODIE Kalite', 'explain-link eyebrow-explain')}</div>
-          <h3>${renderExplainButton('coach-feedback', 'ODIE kalite dongusu', 'explain-link explain-heading')}</h3>
+          <div class="eyebrow">${renderExplainButton('coach-feedback', 'ODIE Hafiza', 'explain-link eyebrow-explain')}</div>
+          <h3>${renderExplainButton('coach-feedback', 'Coach ayari', 'explain-link explain-heading')}</h3>
         </div>
         <strong>${total}</strong>
       </div>
@@ -1576,7 +1585,7 @@ function renderCoachFeedbackDashboard(state) {
         <span><b>${counts.outdated || 0}</b>ESKI</span>
         <span><b>${counts.prefer || 0}</b>TON</span>
       </div>
-      <p>${latest ? `${latest.feedbackType} / ${latest.note || 'son isaret'}` : 'Coach kartlarindan isaret geldikce ODIE tonu ve hafizasi temizlenir.'}</p>
+      <p>${latest ? `${latest.feedbackType} / ${latest.note || 'son isaret'}` : 'Coach kartindan isaret geldikce ODIE daha net konusur.'}</p>
     </article>
   `
 }
@@ -2493,6 +2502,13 @@ function openBodyRegionModal(regionId) {
         <div><span>Toparlanma</span><strong>${Math.round(region.recovery)}</strong></div>
         <div><span>Dikkat</span><strong>${Math.round(region.risk)}</strong></div>
       </div>
+      ${region.injury ? `
+        <div class="region-injury-note">
+          <span>Sakatlik notu</span>
+          <strong>${escapeHtml(region.injury.label || region.label)}</strong>
+          <small>${escapeHtml(region.injury.tissue || 'Kas temelli')} / %${Math.round(region.injury.recoveryPct ?? 0)} toparlandi / ${Math.round(region.injury.etaDays ?? 0)} gun</small>
+        </div>
+      ` : ''}
       <div class="modal-coach">${escapeHtml(region.source || 'Canli veri bekleniyor.')}</div>
       ${linkedLines.length ? `
         <div class="region-modal-list">
