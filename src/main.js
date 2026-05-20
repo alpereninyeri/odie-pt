@@ -2,6 +2,7 @@ import './styles/odie-ui.css'
 import './styles/heroic-rpg.css'
 import './styles/infographic-game.css'
 import './styles/mobile-revolution.css'
+import ODIE_ATHLETE_ANATOMY from './assets/odie-athlete-anatomy-v1.webp'
 import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
@@ -592,7 +593,10 @@ function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
         <em>${escapeHtml(className || 'Karakter')}</em>
       </span>
       <span class="anatomy-stage" aria-hidden="true">
-        <svg viewBox="0 0 260 320" class="anatomy-figure" focusable="false">
+        <span class="anatomy-art-frame">
+          <img class="anatomy-art" src="${ODIE_ATHLETE_ANATOMY}" alt="" loading="eager">
+        </span>
+        <svg viewBox="0 0 260 320" class="anatomy-figure anatomy-overlay" focusable="false">
           <defs>
             <radialGradient id="bodyGlow" cx="50%" cy="38%" r="62%">
               <stop offset="0%" stop-color="rgba(188, 255, 232, .34)" />
