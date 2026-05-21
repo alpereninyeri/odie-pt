@@ -243,6 +243,7 @@ function _updateHealthAndGlobalStats(state) {
     .sort((a, b) => normalizeDateString(b.date).localeCompare(normalizeDateString(a.date)))
     .slice(0, 7)
   const workouts = state.workouts || []
+  const dailySummary = state.healthStatus?.dailySummary || state.healthDailySummary || null
 
   const avg = (values, fallback = 0) => {
     if (!values.length) return fallback
@@ -258,6 +259,14 @@ function _updateHealthAndGlobalStats(state) {
   const avgSleep = avg(lifestyleLogs.map(log => Number(log.sleepHours) || 0))
   const avgWaterMl = avg(lifestyleLogs.map(log => Number(log.waterMl) || 0))
   const avgSteps = avg(lifestyleLogs.map(log => Number(log.steps) || 0))
+  const appleSleepHours = Number(dailySummary?.totalSleepHours) || 0
+  const appleSteps = Number(dailySummary?.steps) || 0
+  const appleSleepScore = Number(dailySummary?.sleepScore)
+  const appleMovementScore = Number(dailySummary?.movementScore)
+  const appleHeartScore = Number(dailySummary?.heartScore)
+  const appleRecoveryScore = Number(dailySummary?.recoveryScore)
+  const appleStrainScore = Number(dailySummary?.strainScore)
+  const appleConfidence = Number(dailySummary?.dataConfidence) || 0
   const lifestyleNotes = []
   let lifestyleDelta = 0
   if (lifestyleSamples) {
@@ -272,28 +281,60 @@ function _updateHealthAndGlobalStats(state) {
     if (avgSteps >= 8000) lifestyleDelta += 4
     else if (avgSteps > 0 && avgSteps < 3500) { lifestyleDelta -= 4; lifestyleNotes.push('adım < 3.5k') }
   }
+  if (dailySummary) {
+    if (Number.isFinite(appleSleepScore)) {
+      if (appleSleepScore >= 80) { lifestyleDelta += 8; lifestyleNotes.push(`uyku ${appleSleepHours.toFixed(1)}s guclu`) }
+      else if (appleSleepScore < 45) { lifestyleDelta -= 14; lifestyleNotes.push(`uyku ${appleSleepHours.toFixed(1)}s borclu`) }
+    }
+    if (Number.isFinite(appleHeartScore)) {
+      if (appleHeartScore >= 78) lifestyleDelta += 6
+      else if (appleHeartScore < 45) { lifestyleDelta -= 12; lifestyleNotes.push('kalp/HRV temkinli') }
+    }
+    if (Number.isFinite(appleStrainScore) && appleStrainScore >= 72) {
+      lifestyleDelta -= 8
+      lifestyleNotes.push('gun ici yuk yuksek')
+    }
+  }
   lifestyleDelta = Math.max(-15, Math.min(15, lifestyleDelta))
-  const recoveryScore = Math.max(0, Math.min(100, survivalBase + lifestyleDelta))
+  const recoveryScore = Number.isFinite(appleRecoveryScore)
+    ? Math.max(0, Math.min(100, Math.round((survivalBase * 0.4) + (appleRecoveryScore * 0.6) + lifestyleDelta)))
+    : Math.max(0, Math.min(100, survivalBase + lifestyleDelta))
+  const systemFatigue = dailySummary
+    ? Math.max(0, Math.min(100, Math.round((100 - (Number.isFinite(appleRecoveryScore) ? appleRecoveryScore : recoveryScore)) + ((appleStrainScore || 0) * 0.25))))
+    : Math.max(0, Math.min(100, Math.round(Number(state.profile.fatigue) || 0)))
+  const muscleFatigue = Math.max(0, Math.min(100, Math.round(Number(state.profile.fatigue) || 0)))
+  const loadScore = Math.max(0, Math.min(100, Math.round(
+    (Number.isFinite(appleStrainScore) ? appleStrainScore : 0) * 0.55
+    + Math.min(100, workouts.slice(0, 7).length * 11) * 0.45
+  )))
   const bm = state.bodyMetrics || {}
   const weightKg = Number(bm.weightKg) || 0
   const heightCm = Number(bm.heightCm) || 0
   const bmi = weightKg && heightCm ? Math.round((weightKg / ((heightCm / 100) ** 2)) * 10) / 10 : null
   const enoughRecoveryLogs = recentLogs.filter(log => (Number(log.sleepHours) || 0) > 0 || (Number(log.waterMl) || 0) > 0 || (Number(log.steps) || 0) > 0).length
   const hasTrainingLoad = workouts.length >= 3
-  const readinessSource = enoughRecoveryLogs >= 4
-    ? 'daily_logs + training_load'
-    : hasTrainingLoad
-      ? 'training_load_only'
-      : 'limited_data'
-  const readinessConfidence = enoughRecoveryLogs >= 4
-    ? 'high'
-    : hasTrainingLoad
-      ? 'medium'
-      : 'low'
+  const readinessSource = dailySummary
+    ? 'apple_health + training_load'
+    : enoughRecoveryLogs >= 4
+      ? 'daily_logs + training_load'
+      : hasTrainingLoad
+        ? 'training_load_only'
+        : 'limited_data'
+  const readinessConfidence = dailySummary
+    ? appleConfidence >= 75
+      ? 'high'
+      : 'medium'
+    : enoughRecoveryLogs >= 4
+      ? 'high'
+      : hasTrainingLoad
+        ? 'medium'
+        : 'low'
   const lifestyleReason = lifestyleSamples
     ? (lifestyleNotes.length ? lifestyleNotes.join(' · ') : 'lifestyle stabil')
     : 'lifestyle logu yok'
-  const readinessReason = enoughRecoveryLogs >= 4
+  const readinessReason = dailySummary
+    ? `Apple uyku/kalp/hareket ozeti bagli. ${lifestyleReason}.`
+    : enoughRecoveryLogs >= 4
     ? `Son 7 gün uyku/su/adım yeterli. ${lifestyleReason}.`
     : hasTrainingLoad
       ? `Yük verisi var, recovery logu zayıf. ${lifestyleReason}.`
@@ -317,6 +358,32 @@ function _updateHealthAndGlobalStats(state) {
   ]
 
   const healthWarnings = []
+  if (dailySummary) {
+    if (Number.isFinite(appleSleepScore) && appleSleepScore < 45) {
+      healthWarnings.push({
+        color: 'var(--amber)',
+        icon: 'SLP',
+        name: 'UYKU BORCU',
+        desc: 'Uyku kalkani dusuk; bugun agir PR yerine form ve mobilite onde.',
+      })
+    }
+    if (Number.isFinite(appleHeartScore) && appleHeartScore < 45) {
+      healthWarnings.push({
+        color: 'var(--amber)',
+        icon: 'HRV',
+        name: 'KALP TEMKINI',
+        desc: 'HRV/RHR sinyali temkinli; sinir sistemini zorlamadan ilerle.',
+      })
+    }
+    if (Number.isFinite(appleStrainScore) && appleStrainScore >= 72) {
+      healthWarnings.push({
+        color: 'var(--coral)',
+        icon: 'LOD',
+        name: 'GUN YUKU YUKSEK',
+        desc: 'Gun ici hareket yuku yuksek; ekstra agir seans XP yerine risk yazar.',
+      })
+    }
+  }
   if (state.profile?.survivalWarnings?.length) {
     for (const warning of state.profile.survivalWarnings.slice(0, 3)) {
       healthWarnings.push({ color: 'var(--coral)', icon: '🛡️', name: 'RECOVERY UYARISI', desc: warning })
@@ -339,6 +406,25 @@ function _updateHealthAndGlobalStats(state) {
       reason: readinessReason,
     },
   }
+  state.health.vitalScores = {
+    load: loadScore,
+    recovery: recoveryScore,
+    sleep: Number.isFinite(appleSleepScore)
+      ? Math.round(appleSleepScore)
+      : Math.round(avgSleep ? Math.min(100, (avgSleep / 8) * 90) : 0),
+    heart: Number.isFinite(appleHeartScore) ? Math.round(appleHeartScore) : null,
+    movement: Number.isFinite(appleMovementScore)
+      ? Math.round(appleMovementScore)
+      : Math.round(Math.min(100, ((appleSteps || avgSteps) / 10000) * 100)),
+    strain: Number.isFinite(appleStrainScore) ? Math.round(appleStrainScore) : 0,
+    muscleFatigue,
+    systemFatigue,
+    dataConfidence: appleConfidence,
+    summary: dailySummary,
+  }
+  state.health.metrics = (state.health.metrics || []).map(metric =>
+    metric.label === 'Readiness' ? { ...metric, label: 'Hazirlik' } : metric
+  )
 }
 
 function _updateQuests(state) {

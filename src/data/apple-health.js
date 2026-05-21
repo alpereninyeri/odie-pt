@@ -143,6 +143,7 @@ export function normalizeAppleHealthPayload(input = {}, { now = new Date() } = {
       steps,
       activeEnergyKcal,
       avgHeartRate,
+      maxHeartRate: Math.max(0, Math.round(firstFinite(input.maxHeartRate, input.max_heart_rate, input.heartRateMax) || 0)),
       routeName,
       endAt,
     },

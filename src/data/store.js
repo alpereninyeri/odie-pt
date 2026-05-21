@@ -6,6 +6,7 @@ import {
   fetchBodyEvents,
   fetchBodyMetricsHistory,
   fetchDailyLogs,
+  fetchHealthStatus,
   fetchLatestCoachNote,
   fetchMemoryFeedback,
   fetchProfile,
@@ -386,6 +387,8 @@ function _buildSeed() {
     coachQuestHints: [],
     coachSkillProgress: [],
     bodyEvents: (seedProfile.injuries || []).map(injury => bodyEventFromInjury(injury)),
+    healthStatus: null,
+    healthDailySummary: null,
     bodyMetrics: _normalizeBodyMetrics(seedProfile.bodyMetrics || {}),
     athleteMemory: [],
     memoryFeedback: [],
@@ -660,6 +663,8 @@ function _hydrateState(state) {
     coachQuestHints: _clone(state?.coachQuestHints || []),
     coachSkillProgress: _clone(state?.coachSkillProgress || []),
     bodyEvents: (state?.bodyEvents || seed.bodyEvents || []).map(item => normalizeBodyEvent(item)),
+    healthStatus: _clone(state?.healthStatus || null),
+    healthDailySummary: _clone(state?.healthDailySummary || state?.healthStatus?.dailySummary || null),
     bodyMetrics: _clone(state?.bodyMetrics || seed.bodyMetrics || {}),
     athleteMemory: (state?.athleteMemory || []).map(item => normalizeAthleteMemoryRow(item)),
     memoryFeedback: (state?.memoryFeedback || []).map(item => normalizeMemoryFeedbackRow(item)),
@@ -767,6 +772,8 @@ function _maybeRefreshPath(path) {
     'coachQuestHints',
     'coachSkillProgress',
     'bodyEvents',
+    'healthStatus',
+    'healthDailySummary',
     'profile.injuries',
   ].some(prefix => path === prefix || path.startsWith(`${prefix}.`))
 }
@@ -811,6 +818,8 @@ function _mergeToProfile(state) {
     workoutBlocks: state.workoutBlocks || [],
     workoutFacts: state.workoutFacts || [],
     bodyMapState: state.bodyMapState || null,
+    healthStatus: state.healthStatus || null,
+    healthDailySummary: state.healthDailySummary || null,
     recovery: profile.recovery || null,
     bodyEvents: _clone(state.bodyEvents || []),
     injuries: _clone(profile.injuries || seedProfile.injuries || []),
@@ -1009,6 +1018,8 @@ export const store = {
       questCompleted: sessionClosesGameQuest(normalized, _state.bodyMapState?.dailyQuest),
       activeQuest: _state.bodyMapState?.dailyQuest || null,
       injuryConflict,
+      vitalScores: _state.health?.vitalScores || null,
+      healthSummary: _state.healthDailySummary || _state.healthStatus?.dailySummary || _state.health?.vitalScores?.summary || null,
     }
     const xp = computeSessionXp(normalized, xpContext)
     const statDelta = computeSessionStatDelta(normalized)
@@ -1142,18 +1153,23 @@ export const store = {
   },
 
   async syncFromSupabase() {
-    const [profileRow, workoutRows, dailyLogRows, coachNoteRow, bodyEventRows] = await Promise.all([
+    const [profileRow, workoutRows, dailyLogRows, coachNoteRow, bodyEventRows, healthStatus] = await Promise.all([
       fetchProfile(),
       fetchWorkouts(200),
       fetchDailyLogs(45),
       fetchLatestCoachNote(),
       fetchBodyEvents(40),
+      fetchHealthStatus(),
     ])
 
     if (profileRow) _applySupabaseProfile(profileRow)
     if (Array.isArray(workoutRows) && workoutRows.length) _state.workouts = workoutRows.map(row => _normalizeWorkoutRow(row))
     if (Array.isArray(dailyLogRows) && dailyLogRows.length) _state.dailyLogs = dailyLogRows.map(row => _normalizeDailyLog(row))
     if (Array.isArray(bodyEventRows) && bodyEventRows.length) _state.bodyEvents = bodyEventRows.map(row => normalizeBodyEvent(row))
+    if (healthStatus) {
+      _state.healthStatus = healthStatus
+      _state.healthDailySummary = healthStatus.dailySummary || null
+    }
     if (coachNoteRow?.sections?.length) _applyCoachNote(coachNoteRow)
     await _syncMemoryLayer()
 

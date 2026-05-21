@@ -1443,6 +1443,9 @@ function normalizeWorkoutRow(row) {
     intensity: row.intensity,
     distanceKm: row.distance_km,
     elevationM: row.elevation_m,
+    activeEnergyKcal: row.active_energy_kcal,
+    avgHeartRate: row.avg_heart_rate,
+    maxHeartRate: row.max_heart_rate,
     blocks: row.blocks || [],
   }, { source: row.source || 'telegram' })
 
@@ -1460,6 +1463,25 @@ function normalizeDailyLogRow(row = {}) {
     sleepHours: Number(row.sleepHours ?? row.sleep_hours) || 0,
     steps: Number(row.steps) || 0,
     mood: Number(row.mood) || 0,
+  }
+}
+
+function normalizeHealthSummaryRow(row = null) {
+  if (!row) return null
+  return {
+    day: row.day,
+    sleepScore: Number(row.sleep_score),
+    movementScore: Number(row.movement_score),
+    heartScore: Number(row.heart_score),
+    recoveryScore: Number(row.recovery_score),
+    strainScore: Number(row.strain_score),
+    dataConfidence: Number(row.data_confidence) || 0,
+    totalSleepHours: Number(row.sleep_hours) || 0,
+    steps: Number(row.steps) || 0,
+    walkingDistanceKm: Number(row.distance_km) || 0,
+    activeEnergyKcal: Number(row.active_energy_kcal) || 0,
+    restingHeartRate: Number(row.resting_heart_rate) || 0,
+    hrvSdnn: Number(row.hrv_sdnn) || 0,
   }
 }
 
@@ -1733,7 +1755,7 @@ export default async function handler(req, res) {
     const profile = await resolveProfile()
     if (!profile) throw new Error('Profil bulunamadi')
 
-    const [workoutRows, dailyLogRows, coachRows, athleteMemoryRows, memoryFeedbackRows, bodyMetricsHistoryRows, workoutBlockRows, workoutFactRows, questionRows] = await Promise.all([
+    const [workoutRows, dailyLogRows, coachRows, athleteMemoryRows, memoryFeedbackRows, bodyMetricsHistoryRows, workoutBlockRows, workoutFactRows, questionRows, healthSummaryRows] = await Promise.all([
       sbGet(`workouts?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=60`),
       sbGet(`daily_logs?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=14`),
       sbGet(`coach_notes?select=*&profile_id=eq.${profile.id}&order=date.desc,created_at.desc&limit=1`),
@@ -1743,6 +1765,7 @@ export default async function handler(req, res) {
       sbGetSafe(`workout_blocks?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=320`, []),
       sbGetSafe(`workout_facts?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=320`, []),
       sbGetSafe(`odie_questions?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=8`, []),
+      sbGetSafe(`health_daily_summary?select=*&profile_id=eq.${profile.id}&order=day.desc&limit=1`, []),
     ])
     const workouts = (workoutRows || []).map(row => normalizeWorkoutRow(row))
     const dailyLogs = (dailyLogRows || []).map(row => normalizeDailyLogRow(row))
@@ -1753,6 +1776,7 @@ export default async function handler(req, res) {
     const workoutBlocks = (workoutBlockRows || []).map(row => normalizeWorkoutBlockRow(row))
     const workoutFacts = (workoutFactRows || []).map(row => normalizeWorkoutFactRow(row))
     const questionHistory = (questionRows || []).map(row => normalizeQuestionRow(row))
+    const healthSummary = normalizeHealthSummaryRow((healthSummaryRows || [])[0] || null)
     const currentPrs = buildCurrentPrs(workouts)
 
     const bodyWeightKg = Number(profile.body_metrics?.weightKg) || 0
@@ -1809,6 +1833,7 @@ export default async function handler(req, res) {
       survivalMultiplier: survival.xpMultiplier,
       prBonusMultiplier: currentClass?.passive?.prBonus || 1,
       doubleSession: workouts.some(workout => normalizeDateString(workout.date) === sessionDate),
+      healthSummary,
     })
     const statDelta = computeSessionStatDelta(session)
     const nextStats = computeProfileStatsFromWorkouts([session, ...workouts], profile.stats || {})
@@ -1856,6 +1881,7 @@ export default async function handler(req, res) {
         streak: streak.current,
         xpEarned: xpInfo.xpEarned,
         survival,
+        healthSummary,
       })
       const coach = await getCoachResponse(parsedForCoach, {
         xp: xpInfo.xpEarned,
@@ -1897,6 +1923,7 @@ export default async function handler(req, res) {
           streak: streak.current,
           xpEarned: xpInfo.xpEarned,
           survival,
+          healthSummary,
         }),
       })
       telegramMsg = fallback.telegramMsg

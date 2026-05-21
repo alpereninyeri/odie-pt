@@ -1250,6 +1250,11 @@ export function computeSessionXp(session = {}, context = {}) {
   const doubleSession = Boolean(context.doubleSession)
   const fatigue = Number(context.fatigue) || 0
   const armor = Number(context.armor) || 100
+  const healthSummary = context.healthSummary || context.dailySummary || context.vitalScores?.summary || null
+  const sleepScore = Number(context.vitalScores?.sleep ?? healthSummary?.sleepScore)
+  const heartScore = Number(context.vitalScores?.heart ?? healthSummary?.heartScore)
+  const systemFatigue = Number(context.vitalScores?.systemFatigue ?? context.systemFatigue)
+  const effectiveFatigue = Number.isFinite(systemFatigue) ? Math.max(fatigue, systemFatigue) : fatigue
   const closingGap = Boolean(context.closingGap)
   const questCompleted = Boolean(context.questCompleted)
   const injuryConflict = Boolean(context.injuryConflict)
@@ -1270,13 +1275,26 @@ export function computeSessionXp(session = {}, context = {}) {
 
   if (survivalMultiplier > 0) {
     if (normalized.hasPr) {
-      if (injuryConflict || armor < 45) addZeroPart('pr_locked', 'PR Bonusu Kilitli')
-      else if (fatigue >= 75) addPart('pr', 'PR Bonusu Sinirli', 15 * prBonusMultiplier)
+      if (
+        injuryConflict
+        || armor < 45
+        || (Number.isFinite(sleepScore) && sleepScore < 45)
+        || (Number.isFinite(heartScore) && heartScore < 45)
+      ) addZeroPart('pr_locked', 'PR Bonusu Kilitli')
+      else if (effectiveFatigue >= 75) addPart('pr', 'PR Bonusu Sinirli', 15 * prBonusMultiplier)
       else addPart('pr', 'PR Bonusu', 50 * prBonusMultiplier)
     }
     if (hasDirectCoreStimulus(normalized)) addPart('form', 'Form Bonusu', 20)
     if (closingGap) addPart('gap', 'Kapanan Hat Bonusu', 25)
-    if (normalized.primaryCategory === 'recovery' && fatigue >= 60) addPart('recovery', 'Toparlanma XP', 35)
+    if (normalized.primaryCategory === 'recovery' && effectiveFatigue >= 60) addPart('recovery', 'Toparlanma XP', 35)
+    if ((normalized.primaryCategory === 'movement' || normalized.primaryCategory === 'endurance') && (normalized.distanceKm >= 2 || normalized.durationMin >= 20)) {
+      addPart('movement', 'Movement XP', Math.min(45, (Number(normalized.distanceKm) || 0) * 3 + (Number(normalized.durationMin) || 0) * 0.4))
+    }
+    if (healthSummary && Number.isFinite(sleepScore) && sleepScore < 60 && normalized.primaryCategory === 'recovery') addPart('sleep_recovery', 'Sleep Recovery XP', 30)
+    if (healthSummary && Number.isFinite(heartScore) && heartScore >= 72 && effectiveFatigue < 65) addPart('heart_stability', 'Heart Stability Bonus', 20)
+    if (!injuryConflict && activeQuest?.safeMode && ['recovery', 'movement', 'endurance'].includes(normalized.primaryCategory)) {
+      addPart('injury_safe', 'Injury-Safe Choice Bonus', 25)
+    }
     if (questCompleted) {
       const questXp = Number(activeQuest?.xpReward) || Number(String(activeQuest?.reward || '').match(/\d+/)?.[0]) || 30
       addPart('quest', 'Ara Gorev XP', questXp)

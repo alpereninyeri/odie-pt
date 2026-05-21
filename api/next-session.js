@@ -58,6 +58,9 @@ function normalizeWorkoutRow(row = {}) {
     blocks: Array.isArray(row.blocks) ? row.blocks : [],
     distanceKm: Number(row.distance_km) || 0,
     elevationM: Number(row.elevation_m) || 0,
+    activeEnergyKcal: Number(row.active_energy_kcal) || 0,
+    avgHeartRate: Number(row.avg_heart_rate) || 0,
+    maxHeartRate: Number(row.max_heart_rate) || 0,
     hasPr: row.has_pr,
     createdAt: row.created_at,
     startedAt: row.started_at,
@@ -71,6 +74,34 @@ function normalizeDailyLog(row = {}) {
     waterMl: Number(row.water_ml) || 0,
     steps: Number(row.steps) || 0,
     mood: Number(row.mood) || 0,
+  }
+}
+
+function normalizeHealthSummary(row = null) {
+  if (!row) return null
+  return {
+    day: row.day,
+    sleepScore: Number(row.sleep_score),
+    movementScore: Number(row.movement_score),
+    heartScore: Number(row.heart_score),
+    recoveryScore: Number(row.recovery_score),
+    strainScore: Number(row.strain_score),
+    dataConfidence: Number(row.data_confidence) || 0,
+    totalSleepHours: Number(row.sleep_hours) || 0,
+    deepSleepHours: Number(row.deep_sleep_hours) || 0,
+    remSleepHours: Number(row.rem_sleep_hours) || 0,
+    coreSleepHours: Number(row.core_sleep_hours) || 0,
+    awakeMinutes: Number(row.awake_minutes) || 0,
+    sleepEfficiency: Number(row.sleep_efficiency) || null,
+    steps: Number(row.steps) || 0,
+    walkingDistanceKm: Number(row.distance_km) || 0,
+    activeEnergyKcal: Number(row.active_energy_kcal) || 0,
+    exerciseMinutes: Number(row.exercise_minutes) || 0,
+    restingHeartRate: Number(row.resting_heart_rate) || 0,
+    avgHeartRate: Number(row.avg_heart_rate) || 0,
+    maxHeartRate: Number(row.max_heart_rate) || 0,
+    walkingHeartRateAverage: Number(row.walking_heart_rate) || 0,
+    hrvSdnn: Number(row.hrv_sdnn) || 0,
   }
 }
 
@@ -102,18 +133,21 @@ export default async function handler(req, res) {
     const profileRow = await resolveProfile()
     if (!profileRow?.id) return res.status(404).json({ ok: false, error: 'Profil bulunamadi' })
 
-    const [workoutRows, dailyLogRows, feedbackRows, bodyEventRows] = await Promise.all([
+    const [workoutRows, dailyLogRows, feedbackRows, bodyEventRows, healthSummaryRows] = await Promise.all([
       sbGetSafe(`workouts?select=*&profile_id=eq.${profileRow.id}&order=date.desc,created_at.desc&limit=120`, []),
       sbGetSafe(`daily_logs?select=*&profile_id=eq.${profileRow.id}&order=date.desc&limit=30`, []),
       sbGetSafe(`memory_feedback?select=*&profile_id=eq.${profileRow.id}&order=created_at.desc&limit=24`, []),
       sbGetSafe(`body_events?select=*&profile_id=eq.${profileRow.id}&order=created_at.desc&limit=40`, []),
+      sbGetSafe(`health_daily_summary?select=*&profile_id=eq.${profileRow.id}&order=day.desc&limit=1`, []),
     ])
+    const healthDailySummary = normalizeHealthSummary((healthSummaryRows || [])[0] || null)
 
     const recommendation = buildNextSessionRecommendation({
       profile: normalizeProfile(profileRow),
       workouts: (workoutRows || []).map(row => normalizeWorkoutRow(row)),
       dailyLogs: (dailyLogRows || []).map(row => normalizeDailyLog(row)),
       memoryFeedback: feedbackRows || [],
+      health: { dailySummary: healthDailySummary },
       bodyEvents: (bodyEventRows || []).map(row => normalizeBodyEventRow(row)),
     })
 

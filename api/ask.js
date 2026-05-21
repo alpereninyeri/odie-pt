@@ -191,6 +191,25 @@ function normalizeDailyLogRow(row = {}) {
   }
 }
 
+function normalizeHealthSummaryRow(row = null) {
+  if (!row) return null
+  return {
+    day: row.day,
+    sleepScore: Number(row.sleep_score),
+    movementScore: Number(row.movement_score),
+    heartScore: Number(row.heart_score),
+    recoveryScore: Number(row.recovery_score),
+    strainScore: Number(row.strain_score),
+    dataConfidence: Number(row.data_confidence) || 0,
+    totalSleepHours: Number(row.sleep_hours) || 0,
+    steps: Number(row.steps) || 0,
+    walkingDistanceKm: Number(row.distance_km) || 0,
+    activeEnergyKcal: Number(row.active_energy_kcal) || 0,
+    restingHeartRate: Number(row.resting_heart_rate) || 0,
+    hrvSdnn: Number(row.hrv_sdnn) || 0,
+  }
+}
+
 function normalizeCoachNoteRow(row = null) {
   if (!row) return null
   return {
@@ -280,6 +299,9 @@ function buildAskPrompt(question, context) {
   const questionMemory = summarizeRecentQuestions(context.questionHistory)
   const recentPrs = summarizeRecentPrs(odie.recentPrs || [])
   const recentWorkouts = summarizeRecentWorkouts(odie.recentWorkouts || [])
+  const appleCore4 = recovery.apple
+    ? `- Uyku ${recovery.apple.sleepScore} (${recovery.apple.sleepHours}s) / hareket ${recovery.apple.movementScore} (${recovery.apple.steps} adim) / kalp ${recovery.apple.heartScore} (HRV ${recovery.apple.hrvSdnn}, RHR ${recovery.apple.restingHeartRate}) / veri guveni ${recovery.apple.dataConfidence}%`
+    : '- Apple Core 4 verisi yok'
 
   return `Kullanici sorusu:
 ${question}
@@ -294,6 +316,9 @@ Atlet profili:
 - En zayif stat: ${weakest?.key || '-'} ${weakest?.val ?? ''}
 - En guclu stat: ${strongest?.key || '-'} ${strongest?.val ?? ''}
 - Recovery: armor ${recovery.armor ?? '-'} · fatigue ${recovery.fatigue ?? '-'} · status ${recovery.status || '-'}
+
+Apple Core 4 izi:
+${appleCore4}
 
 Son workout izi:
 ${recentWorkouts}
@@ -383,7 +408,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ ok: false, error: 'Profil bulunamadi' })
     }
 
-    const [workoutRows, dailyLogRows, coachRows, athleteMemoryRows, memoryFeedbackRows, bodyMetricsHistoryRows, workoutBlockRows, workoutFactRows, questionRows] = await Promise.all([
+    const [workoutRows, dailyLogRows, coachRows, athleteMemoryRows, memoryFeedbackRows, bodyMetricsHistoryRows, workoutBlockRows, workoutFactRows, questionRows, healthSummaryRows] = await Promise.all([
       sbGet(`workouts?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=60`),
       sbGet(`daily_logs?select=*&profile_id=eq.${profile.id}&order=date.desc&limit=14`),
       sbGetSafe(`coach_notes?select=*&profile_id=eq.${profile.id}&order=date.desc,created_at.desc&limit=1`, []),
@@ -393,6 +418,7 @@ export default async function handler(req, res) {
       sbGetSafe(`workout_blocks?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=320`, []),
       sbGetSafe(`workout_facts?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=320`, []),
       sbGetSafe(`odie_questions?select=*&profile_id=eq.${profile.id}&order=created_at.desc&limit=8`, []),
+      sbGetSafe(`health_daily_summary?select=*&profile_id=eq.${profile.id}&order=day.desc&limit=1`, []),
     ])
 
     const workouts = (workoutRows || []).map(row => normalizeWorkoutRow(row))
@@ -404,6 +430,7 @@ export default async function handler(req, res) {
     const workoutBlocks = (workoutBlockRows || []).map(row => normalizeWorkoutBlockRow(row))
     const workoutFacts = (workoutFactRows || []).map(row => normalizeWorkoutFactRow(row))
     const questionHistory = (questionRows || []).map(row => normalizeQuestionRow(row))
+    const healthSummary = normalizeHealthSummaryRow((healthSummaryRows || [])[0] || null)
     const currentClass = computeClass(workouts)
     const currentPrs = buildCurrentPrs(workouts)
     const currentSurvival = applyTimedRecovery({
@@ -435,6 +462,7 @@ export default async function handler(req, res) {
         status: currentSurvival.status,
         warnings: Array.isArray(latestCoachNote?.warnings) ? latestCoachNote.warnings : [],
       },
+      healthSummary,
     })
 
     let parsed = null

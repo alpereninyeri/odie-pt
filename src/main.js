@@ -2,7 +2,6 @@ import './styles/odie-ui.css'
 import './styles/heroic-rpg.css'
 import './styles/infographic-game.css'
 import './styles/mobile-revolution.css'
-import ODIE_PRESTIGE_ANATOMY from './assets/odie-athlete-anatomy-prestige.svg'
 import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
 import { BODY_REGION_OPTIONS } from './data/body-events.js'
@@ -21,7 +20,7 @@ import { goalTitle, riskToneLabel, sourceLabel, uiLabel } from './data/ui-copy.j
 
 const tabs = [
   { key: 'today', label: 'Bugun', icon: 'home' },
-  { key: 'character', label: 'Karakter', icon: 'char' },
+  { key: 'character', label: 'Vital OS', icon: 'char' },
   { key: 'odie', label: 'ODIE', icon: 'pulse' },
 ]
 
@@ -183,7 +182,7 @@ function pageTitle(tabKey, profile) {
     case 'today':
       return `${profile.nick} - Bugun`
     case 'character':
-      return `${profile.nick} Karakter Sayfasi`
+      return `${profile.nick} Vital OS`
     case 'odie':
       return odieMode === 'ask' ? "ODIE'ye Sor" : 'ODIE Yorumu'
     default:
@@ -657,7 +656,7 @@ function renderPrestigeAnatomySheet(bodyMapState, profile, className = '') {
           <em>${escapeHtml(className || 'Karakter')}</em>
         </span>
         <span class="anatomy-orbit" aria-hidden="true"></span>
-        <img class="prestige-anatomy-art" src="${ODIE_PRESTIGE_ANATOMY}" alt="" loading="eager">
+        <span class="prestige-anatomy-art is-retired" aria-hidden="true">Vital OS</span>
         ${renderPrestigeHeatLayer(bodyMapState, priorityRegion)}
       </button>
 
@@ -692,10 +691,6 @@ function renderPrestigeAnatomySheet(bodyMapState, profile, className = '') {
   `
 }
 
-function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
-  return renderPrestigeAnatomySheet(bodyMapState, profile, className)
-}
-
 function renderXpRoute(bodyMapState) {
   const parts = bodyMapState?.xpPreview?.parts || []
   if (!parts.length) return ''
@@ -709,17 +704,115 @@ function renderXpRoute(bodyMapState) {
   `
 }
 
+function cleanScore(value, fallback = 0) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  return Math.max(0, Math.min(100, Math.round(numeric)))
+}
+
+function vitalTone(value, reverse = false) {
+  const score = cleanScore(value)
+  const good = reverse ? score <= 45 : score >= 72
+  const warn = reverse ? score >= 70 : score < 45
+  if (good) return 'good'
+  if (warn) return 'warn'
+  return 'steady'
+}
+
+function renderVitalRing({ key, label, value, detail, reverse = false }) {
+  const score = cleanScore(value)
+  return `
+    <div class="vital-ring tone-${vitalTone(score, reverse)}" style="--vital:${score};--vital-deg:${score * 3.6}deg">
+      <div class="vital-ring-orb">
+        <span>${escapeHtml(label)}</span>
+        <strong>${score}</strong>
+      </div>
+      <small>${escapeHtml(detail || '')}</small>
+    </div>
+  `
+}
+
+function getVitalOsModel(state = {}, bodyMapState = null, nextSession = null) {
+  const vital = state.health?.vitalScores || {}
+  const summary = vital.summary || state.healthDailySummary || state.healthStatus?.dailySummary || null
+  const load = cleanScore(vital.load ?? summary?.strainScore ?? state.profile?.fatigue ?? 0)
+  const recovery = cleanScore(vital.recovery ?? summary?.recoveryScore ?? state.health?.readiness?.score ?? 0)
+  const sleep = cleanScore(vital.sleep ?? summary?.sleepScore ?? 0)
+  const heartRaw = vital.heart ?? summary?.heartScore
+  const heart = Number.isFinite(Number(heartRaw)) ? cleanScore(heartRaw) : 0
+  const injury = bodyMapState?.injuries?.[0] || bodyMapState?.priority?.region?.injury || null
+  const quest = bodyMapState?.dailyQuest || null
+  const unlock = bodyMapState?.unlockTargets?.[0] || null
+  const dataConfidence = cleanScore(vital.dataConfidence ?? summary?.dataConfidence ?? state.healthStatus?.dailySummary?.dataConfidence ?? 0)
+  const readinessConfidence = ({ high: 'yuksek', medium: 'orta', low: 'dusuk' })[state.health?.readiness?.confidence] || 'orta'
+  const activeCommand = nextSession?.coachCommand || quest?.desc || 'Bugunu temiz veriyle kapat.'
+  const risk = injury
+    ? `${injury.label || 'Bilek'} temkinde: %${Math.round(injury.recoveryPct ?? 0)} toparlandi, ${Math.round(injury.etaDays ?? 0)} gun agir grip yok.`
+    : nextSession?.warnings?.[0] || state.health?.warnings?.[0]?.desc || 'Risk sinyali sakin.'
+
+  return {
+    summary,
+    dataConfidence,
+    injury,
+    quest,
+    unlock,
+    activeCommand,
+    risk,
+    rings: [
+      { key: 'load', label: 'Yuk', value: load, reverse: true, detail: summary?.steps ? `${Math.round(summary.steps).toLocaleString('tr-TR')} adim` : `${Math.round(state.profile?.fatigue || 0)} yorgunluk` },
+      { key: 'recovery', label: 'Toparlanma', value: recovery, detail: `${readinessConfidence} guven` },
+      { key: 'sleep', label: 'Uyku', value: sleep, detail: summary?.totalSleepHours ? `${Number(summary.totalSleepHours).toFixed(1)} saat` : 'izin bekliyor' },
+      { key: 'heart', label: 'Kalp', value: heart, detail: summary?.hrvSdnn ? `HRV ${Math.round(summary.hrvSdnn)} / RHR ${Math.round(summary.restingHeartRate || 0)}` : 'nabiz bekliyor' },
+    ],
+  }
+}
+
+function renderVitalPulsePanel(state, bodyMapState, nextSession = null) {
+  const model = getVitalOsModel(state, bodyMapState, nextSession)
+  return `
+    <div class="vital-pulse-panel">
+      <div class="vital-pulse-head">
+        <span>Vital OS</span>
+        <strong>${model.dataConfidence}% veri netligi</strong>
+      </div>
+      <div class="vital-ring-grid">
+        ${model.rings.map(renderVitalRing).join('')}
+      </div>
+      <div class="vital-pulse-alert ${model.injury ? 'tone-injury' : 'tone-steady'}">
+        <span>${model.injury ? 'Temkin' : 'Durum'}</span>
+        <strong>${escapeHtml(model.risk)}</strong>
+      </div>
+    </div>
+  `
+}
+
 function renderHealthBridgeCard(state = {}) {
-  const appleWorkout = (state.workouts || []).find(workout => String(workout.source || '').toLowerCase() === 'apple_health')
+  const healthStatus = state.healthStatus || {}
+  const sources = healthStatus.sources || {}
+  const appleWorkout = healthStatus.lastAppleWorkout || (state.workouts || []).find(workout => String(workout.source || '').toLowerCase() === 'apple_health')
+  const sourceRows = [
+    ['Hevy', sources.hevy || 'configured'],
+    ['Apple Workout', sources.appleWorkout || (appleWorkout ? 'linked' : 'waiting')],
+    ['Apple Sleep', sources.appleSleep || 'waiting'],
+    ['Apple Heart', sources.appleHeart || 'waiting'],
+    ['Manual', sources.manual || 'available'],
+  ]
   const latestText = appleWorkout
     ? `${formatMonthShort(appleWorkout.date)} / ${appleWorkout.distanceKm ? `${Math.round(appleWorkout.distanceKm * 10) / 10} km` : `${appleWorkout.durationMin || 0} dk`}`
-    : 'Shortcut bekliyor'
+    : (healthStatus.missing ? 'Migration bekliyor' : 'Shortcut bekliyor')
+  const lastSync = healthStatus.lastSyncAt ? formatMonthShort(healthStatus.lastSyncAt) : 'sync yok'
+  const lastError = healthStatus.lastError?.error || ''
   return `
     <article class="health-bridge-card">
       <div>
-        <span>${renderExplainButton('apple-health', 'Apple Health', 'explain-link metric-explain')}</span>
-        <strong>iPhone hareketleri ODIE'ye aksin</strong>
-        <small>${escapeHtml(latestText)} - yuruyus, hiking, kosu ve bisiklet XP/yorgunluk motoruna yazilir.</small>
+        <span>${renderExplainButton('apple-health', 'Canli Kaynaklar', 'explain-link metric-explain')}</span>
+        <strong>Hevy kuvvet, Apple yasam verisi</strong>
+        <small>${escapeHtml(latestText)} / son sync ${escapeHtml(lastSync)}${lastError ? ` / hata: ${escapeHtml(lastError).slice(0, 80)}` : ''}</small>
+      </div>
+      <div class="health-source-grid">
+        ${sourceRows.map(([label, status]) => `
+          <span class="source-state tone-${escapeHtml(status)}"><b>${escapeHtml(label)}</b><i>${escapeHtml(status)}</i></span>
+        `).join('')}
       </div>
       <div class="health-bridge-actions">
         <button data-action="open-health-shortcut">Kestirme kur</button>
@@ -772,7 +865,7 @@ function renderMobileCommandCenter(state, profile, semantic, nextSession = {}, l
       </div>
 
       <div class="command-stage">
-        ${renderAthleteAnatomySheet(bodyMapState, profile, className)}
+        ${renderVitalPulsePanel(state, bodyMapState, nextSession)}
       </div>
 
       <div class="command-life-strip">
@@ -2022,6 +2115,7 @@ function renderCharacterPage(state, profile, semantic) {
   return `
     <section class="character-page">
       ${renderCharacterArena(state, profile, semantic)}
+      ${renderHealthBridgeCard(state)}
       ${renderPortraitBanner(state, profile)}
       ${renderTrioCards(state, profile, semantic)}
       ${renderCalibrationCallout(profile)}
@@ -2057,95 +2151,85 @@ function renderMirogluCommandCard({ label, title, detail, tone = 'focus', action
   `
 }
 
-function renderCharacterArena(state, profile, semantic) {
-  const stats = getFrontStats(state, profile)
-  const liveClass = state.profile.classObj || {}
-  const className = liveClass.name || profile.class
-  const focus = state.profile.currentFocus || 'Hybrid denge'
+function renderVitalOsArena(state, profile, semantic) {
   const bodyMapState = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
-  const nextUnlock = bodyMapState?.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
-  const armor = Math.round(Number(state.profile?.armor) || 0)
-  const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
-  const readinessValue = Number(state.health?.readiness?.score)
-  const readiness = Number.isFinite(readinessValue) ? Math.round(readinessValue) : '--'
+  const nextSession = buildNextSessionRecommendation({
+    profile: { ...state.profile, ...profile },
+    workouts: state.workouts || [],
+    dailyLogs: state.dailyLogs || [],
+    memoryFeedback: state.memoryFeedback || [],
+    health: state.health || {},
+    bodyEvents: state.bodyEvents || [],
+  })
+  const model = getVitalOsModel(state, bodyMapState, nextSession)
   const xpCur = profile?.xp?.current ?? 0
   const xpMax = profile?.xp?.max || 1
   const xpPct = percentOf(xpCur, xpMax)
-  const skillSummary = summarizeSkillProgress(profile.skills || [])
-  const focusSignal = (liveClass.signals || []).slice(0, 1).join(' / ') || `Variety ${semantic.variety || 0}`
-  const statusEffect = buildCharacterStatusEffect(bodyMapState, state)
-  const unlockProgress = nextUnlock?.progress != null ? Math.round(nextUnlock.progress) : null
-  const unlockMeta = unlockProgress != null
-    ? unlockProgress >= 100
-      ? `Hazir / ${nextUnlock.todayStep || nextUnlock.missing || 'kilit acilabilir'}`
-      : `%${unlockProgress} yakin / ${nextUnlock.missing || nextUnlock.todayStep || 'mini adim bekliyor'}`
-    : summarizeUnlockHint(nextUnlock, profile.skills || []) || skillSummary
-
-  const quest = bodyMapState?.dailyQuest
-  const xpRouteText = bodyMapState?.xpPreview?.text || `XP ${xpCur}/${xpMax}`
+  const liveClass = state.profile.classObj || {}
+  const className = liveClass.name || profile.class || 'OdiePT'
+  const rank = profile.rank || 'Unranked'
+  const quest = model.quest
+  const unlock = model.unlock || findNextUnlock(profile.skills || [])
+  const unlockDetail = unlock?.progress != null
+    ? `%${Math.round(unlock.progress)} yakin / ${unlock.todayStep || unlock.missing || 'mini adim bekliyor'}`
+    : summarizeUnlockHint(unlock, profile.skills || []) || 'Acilim icin canli veri bekliyor'
   return `
-    <article class="character-arena miroglu-sheet" style="--xp-pct:${xpPct}%">
-      <header class="miroglu-topbar">
-        <div class="miroglu-id">
-          <span>Karakter sheet</span>
+    <article class="character-arena vital-os-arena" style="--xp-pct:${xpPct}%">
+      <header class="vital-os-topbar">
+        <div>
+          <span>Vital OS</span>
           <h2>${escapeHtml(profile.nick)}</h2>
-          <p>${escapeHtml(profile.rank || 'Unranked')} / ${escapeHtml(className)} / ${escapeHtml(focus)}</p>
+          <p>L${escapeHtml(profile.level || 1)} / ${escapeHtml(rank)} / ${escapeHtml(className)}</p>
         </div>
-        <div class="miroglu-status">
-          <button class="miroglu-rank" data-action="open-archetype" aria-label="Karakter tipini ac">
-            <span>L${escapeHtml(profile.level || 1)}</span>
-            <strong>${escapeHtml(profile.rank || 'Rank')}</strong>
-          </button>
-          <div class="miroglu-ready">
-            <span>${escapeHtml(uiLabel('readiness'))}</span>
-            <strong>${escapeHtml(readiness)}</strong>
-          </div>
-        </div>
+        <button class="vital-os-confidence" data-action="open-health-shortcut">
+          <span>Veri Netligi</span>
+          <strong>${model.dataConfidence}%</strong>
+        </button>
       </header>
 
-      ${renderPrestigeAnatomySheet(bodyMapState, profile, className)}
+      <div class="vital-os-core">
+        <div class="vital-os-rings">
+          ${model.rings.map(renderVitalRing).join('')}
+        </div>
+        <div class="vital-os-summary">
+          <span>Bugunku Emir</span>
+          <strong>${escapeHtml(goalTitle(nextSession.primaryGoal) || quest?.name || 'Temiz Gun')}</strong>
+          <p>${escapeHtml(model.activeCommand)}</p>
+        </div>
+      </div>
 
-      <div class="anatomy-command-strip">
+      <div class="vital-os-risk ${model.injury ? 'tone-injury' : 'tone-steady'}">
+        <span>${model.injury ? 'Sakatlik Temkini' : 'Risk'}</span>
+        <strong>${escapeHtml(model.risk)}</strong>
+      </div>
+
+      <div class="anatomy-command-strip vital-command-strip">
         ${renderMirogluCommandCard({
-          label: 'Bugunku Hamle',
-          title: quest?.name || statusEffect.title,
-          detail: quest?.why || quest?.desc || statusEffect.detail,
-          tone: statusEffect.tone === 'injury' ? 'injury' : 'focus',
-          action: 'open-body-region',
-          regionId: statusEffect.regionId || bodyMapState?.priority?.region?.id || 'core',
+          label: 'Ara Gorev',
+          title: quest?.name || 'Gunluk halka',
+          detail: quest?.why || quest?.desc || 'Bugunun XP hattini guvenli kapat.',
+          tone: quest?.safeMode ? 'injury' : 'focus',
         })}
         ${renderMirogluCommandCard({
           label: uiLabel('unlock'),
-          title: nextUnlock?.name || 'Stable Build',
-          detail: unlockMeta.slice(0, 96),
+          title: unlock?.name || 'Stable Build',
+          detail: unlockDetail.slice(0, 96),
           tone: 'unlock',
           action: 'open-unlock',
         })}
         ${renderMirogluCommandCard({
           label: 'XP Nereden Gelir?',
-          title: xpRouteText,
-          detail: `${skillSummary} / ${(focusSignal || liveClass.reason || 'aktif build').slice(0, 64)}`,
+          title: bodyMapState?.xpPreview?.text || `XP ${xpCur}/${xpMax}`,
+          detail: 'Workout, hareket, uyku onarimi, kalp stabilitesi ve gorev bagli.',
           tone: 'xp',
         })}
       </div>
-
-      <div class="miroglu-vitals">
-        ${renderRevMeter('xp', `XP ${xpCur}/${xpMax}`, xpPct, 'xp')}
-        ${renderRevMeter('armor', uiLabel('armor'), armor, 'armor')}
-        ${renderRevMeter('fatigue', uiLabel('fatigue'), fatigue, 'fatigue')}
-      </div>
-
-      <div class="passport-stat-grid">
-        ${stats.map(stat => renderPassportStat(stat, nextUnlock, bodyMapState)).join('')}
-      </div>
-
-      <div class="arena-footer">
-        <span>${escapeHtml(skillSummary)}</span>
-        <span>${escapeHtml(profile.totalVolume || '0 kg')} total</span>
-        ${profile.calibration?.completedAt ? '<span>Rank kalibre</span>' : '<button data-action="open-stat-calibration">Ranklari kilitle</button>'}
-      </div>
     </article>
   `
+}
+
+function renderCharacterArena(state, profile, semantic) {
+  return renderVitalOsArena(state, profile, semantic)
 }
 
 function buildCharacterStatusEffect(bodyMapState = {}, state = {}) {
@@ -2711,20 +2795,29 @@ function openHealthShortcutModal() {
   openModal(`
     <div class="modal-head">
       <span style="font-size:18px">APL</span>
-      <div class="modal-head-title">Apple Health Kestirmesi</div>
+      <div class="modal-head-title">Apple Health Core 4</div>
       <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
     </div>
     <div class="modal-body health-shortcut-modal">
-      <div class="modal-desc">iPhone Kestirmesi, Health aktivitesini bu endpoint'e POST eder. Token Vercel'de <strong>HEALTH_IMPORT_TOKEN</strong> olarak durur; Kestirme header'ina ayni token yazilir.</div>
+      <div class="modal-desc">iPhone Kestirmesi bu endpoint'e batch JSON yollar. Header: <strong>Authorization: Bearer HEALTH_IMPORT_TOKEN</strong>. Ham veri ledger'a girer; workout, gun ozeti, readiness, XP ve ODIE karari oradan turetilir.</div>
       <div class="region-modal-list">
         <strong>Endpoint</strong>
         <span>${escapeHtml(`${origin}/api/health-import`)}</span>
       </div>
       <div class="region-modal-list">
-        <strong>Gonderilecek alanlar</strong>
-        <span>activityType, startAt, endAt, durationMin, distanceKm, steps, elevationM, activeEnergyKcal, avgHeartRate, routeName</span>
+        <strong>Core 4</strong>
+        <span>workout: tip/sure/mesafe/enerji/yukselti/nabiz</span>
+        <span>activity_day: adim/mesafe/aktif enerji/exercise minutes</span>
+        <span>sleep: total/core/deep/REM/awake/efficiency</span>
+        <span>heart: resting HR, walking HR, HRV SDNN, high/low trend</span>
       </div>
-      <div class="modal-coach">ODIE bunu workout'a cevirir: source Apple Health, duplicate korumali externalId, XP/yorgunluk/stat ve bugunun hamlesi ayni motorla guncellenir.</div>
+      <div class="region-modal-list">
+        <strong>Kestirme ritmi</strong>
+        <span>Workout End: son antrenmani yollar.</span>
+        <span>Sabah Sync: uyku + resting HR + HRV yollar.</span>
+        <span>Gece Sync: adim, aktivite ve kacan workoutlari yollar.</span>
+      </div>
+      <div class="modal-coach">ODIE ham veriyi memory coplugune yazmaz. Sadece anlamli pattern ve bugunun karari yasam verisine baglanir.</div>
     </div>
   `)
 }

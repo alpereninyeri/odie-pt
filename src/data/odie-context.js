@@ -88,7 +88,7 @@ function summarizeSkillPressure(skills = []) {
     }))
 }
 
-function summarizeRecovery(dailyLogs = [], survival = {}, today = getLocalDateString()) {
+function summarizeRecovery(dailyLogs = [], survival = {}, today = getLocalDateString(), healthSummary = null) {
   const recentLogs = sortByDateDesc(dailyLogs).slice(0, 7)
   const avgSteps = Math.round(avg(recentLogs.map(log => Number(log.steps) || 0), 0))
   const avgSleep = Math.round(avg(recentLogs.map(log => Number(log.sleepHours) || 0), 0) * 10) / 10
@@ -102,6 +102,19 @@ function summarizeRecovery(dailyLogs = [], survival = {}, today = getLocalDateSt
     todaySteps: Number(todayLog?.steps) || 0,
     todaySleep: Number(todayLog?.sleepHours) || 0,
     todayWaterL: Math.round(((Number(todayLog?.waterMl) || 0) / 1000) * 10) / 10,
+    apple: healthSummary ? {
+      day: healthSummary.day,
+      sleepScore: Number(healthSummary.sleepScore) || 0,
+      movementScore: Number(healthSummary.movementScore) || 0,
+      heartScore: Number(healthSummary.heartScore) || 0,
+      recoveryScore: Number(healthSummary.recoveryScore) || 0,
+      strainScore: Number(healthSummary.strainScore) || 0,
+      dataConfidence: Number(healthSummary.dataConfidence) || 0,
+      sleepHours: Number(healthSummary.totalSleepHours) || 0,
+      steps: Number(healthSummary.steps) || 0,
+      hrvSdnn: Number(healthSummary.hrvSdnn) || 0,
+      restingHeartRate: Number(healthSummary.restingHeartRate) || 0,
+    } : null,
     armor: Number(survival.armor) || 0,
     fatigue: Number(survival.fatigue) || 0,
     status: survival.status || 'healthy',
@@ -326,6 +339,7 @@ export function buildOdieContext({
   streak = 0,
   xpEarned = 0,
   survival = {},
+  healthSummary = null,
 } = {}) {
   const normalizedWorkouts = sortByDateDesc((workouts || []).map(workout => normalizeSession(workout)))
   const contextWorkouts = session
@@ -360,7 +374,7 @@ export function buildOdieContext({
       streak: Number(streak) || 0,
     },
     stats: summarizeStats(stats),
-    recovery: summarizeRecovery(dailyLogs, survival, session?.date || getLocalDateString()),
+    recovery: summarizeRecovery(dailyLogs, survival, session?.date || getLocalDateString(), healthSummary),
     disciplineMix: summarizeDisciplineMix(contextWorkouts),
     recentWorkouts: summarizeRecentWorkouts(contextWorkouts),
     recentPrs: summarizeRecentPrs(prs),

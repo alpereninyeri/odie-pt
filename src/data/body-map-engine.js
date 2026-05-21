@@ -645,6 +645,12 @@ function questFromSignature(classId, priority) {
 function buildDailyGameQuest({ state, priority, classId }) {
   const fatigue = Number(state?.profile?.fatigue) || 0
   const armor = Number(state?.profile?.armor) || 100
+  const vital = state?.health?.vitalScores || {}
+  const healthSummary = vital.summary || state?.healthDailySummary || state?.healthStatus?.dailySummary || null
+  const sleepScore = Number(vital.sleep ?? healthSummary?.sleepScore)
+  const heartScore = Number(vital.heart ?? healthSummary?.heartScore)
+  const strainScore = Number(vital.strain ?? healthSummary?.strainScore)
+  const movementScore = Number(vital.movement ?? healthSummary?.movementScore)
   const region = priority.region
   const movement = priority.movement
   const unlock = priority.unlock
@@ -669,6 +675,86 @@ function buildDailyGameQuest({ state, priority, classId }) {
       linkedMovement: 'mobility',
       linkedUnlock: unlock?.name || '',
       safeMode: true,
+      fromGame: true,
+    }
+  }
+
+  if (healthSummary && Number.isFinite(sleepScore) && sleepScore < 45) {
+    return {
+      id: 'health_sleep_guard',
+      kind: 'health_recovery',
+      name: 'Kalkani Onar',
+      desc: '25 dk rahat yuruyus + 10 dk mobilite, erken kapanis.',
+      why: `Uyku skoru ${Math.round(sleepScore)}; bugun XP toparlanmadan gelir.`,
+      xpReward: 35,
+      reward: '+35 XP',
+      progress: 0,
+      total: 1,
+      done: false,
+      linkedRegion: 'core',
+      linkedMovement: 'mobility',
+      linkedUnlock: unlock?.name || '',
+      safeMode: true,
+      fromGame: true,
+    }
+  }
+
+  if (healthSummary && Number.isFinite(heartScore) && heartScore < 45) {
+    return {
+      id: 'health_heart_calm',
+      kind: 'health_recovery',
+      name: 'Sakin Gun',
+      desc: '20-30 dk dusuk nabiz hareket + 8 dk nefes.',
+      why: `Kalp/HRV skoru ${Math.round(heartScore)}; sistem yorgunlugu temkin istiyor.`,
+      xpReward: 35,
+      reward: '+35 XP',
+      progress: 0,
+      total: 1,
+      done: false,
+      linkedRegion: 'core',
+      linkedMovement: 'mobility',
+      linkedUnlock: unlock?.name || '',
+      safeMode: true,
+      fromGame: true,
+    }
+  }
+
+  if (healthSummary && ((Number.isFinite(strainScore) && strainScore >= 72) || Number(healthSummary.walkingDistanceKm || healthSummary.workoutDistanceKm) >= 10)) {
+    return {
+      id: 'health_ankle_calf_care',
+      kind: 'movement_care',
+      name: 'Ayak Bilegi + Kalf Bakimi',
+      desc: '10 dk ayak bilegi, kalf ve kalca bakimi.',
+      why: `Gun yuku ${Math.round(strainScore || 0)}; uzun hareket sonrasi alt hat korunacak.`,
+      xpReward: 30,
+      reward: '+30 XP',
+      progress: 0,
+      total: 1,
+      done: false,
+      linkedRegion: 'ankles',
+      linkedMovement: 'landing',
+      linkedUnlock: unlock?.name || 'Precision Landing I',
+      safeMode: true,
+      fromGame: true,
+    }
+  }
+
+  if (healthSummary && Number.isFinite(movementScore) && movementScore < 35 && Number(healthSummary.steps) < 4500) {
+    return {
+      id: 'health_movement_ring',
+      kind: 'movement_ring',
+      name: 'Hareket Halkasi',
+      desc: '20 dk kolay yuruyus; bugunu bos gecme.',
+      why: `Adim ${Math.round(Number(healthSummary.steps) || 0)}; gunluk hareket halkasi eksik.`,
+      xpReward: 25,
+      reward: '+25 XP',
+      progress: 0,
+      total: 1,
+      done: false,
+      linkedRegion: 'calves',
+      linkedMovement: 'flow',
+      linkedUnlock: unlock?.name || '',
+      safeMode: false,
       fromGame: true,
     }
   }
@@ -751,13 +837,27 @@ function buildXpPreview({ state, dailyQuest, priority }) {
   const fatigue = Number(state?.profile?.fatigue) || 0
   const armor = Number(state?.profile?.armor) || 100
   const readiness = Number(state?.health?.readiness?.score)
+  const vital = state?.health?.vitalScores || {}
+  const healthSummary = vital.summary || state?.healthDailySummary || state?.healthStatus?.dailySummary || null
+  const sleepScore = Number(vital.sleep ?? healthSummary?.sleepScore)
+  const heartScore = Number(vital.heart ?? healthSummary?.heartScore)
+  const strainScore = Number(vital.strain ?? healthSummary?.strainScore)
+  const movementScore = Number(vital.movement ?? healthSummary?.movementScore)
   const parts = []
 
   parts.push({ key: 'base', label: 'Ana Hamle', value: readiness < 45 || armor < 55 ? 55 : 80 })
+  if (healthSummary && Number.isFinite(movementScore) && movementScore >= 45) parts.push({ key: 'movement', label: 'Hareket XP', value: Math.min(35, Math.round(movementScore / 3)) })
   if (priority?.region?.trend === 'ihmal') parts.push({ key: 'gap', label: 'Kapanan Hat', value: 25 })
   if (priority?.unlock?.progress >= 45 && priority?.unlock?.progress < 100) parts.push({ key: 'unlock', label: 'Açılım İzi', value: 20 })
   if (dailyQuest?.xpReward) parts.push({ key: 'quest', label: 'Ara Görev', value: Number(dailyQuest.xpReward) || 0 })
   if (dailyQuest?.kind === 'injury') parts.push({ key: 'guard', label: 'Kalkan Onarimi', value: 25 })
+  if (dailyQuest?.kind === 'health_recovery' || (healthSummary && Number.isFinite(sleepScore) && sleepScore < 60)) {
+    parts.push({ key: 'sleep', label: 'Uyku Onarimi', value: 30 })
+  }
+  if (healthSummary && Number.isFinite(heartScore) && heartScore >= 72) parts.push({ key: 'heart', label: 'Kalp Stabil', value: 20 })
+  if (healthSummary && Number.isFinite(strainScore) && strainScore >= 72 && dailyQuest?.safeMode) {
+    parts.push({ key: 'safe', label: 'Guvenli Secim', value: 25 })
+  }
   if (fatigue >= 70) parts.push({ key: 'recovery', label: 'Toparlanma', value: 35 })
   else parts.push({ key: 'form', label: 'Form', value: 20 })
 
@@ -843,10 +943,12 @@ export function sessionClosesBodyMapPriority(session = {}, bodyMapState = null) 
 export function sessionClosesGameQuest(session = {}, quest = null) {
   if (!quest) return false
   const normalized = normalizeSession(session)
-  if (quest.kind === 'recovery' || quest.kind === 'injury') {
+  if (quest.kind === 'recovery' || quest.kind === 'injury' || quest.kind === 'health_recovery' || quest.kind === 'movement_care' || quest.kind === 'movement_ring') {
     return normalized.primaryCategory === 'recovery'
       || normalized.tags.includes('mobility')
       || normalized.tags.includes('walking')
+      || normalized.tags.includes('terrain')
+      || normalized.primaryCategory === 'endurance'
   }
   return sessionMatchesRegion(normalized, quest.linkedRegion)
     || sessionMatchesMovement(normalized, quest.linkedMovement)

@@ -328,6 +328,19 @@ export async function fetchBodyEvents(limit = 30) {
   }
 }
 
+export async function fetchHealthStatus() {
+  if (isMockMode) return null
+  if (import.meta.env.DEV) return null
+  try {
+    const response = await fetch('/api/health-status')
+    if (!response.ok) return null
+    return response.json()
+  } catch (error) {
+    console.warn('[supabase] fetchHealthStatus:', error?.message || error)
+    return null
+  }
+}
+
 export async function fetchWorkoutBlocks(limit = 240) {
   if (isMockMode) return []
   const profileId = await _resolveProfileId()

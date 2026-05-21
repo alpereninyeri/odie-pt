@@ -93,25 +93,34 @@ function recentPrSignal(workout = null) {
   return /\bpr\b|personal record|rekor/.test(text)
 }
 
-function buildSourceHealth(workouts = [], profile = {}) {
+function buildSourceHealth(workouts = [], profile = {}, health = {}) {
   const recent = sortWorkoutsDesc(workouts).slice(0, 30)
   const hevy = recent.filter(workout => String(workout.source || '').toLowerCase() === 'hevy')
   const appleHealth = recent.filter(workout => String(workout.source || '').toLowerCase() === 'apple_health')
   const latestHevy = hevy[0] || null
   const latestAppleHealth = appleHealth[0] || null
   const latest = recent[0] || null
+  const vital = health?.vitalScores || {}
+  const dailySummary = vital.summary || health?.dailySummary || null
+  const appleSleepLinked = Boolean(dailySummary?.totalSleepHours || dailySummary?.sleepScore)
+  const appleHeartLinked = Boolean(dailySummary?.restingHeartRate || dailySummary?.hrvSdnn || dailySummary?.heartScore)
+  const appleActivityLinked = Boolean(dailySummary?.steps || dailySummary?.movementScore || dailySummary?.strainScore)
   const lastSync = profile.lastUpdated || profile.last_updated || latest?.createdAt || latest?.created_at || null
 
   return {
     hevyCount: hevy.length,
     appleHealthCount: appleHealth.length,
+    appleSleepLinked,
+    appleHeartLinked,
+    appleActivityLinked,
+    dataConfidence: Number(vital.dataConfidence ?? dailySummary?.dataConfidence) || 0,
     totalRecent: recent.length,
     latestHevyDate: latestHevy?.date || null,
     latestAppleHealthDate: latestAppleHealth?.date || null,
     latestSource: latest?.source || 'manual',
     lastSync,
-    label: hevy.length || appleHealth.length
-      ? `Hevy ${hevy.length} / Apple ${appleHealth.length}`
+    label: hevy.length || appleHealth.length || appleSleepLinked || appleHeartLinked
+      ? `Hevy ${hevy.length} / Apple workout ${appleHealth.length} / uyku ${appleSleepLinked ? 'var' : 'yok'} / kalp ${appleHeartLinked ? 'var' : 'yok'}`
       : 'Canli kaynak bekliyor',
   }
 }
@@ -143,6 +152,15 @@ function commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hours
   if (goalKey === 'recovery') {
     return `${prefix ? `${prefix} ` : ''}Bugun agir yuk yok. 30 dk yuruyus + 10 dk mobilite yap; kalkan ${Math.round(armor)} ustune cikana kadar ritmi koru.`
   }
+  if (goalKey === 'sleep-recovery') {
+    return `${prefix ? `${prefix} ` : ''}Uyku kalkani zayif. Bugun rekor kovalamiyoruz; 25 dk rahat yuruyus, 10 dk mobilite ve erken kapanis.`
+  }
+  if (goalKey === 'heart-calm') {
+    return `${prefix ? `${prefix} ` : ''}Kalp/HRV temkinli. Nabzi yormadan hareket et: 20-30 dk kolay tempo, 8 dk nefes ve mobilite.`
+  }
+  if (goalKey === 'strain-drain') {
+    return `${prefix ? `${prefix} ` : ''}Gun ici yuk zaten dolu. Bacakta agir PR yok; ayak bilegi, kalf ve kalca bakimini temiz kapat.`
+  }
   if (goalKey === 'technical') {
     return `${prefix ? `${prefix} ` : ''}Bugun rekor kovalamiyoruz. ${latestType} icin 3 kontrollu set, 2 destek seti ve 8 dk core ile kapat.`
   }
@@ -172,10 +190,21 @@ export function buildNextSessionRecommendation({
   const recent14 = workoutsSince(ordered, WINDOW_14, today)
   const recent30 = workoutsSince(ordered, WINDOW_30, today)
   const balance = buildBalance(recent30)
-  const sourceHealth = buildSourceHealth(ordered, profile)
+  const sourceHealth = buildSourceHealth(ordered, profile, health)
+  const vital = health?.vitalScores || {}
+  const dailySummary = vital.summary || health?.dailySummary || null
   const fatigue = clamp(firstFinite(profile.fatigue, profile.fatigue_current), 0, 100)
   const armor = clamp(firstFinite(profile.armor, profile.armor_current, 100), 0, 100)
   const readiness = clamp(firstFinite(health?.readiness?.score, profile.readiness, (armor * 0.45) + ((100 - fatigue) * 0.55), DEFAULT_READINESS), 0, 100)
+  const sleepScoreRaw = firstFinite(vital.sleep, dailySummary?.sleepScore)
+  const heartScoreRaw = firstFinite(vital.heart, dailySummary?.heartScore)
+  const strainScoreRaw = firstFinite(vital.strain, dailySummary?.strainScore)
+  const systemFatigueRaw = firstFinite(vital.systemFatigue)
+  const sleepScore = sleepScoreRaw == null ? null : clamp(sleepScoreRaw)
+  const heartScore = heartScoreRaw == null ? null : clamp(heartScoreRaw)
+  const strainScore = strainScoreRaw == null ? null : clamp(strainScoreRaw)
+  const systemFatigue = systemFatigueRaw == null ? null : clamp(systemFatigueRaw)
+  const effectiveFatigue = Math.max(fatigue, systemFatigue ?? 0)
   const hours = hoursSinceWorkout(latest, now)
   const hasRecentPr = recentPrSignal(latest) && (hours == null || hours < 96)
   const activeFeedbackRisk = (memoryFeedback || []).some(item => ['wrong', 'outdated'].includes(item.feedbackType || item.feedback_type))
@@ -185,7 +214,10 @@ export function buildNextSessionRecommendation({
 
   if (latest) evidence.push(`Son seans: ${String(latest.source || '').toLowerCase() === 'hevy' ? 'Hevy' : latest.source || 'Manual'} / ${latest.type || 'seans'} / ${latest.durationMin || latest.duration_min || 0} dk`)
   evidence.push(`Ritim: 14 gunde ${recent14.length} seans, 30 gunde ${recent30.length} seans`)
-  evidence.push(`Hazir ${Math.round(readiness)}, kalkan ${Math.round(armor)}, yorgunluk ${Math.round(fatigue)}`)
+  evidence.push(`Hazir ${Math.round(readiness)}, kalkan ${Math.round(armor)}, kas yorgunlugu ${Math.round(fatigue)}${systemFatigue != null ? `, sistem yorgunlugu ${Math.round(systemFatigue)}` : ''}`)
+  if (sleepScore != null) evidence.push(`Uyku: skor ${Math.round(sleepScore)} / ${Number(dailySummary?.totalSleepHours || 0).toFixed(1)}s`)
+  if (heartScore != null) evidence.push(`Kalp: skor ${Math.round(heartScore)} / HRV ${Math.round(Number(dailySummary?.hrvSdnn) || 0)} / RHR ${Math.round(Number(dailySummary?.restingHeartRate) || 0)}`)
+  if (strainScore != null) evidence.push(`Gun yuku: ${Math.round(strainScore)} / adim ${Math.round(Number(dailySummary?.steps) || 0)}`)
   if (balance.lowest) evidence.push(`Geride kalan hat: ${balance.lowest.label} (${Math.round(balance.lowest.sets)} set)`)
   if (sourceHealth.latestHevyDate) evidence.push(`Son Hevy: ${sourceHealth.latestHevyDate}`)
   if (sourceHealth.latestAppleHealthDate) evidence.push(`Son Apple Health: ${sourceHealth.latestAppleHealthDate}`)
@@ -212,7 +244,40 @@ export function buildNextSessionRecommendation({
       buildBlock('mobility', 'Kapanis', '8 dk', 'Ilk gunu temiz veriyle kapat.', 'easy'),
     ]
     progressionCaps.push('Ilk kayitta rekor kovalamiyoruz.')
-  } else if (fatigue >= 75 || profile.survivalStatus === 'cns_overloaded' || profile.survival_status === 'cns_overloaded') {
+  } else if (sleepScore != null && sleepScore < 45) {
+    goalKey = 'sleep-recovery'
+    tone = 'warn'
+    title = 'Kalkani Onar'
+    subtitle = 'Uyku borcu bugunun tavanini dusuruyor.'
+    blocks = [
+      buildBlock('locomotion', 'Kolay hareket', '20-30 dk', 'Uyku dusukken kan dolasimi yeter; ego seti yok.', 'easy'),
+      buildBlock('mobility', 'Erken kapanis', '10 dk', 'Kalkan uykuyla onarilir, bugun sistemi yormuyoruz.', 'easy'),
+    ]
+    progressionCaps.push('Uyku kalkani donmeden PR bonusu kilitli.')
+    warnings.push(`Uyku skoru ${Math.round(sleepScore)}; agir yuk bugun temkinli.`)
+  } else if (heartScore != null && heartScore < 45) {
+    goalKey = 'heart-calm'
+    tone = 'warn'
+    title = 'Sakin Gun'
+    subtitle = 'Kalp/HRV sinyali bugun ritmi kisiyor.'
+    blocks = [
+      buildBlock('locomotion', 'Dusuk nabiz hareket', '20-30 dk', 'HRV/RHR temkinli; nabiz kovalamiyoruz.', 'easy'),
+      buildBlock('breath', 'Nefes + mobilite', '8-10 dk', 'Sistem yorgunlugunu azaltan en temiz yol.', 'easy'),
+    ]
+    progressionCaps.push('Nabiz sinyali toparlanana kadar agir interval ve PR yok.')
+    warnings.push(`Kalp skoru ${Math.round(heartScore)}; sinir sistemi temkinli okunuyor.`)
+  } else if (strainScore != null && strainScore >= 72) {
+    goalKey = 'strain-drain'
+    tone = 'warn'
+    title = 'Gun Yukunu Bosalt'
+    subtitle = 'Apple hareket yuku zaten dolmus; seansi bakima cevir.'
+    blocks = [
+      buildBlock('mobility', 'Ayak bilegi + kalf', '10 dk', 'Yuruyus/hiking sonrasi alt hat bakimi XP getirir.', 'easy'),
+      buildBlock('core', 'Core kilidi', '6-8 dk', 'Yuksek gun yukunde en temiz ilerleme dusuk riskli kontroldur.', 'easy'),
+    ]
+    progressionCaps.push('Bacakta agir PR yok; toparlanma XP sayiliyor.')
+    warnings.push(`Gun yuku ${Math.round(strainScore)}; ekstra agir bacak bugun risk.`)
+  } else if (effectiveFatigue >= 75 || profile.survivalStatus === 'cns_overloaded' || profile.survival_status === 'cns_overloaded') {
     goalKey = 'recovery'
     tone = 'danger'
     title = 'Toparlanma Gunu'
@@ -222,7 +287,7 @@ export function buildNextSessionRecommendation({
       buildBlock('mobility', 'Mobilite + nefes', '10 dk', 'Kalkan toparlanmadan agir yuk riskli.', 'easy'),
     ]
     progressionCaps.push('Agirlik artisi yok, PR denemesi yok.')
-    warnings.push(`Yorgunluk ${Math.round(fatigue)}; agir seans bugun kilitli.`)
+    warnings.push(`Yorgunluk ${Math.round(effectiveFatigue)}; agir seans bugun kilitli.`)
   } else if (armor < 55 || readiness < 45) {
     goalKey = 'technical'
     tone = 'warn'
@@ -268,6 +333,7 @@ export function buildNextSessionRecommendation({
     42
     + Math.min(22, recent14.length * 4)
     + Math.min(16, sourceHealth.hevyCount * 2)
+    + Math.min(14, sourceHealth.dataConfidence / 7)
     + (latest?.blocks?.length ? 10 : 0)
     + (dailyLogs?.length ? 5 : 0)
     - (warnings.length * 5),
@@ -282,7 +348,9 @@ export function buildNextSessionRecommendation({
     readiness: {
       score: Math.round(readiness),
       armor: Math.round(armor),
-      fatigue: Math.round(fatigue),
+      fatigue: Math.round(effectiveFatigue),
+      muscleFatigue: Math.round(fatigue),
+      systemFatigue: systemFatigue == null ? null : Math.round(systemFatigue),
       hoursSinceLatest: hours,
     },
     blocks,
@@ -295,6 +363,6 @@ export function buildNextSessionRecommendation({
     coachCommand: commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hoursSinceLatest: hours, injury: activeInjury }),
     sourceHealth,
     confidence: Math.round(confidence),
-    evidence: evidence.slice(0, 6),
+    evidence: evidence.slice(0, 7),
   }
 }
