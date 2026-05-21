@@ -10,6 +10,7 @@ import { updatePerformance } from './performance-engine.js'
 import { appendCoachQuests, updateQuests } from './quest-engine.js'
 import { updateSkills } from './skill-engine.js'
 import { getLocalDateString, normalizeDateString, normalizeSession } from './rules.js'
+import { buildOdiePresence } from './odie-presence.js'
 
 function avg(values, fallback = 0) {
   if (!values.length) return fallback
@@ -360,6 +361,23 @@ export function buildOdieContext({
   const performance = updatePerformance(seedProfile.performance, contextWorkouts)
   const loadProfile = summarizeLoadProfile(contextWorkouts)
   const historicalEcho = summarizeHistoricalEcho(contextWorkouts, prs, session?.date || getLocalDateString())
+  const presence = buildOdiePresence({
+    state: {
+      profile: {
+        ...profile,
+        armor: survival.armor,
+        fatigue: survival.fatigue,
+        survivalWarnings: survival.warnings || [],
+      },
+      workouts: contextWorkouts,
+      dailyLogs,
+      athleteMemory,
+      memoryFeedback,
+      healthDailySummary: healthSummary,
+    },
+    profile,
+    today: session?.date || getLocalDateString(),
+  })
 
   return {
     athlete: {
@@ -396,5 +414,6 @@ export function buildOdieContext({
     loadProfile,
     historicalEcho,
     focusGaps: summarizeFocusGaps(contextWorkouts, dailyLogs),
+    presence,
   }
 }

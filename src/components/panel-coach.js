@@ -1,9 +1,19 @@
 import { store } from '../data/store.js'
+import { buildOdiePresence } from '../data/odie-presence.js'
 
 let _token = 0
 
 function _cancelled(token) {
   return token !== _token
+}
+
+function _escapeHtml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 function _visibleSections(note) {
@@ -277,6 +287,28 @@ function _renderMemoryLedger(p) {
   `
 }
 
+function _renderCoachCompanion(p = {}) {
+  const presence = buildOdiePresence({ state: p, profile: p })
+  return `
+    <section class="coach-companion-card tone-${presence.tone || 'calm'}">
+      <div class="coach-companion-head">
+        <div class="coach-avatar live">OD</div>
+        <div>
+          <span>ODIE canli</span>
+          <strong>${_escapeHtml(presence.headline)}</strong>
+          <small>${_escapeHtml(presence.moodLabel)} / ${_escapeHtml(presence.dataConfidence)}% veri netligi</small>
+        </div>
+      </div>
+      <p>${_escapeHtml(presence.chatLine)}</p>
+      <div class="coach-companion-signals">
+        ${(presence.signals || []).slice(0, 4).map(item => `
+          <span class="tone-${_escapeHtml(item.tone || 'calm')}"><b>${_escapeHtml(item.label)}</b><strong>${_escapeHtml(item.value)}</strong><small>${_escapeHtml(item.detail)}</small></span>
+        `).join('')}
+      </div>
+    </section>
+  `
+}
+
 export function renderCoach(p) {
   const cn = p.coachNote || { date: '', xpNote: '', sections: [] }
   const sections = _groupCoachSections(cn)
@@ -289,6 +321,7 @@ export function renderCoach(p) {
 
   if (!sections.length) {
     return `
+      ${_renderCoachCompanion(p)}
       ${_renderSurvivalConsole(p)}
       <div class="coach-terminal coach-terminal-empty" style="min-height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
         <div style="font-size:48px;opacity:.4">OD</div>
@@ -313,6 +346,7 @@ export function renderCoach(p) {
     </div>`).join('')
 
   return `
+    ${_renderCoachCompanion(p)}
     ${_renderSurvivalConsole(p)}
     <div class="coach-terminal" id="coach-terminal">
       <div class="coach-scanline"></div>

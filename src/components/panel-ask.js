@@ -1,4 +1,5 @@
 import { showToast } from './toast.js'
+import { buildOdiePresence } from '../data/odie-presence.js'
 
 const askState = {
   loaded: false,
@@ -41,6 +42,9 @@ function summarizeLatest(item) {
     evidence: Array.isArray(response.evidence) ? response.evidence.slice(0, 4) : [],
     nextSteps: Array.isArray(response.nextSteps) ? response.nextSteps.slice(0, 4) : [],
     memoryNote: response.memoryNote || '',
+    routineSnapshot: response.routineSnapshot || '',
+    checkIn: response.checkIn || '',
+    tone: response.tone || '',
     createdAt: item.createdAt || '',
     model: item.model || '',
   }
@@ -58,7 +62,10 @@ function formatWhen(value = '') {
   }).format(date)
 }
 
-function sampleQuestions(profile) {
+function sampleQuestions(profile, presence = {}) {
+  if (Array.isArray(presence.quickPrompts) && presence.quickPrompts.length) {
+    return presence.quickPrompts
+  }
   const className = profile.class || 'hybrid build'
   const focus = profile.currentFocus || 'core stabilitesi'
   return [
@@ -76,8 +83,8 @@ function renderTranscript(latest) {
   if (!latest && !askState.loadingAnswer) {
     return `
       <div class="ask-terminal-empty">
-        <strong>ODIE hazir.</strong>
-        <p>Ilk soruyu gonder; net cevap ve onerilen adimlar ayni akista dusecek.</p>
+        <strong>ODIE burada.</strong>
+        <p>Hevy, Apple, hafiza ve son sorulari beraber okuyup konusur gibi cevap verecek.</p>
       </div>
     `
   }
@@ -87,9 +94,9 @@ function renderTranscript(latest) {
       <article class="ask-bubble odie pending">
         <div class="ask-bubble-meta">
           <span>ODIE</span>
-          <span>dusunuyor</span>
+          <span>baglam topluyor</span>
         </div>
-        <div class="ask-bubble-body">Baglam taraniyor, trendler ve oncelikler cikariliyor...</div>
+        <div class="ask-bubble-body">Uyku, kalp, son antrenman, hafiza ve bugunku risk ayni masada. Birazdan net konusacagim.</div>
       </article>
     `
     : ''
@@ -112,6 +119,7 @@ function renderTranscript(latest) {
         </div>
       <div class="ask-bubble-title">${escapeHtml(latest.title)}</div>
       <div class="ask-bubble-body">${escapeHtml(latest.answer)}</div>
+      ${latest.checkIn ? `<div class="ask-bubble-checkin">${escapeHtml(latest.checkIn)}</div>` : ''}
     </article>
 
     ${pending}
@@ -193,23 +201,39 @@ async function submitQuestion(question) {
 }
 
 export function renderAsk(state, profile) {
+  const presence = buildOdiePresence({ state, profile })
   const latest = askState.latest || summarizeLatest(askState.items[0] || null)
-  const samples = sampleQuestions(state.profile || profile)
+  const samples = sampleQuestions(state.profile || profile, presence)
   const readiness = Number(state.health?.readiness?.score)
   const focus = state.profile?.currentFocus || 'Hybrid denge'
+  const memoryCount = (state.athleteMemory || []).length
+  const sourceCount = (presence.sourceLine || '').split('/').filter(Boolean).length
 
   return `
     <section class="surface-stack ask-page">
-      <article class="glass-card ask-hero">
+      <article class="glass-card ask-hero ask-hero-live">
           <div>
           <div class="eyebrow">${explainButton('ask-line', "ODIE'ye Sor", 'explain-link eyebrow-explain')}</div>
-          <h3>${explainButton('ask-line', 'Kisa soru, net cevap, kalici baglam', 'explain-link explain-heading')}</h3>
-          <p>Bu alan ana yorumdan ayridir. Sorular ayri kaydolur; tekrar eden hedefler ve kaygilar zamanla daha iyi okunur.</p>
+          <h3>${explainButton('ask-line', 'Sohbet et, ODIE baglami tutsun', 'explain-link explain-heading')}</h3>
+          <p>${escapeHtml(presence.chatLine || 'Soruyu yaz; ODIE son rutin, hafiza ve bugunku sinyalleri beraber okuyacak.')}</p>
         </div>
         <div class="ask-hero-pills">
           <span class="ask-pill">${explainButton('class', state.profile?.classObj?.name || profile.class || 'Karakter')}</span>
           <span class="ask-pill">${Number.isFinite(readiness) ? `${readiness}/100 ${explainButton('readiness', 'hazirlik')}` : `${profile.sessions || 0} ${explainButton('session-detail', 'seans')}`}</span>
           <span class="ask-pill">${explainButton('current-focus', focus)}</span>
+        </div>
+      </article>
+
+      <article class="ask-companion-card tone-${escapeHtml(presence.tone || 'calm')}">
+        <div class="ask-companion-copy">
+          <span>ODIE'nin kafasi</span>
+          <strong>${escapeHtml(presence.headline || 'Canli baglam')}</strong>
+          <p>${escapeHtml(presence.routineLine || '')}</p>
+        </div>
+        <div class="ask-context-grid">
+          <span><b>hafiza</b><strong>${memoryCount}</strong><small>aktif not</small></span>
+          <span><b>kaynak</b><strong>${sourceCount}</strong><small>${escapeHtml(presence.dataConfidence ?? '--')}% net</small></span>
+          <span><b>mod</b><strong>${escapeHtml(presence.moodLabel || 'canli')}</strong><small>bugunku ton</small></span>
         </div>
       </article>
 
@@ -241,7 +265,7 @@ export function renderAsk(state, profile) {
               class="ask-input"
               rows="5"
               maxlength="600"
-              placeholder="Orn: Bu hafta core ve bacak geri kalmis mi, en iyi toparlama sekansi ne olur?"
+              placeholder="Orn: Odie, bugunku uyku + son antrenmana gore neyi abartmayalim?"
             >${escapeHtml(askState.draft)}</textarea>
             <div class="ask-form-footer">
               <div class="ask-sample-row">
@@ -272,6 +296,7 @@ export function renderAsk(state, profile) {
                 </div>
               </div>
               ${latest.memoryNote ? `<div class="ask-memory-note"><span class="mini-label">${explainButton('ask-memory', 'Aklimda Tutsun')}</span><p>${escapeHtml(latest.memoryNote)}</p></div>` : ''}
+              ${latest.routineSnapshot ? `<div class="ask-memory-note"><span class="mini-label">Rutin Izi</span><p>${escapeHtml(latest.routineSnapshot)}</p></div>` : ''}
             </article>
           ` : `
             <div class="ask-empty-state">

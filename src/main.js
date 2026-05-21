@@ -6,6 +6,7 @@ import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
 import { BODY_REGION_OPTIONS } from './data/body-events.js'
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
+import { buildOdiePresence } from './data/odie-presence.js'
 import { computeProfileStatsSnapshotDaysAgo, formatMonthShort, getLocalDateString, normalizeDateString } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
 import { renderCoach, initCoach } from './components/panel-coach.js'
@@ -191,6 +192,7 @@ function pageTitle(tabKey, profile) {
 }
 
 function renderMobileHud(state, profile) {
+  const presence = buildOdiePresence({ state, profile })
   const xpCur = profile?.xp?.current ?? 0
   const xpMax = profile?.xp?.max || 1
   const pct = Math.max(0, Math.min(100, Math.round((xpCur / xpMax) * 100)))
@@ -236,6 +238,10 @@ function renderMobileHud(state, profile) {
           <strong>${hudSideValue}</strong>
           <small>${renderExplainButton(hudSideKey, hudSideLabel, 'explain-link metric-explain')}</small>
         </div>
+      </div>
+      <div class="mobile-hud-voice tone-${escapeHtml(presence.tone || 'calm')}">
+        <b>ODIE</b>
+        <span>${escapeHtml(presence.hudLine || presence.routineLine || '')}</span>
       </div>
     </div>
   `
@@ -448,6 +454,65 @@ function renderMiniSigil(profile = {}) {
       <b></b>
     </span>
     <span class="sr-only">${escapeHtml(profile.nick || 'Profil')}</span>
+  `
+}
+
+function renderOdieSignalPills(signals = [], className = '') {
+  return `
+    <div class="odie-signal-pills ${className}">
+      ${signals.slice(0, 4).map(signal => `
+        <span class="odie-signal-pill tone-${escapeHtml(signal.tone || 'calm')}">
+          <b>${escapeHtml(signal.label || '')}</b>
+          <strong>${escapeHtml(signal.value ?? '--')}</strong>
+          <small>${escapeHtml(signal.detail || '')}</small>
+        </span>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderOdieMemoryChips(cards = []) {
+  if (!cards.length) {
+    return `
+      <div class="odie-memory-chips empty">
+        <span><b>hafiza</b><small>Yeni soru, seans ve duzeltmeler geldikce burasi dolacak.</small></span>
+      </div>
+    `
+  }
+  return `
+    <div class="odie-memory-chips">
+      ${cards.map(card => `
+        <span class="tone-${escapeHtml(card.tone || 'calm')}">
+          <b>${escapeHtml(card.label || 'hafiza')}</b>
+          <small>${escapeHtml(card.value || '')}</small>
+        </span>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderOdieLiveCard(presence = {}, { compact = false, action = true } = {}) {
+  return `
+    <article class="odie-live-card tone-${escapeHtml(presence.tone || 'calm')} ${compact ? 'compact' : ''}">
+      <div class="odie-live-head">
+        <div class="odie-live-face" aria-hidden="true"><i></i><b></b></div>
+        <div>
+          <span>ODIE Live</span>
+          <strong>${escapeHtml(presence.headline || 'ODIE baglami okuyor')}</strong>
+          <small>${escapeHtml(presence.moodLabel || 'canli mod')} / ${escapeHtml(presence.dataConfidence ?? '--')}% veri netligi</small>
+        </div>
+      </div>
+      <p>${escapeHtml(presence.chatLine || presence.hudLine || '')}</p>
+      <div class="odie-live-routine">${escapeHtml(presence.routineLine || '')}</div>
+      ${renderOdieSignalPills(presence.signals || [])}
+      ${compact ? '' : renderOdieMemoryChips(presence.memoryCards || [])}
+      ${action ? `
+        <div class="odie-live-actions">
+          <button type="button" data-tab="odie">ODIE ile konus</button>
+          <button type="button" data-action="open-health-shortcut">Kaynaklari bagla</button>
+        </div>
+      ` : ''}
+    </article>
   `
 }
 
@@ -849,6 +914,7 @@ function renderMobileCommandCenter(state, profile, semantic, nextSession = {}, l
   const confidence = Number(nextSession.confidence)
   const confidenceLabel = Number.isFinite(confidence) ? `${Math.round(confidence)}%` : '--'
   const gameQuest = bodyMapState?.dailyQuest || activeQuest
+  const presence = buildOdiePresence({ state, profile, nextSession, bodyMapState })
 
   return `
     <article class="mobile-command-center tone-${nextSession.tone || decision.tone || 'calm'}" style="--xp-pct:${xpPct}%">
@@ -864,15 +930,7 @@ function renderMobileCommandCenter(state, profile, semantic, nextSession = {}, l
         </div>
       </div>
 
-      <div class="command-stage">
-        ${renderVitalPulsePanel(state, bodyMapState, nextSession)}
-      </div>
-
-      <div class="command-life-strip">
-        <span><b>${escapeHtml(uiLabel('source'))}</b>${escapeHtml(latestSource)}</span>
-        <span><b>${escapeHtml(uiLabel('pulse'))}</b>${escapeHtml(pulseLabel)}</span>
-        <span><b>${escapeHtml(uiLabel('risk'))}</b>${escapeHtml(riskLabel)}</span>
-      </div>
+      ${renderOdieLiveCard(presence, { compact: true, action: false })}
 
       <div class="command-order">
         <div>
@@ -881,6 +939,16 @@ function renderMobileCommandCenter(state, profile, semantic, nextSession = {}, l
         </div>
         <p>${escapeHtml(nextSession.coachCommand || decision.command)}</p>
         ${renderXpRoute(bodyMapState)}
+      </div>
+
+      <div class="command-stage">
+        ${renderVitalPulsePanel(state, bodyMapState, nextSession)}
+      </div>
+
+      <div class="command-life-strip">
+        <span><b>${escapeHtml(uiLabel('source'))}</b>${escapeHtml(latestSource)}</span>
+        <span><b>${escapeHtml(uiLabel('pulse'))}</b>${escapeHtml(pulseLabel)}</span>
+        <span><b>${escapeHtml(uiLabel('risk'))}</b>${escapeHtml(riskLabel)}</span>
       </div>
 
       <div class="command-blocks">
@@ -2162,6 +2230,7 @@ function renderVitalOsArena(state, profile, semantic) {
     bodyEvents: state.bodyEvents || [],
   })
   const model = getVitalOsModel(state, bodyMapState, nextSession)
+  const presence = buildOdiePresence({ state, profile, nextSession, bodyMapState })
   const xpCur = profile?.xp?.current ?? 0
   const xpMax = profile?.xp?.max || 1
   const xpPct = percentOf(xpCur, xpMax)
@@ -2186,6 +2255,15 @@ function renderVitalOsArena(state, profile, semantic) {
           <strong>${model.dataConfidence}%</strong>
         </button>
       </header>
+
+      <section class="vital-os-odie">
+        <div>
+          <span>ODIE baglami</span>
+          <strong>${escapeHtml(presence.headline)}</strong>
+          <p>${escapeHtml(presence.chatLine)}</p>
+        </div>
+        ${renderOdieSignalPills(presence.signals || [], 'mini')}
+      </section>
 
       <div class="vital-os-core">
         <div class="vital-os-rings">
@@ -2646,6 +2724,15 @@ function renderOdiePage(state, profile) {
   })
   const coachProfile = {
     ...profile,
+    profile: state.profile,
+    workouts: state.workouts || [],
+    dailyLogs: state.dailyLogs || [],
+    athleteMemory: state.athleteMemory || [],
+    memoryFeedback: state.memoryFeedback || [],
+    health: state.health || {},
+    healthStatus: state.healthStatus || null,
+    healthDailySummary: state.healthDailySummary || null,
+    bodyEvents: state.bodyEvents || [],
     armor: state.profile?.armor,
     fatigue: state.profile?.fatigue,
     injuryUntil: state.profile?.injuryUntil,
@@ -2683,6 +2770,7 @@ function renderOdieCommandRoom(state, profile, nextSession = {}) {
   const confidenceLabel = Number.isFinite(confidence) ? `${Math.round(confidence)}%` : '--'
   const warning = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || 'Risk sinyali yok'
   const command = nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.'
+  const presence = buildOdiePresence({ state, profile, nextSession })
 
   return `
     <article class="odie-command-room tone-${nextSession.tone || 'calm'}">
@@ -2694,6 +2782,11 @@ function renderOdieCommandRoom(state, profile, nextSession = {}) {
         </div>
       </div>
 
+      <section class="odie-room-chat">
+        <span>${escapeHtml(presence.moodLabel || 'canli mod')}</span>
+        <p>${escapeHtml(presence.chatLine || command)}</p>
+      </section>
+
       <p class="odie-room-order">${escapeHtml(command)}</p>
 
       <div class="odie-room-grid">
@@ -2701,6 +2794,8 @@ function renderOdieCommandRoom(state, profile, nextSession = {}) {
         ${renderRevMeter('armor', uiLabel('armor'), armor, 'armor')}
         ${renderRevMeter('fatigue', uiLabel('fatigue'), fatigue, 'fatigue')}
       </div>
+
+      ${renderOdieMemoryChips(presence.memoryCards || [])}
 
       <div class="odie-room-signals">
         <span>${renderExplainButton('hevy-live', `HEVY ${latestHevy}`, 'explain-link metric-explain')}</span>

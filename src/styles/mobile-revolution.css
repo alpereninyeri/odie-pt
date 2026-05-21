@@ -2625,3 +2625,432 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.odie-live-card,
+.ask-companion-card,
+.coach-companion-card,
+.vital-os-odie,
+.odie-room-chat {
+  position: relative;
+  min-width: 0;
+  border: 1px solid rgba(217, 238, 236, .16);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(72, 210, 230, .09), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .018));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+
+.odie-live-card,
+.ask-companion-card,
+.coach-companion-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.odie-live-card.tone-warn,
+.ask-companion-card.tone-warn,
+.coach-companion-card.tone-warn {
+  border-color: rgba(217, 154, 63, .34);
+  background:
+    linear-gradient(135deg, rgba(217, 154, 63, .12), transparent 48%),
+    rgba(255, 255, 255, .025);
+}
+
+.odie-live-card.tone-danger,
+.ask-companion-card.tone-danger,
+.coach-companion-card.tone-danger {
+  border-color: rgba(223, 83, 100, .36);
+  background:
+    linear-gradient(135deg, rgba(223, 83, 100, .12), transparent 48%),
+    rgba(255, 255, 255, .025);
+}
+
+.odie-live-card.tone-fire,
+.ask-companion-card.tone-fire,
+.coach-companion-card.tone-fire {
+  border-color: rgba(72, 210, 230, .34);
+}
+
+.odie-live-head,
+.coach-companion-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.odie-live-face {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(72, 210, 230, .4);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(72, 210, 230, .26), transparent 58%),
+    #07131b;
+}
+
+.odie-live-face::before,
+.odie-live-face::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rev-cyan);
+  box-shadow: 0 0 14px rgba(72, 210, 230, .55);
+}
+
+.odie-live-face::before { left: 11px; }
+.odie-live-face::after { right: 11px; }
+
+.odie-live-face i,
+.odie-live-face b {
+  position: absolute;
+  left: 50%;
+  display: block;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--rev-amber);
+}
+
+.odie-live-face i {
+  top: 27px;
+  width: 19px;
+  height: 3px;
+}
+
+.odie-live-face b {
+  top: 33px;
+  width: 11px;
+  height: 2px;
+  opacity: .75;
+}
+
+.odie-live-head span,
+.ask-companion-copy span,
+.coach-companion-head span,
+.vital-os-odie span,
+.odie-room-chat span {
+  color: var(--rev-muted);
+  font: 950 .58rem/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.odie-live-head strong,
+.ask-companion-copy strong,
+.coach-companion-head strong,
+.vital-os-odie strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--rev-bone);
+  font: 1000 .98rem/1.08 var(--font-display);
+}
+
+.odie-live-head small,
+.coach-companion-head small {
+  display: block;
+  margin-top: 4px;
+  color: var(--rev-faint);
+  font: 800 .62rem/1.1 var(--font-ui);
+}
+
+.odie-live-card p,
+.coach-companion-card p,
+.vital-os-odie p,
+.odie-room-chat p {
+  margin: 0;
+  color: rgba(255, 247, 234, .94);
+  font: 850 .86rem/1.36 var(--font-ui);
+}
+
+.odie-live-routine {
+  padding: 8px 9px;
+  border: 1px solid rgba(217, 238, 236, .11);
+  border-radius: 8px;
+  color: var(--rev-muted);
+  background: rgba(0, 0, 0, .16);
+  font: 800 .72rem/1.28 var(--font-ui);
+}
+
+.odie-signal-pills,
+.coach-companion-signals,
+.ask-context-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+}
+
+.odie-signal-pill,
+.coach-companion-signals span,
+.ask-context-grid span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 7px;
+  border: 1px solid rgba(217, 238, 236, .12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.odie-signal-pill b,
+.coach-companion-signals b,
+.ask-context-grid b {
+  min-width: 0;
+  color: var(--rev-muted);
+  font: 900 .54rem/1 var(--font-mono);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.odie-signal-pill strong,
+.coach-companion-signals strong,
+.ask-context-grid strong {
+  min-width: 0;
+  color: var(--rev-bone);
+  font: 1000 .86rem/1 var(--font-display);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.odie-signal-pill small,
+.coach-companion-signals small,
+.ask-context-grid small {
+  min-width: 0;
+  color: var(--rev-faint);
+  font: 800 .56rem/1.05 var(--font-ui);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.odie-signal-pill.tone-warn,
+.coach-companion-signals .tone-warn {
+  border-color: rgba(217, 154, 63, .3);
+}
+
+.odie-signal-pill.tone-danger,
+.coach-companion-signals .tone-danger {
+  border-color: rgba(223, 83, 100, .32);
+}
+
+.odie-signal-pill.tone-muted,
+.coach-companion-signals .tone-muted {
+  opacity: .72;
+}
+
+.odie-memory-chips {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.odie-memory-chips span {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid rgba(217, 238, 236, .12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .14);
+}
+
+.odie-memory-chips b,
+.odie-memory-chips small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.odie-memory-chips b {
+  color: var(--rev-cyan);
+  font: 900 .58rem/1 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.odie-memory-chips small {
+  margin-top: 4px;
+  color: var(--rev-paper);
+  font: 800 .68rem/1.25 var(--font-ui);
+}
+
+.odie-live-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.odie-live-actions button {
+  min-height: 38px;
+  border: 1px solid rgba(72, 210, 230, .28);
+  border-radius: 8px;
+  background: rgba(72, 210, 230, .08);
+  color: var(--rev-bone);
+  font: 900 .74rem/1 var(--font-ui);
+}
+
+.odie-live-actions button:active,
+.health-bridge-actions button:active,
+.ask-sample-chip:active,
+.ask-submit:active {
+  transform: translateY(1px) scale(.99);
+}
+
+.vital-os-odie {
+  display: grid;
+  gap: 10px;
+  padding: 11px;
+}
+
+.vital-os-odie .odie-signal-pills {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.odie-room-chat {
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  border-color: rgba(72, 210, 230, .22);
+}
+
+.ask-hero-live {
+  border-color: rgba(72, 210, 230, .2);
+}
+
+.ask-companion-card {
+  grid-template-columns: minmax(0, 1fr) minmax(210px, .72fr);
+  align-items: stretch;
+}
+
+.ask-companion-copy {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ask-companion-copy p {
+  margin: 0;
+  color: var(--rev-muted);
+  font: 800 .78rem/1.35 var(--font-ui);
+}
+
+.ask-bubble-checkin {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(217, 238, 236, .12);
+  color: var(--rev-amber);
+  font: 850 .76rem/1.32 var(--font-ui);
+}
+
+.coach-avatar.live {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(72, 210, 230, .3), transparent 62%),
+    #07131b;
+  color: var(--rev-cyan);
+}
+
+@media (max-width: 980px) {
+  .app-shell,
+  .app-shell-v6 {
+    padding-top: calc(92px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .mobile-hud-wrap {
+    display: grid;
+    gap: 5px;
+  }
+
+  .mobile-hud-voice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 7px;
+    align-items: center;
+    min-height: 28px;
+    padding: 6px 9px;
+    border: 1px solid rgba(217, 238, 236, .14);
+    border-radius: 8px;
+    background:
+      linear-gradient(90deg, rgba(72, 210, 230, .11), transparent 58%),
+      rgba(2, 6, 10, .78);
+  }
+
+  .mobile-hud-voice b {
+    color: var(--rev-cyan);
+    font: 1000 .62rem/1 var(--font-mono);
+  }
+
+  .mobile-hud-voice span {
+    min-width: 0;
+    color: var(--rev-paper);
+    font: 800 .68rem/1.18 var(--font-ui);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .odie-live-card.compact {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .odie-live-card.compact .odie-live-routine {
+    display: none;
+  }
+
+  .odie-live-card.compact .odie-signal-pills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-command-center .command-order p {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .mobile-command-center .command-stat-strip,
+  .mobile-command-center .command-footer {
+    display: none;
+  }
+
+  .ask-companion-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ask-context-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 430px) {
+  .odie-signal-pills,
+  .coach-companion-signals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .odie-live-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .ask-context-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .odie-live-actions button:active,
+  .health-bridge-actions button:active,
+  .ask-sample-chip:active,
+  .ask-submit:active {
+    transform: none;
+  }
+}

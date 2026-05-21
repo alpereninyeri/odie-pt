@@ -335,6 +335,14 @@ ZORUNLU:
 - Veri zayifsa kesin konusma: "elde X yok ama Y olasi" gibi.
 - Risk uyarisi sade: "armor 30, bugun agir seans riskli" — "DIKKAT!" veya buyuk harf yok.`
 
+const ODIE_VITAL_SYSTEM = `${ODIE_SYSTEM}
+
+VITAL OS EK KURALI:
+- Hevy tek kaynak degil; Apple uyku, kalp, HRV, adim, hiking/yuruyus ve gunluk hareket yukunu karar diline dahil et.
+- Biraz daha sohbetkar ol: rapor gibi degil, yaninda konusan koc gibi 2-4 net cumle kur.
+- Memory ve feedback'i hissettir ama "memory diyor ki" yazma.
+- Kullaniciya teknik panel diliyle degil, gunluk oyunlastirilmis spor diliyle konus.`
+
 const PARSE_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
@@ -672,6 +680,10 @@ function buildCoachPromptV2(parsed, context) {
   const weakest = odie.stats?.weakest
   const strongest = odie.stats?.strongest
   const recovery = odie.recovery || {}
+  const appleCore4 = recovery.apple
+    ? `Uyku ${recovery.apple.sleepScore} (${recovery.apple.sleepHours}s) / hareket ${recovery.apple.movementScore} (${recovery.apple.steps} adim) / kalp ${recovery.apple.heartScore} (HRV ${recovery.apple.hrvSdnn}, RHR ${recovery.apple.restingHeartRate}) / veri ${recovery.apple.dataConfidence}%`
+    : 'Apple Core 4 bekleniyor'
+  const presence = odie.presence || {}
   const questPressure = (odie.questPressure || [])
     .map(quest => `- ${quest.name}: ${quest.progress}/${quest.total} · ${quest.reward} · ${quest.desc}`)
     .join('\n') || '- aktif baski yok'
@@ -776,6 +788,8 @@ Baglam:
 - Recovery: armor ${recovery.armor ?? '-'} / fatigue ${recovery.fatigue ?? '-'} / status ${recovery.status || '-'}
 - Survival XP: x${recovery.xpMultiplier ?? 1}
 - Son 7 gun: uyku ${recovery.avgSleep ?? 0}s · su ${recovery.avgWaterL ?? 0}L · adim ${recovery.avgSteps ?? 0}
+- Apple Core 4: ${appleCore4}
+- ODIE sohbet modu: ${presence.moodLabel || '-'} / ${presence.chatLine || '-'}
 - Disiplin mix: ${disciplineMix}
 - Okuma netligi: ${confidence.level || 'unknown'} ${confidence.score != null ? `(${confidence.score}/100)` : ''}
 
@@ -1369,7 +1383,7 @@ export async function getCoachResponse(parsed, context) {
   if (cached && (Date.now() - cached.at) < 300000) return cached.value
 
   const raw = await callGeminiWithModel(buildCoachPromptV2(parsed, context), {
-    system: ODIE_SYSTEM,
+    system: ODIE_VITAL_SYSTEM,
     maxTokens: 2000,
     temperature: 0.72,
     model: process.env.GEMINI_COACH_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-pro',

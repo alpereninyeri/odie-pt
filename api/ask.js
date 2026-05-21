@@ -1,7 +1,9 @@
 import { buildOdieContext } from '../src/data/odie-context.js'
+import { buildOdiePresence } from '../src/data/odie-presence.js'
 import { detectPRs } from '../src/data/pr-detector.js'
 import { computeClass } from '../src/data/class-engine.js'
 import { applyTimedRecovery } from '../src/data/survival-engine.js'
+import { buildNextSessionRecommendation } from '../src/data/next-session-engine.js'
 import { normalizeDateString, normalizeSession } from '../src/data/rules.js'
 import {
   normalizeAthleteMemoryRow,
@@ -45,6 +47,33 @@ ZORUNLU:
 - Veri zayifsa: "Net X yok, ama Y'den hareketle..." de. Veri uydurma.
 - Risk uyarisi sade: "armor 30, agir seans bugun risk" — tehdit veya buyuk harf yok.`
 
+const ODIE_CHAT_SYSTEM = `Sen ODIE'sin. Bu sporcunun yaninda duran genc, zeki, lafini saklamayan ama cringe olmayan performans kocusun. Turkce konusursun; asistan gibi degil, tanidik koc gibi.
+
+KIMLIK:
+- Sohbetkar ol: tek satirlik debug raporu degil, 4-6 cumlelik canli cevap ver.
+- Genc dil kullan ama abartma. "Net", "bugun ego yok", "bunu boyle kuruyoruz" gibi dogal konus; sokak taklidi yapma.
+- Sporcunun rutinini biliyormus gibi konus: Hevy kuvvet, Apple uyku/kalp/hareket, sakatlik, son sorular, memory ve feedback ayni kafada dursun.
+- Birinci sahis aktif: "bugun bunu kesiyoruz", "yarin sunu aciyoruz", "burada frene basiyorum".
+
+YASAK:
+- Formal asistan dili: "size onerim", "tavsiyem", "yorumum", "analizime gore".
+- Bos motivasyon: "mukemmel", "harika", "bravo", "asla pes etme".
+- Teknik dump: "block_mix", "parse confidence", "primary category", "readiness algorithm", "chain load".
+- Veri uydurma. Yoksa "bu kisim henuz bos" de.
+
+DUSUNME SIRASI:
+1. Bugunku beden hali: uyku, kalp/HRV, gun yuku, sakatlik, readiness.
+2. Son rutin: son antrenman, son 14/30 gun trendi, Hevy/Apple kaynagi.
+3. Hafiza: tekrar eden hedef, zayif halka, daha once isaretlenen yanlis yorum.
+4. Karar: bugun ne yapacagiz, neyi abartmayacagiz, ne XP getirir.
+
+CEVAP FORMU:
+- 4-6 cumle. Ilk cumle dogal giris; son cumle tek net aksiyon.
+- En az 2 somut sinyal kullan: kg/set/dk/km/adim/uyku/HRV/RHR/sakatlik/gun.
+- Kisa ama sohbet gibi. Soru ciddi ise ciddi, soru rahat ise daha rahat.
+- Memory varsa sessizce yedir: "bunu yine core'a bagliyorum" gibi. "Memory diyor ki" yazma.
+- Risk varsa korkutma: "bugun agir grip yok" gibi net konus.`
+
 const ASK_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
@@ -53,6 +82,9 @@ const ASK_RESPONSE_SCHEMA = {
     evidence: { type: 'ARRAY', items: { type: 'STRING' } },
     next_steps: { type: 'ARRAY', items: { type: 'STRING' } },
     memory_note: { type: 'STRING' },
+    routine_snapshot: { type: 'STRING' },
+    check_in: { type: 'STRING' },
+    tone: { type: 'STRING' },
     tags: { type: 'ARRAY', items: { type: 'STRING' } },
   },
 }
@@ -79,6 +111,17 @@ async function sbPost(table, body) {
     method: 'POST',
     headers: { ...sbHeaders(), Prefer: 'return=representation' },
     body: JSON.stringify(body),
+  })
+  if (!response.ok) throw new Error(await response.text())
+  return response.json()
+}
+
+async function sbUpsert(table, rows, onConflict) {
+  const suffix = onConflict ? `?on_conflict=${encodeURIComponent(onConflict)}` : ''
+  const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/${table}${suffix}`, {
+    method: 'POST',
+    headers: { ...sbHeaders(), Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify(rows),
   })
   if (!response.ok) throw new Error(await response.text())
   return response.json()
@@ -234,6 +277,49 @@ function normalizeQuestionRow(row = {}) {
   }
 }
 
+function memoryKeyFromQuestion(question = '', tags = []) {
+  const base = String(tags?.[0] || question || 'ask')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 42)
+  return `ask_${base || 'routine'}`
+}
+
+async function persistAskMemory(profileId, question, structured = {}) {
+  const note = String(structured.memory_note || structured.memoryNote || '').trim()
+  if (!profileId || note.length < 12 || /yok|gerek yok|bos/i.test(note)) return null
+  const now = new Date().toISOString()
+  const row = {
+    profile_id: profileId,
+    memory_type: 'conversation',
+    scope: 'ask',
+    key: memoryKeyFromQuestion(question, structured.tags || []),
+    summary: note.slice(0, 220),
+    value_jsonb: {
+      question,
+      tags: Array.isArray(structured.tags) ? structured.tags.slice(0, 4) : [],
+      checkIn: structured.check_in || structured.checkIn || '',
+      routineSnapshot: structured.routine_snapshot || structured.routineSnapshot || '',
+    },
+    confidence: 0.68,
+    source: 'odie_ask',
+    active: true,
+    last_confirmed_at: now,
+    last_used_at: now,
+  }
+  try {
+    const rows = await sbUpsert('athlete_memory', [row], 'profile_id,scope,key')
+    return rows?.[0] || row
+  } catch (error) {
+    if (isMissingColumnError(error)) return null
+    console.warn('[ask] memory persist failed:', error?.message || error)
+    return null
+  }
+}
+
 function buildCurrentPrs(workouts = []) {
   const ordered = [...workouts].sort((left, right) => normalizeDateString(left.date).localeCompare(normalizeDateString(right.date)))
   let prs = {}
@@ -302,6 +388,10 @@ function buildAskPrompt(question, context) {
   const appleCore4 = recovery.apple
     ? `- Uyku ${recovery.apple.sleepScore} (${recovery.apple.sleepHours}s) / hareket ${recovery.apple.movementScore} (${recovery.apple.steps} adim) / kalp ${recovery.apple.heartScore} (HRV ${recovery.apple.hrvSdnn}, RHR ${recovery.apple.restingHeartRate}) / veri guveni ${recovery.apple.dataConfidence}%`
     : '- Apple Core 4 verisi yok'
+  const presence = odie.presence || context.presence || {}
+  const presenceSignals = (presence.signals || [])
+    .map(item => `- ${item.label}: ${item.value} / ${item.detail}`)
+    .join('\n') || '- canli sinyal ozeti yok'
 
   return `Kullanici sorusu:
 ${question}
@@ -319,6 +409,13 @@ Atlet profili:
 
 Apple Core 4 izi:
 ${appleCore4}
+
+ODIE canli sohbet pusulasi:
+- Mod: ${presence.moodLabel || '-'} / veri netligi ${presence.dataConfidence ?? '-'}%
+- Rutin cumlesi: ${presence.routineLine || '-'}
+- Konusma tonu: ${presence.chatLine || '-'}
+- Kaynaklar: ${presence.sourceLine || '-'}
+${presenceSignals}
 
 Son workout izi:
 ${recentWorkouts}
@@ -355,20 +452,24 @@ ${questionMemory}
 
 JSON disinda bir sey donme. Tum tonlama kurallari sistem promptunda; burada sadece sema:
 
-- title: sorunun ozune deger, kisa ("Core Olcumune Bakis" gibi). "Yorumum" veya "Notum" yazma.
-- answer: 3-4 cumle. Sirasi: gozlem (sayili) -> sebep -> EMIR. Son cumle her zaman tek net aksiyon: "yarin Push'a 3 set face pull ekle" gibi. "Not aldim", "okudum", "yorumum", "akiyor" yasak.
+- title: sorunun ozune deger, kisa ("Core Ritmi", "Bugun Frene Basiyoruz" gibi). "Yorumum" veya "Notum" yazma.
+- answer: 4-6 cumle. Sohbet gibi gir, somut sinyali yedir, hafizayi hissettir, sonra net aksiyon ver. "Not aldim", "okudum", "yorumum", "akiyor" yasak.
 - evidence: yalnizca bagdaki somut sinyallerden 2-4 madde. Uydurma.
 - next_steps: 2-3 madde, her biri tek emir (set/sn/kg/gun seviyesinde), oncelik sirali.
-- memory_note: varsa kalici kaygi/hedef/tercih ozetini tek satir.
+- memory_note: varsa kalici kaygi/hedef/tercih ozetini tek satir; bu alan athlete_memory'ye yazilabilir, o yuzden uydurma.
+- routine_snapshot: bu cevabin dayandigi gunluk rutin izini tek cumle yaz.
+- check_in: kullaniciya sorulacak kisa takip sorusu; gerekli degilse bos birak.
+- tone: calm|warn|fire|guard|sleep|heart gibi kisa ton.
 - tags: en fazla 4 kisa etiket.`
 }
 
 function buildFallbackAnswer(question, context) {
   const weakest = context.odie?.stats?.weakest
   const gaps = context.odie?.focusGaps || []
+  const presence = context.odie?.presence || {}
   return {
     title: 'Temkinli Okuma',
-    answer: `${question} icin tum baglam mevcut degil ama su anki tablo ${weakest?.key || 'denge'} tarafinda baski oldugunu gosteriyor. Cevabi recovery ve son yuk sinyallerine yasladim; kesin olmayan yerde agresif yonlendirme yapmadim.`,
+    answer: `Net konusayim: ${question} icin LLM tarafi su an tam acilmasa da ODIE motoru ${weakest?.key || 'denge'} tarafinda baski goruyor. ${presence.chatLine || 'Recovery ve son yuk sinyallerine yaslanip agresif yonlendirme yapmiyorum.'} Bugun kesin olmayan yerde PR kovalamiyoruz. Sonraki seansta 8 dk core veya mobiliteyle basla, sonra ana ise gec.`,
     evidence: [
       ...(gaps.slice(0, 2)),
       ...(context.odie?.loadProfile?.trendSignals || []).slice(0, 2),
@@ -379,6 +480,9 @@ function buildFallbackAnswer(question, context) {
       'Core veya bacak eksigi varsa kisa ama direkt blok ekle.',
     ],
     memoryNote: weakest?.key ? `${String(weakest.key).toUpperCase()} hatti soru tarafinda da tekrar ediyor.` : '',
+    routineSnapshot: presence.routineLine || '',
+    checkIn: 'Bugunku uyku ve son seansin netse bir sonraki cevabi daha keskin kurarim.',
+    tone: presence.tone || 'warn',
     tags: ['ask', 'fallback'],
   }
 }
@@ -440,6 +544,38 @@ export default async function handler(req, res) {
       injuryUntil: profile.injury_until || null,
       status: profile.survival_status || 'healthy',
     }, workouts[0] || null)
+    const presenceState = {
+      profile: {
+        ...profile,
+        armor: currentSurvival.armor,
+        fatigue: currentSurvival.fatigue,
+        survivalWarnings: Array.isArray(latestCoachNote?.warnings) ? latestCoachNote.warnings : [],
+      },
+      workouts,
+      dailyLogs,
+      athleteMemory,
+      memoryFeedback,
+      healthDailySummary: healthSummary,
+      health: {
+        vitalScores: {
+          summary: healthSummary,
+          dataConfidence: healthSummary?.dataConfidence || 0,
+        },
+      },
+    }
+    const nextSession = buildNextSessionRecommendation({
+      profile: presenceState.profile,
+      workouts,
+      dailyLogs,
+      memoryFeedback,
+      health: presenceState.health,
+      bodyEvents: [],
+    })
+    const presence = buildOdiePresence({
+      state: presenceState,
+      profile,
+      nextSession,
+    })
 
     const odie = buildOdieContext({
       profile,
@@ -464,6 +600,7 @@ export default async function handler(req, res) {
       },
       healthSummary,
     })
+    odie.presence = presence
 
     let parsed = null
     const model = process.env.GEMINI_ASK_MODEL || process.env.GEMINI_MODEL || process.env.GEMINI_COACH_MODEL || 'gemini-2.5-pro'
@@ -471,11 +608,12 @@ export default async function handler(req, res) {
       const raw = await callGeminiWithModel(buildAskPrompt(question, {
         questionHistory,
         odie,
+        presence,
         profile,
         className: currentClass?.name || profile.class,
         subClass: currentClass?.subName || profile.sub_class || profile.subClass,
       }), {
-        system: ODIE_SYSTEM,
+        system: ODIE_CHAT_SYSTEM,
         maxTokens: 1800,
         temperature: 0.45,
         model,
@@ -503,6 +641,9 @@ export default async function handler(req, res) {
             ? structured.nextSteps
             : [],
         memoryNote: structured.memory_note || structured.memoryNote || '',
+        routineSnapshot: structured.routine_snapshot || structured.routineSnapshot || presence.routineLine || '',
+        checkIn: structured.check_in || structured.checkIn || '',
+        tone: structured.tone || presence.tone || '',
       },
       tags: Array.isArray(structured.tags) ? structured.tags.slice(0, 4) : [],
       model,
@@ -520,6 +661,8 @@ export default async function handler(req, res) {
         created_at: new Date().toISOString(),
       })
     }
+
+    await persistAskMemory(profile.id, question, structured)
 
     return res.status(200).json({ ok: true, item: saved })
   } catch (error) {
