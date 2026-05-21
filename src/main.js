@@ -5,6 +5,7 @@ import './styles/mobile-revolution.css'
 import ODIE_PRESTIGE_ANATOMY from './assets/odie-athlete-anatomy-prestige.svg'
 import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
+import { BODY_REGION_OPTIONS } from './data/body-events.js'
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
 import { computeProfileStatsSnapshotDaysAgo, formatMonthShort, getLocalDateString, normalizeDateString } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
@@ -312,6 +313,11 @@ function localizeKindWords(text = '') {
 
 function buildTodayLead(state, latestWorkout = null) {
   if (latestWorkout) {
+    if (String(latestWorkout.source || '').toLowerCase() === 'apple_health') {
+      const distance = Number(latestWorkout.distanceKm) ? `${Math.round(latestWorkout.distanceKm * 10) / 10} km` : `${latestWorkout.durationMin || 0} dakika`
+      const terrain = (latestWorkout.tags || []).includes('terrain') ? 'arazi yuruyusu' : (latestWorkout.type || 'hareket')
+      return `Apple Health ${distance} ${terrain} kaydini yazdi. ODIE bunu yorgunluk, XP ve bugunku hamleye dahil ediyor.`
+    }
     const meta = [
       latestWorkout.durationMin ? `${latestWorkout.durationMin} dakika` : null,
       latestWorkout.volumeKg ? `${Math.round(latestWorkout.volumeKg).toLocaleString('tr-TR')} kg hacim` : null,
@@ -703,6 +709,26 @@ function renderXpRoute(bodyMapState) {
   `
 }
 
+function renderHealthBridgeCard(state = {}) {
+  const appleWorkout = (state.workouts || []).find(workout => String(workout.source || '').toLowerCase() === 'apple_health')
+  const latestText = appleWorkout
+    ? `${formatMonthShort(appleWorkout.date)} / ${appleWorkout.distanceKm ? `${Math.round(appleWorkout.distanceKm * 10) / 10} km` : `${appleWorkout.durationMin || 0} dk`}`
+    : 'Shortcut bekliyor'
+  return `
+    <article class="health-bridge-card">
+      <div>
+        <span>${renderExplainButton('apple-health', 'Apple Health', 'explain-link metric-explain')}</span>
+        <strong>iPhone hareketleri ODIE'ye aksin</strong>
+        <small>${escapeHtml(latestText)} - yuruyus, hiking, kosu ve bisiklet XP/yorgunluk motoruna yazilir.</small>
+      </div>
+      <div class="health-bridge-actions">
+        <button data-action="open-health-shortcut">Kestirme kur</button>
+        <button data-action="open-walk-form">12 km dogayi yaz</button>
+      </div>
+    </article>
+  `
+}
+
 function renderMobileCommandCenter(state, profile, semantic, nextSession = {}, latestWorkout = null, activeQuest = null, bodyMapState = null) {
   const stats = getFrontStats(state, profile)
   const readinessValue = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
@@ -793,6 +819,7 @@ function renderTodayPage(state, profile, semantic) {
     dailyLogs: state.dailyLogs || [],
     memoryFeedback: state.memoryFeedback || [],
     health: state.health || {},
+    bodyEvents: state.bodyEvents || [],
   })
   const readiness = Number(state.health?.readiness?.score)
   const armor = Math.round(Number(state.profile?.armor) || 0)
@@ -815,6 +842,7 @@ function renderTodayPage(state, profile, semantic) {
   return `
     <section class="today-page today-infographic-page">
       ${renderMobileCommandCenter(state, profile, semantic, nextSession, latestWorkout, activeQuest, bodyMapState)}
+      ${renderHealthBridgeCard(state)}
       ${renderInfographicStatBoard(state, profile, nextSession)}
       ${renderNextSessionCard(nextSession)}
 
@@ -1034,7 +1062,16 @@ const EXPLAINERS = {
   },
   kaynak: {
     title: 'Kaynak',
-    summary: 'Workout verisinin nereden geldigini gosterir: Hevy, Telegram veya web/manual.',
+    summary: 'Workout verisinin nereden geldigini gosterir: Hevy, Telegram, Apple Health veya web/manual.',
+  },
+  'apple-health': {
+    title: 'Apple Health',
+    summary: 'iPhone ve Apple Watch hareket verisini OdiePT workout motoruna tasiyan Kestirme koprusu.',
+    bullets: [
+      'Web app Health verisini kendi kendine cekemez; iPhone izniyle Kestirme veriyi endpoint e yollar.',
+      'Yuruyus, hiking, kosu ve bisiklet seanslari XP, yorgunluk, hareket hatti ve bugunun hamlesine yazilir.',
+      'Ayni aktivite externalId ile tekrar gelirse ikinci kez XP yazilmaz.',
+    ],
   },
   ritim: {
     title: 'Ritim',
@@ -2521,6 +2558,7 @@ function renderOdiePage(state, profile) {
     dailyLogs: state.dailyLogs || [],
     memoryFeedback: state.memoryFeedback || [],
     health: state.health || {},
+    bodyEvents: state.bodyEvents || [],
   })
   const coachProfile = {
     ...profile,
@@ -2611,6 +2649,86 @@ function renderOdieHallmark(nextSession = {}) {
   `
 }
 
+function renderBodyEventForm(region) {
+  const today = getLocalDateString()
+  const clearAt = new Date(`${today}T00:00:00`)
+  clearAt.setDate(clearAt.getDate() + 6)
+  return `
+    <form class="body-event-form" id="body-event-form">
+      <div class="body-event-title">
+        <span>Beden kaydi</span>
+        <strong>${escapeHtml(region?.label || 'Bolge')} icin ODIE notu</strong>
+      </div>
+      <div class="body-event-grid">
+        <label>
+          <span>Bolge</span>
+          <select name="region">
+            ${BODY_REGION_OPTIONS.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === region?.id ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label>
+          <span>Tip</span>
+          <select name="kind">
+            <option value="injury">Sakatlik</option>
+            <option value="pain">Agri</option>
+            <option value="tightness">Tutukluk</option>
+            <option value="rehab">Rehab</option>
+          </select>
+        </label>
+        <label>
+          <span>Taraf</span>
+          <select name="side">
+            <option value="unknown">Belirsiz</option>
+            <option value="left">Sol</option>
+            <option value="right">Sag</option>
+            <option value="both">Iki taraf</option>
+          </select>
+        </label>
+        <label>
+          <span>Siddet 1-5</span>
+          <input name="severity" type="number" min="1" max="5" value="3">
+        </label>
+        <label>
+          <span>Toparlanma %</span>
+          <input name="recoveryPercent" type="number" min="0" max="100" value="${region?.injury?.recoveryPct ?? 70}">
+        </label>
+        <label>
+          <span>Tahmini temiz gun</span>
+          <input name="expectedClearAt" type="date" value="${getLocalDateString(clearAt)}">
+        </label>
+      </div>
+      <label class="body-event-note">
+        <span>Not</span>
+        <textarea name="note" rows="3" placeholder="Orn: bilek kas temelli, agir grip ve push temkinli...">${escapeHtml(region?.injury?.note || '')}</textarea>
+      </label>
+      <button class="modal-primary-action" type="submit">Beden kaydini yaz</button>
+    </form>
+  `
+}
+
+function openHealthShortcutModal() {
+  const origin = window.location.origin
+  openModal(`
+    <div class="modal-head">
+      <span style="font-size:18px">APL</span>
+      <div class="modal-head-title">Apple Health Kestirmesi</div>
+      <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
+    </div>
+    <div class="modal-body health-shortcut-modal">
+      <div class="modal-desc">iPhone Kestirmesi, Health aktivitesini bu endpoint'e POST eder. Token Vercel'de <strong>HEALTH_IMPORT_TOKEN</strong> olarak durur; Kestirme header'ina ayni token yazilir.</div>
+      <div class="region-modal-list">
+        <strong>Endpoint</strong>
+        <span>${escapeHtml(`${origin}/api/health-import`)}</span>
+      </div>
+      <div class="region-modal-list">
+        <strong>Gonderilecek alanlar</strong>
+        <span>activityType, startAt, endAt, durationMin, distanceKm, steps, elevationM, activeEnergyKcal, avgHeartRate, routeName</span>
+      </div>
+      <div class="modal-coach">ODIE bunu workout'a cevirir: source Apple Health, duplicate korumali externalId, XP/yorgunluk/stat ve bugunun hamlesi ayni motorla guncellenir.</div>
+    </div>
+  `)
+}
+
 function openBodyRegionModal(regionId) {
   const state = store.getState()
   const profile = store.getProfile()
@@ -2665,8 +2783,52 @@ function openBodyRegionModal(regionId) {
           <small>${escapeHtml(quest.why || quest.desc || '')}</small>
         </div>
       ` : ''}
+      ${renderBodyEventForm(region)}
     </div>
   `)
+  bindBodyEventForm()
+}
+
+function bindBodyEventForm() {
+  const form = document.getElementById('body-event-form')
+  if (!form) return
+  form.addEventListener('submit', async event => {
+    event.preventDefault()
+    const submit = form.querySelector('button[type="submit"]')
+    if (submit) {
+      submit.disabled = true
+      submit.textContent = 'Kaydediliyor...'
+    }
+    const data = new FormData(form)
+    try {
+      const saved = await store.addBodyEvent({
+        kind: data.get('kind'),
+        region: data.get('region'),
+        side: data.get('side'),
+        severity: Number(data.get('severity')) || 3,
+        recoveryPercent: Number(data.get('recoveryPercent')) || 0,
+        expectedClearAt: data.get('expectedClearAt'),
+        note: String(data.get('note') || '').trim(),
+        source: 'manual',
+        status: 'active',
+      })
+      closeModal()
+      showToast({
+        icon: 'BODY',
+        title: 'Beden kaydi yazildi',
+        msg: saved.odieInterpretation?.command || 'ODIE bu bolgeyi bugunku karara dahil edecek.',
+        rarity: 'rare',
+        duration: 3200,
+      })
+      window.__refreshActivePanel?.()
+    } catch (error) {
+      console.error('[body-event-form] save error:', error)
+      if (submit) {
+        submit.disabled = false
+        submit.textContent = 'Beden kaydini yaz'
+      }
+    }
+  })
 }
 
 /* ---------- Init dispatch ---------- */
@@ -2742,6 +2904,23 @@ document.addEventListener('click', event => {
 
   if (action === 'open-workout') {
     openWorkoutForm()
+    return
+  }
+
+  if (action === 'open-walk-form') {
+    openWorkoutForm({
+      type: 'Yuruyus',
+      distanceKm: 12,
+      durationMin: 150,
+      elevationM: 0,
+      highlight: 'Doga yuruyusu',
+      notes: 'Apple Health baglanana kadar manuel hizli kayit.',
+    })
+    return
+  }
+
+  if (action === 'open-health-shortcut') {
+    openHealthShortcutModal()
     return
   }
 

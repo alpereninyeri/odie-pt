@@ -1252,6 +1252,7 @@ export function computeSessionXp(session = {}, context = {}) {
   const armor = Number(context.armor) || 100
   const closingGap = Boolean(context.closingGap)
   const questCompleted = Boolean(context.questCompleted)
+  const injuryConflict = Boolean(context.injuryConflict)
   const activeQuest = context.activeQuest || null
   const baseXp = TYPE_BASE_XP[normalized.type] || CATEGORY_BASE_XP[normalized.primaryCategory] || TYPE_BASE_XP.Custom
   const base = Math.round(baseXp * streakMultiplier(streakDays) * classMultiplier * survivalMultiplier)
@@ -1263,11 +1264,14 @@ export function computeSessionXp(session = {}, context = {}) {
     const clean = Math.max(0, Math.round(Number(value) || 0))
     if (clean > 0) breakdown.push({ key, label, value: clean })
   }
+  const addZeroPart = (key, label) => {
+    breakdown.push({ key, label, value: 0 })
+  }
 
   if (survivalMultiplier > 0) {
     if (normalized.hasPr) {
-      if (armor < 45) addPart('pr_locked', 'PR Bonusu Kilitli', 0)
-      else if (fatigue >= 75) addPart('pr', 'PR Bonusu', 15 * prBonusMultiplier)
+      if (injuryConflict || armor < 45) addZeroPart('pr_locked', 'PR Bonusu Kilitli')
+      else if (fatigue >= 75) addPart('pr', 'PR Bonusu Sinirli', 15 * prBonusMultiplier)
       else addPart('pr', 'PR Bonusu', 50 * prBonusMultiplier)
     }
     if (hasDirectCoreStimulus(normalized)) addPart('form', 'Form Bonusu', 20)
@@ -1287,7 +1291,7 @@ export function computeSessionXp(session = {}, context = {}) {
     streakMult: streakMultiplier(streakDays),
     xpEarned,
     breakdown,
-    xpPreview: breakdown.map(part => `+${part.value} ${part.label}`).join(' / '),
+    xpPreview: breakdown.filter(part => part.value > 0).map(part => `+${part.value} ${part.label}`).join(' / '),
   }
 }
 

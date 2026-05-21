@@ -27,12 +27,13 @@ function explainButton(key, label, className = 'explain-link metric-explain') {
   return `<button type="button" class="${className}" data-explain="${key}" aria-haspopup="dialog" aria-label="${label} aciklamasini ac">${label}</button>`
 }
 
-export function openWorkoutForm() {
-  openModal(renderForm(getLocalDateString()))
+export function openWorkoutForm(preset = {}) {
+  openModal(renderForm(getLocalDateString(), preset))
   bindForm()
 }
 
-function renderForm(date) {
+function renderForm(date, preset = {}) {
+  const selectedType = preset.type || 'Push'
   return `
     <div class="modal-head">
       <span style="font-size:22px">+</span>
@@ -49,33 +50,33 @@ function renderForm(date) {
         <div class="wf-row">
           <label class="wf-label">${explainButton('workout-type', 'Seans tipi')}</label>
           <select class="wf-input wf-select" id="wf-type">
-            ${WORKOUT_TYPES.map(type => `<option value="${type}">${type}</option>`).join('')}
+            ${WORKOUT_TYPES.map(type => `<option value="${type}" ${type === selectedType ? 'selected' : ''}>${type}</option>`).join('')}
           </select>
         </div>
 
         <div class="wf-set-row">
           <div class="wf-row">
             <label class="wf-label">${explainButton('duration', 'Sure (dk)')}</label>
-            <input class="wf-input" type="number" id="wf-duration" min="1" max="720" placeholder="60" required>
+            <input class="wf-input" type="number" id="wf-duration" min="1" max="720" placeholder="60" value="${preset.durationMin || ''}" required>
           </div>
           <div class="wf-row">
             <label class="wf-label">${explainButton('distance', 'Mesafe km')}</label>
-            <input class="wf-input" type="number" id="wf-distance" min="0" step="0.1" placeholder="Opsiyonel">
+            <input class="wf-input" type="number" id="wf-distance" min="0" step="0.1" placeholder="Opsiyonel" value="${preset.distanceKm || ''}">
           </div>
           <div class="wf-row">
             <label class="wf-label">${explainButton('elevation', 'Yukselti m')}</label>
-            <input class="wf-input" type="number" id="wf-elevation" min="0" step="1" placeholder="Opsiyonel">
+            <input class="wf-input" type="number" id="wf-elevation" min="0" step="1" placeholder="Opsiyonel" value="${preset.elevationM || ''}">
           </div>
         </div>
 
         <div class="wf-row">
           <label class="wf-label">${explainButton('highlight', 'Highlight')}</label>
-          <input class="wf-input" type="text" id="wf-highlight" placeholder="PR, teknik blok, temiz set notu...">
+          <input class="wf-input" type="text" id="wf-highlight" placeholder="PR, teknik blok, temiz set notu..." value="${preset.highlight || ''}">
         </div>
 
         <div class="wf-row">
           <label class="wf-label">${explainButton('notes', 'Notlar')}</label>
-          <textarea class="wf-input" id="wf-notes" rows="3" placeholder="Yorgunluk, zemin, denge, carry, teknik his..."></textarea>
+          <textarea class="wf-input" id="wf-notes" rows="3" placeholder="Yorgunluk, zemin, denge, carry, teknik his...">${preset.notes || ''}</textarea>
         </div>
 
         <div class="wf-section-title">${explainButton('exercises', 'Egzersizler')} <span class="wf-optional">(opsiyonel)</span></div>

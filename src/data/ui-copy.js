@@ -43,6 +43,7 @@ export function sourceLabel(source = '') {
   const key = String(source || '').toLowerCase()
   if (key === 'hevy') return 'HEVY'
   if (key === 'telegram') return 'TG'
+  if (key === 'apple_health') return 'Apple Health'
   if (key) return 'WEB'
   return 'Bekliyor'
 }

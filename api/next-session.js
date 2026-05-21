@@ -1,4 +1,5 @@
 import { buildNextSessionRecommendation } from '../src/data/next-session-engine.js'
+import { normalizeBodyEventRow } from '../src/data/body-events.js'
 import { normalizeDateString } from '../src/data/rules.js'
 
 function sbHeaders() {
@@ -55,6 +56,8 @@ function normalizeWorkoutRow(row = {}) {
     source: row.source || 'manual',
     tags: Array.isArray(row.tags) ? row.tags : [],
     blocks: Array.isArray(row.blocks) ? row.blocks : [],
+    distanceKm: Number(row.distance_km) || 0,
+    elevationM: Number(row.elevation_m) || 0,
     hasPr: row.has_pr,
     createdAt: row.created_at,
     startedAt: row.started_at,
@@ -99,10 +102,11 @@ export default async function handler(req, res) {
     const profileRow = await resolveProfile()
     if (!profileRow?.id) return res.status(404).json({ ok: false, error: 'Profil bulunamadi' })
 
-    const [workoutRows, dailyLogRows, feedbackRows] = await Promise.all([
+    const [workoutRows, dailyLogRows, feedbackRows, bodyEventRows] = await Promise.all([
       sbGetSafe(`workouts?select=*&profile_id=eq.${profileRow.id}&order=date.desc,created_at.desc&limit=120`, []),
       sbGetSafe(`daily_logs?select=*&profile_id=eq.${profileRow.id}&order=date.desc&limit=30`, []),
       sbGetSafe(`memory_feedback?select=*&profile_id=eq.${profileRow.id}&order=created_at.desc&limit=24`, []),
+      sbGetSafe(`body_events?select=*&profile_id=eq.${profileRow.id}&order=created_at.desc&limit=40`, []),
     ])
 
     const recommendation = buildNextSessionRecommendation({
@@ -110,6 +114,7 @@ export default async function handler(req, res) {
       workouts: (workoutRows || []).map(row => normalizeWorkoutRow(row)),
       dailyLogs: (dailyLogRows || []).map(row => normalizeDailyLog(row)),
       memoryFeedback: feedbackRows || [],
+      bodyEvents: (bodyEventRows || []).map(row => normalizeBodyEventRow(row)),
     })
 
     return res.status(200).json({ ok: true, recommendation })

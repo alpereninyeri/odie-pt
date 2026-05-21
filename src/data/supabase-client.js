@@ -6,6 +6,7 @@ import {
   normalizeWorkoutBlockRow,
   normalizeWorkoutFactRow,
 } from './memory-engine.js'
+import { normalizeBodyEvent, toSupabaseBodyEvent } from './body-events.js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -313,6 +314,20 @@ export async function fetchBodyMetricsHistory(limit = 30) {
   return (data || []).map(row => normalizeBodyMetricsHistoryRow(row))
 }
 
+export async function fetchBodyEvents(limit = 30) {
+  if (isMockMode) return []
+  if (import.meta.env.DEV) return []
+  try {
+    const response = await fetch(`/api/body-events?limit=${encodeURIComponent(limit)}`)
+    if (!response.ok) return []
+    const payload = await response.json()
+    return (payload.events || []).map(row => normalizeBodyEvent(row))
+  } catch (error) {
+    console.warn('[supabase] fetchBodyEvents:', error?.message || error)
+    return []
+  }
+}
+
 export async function fetchWorkoutBlocks(limit = 240) {
   if (isMockMode) return []
   const profileId = await _resolveProfileId()
@@ -386,6 +401,24 @@ export async function insertMemoryFeedback(feedback) {
   return normalizeMemoryFeedbackRow(data)
 }
 
+export async function insertBodyEvent(event) {
+  if (isMockMode) return null
+  if (import.meta.env.DEV) return null
+  try {
+    const response = await fetch('/api/body-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(toSupabaseBodyEvent(event)),
+    })
+    if (!response.ok) return null
+    const payload = await response.json()
+    return payload.event ? normalizeBodyEvent(payload.event) : null
+  } catch (error) {
+    console.warn('[supabase] insertBodyEvent:', error?.message || error)
+    return null
+  }
+}
+
 export function subscribeToProfile(onUpdate) {
   if (isMockMode) return () => {}
   const channel = supabase
@@ -418,6 +451,19 @@ export function subscribeToCoachNotes(onInsert) {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'coach_notes' }, payload => {
       if (_profileId && payload.new?.profile_id && payload.new.profile_id !== _profileId) return
       onInsert(payload.new)
+    })
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+export function subscribeToBodyEvents(onChange) {
+  if (isMockMode) return () => {}
+  const channel = supabase
+    .channel('odiept-body-events')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'body_events' }, payload => {
+      const row = payload.new || payload.old
+      if (_profileId && row?.profile_id && row.profile_id !== _profileId) return
+      onChange(payload)
     })
     .subscribe()
   return () => supabase.removeChannel(channel)

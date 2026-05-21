@@ -2245,3 +2245,130 @@
     animation-duration: .01ms !important;
   }
 }
+
+.health-bridge-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(120, 220, 199, .22);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(72, 210, 230, .12), transparent 44%),
+    rgba(6, 13, 19, .88);
+  color: var(--rev-bone);
+  box-shadow: var(--rev-shadow);
+}
+
+.health-bridge-card span,
+.body-event-title span,
+.body-event-form label span {
+  color: var(--rev-muted);
+  font-family: var(--font-mono);
+  font-size: .58rem;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.health-bridge-card strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--rev-bone);
+  font-size: .92rem;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.health-bridge-card small {
+  display: block;
+  margin-top: 5px;
+  color: var(--rev-muted);
+  font-size: .68rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.health-bridge-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.health-bridge-actions button {
+  min-width: 98px;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid rgba(120, 220, 199, .28);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .045);
+  color: var(--rev-bone);
+  font-size: .68rem;
+  font-weight: 900;
+}
+
+.body-event-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(217, 154, 63, .28);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(217, 154, 63, .09), rgba(255, 255, 255, .025)),
+    rgba(3, 7, 11, .82);
+}
+
+.body-event-title strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--rev-bone);
+  font-size: .88rem;
+  line-height: 1.1;
+}
+
+.body-event-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.body-event-form label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.body-event-form input,
+.body-event-form select,
+.body-event-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(217, 238, 236, .16);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, .32);
+  color: var(--rev-bone);
+  font: 800 .76rem/1.2 var(--font-ui);
+  padding: 8px;
+  outline: none;
+}
+
+.body-event-form textarea {
+  resize: vertical;
+}
+
+.health-shortcut-modal .region-modal-list span {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 430px) {
+  .health-bridge-card {
+    grid-template-columns: 1fr;
+  }
+
+  .health-bridge-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -7,6 +7,7 @@ import {
   normalizeText,
 } from './rules.js'
 import { buildSemanticProfile } from './semantic-profile.js'
+import { bodyEventToInjury, getActiveBodyEvents } from './body-events.js'
 
 const DAY_MS = 86400000
 
@@ -279,8 +280,10 @@ function normalizeInjury(injury = {}) {
   }
 }
 
-function getActiveInjuries(state = {}, profile = {}) {
+function getActiveInjuries(state = {}, profile = {}, today = getLocalDateString()) {
   return [
+    ...getActiveBodyEvents(state?.bodyEvents || [], today).map(event => bodyEventToInjury(event, { today })).filter(Boolean),
+    ...getActiveBodyEvents(profile?.bodyEvents || [], today).map(event => bodyEventToInjury(event, { today })).filter(Boolean),
     ...(Array.isArray(profile?.injuries) ? profile.injuries : []),
     ...(Array.isArray(state?.profile?.injuries) ? state.profile.injuries : []),
   ]
@@ -773,7 +776,7 @@ export function buildBodyMapState({
 } = {}) {
   const workouts = (state.workouts || profile.workouts || []).map(workout => normalizeSession(workout))
   const semanticProfile = semantic || buildSemanticProfile(workouts, state.dailyLogs || profile.dailyLogs || [])
-  const injuries = getActiveInjuries(state, profile)
+  const injuries = getActiveInjuries(state, profile, today)
   const regions = applyInjuryState(REGION_CONFIG.map(region => buildRegionState(region, workouts, state, today)), injuries)
   const movementLines = buildMovementLines(semanticProfile, regions, state)
   const unlockTargets = scoreUnlockTargets(state.skills || profile.skills || [], semanticProfile)
@@ -802,6 +805,10 @@ function sessionMatchesRegion(session = {}, regionId = '') {
   const region = REGION_CONFIG.find(item => item.id === regionId)
   if (!region) return false
   return regionSessionScore(normalized, region) > 0
+}
+
+export function sessionTouchesBodyRegion(session = {}, regionId = '') {
+  return sessionMatchesRegion(session, regionId)
 }
 
 function sessionMatchesMovement(session = {}, movementId = '') {

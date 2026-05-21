@@ -1,4 +1,5 @@
 import { getLocalDateString, normalizeDateString } from './rules.js'
+import { bodyEventToInjury, getActiveBodyEvents } from './body-events.js'
 
 const DEFAULT_READINESS = 62
 const WINDOW_14 = 14
@@ -95,17 +96,23 @@ function recentPrSignal(workout = null) {
 function buildSourceHealth(workouts = [], profile = {}) {
   const recent = sortWorkoutsDesc(workouts).slice(0, 30)
   const hevy = recent.filter(workout => String(workout.source || '').toLowerCase() === 'hevy')
+  const appleHealth = recent.filter(workout => String(workout.source || '').toLowerCase() === 'apple_health')
   const latestHevy = hevy[0] || null
+  const latestAppleHealth = appleHealth[0] || null
   const latest = recent[0] || null
   const lastSync = profile.lastUpdated || profile.last_updated || latest?.createdAt || latest?.created_at || null
 
   return {
     hevyCount: hevy.length,
+    appleHealthCount: appleHealth.length,
     totalRecent: recent.length,
     latestHevyDate: latestHevy?.date || null,
+    latestAppleHealthDate: latestAppleHealth?.date || null,
     latestSource: latest?.source || 'manual',
     lastSync,
-    label: hevy.length ? `Hevy ${hevy.length}/${recent.length || hevy.length}` : 'Hevy bekliyor',
+    label: hevy.length || appleHealth.length
+      ? `Hevy ${hevy.length} / Apple ${appleHealth.length}`
+      : 'Canli kaynak bekliyor',
   }
 }
 
@@ -113,23 +120,41 @@ function buildBlock(kind, label, target, reason, intensity = 'moderate') {
   return { kind, label, target, reason, intensity }
 }
 
-function commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hoursSinceLatest }) {
+function appleHealthLine(latest = null) {
+  if (String(latest?.source || '').toLowerCase() !== 'apple_health') return ''
+  const distance = Number(latest.distanceKm ?? latest.distance_km)
+  const distanceText = distance > 0 ? `${Math.round(distance * 10) / 10} km ` : ''
+  const terrain = (latest.tags || []).includes('terrain') ? 'arazi ' : ''
+  return `${distanceText}${terrain}${latest.type || 'hareket'} kayda girdi.`
+}
+
+function injuryPrefix(injury = null) {
+  if (!injury) return ''
+  const eta = Number(injury.etaDays) ? `${Math.round(injury.etaDays)} gun ` : ''
+  const command = injury.odieInterpretation?.command || injury.note || `${injury.label || 'Sakatlik'} temkinde.`
+  return `${eta}${command}`
+}
+
+function commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hoursSinceLatest, injury }) {
   const latestType = latest?.type || 'ana blok'
+  const appleLine = appleHealthLine(latest)
+  const injuryLine = injuryPrefix(injury)
+  const prefix = [appleLine, injuryLine].filter(Boolean).join(' ')
   if (goalKey === 'recovery') {
-    return `Bugun agir yuk yok. 30 dk yuruyus + 10 dk mobilite yap; kalkan ${Math.round(armor)} ustune cikana kadar ritmi koru.`
+    return `${prefix ? `${prefix} ` : ''}Bugun agir yuk yok. 30 dk yuruyus + 10 dk mobilite yap; kalkan ${Math.round(armor)} ustune cikana kadar ritmi koru.`
   }
   if (goalKey === 'technical') {
-    return `Bugun rekor kovalamiyoruz. ${latestType} icin 3 kontrollu set, 2 destek seti ve 8 dk core ile kapat.`
+    return `${prefix ? `${prefix} ` : ''}Bugun rekor kovalamiyoruz. ${latestType} icin 3 kontrollu set, 2 destek seti ve 8 dk core ile kapat.`
   }
   if (goalKey === 'pr-hold') {
-    return `Rekor yeni; ${hoursSinceLatest ?? '--'} saat gecmis. ${latestType} ayni kiloda kalsin, sadece 1 temiz tekrar veya guvenli destek seti ekle.`
+    return `${prefix ? `${prefix} ` : ''}Rekor yeni; ${hoursSinceLatest ?? '--'} saat gecmis. ${latestType} ayni kiloda kalsin, sadece 1 temiz tekrar veya guvenli destek seti ekle.`
   }
   if (goalKey === 'balance') {
     const low = balance.lowest?.label || 'Core'
     const target = balance.lowest?.key === 'core' ? '8-12 dk' : '3 net set'
-    return `${low} geride kalmis. Ana isten once ${target} ${low.toLowerCase()} koy; sonra normale don.`
+    return `${prefix ? `${prefix} ` : ''}${low} geride kalmis. Ana isten once ${target} ${low.toLowerCase()} koy; sonra normale don.`
   }
-  return `${latestType} acik. Tek kucuk artis yeter: +1 tekrar veya +2.5kg. Sonuna 8 dk core ekle.`
+  return `${prefix ? `${prefix} ` : ''}${latestType} acik. Tek kucuk artis yeter: +1 tekrar veya +2.5kg. Sonuna 8 dk core ekle.`
 }
 
 export function buildNextSessionRecommendation({
@@ -138,6 +163,7 @@ export function buildNextSessionRecommendation({
   dailyLogs = [],
   memoryFeedback = [],
   health = {},
+  bodyEvents = [],
   today = getLocalDateString(),
   now = new Date(),
 } = {}) {
@@ -153,6 +179,8 @@ export function buildNextSessionRecommendation({
   const hours = hoursSinceWorkout(latest, now)
   const hasRecentPr = recentPrSignal(latest) && (hours == null || hours < 96)
   const activeFeedbackRisk = (memoryFeedback || []).some(item => ['wrong', 'outdated'].includes(item.feedbackType || item.feedback_type))
+  const activeInjury = getActiveBodyEvents(bodyEvents, today).map(event => bodyEventToInjury(event)).filter(Boolean)[0]
+    || (Array.isArray(profile.injuries) ? profile.injuries.find(item => item.active !== false) : null)
   const evidence = []
 
   if (latest) evidence.push(`Son seans: ${String(latest.source || '').toLowerCase() === 'hevy' ? 'Hevy' : latest.source || 'Manual'} / ${latest.type || 'seans'} / ${latest.durationMin || latest.duration_min || 0} dk`)
@@ -160,6 +188,8 @@ export function buildNextSessionRecommendation({
   evidence.push(`Hazir ${Math.round(readiness)}, kalkan ${Math.round(armor)}, yorgunluk ${Math.round(fatigue)}`)
   if (balance.lowest) evidence.push(`Geride kalan hat: ${balance.lowest.label} (${Math.round(balance.lowest.sets)} set)`)
   if (sourceHealth.latestHevyDate) evidence.push(`Son Hevy: ${sourceHealth.latestHevyDate}`)
+  if (sourceHealth.latestAppleHealthDate) evidence.push(`Son Apple Health: ${sourceHealth.latestAppleHealthDate}`)
+  if (activeInjury) evidence.push(`Aktif temkin: ${activeInjury.label || activeInjury.regionId}`)
 
   let goalKey = 'progress'
   let tone = 'go'
@@ -231,6 +261,7 @@ export function buildNextSessionRecommendation({
   }
 
   if (activeFeedbackRisk) warnings.push('Bazi eski ODIE yorumlari isaretlenmis; bugun daha temkinli okuyorum.')
+  if (activeInjury) warnings.unshift(activeInjury.odieInterpretation?.command || activeInjury.note || `${activeInjury.label || 'Sakatlik'} temkinde.`)
   if (!sourceHealth.hevyCount) warnings.push('Son kayitlarda Hevy yok; sync hattini kontrol etmek iyi olur.')
 
   const confidence = clamp(
@@ -261,7 +292,7 @@ export function buildNextSessionRecommendation({
       pressure: balance.lowest ? `${balance.lowest.label} hattini one almak mantikli.` : 'Gorev baskisi dengeli.',
       balance,
     },
-    coachCommand: commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hoursSinceLatest: hours }),
+    coachCommand: commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hoursSinceLatest: hours, injury: activeInjury }),
     sourceHealth,
     confidence: Math.round(confidence),
     evidence: evidence.slice(0, 6),

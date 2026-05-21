@@ -3,6 +3,7 @@ import { MOCK_STATE } from './mock-state.js'
 import {
   deleteWorkout,
   fetchAthleteMemory,
+  fetchBodyEvents,
   fetchBodyMetricsHistory,
   fetchDailyLogs,
   fetchLatestCoachNote,
@@ -12,8 +13,10 @@ import {
   fetchWorkoutFacts,
   fetchWorkouts,
   insertMemoryFeedback,
+  insertBodyEvent,
   insertWorkout,
   isMockMode,
+  subscribeToBodyEvents,
   subscribeToCoachNotes,
   subscribeToProfile,
   subscribeToWorkouts,
@@ -29,7 +32,8 @@ import {
 } from './memory-engine.js'
 import { recalculate } from './engine.js'
 import { checkBadges } from './badge-engine.js'
-import { sessionClosesBodyMapPriority, sessionClosesGameQuest } from './body-map-engine.js'
+import { sessionClosesBodyMapPriority, sessionClosesGameQuest, sessionTouchesBodyRegion } from './body-map-engine.js'
+import { bodyEventFromInjury, getActiveBodyEvents, normalizeBodyEvent } from './body-events.js'
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from './class-engine.js'
 import { computeGeographyTier, computeVolumeTier } from './epic-volume-engine.js'
 import { detectPRs } from './pr-detector.js'
@@ -381,6 +385,7 @@ function _buildSeed() {
     coachNote: _buildSeedCoachNote(),
     coachQuestHints: [],
     coachSkillProgress: [],
+    bodyEvents: (seedProfile.injuries || []).map(injury => bodyEventFromInjury(injury)),
     bodyMetrics: _normalizeBodyMetrics(seedProfile.bodyMetrics || {}),
     athleteMemory: [],
     memoryFeedback: [],
@@ -654,6 +659,7 @@ function _hydrateState(state) {
     coachNote: _clone(state?.coachNote || seed.coachNote),
     coachQuestHints: _clone(state?.coachQuestHints || []),
     coachSkillProgress: _clone(state?.coachSkillProgress || []),
+    bodyEvents: (state?.bodyEvents || seed.bodyEvents || []).map(item => normalizeBodyEvent(item)),
     bodyMetrics: _clone(state?.bodyMetrics || seed.bodyMetrics || {}),
     athleteMemory: (state?.athleteMemory || []).map(item => normalizeAthleteMemoryRow(item)),
     memoryFeedback: (state?.memoryFeedback || []).map(item => normalizeMemoryFeedbackRow(item)),
@@ -760,6 +766,8 @@ function _maybeRefreshPath(path) {
     'coachNote',
     'coachQuestHints',
     'coachSkillProgress',
+    'bodyEvents',
+    'profile.injuries',
   ].some(prefix => path === prefix || path.startsWith(`${prefix}.`))
 }
 
@@ -804,6 +812,7 @@ function _mergeToProfile(state) {
     workoutFacts: state.workoutFacts || [],
     bodyMapState: state.bodyMapState || null,
     recovery: profile.recovery || null,
+    bodyEvents: _clone(state.bodyEvents || []),
     injuries: _clone(profile.injuries || seedProfile.injuries || []),
     calibration: normalizeStatCalibration(profile.calibration || {}),
   }
@@ -884,6 +893,15 @@ export const store = {
         _notify('*')
         _set(_state, '_coachUpdated', coachRow)
         _notify('_coachUpdated')
+      }))
+
+      _unsubSupabase.push(subscribeToBodyEvents(async () => {
+        try {
+          _state.bodyEvents = await fetchBodyEvents(40)
+        } catch {}
+        _refreshDerivedState(_state)
+        _saveToLS()
+        _notify('*')
       }))
     }
 
@@ -976,6 +994,8 @@ export const store = {
       armorRegen: classArmorRegen(currentClass),
       fatigueDecay: classFatigueDecay(currentClass),
     })
+    const activeBodyEvents = getActiveBodyEvents(_state.bodyEvents || [])
+    const injuryConflict = activeBodyEvents.some(event => sessionTouchesBodyRegion(normalized, event.region))
 
     const xpContext = {
       streakDays: streak.current,
@@ -988,6 +1008,7 @@ export const store = {
       closingGap: sessionClosesBodyMapPriority(normalized, _state.bodyMapState),
       questCompleted: sessionClosesGameQuest(normalized, _state.bodyMapState?.dailyQuest),
       activeQuest: _state.bodyMapState?.dailyQuest || null,
+      injuryConflict,
     }
     const xp = computeSessionXp(normalized, xpContext)
     const statDelta = computeSessionStatDelta(normalized)
@@ -1093,17 +1114,46 @@ export const store = {
     return normalized
   },
 
+  async addBodyEvent(event) {
+    const normalized = normalizeBodyEvent(event)
+    _state.bodyEvents = [
+      normalized,
+      ...(_state.bodyEvents || []).filter(item => String(item.id || '') !== String(normalized.id || '') || !normalized.id),
+    ]
+
+    _refreshDerivedState(_state)
+    _saveToLS()
+    _notify('*')
+
+    if (!isMockMode) {
+      const inserted = await insertBodyEvent(normalized)
+      if (inserted?.id) {
+        _state.bodyEvents = [
+          inserted,
+          ...(_state.bodyEvents || []).filter(item => String(item.id || '') !== String(inserted.id)),
+        ]
+        _refreshDerivedState(_state)
+        _saveToLS()
+        _notify('*')
+      }
+    }
+
+    return normalized
+  },
+
   async syncFromSupabase() {
-    const [profileRow, workoutRows, dailyLogRows, coachNoteRow] = await Promise.all([
+    const [profileRow, workoutRows, dailyLogRows, coachNoteRow, bodyEventRows] = await Promise.all([
       fetchProfile(),
       fetchWorkouts(200),
       fetchDailyLogs(45),
       fetchLatestCoachNote(),
+      fetchBodyEvents(40),
     ])
 
     if (profileRow) _applySupabaseProfile(profileRow)
     if (Array.isArray(workoutRows) && workoutRows.length) _state.workouts = workoutRows.map(row => _normalizeWorkoutRow(row))
     if (Array.isArray(dailyLogRows) && dailyLogRows.length) _state.dailyLogs = dailyLogRows.map(row => _normalizeDailyLog(row))
+    if (Array.isArray(bodyEventRows) && bodyEventRows.length) _state.bodyEvents = bodyEventRows.map(row => normalizeBodyEvent(row))
     if (coachNoteRow?.sections?.length) _applyCoachNote(coachNoteRow)
     await _syncMemoryLayer()
 
