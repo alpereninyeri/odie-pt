@@ -2,7 +2,7 @@ import './styles/odie-ui.css'
 import './styles/heroic-rpg.css'
 import './styles/infographic-game.css'
 import './styles/mobile-revolution.css'
-import ODIE_ATHLETE_ANATOMY from './assets/odie-athlete-anatomy-v1.webp'
+import ODIE_PRESTIGE_ANATOMY from './assets/odie-athlete-anatomy-prestige.svg'
 import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
@@ -556,6 +556,41 @@ function movementById(bodyMapState, id) {
   return (bodyMapState?.movementLines || []).find(line => line.id === id) || null
 }
 
+const ANATOMY_ZONE_ANCHORS = {
+  shoulder: { x: 120, y: 112 },
+  chest: { x: 120, y: 136 },
+  lat: { x: 78, y: 158 },
+  'upper-back': { x: 162, y: 158 },
+  core: { x: 120, y: 196 },
+  forearm: { x: 62, y: 204 },
+  wrist: { x: 44, y: 236 },
+  hips: { x: 120, y: 252 },
+  quads: { x: 120, y: 306 },
+  knees: { x: 120, y: 350 },
+  calves: { x: 120, y: 382 },
+  ankles: { x: 120, y: 402 },
+}
+
+const PRESTIGE_ZONE_SHAPES = [
+  ['shoulder', { type: 'ellipse', cx: 84, cy: 111, rx: 22, ry: 15 }],
+  ['shoulder', { type: 'ellipse', cx: 156, cy: 111, rx: 22, ry: 15 }],
+  ['chest', { type: 'ellipse', cx: 120, cy: 137, rx: 43, ry: 24 }],
+  ['lat', { type: 'ellipse', cx: 78, cy: 160, rx: 16, ry: 32 }],
+  ['upper-back', { type: 'ellipse', cx: 162, cy: 160, rx: 16, ry: 32 }],
+  ['core', { type: 'ellipse', cx: 120, cy: 196, rx: 30, ry: 47 }],
+  ['forearm', { type: 'ellipse', cx: 56, cy: 205, rx: 12, ry: 36 }],
+  ['forearm', { type: 'ellipse', cx: 184, cy: 205, rx: 12, ry: 36 }],
+  ['wrist', { type: 'circle', cx: 43, cy: 237, r: 10 }],
+  ['wrist', { type: 'circle', cx: 197, cy: 237, r: 10 }],
+  ['hips', { type: 'ellipse', cx: 120, cy: 252, rx: 40, ry: 22 }],
+  ['quads', { type: 'ellipse', cx: 97, cy: 309, rx: 16, ry: 46 }],
+  ['quads', { type: 'ellipse', cx: 143, cy: 309, rx: 16, ry: 46 }],
+  ['knees', { type: 'circle', cx: 94, cy: 351, r: 11 }],
+  ['knees', { type: 'circle', cx: 146, cy: 351, r: 11 }],
+  ['calves', { type: 'ellipse', cx: 88, cy: 383, rx: 13, ry: 34 }],
+  ['calves', { type: 'ellipse', cx: 152, cy: 383, rx: 13, ry: 34 }],
+]
+
 function renderBodyZone(bodyMapState, id, shape) {
   const region = regionById(bodyMapState, id) || { id, label: id, load: 0, recovery: 0, risk: 0, trend: 'hazir' }
   const tone = region.injury ? 'injury' : region.risk >= 68 ? 'risk' : region.trend === 'ihmal' ? 'gap' : region.trend === 'sicak' ? 'hot' : region.recovery >= 70 ? 'ready' : 'build'
@@ -577,7 +612,23 @@ function renderBodyZone(bodyMapState, id, shape) {
   return `<path ${common} d="${shape.d}" />`
 }
 
-function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
+function anatomyAnchorFor(region) {
+  const id = typeof region === 'string' ? region : region?.id
+  return ANATOMY_ZONE_ANCHORS[id] || ANATOMY_ZONE_ANCHORS.core
+}
+
+function renderPrestigeHeatLayer(bodyMapState, priorityRegion) {
+  const anchor = anatomyAnchorFor(priorityRegion)
+  return `
+    <svg viewBox="0 0 240 420" class="prestige-heat-layer" focusable="false" aria-hidden="true">
+      ${PRESTIGE_ZONE_SHAPES.map(([id, shape]) => renderBodyZone(bodyMapState, id, shape)).join('')}
+      <circle class="priority-pulse-ring" cx="${anchor.x}" cy="${anchor.y}" r="24" />
+      <circle class="priority-pulse-core" cx="${anchor.x}" cy="${anchor.y}" r="7" />
+    </svg>
+  `
+}
+
+function renderPrestigeAnatomySheet(bodyMapState, profile, className = '') {
   const priorityRegion = bodyMapState?.priority?.region
   const priorityMovement = bodyMapState?.priority?.movement
   const quest = bodyMapState?.dailyQuest
@@ -587,78 +638,56 @@ function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
     const bScore = (b.tone === 'gap' ? 40 : 0) + b.risk + (100 - b.progress)
     return bScore - aScore
   }).slice(0, injury ? 3 : 4)
+  const remainingPct = injury?.remainingPct ?? Math.max(0, 100 - (injury?.recoveryPct || 0))
+  const injurySummary = injury
+    ? `%${Math.round(injury.recoveryPct ?? 0)} toparlandi / %${Math.round(remainingPct)} kaldi / ${Math.round(injury.etaDays ?? 0)} gun`
+    : 'Temiz yuk, kontrollu artis'
 
   return `
-    <button class="anatomy-sheet" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}" aria-label="Canli vucut haritasini ac">
-      <span class="anatomy-hud">
-        <b>${escapeHtml(profile.nick || 'Atlet')}</b>
-        <em>${escapeHtml(className || 'Karakter')}</em>
-      </span>
-      <span class="anatomy-stage" aria-hidden="true">
-        <span class="anatomy-art-frame">
-          <img class="anatomy-art" src="${ODIE_ATHLETE_ANATOMY}" alt="" loading="eager">
+    <div class="prestige-anatomy">
+      <button class="anatomy-hero-stage" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}" aria-label="Canli vucut haritasini ac">
+        <span class="anatomy-hero-meta">
+          <b>${escapeHtml(profile.nick || 'Atlet')}</b>
+          <em>${escapeHtml(className || 'Karakter')}</em>
         </span>
-        <svg viewBox="0 0 260 320" class="anatomy-figure anatomy-overlay" focusable="false">
-          <defs>
-            <radialGradient id="bodyGlow" cx="50%" cy="38%" r="62%">
-              <stop offset="0%" stop-color="rgba(188, 255, 232, .34)" />
-              <stop offset="52%" stop-color="rgba(68, 202, 214, .16)" />
-              <stop offset="100%" stop-color="rgba(2, 7, 12, 0)" />
-            </radialGradient>
-          </defs>
-          <ellipse class="anatomy-aura" cx="130" cy="166" rx="88" ry="138" />
-          <path class="anatomy-back-ghost" d="M91 91 C73 121 73 166 82 207 C90 244 100 274 111 301 M169 91 C187 121 187 166 178 207 C170 244 160 274 149 301" />
-          <circle class="anatomy-base" cx="130" cy="45" r="24" />
-          <path class="anatomy-base" d="M103 76 C118 68 142 68 157 76 C170 103 174 145 164 184 C157 210 149 236 146 301 L124 301 C123 258 121 233 116 207 C111 232 106 258 104 301 L82 301 C85 236 93 210 96 184 C86 145 90 103 103 76Z" />
-          <path class="anatomy-limb" d="M101 88 C70 101 56 132 45 173" />
-          <path class="anatomy-limb" d="M159 88 C190 101 204 132 215 173" />
-          <path class="anatomy-muscle-line" d="M130 75 L130 199 M111 94 C121 108 139 108 149 94 M104 132 C120 142 140 142 156 132 M103 174 C119 164 141 164 157 174" />
-          ${renderBodyZone(bodyMapState, 'shoulder', { type: 'ellipse', cx: 100, cy: 88, rx: 18, ry: 12 })}
-          ${renderBodyZone(bodyMapState, 'shoulder', { type: 'ellipse', cx: 160, cy: 88, rx: 18, ry: 12 })}
-          ${renderBodyZone(bodyMapState, 'chest', { type: 'ellipse', cx: 130, cy: 110, rx: 34, ry: 20 })}
-          ${renderBodyZone(bodyMapState, 'lat', { type: 'ellipse', cx: 90, cy: 126, rx: 15, ry: 28 })}
-          ${renderBodyZone(bodyMapState, 'upper-back', { type: 'ellipse', cx: 170, cy: 126, rx: 15, ry: 28 })}
-          ${renderBodyZone(bodyMapState, 'core', { type: 'ellipse', cx: 130, cy: 160, rx: 26, ry: 34 })}
-          ${renderBodyZone(bodyMapState, 'forearm', { type: 'ellipse', cx: 54, cy: 168, rx: 10, ry: 22 })}
-          ${renderBodyZone(bodyMapState, 'forearm', { type: 'ellipse', cx: 206, cy: 168, rx: 10, ry: 22 })}
-          ${renderBodyZone(bodyMapState, 'wrist', { type: 'circle', cx: 47, cy: 189, r: 8 })}
-          ${renderBodyZone(bodyMapState, 'wrist', { type: 'circle', cx: 213, cy: 189, r: 8 })}
-          ${renderBodyZone(bodyMapState, 'hips', { type: 'ellipse', cx: 130, cy: 204, rx: 33, ry: 18 })}
-          ${renderBodyZone(bodyMapState, 'quads', { type: 'ellipse', cx: 108, cy: 244, rx: 13, ry: 36 })}
-          ${renderBodyZone(bodyMapState, 'quads', { type: 'ellipse', cx: 152, cy: 244, rx: 13, ry: 36 })}
-          ${renderBodyZone(bodyMapState, 'knees', { type: 'circle', cx: 105, cy: 276, r: 9 })}
-          ${renderBodyZone(bodyMapState, 'knees', { type: 'circle', cx: 155, cy: 276, r: 9 })}
-          ${renderBodyZone(bodyMapState, 'calves', { type: 'ellipse', cx: 98, cy: 300, rx: 10, ry: 17 })}
-          ${renderBodyZone(bodyMapState, 'calves', { type: 'ellipse', cx: 162, cy: 300, rx: 10, ry: 17 })}
-        </svg>
-      </span>
-      <span class="anatomy-side">
-        <span class="anatomy-priority">
-          <b>${escapeHtml(priorityRegion?.label || 'Core')}</b>
-          <small>${escapeHtml(priorityMovement?.label || 'Mobilite')} hattı</small>
-        </span>
-        ${injury ? `
-          <span class="anatomy-injury">
-            <b>${escapeHtml(injury.label || 'Sakatlik')}</b>
-            <small>%${Math.round(injury.recoveryPct ?? 0)} toparlandi / ${Math.round(injury.etaDays ?? 0)} gun</small>
+        <span class="anatomy-orbit" aria-hidden="true"></span>
+        <img class="prestige-anatomy-art" src="${ODIE_PRESTIGE_ANATOMY}" alt="" loading="eager">
+        ${renderPrestigeHeatLayer(bodyMapState, priorityRegion)}
+      </button>
+
+      <div class="anatomy-status-rail" aria-label="Vucut durumu">
+        <button class="anatomy-rail-card tone-priority" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}">
+          <span>Odak bolge</span>
+          <strong>${escapeHtml(priorityRegion?.label || 'Core')}</strong>
+          <small>${escapeHtml(priorityMovement?.label || 'Mobilite')} hatti</small>
+        </button>
+        <button class="anatomy-rail-card ${injury ? 'tone-injury' : 'tone-ready'}" data-action="open-body-region" data-region-id="${escapeHtml(injury?.regionId || priorityRegion?.id || 'core')}">
+          <span>${injury ? 'Temkin' : 'Kalkan'}</span>
+          <strong>${escapeHtml(injury?.label || 'Stabil yuk')}</strong>
+          <small>${escapeHtml(injurySummary)}</small>
+        </button>
+        <button class="anatomy-rail-card tone-quest" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}">
+          <span>Ara gorev</span>
+          <strong>${escapeHtml(quest?.name || 'Mini hamle')}</strong>
+          <small>${escapeHtml(quest?.desc || 'Bugunun temiz ilerleme isi')}</small>
+        </button>
+      </div>
+
+      <div class="movement-stack prestige-movement-stack">
+        ${lines.map(line => `
+          <span class="movement-line tone-${escapeHtml(line.tone)}" style="--move:${clamp(line.progress)}%">
+            <b>${escapeHtml(line.label)}</b>
+            <i><em></em></i>
+            <strong>${Math.round(line.progress)}</strong>
           </span>
-        ` : ''}
-        <span class="movement-stack">
-          ${lines.map(line => `
-            <span class="movement-line tone-${escapeHtml(line.tone)}" style="--move:${clamp(line.progress)}%">
-              <b>${escapeHtml(line.label)}</b>
-              <i><em></em></i>
-              <strong>${Math.round(line.progress)}</strong>
-            </span>
-          `).join('')}
-        </span>
-        <span class="anatomy-quest">
-          <b>${escapeHtml(quest?.name || 'Ara Gorev')}</b>
-          <small>${escapeHtml(quest?.desc || 'Bugunun mini hamlesi')}</small>
-        </span>
-      </span>
-    </button>
+        `).join('')}
+      </div>
+    </div>
   `
+}
+
+function renderAthleteAnatomySheet(bodyMapState, profile, className = '') {
+  return renderPrestigeAnatomySheet(bodyMapState, profile, className)
 }
 
 function renderXpRoute(bodyMapState) {
@@ -1977,6 +2006,20 @@ function renderCharacterPage(state, profile, semantic) {
   `
 }
 
+function renderMirogluCommandCard({ label, title, detail, tone = 'focus', action = '', regionId = '' }) {
+  const tag = action ? 'button' : 'div'
+  const attrs = action
+    ? ` data-action="${escapeHtml(action)}"${regionId ? ` data-region-id="${escapeHtml(regionId)}"` : ''}`
+    : ''
+  return `
+    <${tag} class="sheet-command-card tone-${escapeHtml(tone)}"${attrs}>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </${tag}>
+  `
+}
+
 function renderCharacterArena(state, profile, semantic) {
   const stats = getFrontStats(state, profile)
   const liveClass = state.profile.classObj || {}
@@ -2001,51 +2044,58 @@ function renderCharacterArena(state, profile, semantic) {
       : `%${unlockProgress} yakin / ${nextUnlock.missing || nextUnlock.todayStep || 'mini adim bekliyor'}`
     : summarizeUnlockHint(nextUnlock, profile.skills || []) || skillSummary
 
+  const quest = bodyMapState?.dailyQuest
+  const xpRouteText = bodyMapState?.xpPreview?.text || `XP ${xpCur}/${xpMax}`
   return `
-    <article class="character-arena character-passport" style="--xp-pct:${xpPct}%">
-      <div class="passport-topline">
-        <div class="passport-id">
-          <span>Karakter pasaportu</span>
+    <article class="character-arena miroglu-sheet" style="--xp-pct:${xpPct}%">
+      <header class="miroglu-topbar">
+        <div class="miroglu-id">
+          <span>Karakter sheet</span>
           <h2>${escapeHtml(profile.nick)}</h2>
-          <p>${escapeHtml(profile.rank || 'Unranked')} / ${renderExplainButton('class', className, 'explain-link command-class')} / ${escapeHtml(focus)}</p>
+          <p>${escapeHtml(profile.rank || 'Unranked')} / ${escapeHtml(className)} / ${escapeHtml(focus)}</p>
         </div>
-        <button class="passport-rank" data-action="open-archetype" aria-label="Karakter tipini ac">
-          <span>L${escapeHtml(profile.level || 1)}</span>
-          <strong>${escapeHtml(profile.rank || 'Rank')}</strong>
-        </button>
-      </div>
-
-      <div class="passport-stage">
-        ${renderAthleteAnatomySheet(bodyMapState, profile, className)}
-        <div class="passport-side">
-          <div class="passport-build">
-            <span>Bugunku build</span>
-            <strong>${escapeHtml(className)}</strong>
-            <small>${escapeHtml((focusSignal || liveClass.reason || 'Aktif build').slice(0, 92))}</small>
+        <div class="miroglu-status">
+          <button class="miroglu-rank" data-action="open-archetype" aria-label="Karakter tipini ac">
+            <span>L${escapeHtml(profile.level || 1)}</span>
+            <strong>${escapeHtml(profile.rank || 'Rank')}</strong>
+          </button>
+          <div class="miroglu-ready">
+            <span>${escapeHtml(uiLabel('readiness'))}</span>
+            <strong>${escapeHtml(readiness)}</strong>
           </div>
-          <button class="passport-effect tone-${escapeHtml(statusEffect.tone)}" data-action="open-body-region" data-region-id="${escapeHtml(statusEffect.regionId || bodyMapState?.priority?.region?.id || 'core')}">
-            <span>${escapeHtml(statusEffect.label)}</span>
-            <strong>${escapeHtml(statusEffect.title)}</strong>
-            <small>${escapeHtml(statusEffect.detail)}</small>
-          </button>
-          <button class="passport-unlock" data-action="open-unlock">
-            <span>${escapeHtml(uiLabel('unlock'))}</span>
-            <strong>${escapeHtml(nextUnlock?.name || 'Stable Build')}</strong>
-            <small>${escapeHtml(unlockMeta.slice(0, 96))}</small>
-          </button>
         </div>
+      </header>
+
+      ${renderPrestigeAnatomySheet(bodyMapState, profile, className)}
+
+      <div class="anatomy-command-strip">
+        ${renderMirogluCommandCard({
+          label: 'Bugunku Hamle',
+          title: quest?.name || statusEffect.title,
+          detail: quest?.why || quest?.desc || statusEffect.detail,
+          tone: statusEffect.tone === 'injury' ? 'injury' : 'focus',
+          action: 'open-body-region',
+          regionId: statusEffect.regionId || bodyMapState?.priority?.region?.id || 'core',
+        })}
+        ${renderMirogluCommandCard({
+          label: uiLabel('unlock'),
+          title: nextUnlock?.name || 'Stable Build',
+          detail: unlockMeta.slice(0, 96),
+          tone: 'unlock',
+          action: 'open-unlock',
+        })}
+        ${renderMirogluCommandCard({
+          label: 'XP Nereden Gelir?',
+          title: xpRouteText,
+          detail: `${skillSummary} / ${(focusSignal || liveClass.reason || 'aktif build').slice(0, 64)}`,
+          tone: 'xp',
+        })}
       </div>
 
-      <div class="passport-vitals">
+      <div class="miroglu-vitals">
         ${renderRevMeter('xp', `XP ${xpCur}/${xpMax}`, xpPct, 'xp')}
         ${renderRevMeter('armor', uiLabel('armor'), armor, 'armor')}
         ${renderRevMeter('fatigue', uiLabel('fatigue'), fatigue, 'fatigue')}
-      </div>
-
-      <div class="passport-life-strip">
-        <span><b>${escapeHtml(uiLabel('readiness'))}</b>${escapeHtml(readiness)}</span>
-        <span><b>XP yolu</b>${escapeHtml(bodyMapState?.xpPreview?.text || `XP ${xpCur}/${xpMax}`)}</span>
-        <span><b>Gorev</b>${escapeHtml(bodyMapState?.dailyQuest?.name || skillSummary)}</span>
       </div>
 
       <div class="passport-stat-grid">
