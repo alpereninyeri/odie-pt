@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { normalizeAppleHealthPayload } from '../src/data/apple-health.js'
 import { bodyEventToInjury, normalizeBodyEvent } from '../src/data/body-events.js'
 import { buildBodyMapState, sessionTouchesBodyRegion } from '../src/data/body-map-engine.js'
+import { normalizeHealthImportPayload } from '../src/data/health-telemetry.js'
 import { computeSessionXp, normalizeSession } from '../src/data/rules.js'
 import { profile as seedProfile } from '../src/data/profile.js'
 import { authorizeHealthImport } from '../api/health-import.js'
@@ -33,6 +34,46 @@ test('Apple Health hiking payload becomes an idempotent Odie workout', () => {
   assert.ok(first.tags.includes('walking'))
   assert.ok(first.tags.includes('terrain'))
   assert.equal(first.primaryCategory, 'endurance')
+})
+
+test('Apple Health shortcut batch accepts sleep heart and activity samples', () => {
+  const payload = {
+    samples: [
+      {
+        kind: 'sleep',
+        externalId: 'sleep-2026-05-22',
+        day: '2026-05-22',
+        totalSleepHours: 7.25,
+        deepSleepHours: 0.9,
+        remSleepHours: 1.6,
+        awakeMinutes: 18,
+      },
+      {
+        kind: 'heart',
+        externalId: 'heart-2026-05-22',
+        day: '2026-05-22',
+        restingHeartRate: 58,
+        hrvSdnn: 44,
+      },
+      {
+        kind: 'activity_day',
+        externalId: 'activity-2026-05-22',
+        day: '2026-05-22',
+        steps: 12000,
+        walkingDistanceKm: 9.4,
+        exerciseMinutes: 78,
+      },
+    ],
+  }
+
+  const normalized = normalizeHealthImportPayload(payload, { now: new Date('2026-05-22T12:00:00Z') })
+  const metricTypes = normalized.telemetry.map(row => row.metricType)
+
+  assert.deepEqual(new Set(normalized.receivedKinds), new Set(['sleep', 'heart', 'activity_day']))
+  assert.ok(metricTypes.includes('totalSleepHours'))
+  assert.ok(metricTypes.includes('hrvSdnn'))
+  assert.ok(metricTypes.includes('steps'))
+  assert.deepEqual(normalized.days, ['2026-05-22'])
 })
 
 test('manual body event persists as an active injury signal for body map', () => {

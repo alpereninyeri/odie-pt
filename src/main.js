@@ -2885,34 +2885,185 @@ function renderBodyEventForm(region) {
   `
 }
 
+function shortcutCodeBlock(id, title, body, note = '') {
+  return `
+    <div class="shortcut-code-card">
+      <div class="shortcut-code-head">
+        <strong>${escapeHtml(title)}</strong>
+        <button type="button" data-copy-target="${escapeHtml(id)}">Kopyala</button>
+      </div>
+      ${note ? `<p>${escapeHtml(note)}</p>` : ''}
+      <pre><code id="${escapeHtml(id)}">${escapeHtml(body)}</code></pre>
+    </div>
+  `
+}
+
+function shortcutPayloadExamples() {
+  const testActivity = JSON.stringify({
+    kind: 'activity_day',
+    samples: [{
+      externalId: 'test-activity-2026-05-22',
+      day: '2026-05-22',
+      steps: 12000,
+      walkingDistanceKm: 9.4,
+      activeEnergyKcal: 620,
+      exerciseMinutes: 78,
+      flightsClimbed: 8,
+    }],
+  }, null, 2)
+
+  const workoutEnd = JSON.stringify({
+    kind: 'workout',
+    samples: [{
+      externalId: 'workout-{{startAt}}',
+      activityType: 'Hiking',
+      startAt: '{{startAt ISO}}',
+      endAt: '{{endAt ISO}}',
+      durationMin: '{{duration min}}',
+      distanceKm: '{{distance km}}',
+      steps: '{{steps}}',
+      elevationM: '{{elevation m}}',
+      activeEnergyKcal: '{{active kcal}}',
+      avgHeartRate: '{{avg bpm}}',
+      maxHeartRate: '{{max bpm}}',
+      routeName: 'Apple Watch',
+    }],
+  }, null, 2)
+
+  const morningSync = JSON.stringify({
+    samples: [
+      {
+        kind: 'sleep',
+        externalId: 'sleep-{{day}}',
+        day: '{{yyyy-mm-dd}}',
+        sleepStartAt: '{{sleep start ISO}}',
+        sleepEndAt: '{{sleep end ISO}}',
+        totalSleepHours: '{{asleep hours}}',
+        deepSleepHours: '{{deep hours}}',
+        remSleepHours: '{{rem hours}}',
+        coreSleepHours: '{{core hours}}',
+        awakeMinutes: '{{awake minutes}}',
+      },
+      {
+        kind: 'heart',
+        externalId: 'heart-{{day}}',
+        day: '{{yyyy-mm-dd}}',
+        restingHeartRate: '{{resting bpm}}',
+        hrvSdnn: '{{hrv ms}}',
+        walkingHeartRateAverage: '{{walking bpm}}',
+      },
+    ],
+  }, null, 2)
+
+  const nightSync = JSON.stringify({
+    kind: 'activity_day',
+    samples: [{
+      externalId: 'activity-{{day}}',
+      day: '{{yyyy-mm-dd}}',
+      steps: '{{steps}}',
+      walkingDistanceKm: '{{walking-running distance km}}',
+      activeEnergyKcal: '{{active kcal}}',
+      exerciseMinutes: '{{exercise minutes}}',
+      flightsClimbed: '{{flights climbed}}',
+      standHours: '{{stand hours}}',
+    }],
+  }, null, 2)
+
+  return { testActivity, workoutEnd, morningSync, nightSync }
+}
+
 function openHealthShortcutModal() {
   const origin = window.location.origin
+  const endpoint = `${origin}/api/health-import`
+  const authHeader = 'Bearer <HEALTH_IMPORT_TOKEN>'
+  const examples = shortcutPayloadExamples()
   openModal(`
     <div class="modal-head">
       <span style="font-size:18px">APL</span>
-      <div class="modal-head-title">Apple Health Core 4</div>
+      <div class="modal-head-title">Apple Health Kestirme Kurulumu</div>
       <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
     </div>
     <div class="modal-body health-shortcut-modal">
-      <div class="modal-desc">iPhone Kestirmesi bu endpoint'e batch JSON yollar. Header: <strong>Authorization: Bearer HEALTH_IMPORT_TOKEN</strong>. Ham veri ledger'a girer; workout, gun ozeti, readiness, XP ve ODIE karari oradan turetilir.</div>
-      <div class="region-modal-list">
-        <strong>Endpoint</strong>
-        <span>${escapeHtml(`${origin}/api/health-import`)}</span>
+      <section class="shortcut-hero">
+        <span>Bilal modu</span>
+        <strong>iPhone veriyi toplar, OdiePt'ye POST atar.</strong>
+        <p>Telefonunda 3 kestirme kuracagiz. Sabah uyku+nabiz, antrenman bitince workout, gece gunluk hareket gider. Odie bunlari XP, yorgunluk, toparlanma ve bugunun emrine katar.</p>
+        <a href="shortcuts://create-shortcut" class="shortcut-open-link">Kestirmeler'i ac</a>
+      </section>
+
+      <div class="shortcut-field-grid">
+        <div class="shortcut-field">
+          <span>URL</span>
+          <strong>${escapeHtml(endpoint)}</strong>
+          <button type="button" data-copy-value="${escapeHtml(endpoint)}">URL kopyala</button>
+        </div>
+        <div class="shortcut-field">
+          <span>Authorization header</span>
+          <strong>${escapeHtml(authHeader)}</strong>
+          <button type="button" data-copy-value="${escapeHtml(authHeader)}">Header kopyala</button>
+        </div>
       </div>
-      <div class="region-modal-list">
-        <strong>Core 4</strong>
-        <span>workout: tip/sure/mesafe/enerji/yukselti/nabiz</span>
-        <span>activity_day: adim/mesafe/aktif enerji/exercise minutes</span>
-        <span>sleep: total/core/deep/REM/awake/efficiency</span>
-        <span>heart: resting HR, walking HR, HRV SDNN, high/low trend</span>
+
+      <div class="shortcut-warning">
+        <strong>Token kurali</strong>
+        <span>HEALTH_IMPORT_TOKEN gizli sifredir. Site bunu gostermez; Vercel env'deki token neyse telefondaki header'a onu yazacaksin. Yanlis token = 401.</span>
       </div>
-      <div class="region-modal-list">
-        <strong>Kestirme ritmi</strong>
-        <span>Workout End: son antrenmani yollar.</span>
-        <span>Sabah Sync: uyku + resting HR + HRV yollar.</span>
-        <span>Gece Sync: adim, aktivite ve kacan workoutlari yollar.</span>
+
+      <section class="shortcut-step-card">
+        <span>1</span>
+        <div>
+          <strong>Once kuru test yap</strong>
+          <p>Kestirmeler > + > URL ekle. URL'ye endpoint'i yapistir. Sonra "URL Icerigini Al" ekle, method POST yap, headers'a Authorization ve Content-Type yaz, body'ye bu test JSON'unu koy. Calisinca cevapta <b>ok: true</b> gorursen kapi acik.</p>
+        </div>
+      </section>
+      ${shortcutCodeBlock('shortcut-test-activity-json', 'Ilk test JSON', examples.testActivity, 'Bunu ilk denemede elle gonder. Sonra dinamik Health verisine gececegiz.')}
+
+      <section class="shortcut-step-card">
+        <span>2</span>
+        <div>
+          <strong>HTTP kismini her kestirmede ayni kur</strong>
+          <p>Action adi: <b>URL Icerigini Al</b>. Show More ac. Method POST. Request Body JSON. Headers: Authorization = Bearer token, Content-Type = application/json.</p>
+        </div>
+      </section>
+
+      <div class="shortcut-http-grid">
+        <div><b>Method</b><strong>POST</strong></div>
+        <div><b>Header 1</b><strong>Authorization</strong><small>${escapeHtml(authHeader)}</small></div>
+        <div><b>Header 2</b><strong>Content-Type</strong><small>application/json</small></div>
+        <div><b>Body</b><strong>JSON</strong><small>Dictionary veya Text JSON</small></div>
       </div>
-      <div class="modal-coach">ODIE ham veriyi memory coplugune yazmaz. Sadece anlamli pattern ve bugunun karari yasam verisine baglanir.</div>
+
+      <div class="shortcut-rhythm-grid">
+        <section class="shortcut-rhythm-card">
+          <span>Sabah Sync</span>
+          <strong>Uyku + kalp</strong>
+          <p>Sabah 08:00 otomasyonu. Health'ten Sleep Analysis, Resting Heart Rate ve HRV SDNN bul. Degerleri JSON'daki ilgili yerlere Magic Variable olarak bagla.</p>
+        </section>
+        <section class="shortcut-rhythm-card">
+          <span>Workout End</span>
+          <strong>Antrenman bitince</strong>
+          <p>Apple Watch Workout bitti tetikleyicisi. Son workout'u bul; tip, baslangic, bitis, sure, mesafe, kalori, nabiz ve varsa yukseltiyi gonder.</p>
+        </section>
+        <section class="shortcut-rhythm-card">
+          <span>Gece Sync</span>
+          <strong>Gun ozeti</strong>
+          <p>23:30 otomasyonu. Adim, yurume/kosma mesafesi, aktif enerji, egzersiz dakikasi, kat/yukselti gibi gunluk hareketi yollar.</p>
+        </section>
+      </div>
+
+      ${shortcutCodeBlock('shortcut-morning-json', 'Sabah Sync sablonu', examples.morningSync, 'Uyku ve kalp degerlerini Apple Health sample sonucundan doldur.')}
+      ${shortcutCodeBlock('shortcut-workout-json', 'Workout End sablonu', examples.workoutEnd, '12 km doga yuruyusu gibi aktiviteler buradan Odie workout olarak duser.')}
+      ${shortcutCodeBlock('shortcut-night-json', 'Gece Sync sablonu', examples.nightSync, 'Workout sayilmayan gunluk hareket bile yorgunluk ve XP hesabina girer.')}
+
+      <section class="shortcut-step-card">
+        <span>3</span>
+        <div>
+          <strong>Son kontrol</strong>
+          <p>Shortcut calisinca sitede Vital OS > Canli Kaynaklar kartina bak. Apple Sleep, Apple Heart veya Apple Workout "linked" olduysa veri sisteme girdi. 401 token yanlis, 503 migration eksik, bos cevap Health izni eksik demek.</p>
+        </div>
+      </section>
+
+      <div class="modal-coach">ODIE ham veriyi hafiza coplugune yazmaz. Ham Apple verisi ledger'da kalir; hafizaya sadece "az uyku PR'i dusuruyor" gibi anlamli pattern girer.</div>
     </div>
   `)
 }
@@ -3035,9 +3186,81 @@ function initActivePage(tabKey, profile) {
   }
 }
 
+function notifyCopied(ok) {
+  showToast({
+    icon: ok ? 'OK' : '!',
+    title: ok ? 'Kopyalandi' : 'Kopyalama olmadi',
+    msg: ok ? 'Simdi Kestirmeler alanina yapistir.' : 'Metni elle secip kopyala.',
+    rarity: 'common',
+    duration: 1800,
+  })
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  let ok = false
+  try {
+    ok = document.execCommand('copy')
+  } catch {
+    ok = false
+  }
+  textarea.remove()
+  notifyCopied(ok)
+}
+
+function copyShortcutText(text) {
+  const value = String(text || '').trim()
+  if (!value) return
+  if (navigator.clipboard?.writeText) {
+    let settled = false
+    const fallbackTimer = window.setTimeout(() => {
+      if (settled) return
+      settled = true
+      fallbackCopyText(value)
+    }, 450)
+    navigator.clipboard.writeText(value)
+      .then(() => {
+        if (settled) return
+        settled = true
+        window.clearTimeout(fallbackTimer)
+        notifyCopied(true)
+      })
+      .catch(() => {
+        if (settled) return
+        settled = true
+        window.clearTimeout(fallbackTimer)
+        fallbackCopyText(value)
+      })
+    return
+  }
+  fallbackCopyText(value)
+}
+
 /* ---------- Global click handler ---------- */
 
 document.addEventListener('click', event => {
+  const copyValueBtn = event.target.closest('[data-copy-value]')
+  if (copyValueBtn) {
+    event.preventDefault()
+    copyShortcutText(copyValueBtn.dataset.copyValue || '')
+    return
+  }
+
+  const copyTargetBtn = event.target.closest('[data-copy-target]')
+  if (copyTargetBtn) {
+    event.preventDefault()
+    const target = document.getElementById(copyTargetBtn.dataset.copyTarget)
+    copyShortcutText(target?.textContent || '')
+    return
+  }
+
   const explainBtn = event.target.closest('[data-explain]')
   if (explainBtn) {
     event.preventDefault()
