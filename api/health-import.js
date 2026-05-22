@@ -226,7 +226,19 @@ export async function processHealthImportBody(body = {}, { generateCoach = true 
     })
   }
 
-  const telemetryResult = await persistHealthTelemetry(profile.id, normalized.telemetry)
+  let telemetryResult
+  try {
+    telemetryResult = await persistHealthTelemetry(profile.id, normalized.telemetry)
+  } catch (error) {
+    const hasWorkout = workoutResults.some(result => result.status !== 'skipped')
+    if (error.code !== 'schema_missing' || !hasWorkout) throw error
+    telemetryResult = {
+      telemetryRows: 0,
+      summaries: [],
+      schemaMissing: true,
+      warning: 'health telemetry migration missing; workout accepted',
+    }
+  }
   const status = workoutResults.some(result => result.status !== 'skipped') || telemetryResult.telemetryRows
     ? 'processed'
     : 'skipped'
@@ -291,6 +303,7 @@ export default async function handler(req, res) {
       workouts: result.workoutResults,
       telemetryRows: result.telemetryResult.telemetryRows,
       summaries: result.telemetryResult.summaries,
+      telemetryWarning: result.telemetryResult.warning || null,
     })
   } catch (error) {
     const status = error.status || (error.code === 'schema_missing' ? 503 : 500)
