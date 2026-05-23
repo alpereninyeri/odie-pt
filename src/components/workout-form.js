@@ -23,6 +23,20 @@ const WORKOUT_TYPES = [
   'Custom',
 ]
 
+const WORKOUT_TYPE_DISPLAY = {
+  Push: 'Itis',
+  Pull: 'Cekis',
+  Shoulder: 'Omuz',
+  Core: 'Govde',
+  Calisthenics: 'Vucut Agirligi',
+  Stretching: 'Esneme',
+  Custom: 'Ozel',
+}
+
+function workoutTypeLabel(type = '') {
+  return WORKOUT_TYPE_DISPLAY[type] || type
+}
+
 function explainButton(key, label, className = 'explain-link metric-explain') {
   return `<button type="button" class="${className}" data-explain="${key}" aria-haspopup="dialog" aria-label="${label} aciklamasini ac">${label}</button>`
 }
@@ -50,7 +64,7 @@ function renderForm(date, preset = {}) {
         <div class="wf-row">
           <label class="wf-label">${explainButton('workout-type', 'Seans tipi')}</label>
           <select class="wf-input wf-select" id="wf-type">
-            ${WORKOUT_TYPES.map(type => `<option value="${type}" ${type === selectedType ? 'selected' : ''}>${type}</option>`).join('')}
+            ${WORKOUT_TYPES.map(type => `<option value="${type}" ${type === selectedType ? 'selected' : ''}>${workoutTypeLabel(type)}</option>`).join('')}
           </select>
         </div>
 
@@ -70,7 +84,7 @@ function renderForm(date, preset = {}) {
         </div>
 
         <div class="wf-row">
-          <label class="wf-label">${explainButton('highlight', 'Highlight')}</label>
+          <label class="wf-label">${explainButton('highlight', 'Kisa not')}</label>
           <input class="wf-input" type="text" id="wf-highlight" placeholder="PR, teknik blok, temiz set notu..." value="${preset.highlight || ''}">
         </div>
 
@@ -84,7 +98,7 @@ function renderForm(date, preset = {}) {
         <button type="button" class="wf-add-ex" id="wf-add-exercise">+ Egzersiz ekle</button>
 
         <div class="wf-volume-preview" id="wf-volume-preview" style="display:none">
-          ${explainButton('volume', 'Toplam hacim')}: <strong id="wf-volume-val">0 kg</strong>
+          ${explainButton('volume', 'Toplam yuk')}: <strong id="wf-volume-val">0 kg</strong>
         </div>
 
         <div class="wf-actions">

@@ -39,10 +39,26 @@ function daysSince(dateValue, today = getLocalDateString()) {
   return Math.max(0, Math.round((right - left) / 86400000))
 }
 
+function cozyTrainingLabel(value = '') {
+  return String(value || 'seans')
+    .replace(/\btrunk control\b/gi, 'govde kontrolu')
+    .replace(/\bbuild['’]?i\b/gi, 'rotasi')
+    .replace(/\bbuild\w*\b/gi, 'rota')
+    .replace(/\bPush\b/gi, 'Itis')
+    .replace(/\bPull\b/gi, 'Cekis')
+    .replace(/\bCore\b/gi, 'Govde')
+    .replace(/\bWorkout\b/gi, 'Antrenman')
+    .replace(/\bRecovery\b/gi, 'Toparlanma')
+    .replace(/\bStrength\b/gi, 'Kuvvet')
+    .replace(/\bMobility\b/gi, 'Mobilite')
+    .replace(/\bGlobal\b/gi, 'Genel')
+    .replace(/\bClass\b/gi, 'Sinif')
+}
+
 function formatWorkout(workout = null) {
   if (!workout) return 'son seans bekleniyor'
   const pieces = [
-    workout.type || workout.primaryCategory || 'seans',
+    cozyTrainingLabel(workout.type || workout.primaryCategory || 'seans'),
     workout.durationMin ? `${Math.round(Number(workout.durationMin))} dk` : null,
     workout.distanceKm ? `${Math.round(Number(workout.distanceKm) * 10) / 10} km` : null,
     workout.volumeKg ? `${Math.round(Number(workout.volumeKg)).toLocaleString('tr-TR')} kg` : null,
@@ -201,8 +217,8 @@ function buildMemoryCards(state = {}) {
     .filter(item => item?.active !== false)
     .slice(0, 3)
     .map(item => ({
-      label: item.scope || 'hafiza',
-      value: item.summary || item.key || 'kalici not',
+      label: cozyTrainingLabel(item.scope || 'hafiza'),
+      value: cozyTrainingLabel(item.summary || item.key || 'kalici not'),
       tone: String(item.scope || '').includes('recovery') ? 'warn' : String(item.scope || '').includes('parkour') ? 'fire' : 'calm',
     }))
   const wrong = (state.memoryFeedback || []).filter(item => ['wrong', 'outdated'].includes(item.feedbackType || item.feedback_type)).length
@@ -221,7 +237,7 @@ function buildQuickPrompts({ summary, latestWorkout, injury, bodyMapState }) {
   if (injury) prompts.push('Bilek temkiniyle bugun hangi hareketleri kesiyoruz?')
   if (summary?.totalSleepHours || summary?.sleepScore) prompts.push('Uyku ve HRV bugunku seansi nasil degistiriyor?')
   if (latestWorkout?.source === 'apple_health') prompts.push('Bu yuruyus bugunku yorgunluk ve XP hesabina nasil giriyor?')
-  if (bodyMapState?.dailyQuest?.name) prompts.push(`${bodyMapState.dailyQuest.name} gorevi hangi unlock'a yaklastirir?`)
+  if (bodyMapState?.dailyQuest?.name) prompts.push(`${bodyMapState.dailyQuest.name} gorevi hangi acilima yaklastirir?`)
   prompts.push('Bu hafta beni en hizli ne gelistirir, neyi abartmayalim?')
   return [...new Set(prompts)].slice(0, 4)
 }
@@ -252,7 +268,7 @@ export function buildOdiePresence({
   )))
   const sourceLine = [
     sources.hevy === 'configured' || sources.hevy === 'active' ? 'Hevy aktif' : 'Hevy bekliyor',
-    sources.appleWorkout === 'ready' || sources.appleWorkout === 'active' ? 'Workout geldi' : 'Workout bekliyor',
+    sources.appleWorkout === 'ready' || sources.appleWorkout === 'active' ? 'Antrenman geldi' : 'Antrenman bekliyor',
     sources.appleSleep === 'ready' || sources.appleSleep === 'active' ? 'Uyku geldi' : 'Uyku bekliyor',
     sources.appleHeart === 'ready' || sources.appleHeart === 'active' ? 'Kalp geldi' : 'Kalp bekliyor',
   ].join(' / ')
@@ -267,7 +283,7 @@ export function buildOdiePresence({
         ? 'ODIE frene basti'
         : mood.key === 'listening'
           ? 'ODIE veri bekliyor'
-          : 'ODIE baglami okuyor',
+          : 'ODIE izleri okuyor',
     hudLine: talk,
     chatLine: talk,
     routineLine: routine,

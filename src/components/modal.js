@@ -75,7 +75,7 @@ function renderModalSection(title, body) {
 function renderSignalGrid(signals = []) {
   if (!signals.length) return ''
   return renderModalGrid(signals.map(signal => ({
-    label: 'Signal',
+    label: 'Iz',
     value: signal,
   })))
 }
@@ -133,10 +133,47 @@ function gradePillClass(value = '') {
   return 'grade-neutral'
 }
 
+function cozyModalText(value = '') {
+  return String(value || '')
+    .replace(/\btrunk control\b/gi, 'govde kontrolu')
+    .replace(/\bbuild['’]?i\b/gi, 'rotasi')
+    .replace(/\bbuild\w*\b/gi, 'rota')
+    .replace(/\bPush\b/gi, 'Itis')
+    .replace(/\bPull\b/gi, 'Cekis')
+    .replace(/\bCore\b/gi, 'Govde')
+    .replace(/\bSkill\b/gi, 'Teknik')
+    .replace(/\bRecovery\b/gi, 'Toparlanma')
+    .replace(/\bWorkout\b/gi, 'Antrenman')
+    .replace(/\bCoach\b/gi, 'ODIE')
+}
+
+function confidenceLabel(value = '') {
+  const key = String(value || 'seed').toUpperCase()
+  return ({ HIGH: 'NET', MEDIUM: 'ORTA', LOW: 'AZ', SEED: 'DEFTER' })[key] || cozyModalText(key)
+}
+
+function statDetailLabel(label = '') {
+  const text = cozyModalText(label)
+  return ({
+    'Bench Peak': 'Bench izi',
+    '1RM Est.': '1RM tahmin',
+    'MU Signal': 'MU izi',
+    Next: 'Siradaki',
+    'Avg Session': 'Ort. seans',
+    'Outdoor Km': 'Disari km',
+    'Endurance 14g': 'Dayaniklilik 14g',
+    Recovery: 'Toparlanma',
+    Need: 'Ihtiyac',
+    Balance: 'Denge',
+    Timing: 'Zamanlama',
+    'Core Sets': 'Govde set',
+  })[text] || text
+}
+
 export function openStatModal(stat) {
   const rank = stat.rank || 'F'
   const progress = Math.round(Number(stat.progressToNext) || 0)
-  const confidence = String(stat.confidence || 'seed').toUpperCase()
+  const confidence = confidenceLabel(stat.confidence)
   const rawScore = Math.round(Number(stat.rawVal ?? stat.val) || 0)
   openDetailModal({
     icon: stat.label || stat.key || 'ST',
@@ -146,20 +183,20 @@ export function openStatModal(stat) {
         ${rank} <span style="font-size:16px;color:var(--cozy-ink-soft, var(--dim));margin-left:8px">${stat.rankLabel || 'Rank'}</span>
       </div>
       ${stat.critical ? '<div style="text-align:center;margin-bottom:8px"><span class="grade-pill grade-crit">Dikkat</span></div>' : ''}
-      <div class="modal-desc">${stat.desc}</div>
-      <div class="modal-coach">${stat.coach}</div>
+      <div class="modal-desc">${cozyModalText(stat.desc)}</div>
+      <div class="modal-coach">${cozyModalText(stat.coach)}</div>
       ${renderModalGrid([
         { label: 'Rank ici ilerleme', value: `${progress}%` },
         { label: 'Guven', value: confidence },
-        { label: 'Motor skoru', value: `${rawScore}/100` },
+        { label: 'Ham skor', value: `${rawScore}/100` },
         { label: 'S Rank kapisi', value: stat.sUnlocked ? 'acik' : 'kanit bekliyor' },
       ])}
       ${renderModalGrid((stat.detail || []).map(detail => ({
-        label: detail.label,
-        value: detail.val,
+        label: statDetailLabel(detail.label),
+        value: cozyModalText(detail.val),
         pillClass: `grade-pill ${gradePillClass(detail.val)}`,
       })))}
-      <div class="modal-tip">Oyun notu: Ana okuma ranktir; 0-100 motor skoru sadece hesaplama ve radar icin tutulur.</div>
+      <div class="modal-tip">Oyun notu: Ana okuma ranktir; 0-100 ham skor sadece hesaplama ve radar icin tutulur.</div>
     `,
   })
 }
@@ -178,7 +215,7 @@ export function openStatCalibrationModal({ calibration = {}, onSave } = {}) {
     title: 'Kurulum Kalibrasyonu',
     body: `
       <form id="stat-calibration-form" class="stat-calibration-form">
-        <div class="modal-desc">Bu test bir kere yapilir. Cevaplar workout verisinin yerine gecmez; sadece baslangic rank guvenini yumusatir.</div>
+        <div class="modal-desc">Bu test bir kere yapilir. Cevaplar antrenman verisinin yerine gecmez; sadece baslangic rank guvenini yumusatir.</div>
         ${Object.entries(grouped).map(([key, questions]) => `
           <div class="stat-calibration-group">
             <div class="modal-section-label">${statLabels[key] || key.toUpperCase()}</div>
@@ -258,11 +295,11 @@ export function openEpicVolumeModal(currentKg, tiers) {
 
   openDetailModal({
     icon: 'VOL',
-    title: 'Hacim Gunlugu',
+    title: 'Yuk Gunlugu',
     body: `
       <div class="epic-total">
         <div class="epic-total-val">${currentKg.toLocaleString('tr-TR')} kg</div>
-        <div class="epic-total-lbl">Toplam kaldirilan hacim</div>
+        <div class="epic-total-lbl">Toplam kaldirilan yuk</div>
       </div>
       <div class="epic-tier-list">${items}</div>
     `,
@@ -285,9 +322,9 @@ export function openClassModal(cls) {
         <div style="font-size:18px;color:${cls.color};margin-bottom:4px">${cls.name}</div>
         <div style="font-size:11px;color:var(--cozy-ink-soft, var(--dim));letter-spacing:.5px">${cls.subName || ''}</div>
       </div>
-      <div class="modal-desc">${cls.desc}</div>
-      <div class="modal-coach"><strong>Etki:</strong> ${cls.buff}</div>
-      ${cls.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${cls.reason}</div>` : ''}
+      <div class="modal-desc">${cozyModalText(cls.desc)}</div>
+      <div class="modal-coach"><strong>Etki:</strong> ${cozyModalText(cls.buff)}</div>
+      ${cls.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${cozyModalText(cls.reason)}</div>` : ''}
       ${renderModalSection('SINIF SINYALI', renderSignalGrid(signals))}
       ${renderModalSection('STAT CARPANI', renderEntryGrid(statEntries, {
         labelFormatter: key => key.toUpperCase(),
@@ -314,9 +351,9 @@ export function openArchetypeModal({ classObj, profile, semantic, criticalStat }
         <div style="font-size:17px;color:var(--cozy-ink);margin-bottom:4px">${classObj?.name || profile.class}</div>
         <div style="font-size:11px;color:var(--cozy-ink-soft, var(--dim));letter-spacing:.8px">${profile.subClass || ''} / ${profile.rank || ''}</div>
       </div>
-      ${classObj?.desc ? `<div class="modal-desc">${classObj.desc}</div>` : ''}
-      ${classObj?.buff ? `<div class="modal-coach"><strong>Etki:</strong> ${classObj.buff}</div>` : ''}
-      ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${classObj.reason}</div>` : ''}
+      ${classObj?.desc ? `<div class="modal-desc">${cozyModalText(classObj.desc)}</div>` : ''}
+      ${classObj?.buff ? `<div class="modal-coach"><strong>Etki:</strong> ${cozyModalText(classObj.buff)}</div>` : ''}
+      ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${cozyModalText(classObj.reason)}</div>` : ''}
       ${criticalStat ? `<div class="modal-coach" style="border-color:rgba(208,74,64,.45)"><strong>Kritik Nokta:</strong> ${criticalStat.label} ${criticalStat.val}/100 - ${criticalStat.name}</div>` : ''}
       ${renderModalSection('SINIF SINYALI', renderSignalGrid(signals))}
       ${renderModalSection('HAREKET IZI', renderEntryGrid(chainEntries))}
@@ -331,16 +368,16 @@ export function openFocusModal({ focus, classObj, criticalStats, semantic, profi
   const variety = Number(semantic?.variety || 0)
   const signals = Array.isArray(classObj?.signals) ? classObj.signals.slice(0, 3) : []
   const focusGrid = renderModalGrid(critList.map(stat => ({
-    label: stat.label,
+    label: cozyModalText(stat.label),
     value: `${stat.val}/100`,
     itemStyle: 'border-color:rgba(208,74,64,.45)',
     valueStyle: 'color:var(--cozy-rose, var(--red))',
   })))
   const stateGrid = renderModalGrid([
-    { label: 'Recovery', value: `${recoveryDisc}%` },
-    { label: 'Variety', value: variety },
-    { label: 'Streak', value: profile?.streak?.current ?? 0 },
-    { label: 'Sessions', value: profile?.sessions ?? 0 },
+    { label: 'Toparlanma', value: `${recoveryDisc}%` },
+    { label: 'Cesitlilik', value: variety },
+    { label: 'Seri', value: profile?.streak?.current ?? 0 },
+    { label: 'Seans', value: profile?.sessions ?? 0 },
   ])
 
   openDetailModal({
@@ -348,11 +385,11 @@ export function openFocusModal({ focus, classObj, criticalStats, semantic, profi
     title: 'Bugunku Odak',
     body: `
       <div style="text-align:center;padding:6px 0 14px">
-        <div style="font-size:22px;color:var(--cozy-ink);letter-spacing:.5px">${focus || 'Hybrid denge'}</div>
+        <div style="font-size:22px;color:var(--cozy-ink);letter-spacing:.5px">${cozyModalText(focus || 'Karma denge')}</div>
         <div style="font-size:11px;color:var(--cozy-ink-soft, var(--dim));margin-top:4px;letter-spacing:.8px">aktif odak - son 14 gun verisinden</div>
       </div>
       ${focusGrid ? `${renderModalSection('ZAYIF HALKA', focusGrid)}` : '<div class="modal-coach">Su an kritik stat yok - dengen yerinde.</div>'}
-      ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu odak:</strong> ${classObj.reason}</div>` : ''}
+      ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu odak:</strong> ${cozyModalText(classObj.reason)}</div>` : ''}
       ${renderModalSection('AKTIF SINYAL', renderSignalGrid(signals))}
       ${renderModalSection('DURUM', stateGrid)}
       <div class="modal-tip">Odak, kritik stat + seans deseni + sinif sinyalinin bilesimidir. Bir sonraki secimin bunu nasil iter ongorusu ODIE'dedir.</div>
@@ -390,24 +427,24 @@ export function openUnlockModal({ nextUnlock, skills }) {
         ${branch ? `<div style="font-size:11px;color:var(--cozy-ink-soft, var(--dim));margin-top:4px;letter-spacing:.8px">${branch}</div>` : ''}
         <div style="margin-top:8px"><span class="grade-pill" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span></div>
       </div>
-      ${nextUnlock.desc ? `<div class="modal-desc">${nextUnlock.desc}</div>` : ''}
-      ${nextUnlock.req ? `<div class="modal-coach"><strong>Gereksinim:</strong> ${nextUnlock.req}</div>` : ''}
+      ${nextUnlock.desc ? `<div class="modal-desc">${cozyModalText(nextUnlock.desc)}</div>` : ''}
+      ${nextUnlock.req ? `<div class="modal-coach"><strong>Gereksinim:</strong> ${cozyModalText(nextUnlock.req)}</div>` : ''}
       ${Number.isFinite(progress) ? `
         <div class="modal-coach">
           <strong>Yakinlik:</strong> %${Math.round(progress)}<br>
-          <strong>Eksik:</strong> ${nextUnlock.missing || 'Bir temiz iz daha gerekli.'}<br>
-          <strong>Bugunku mini adim:</strong> ${nextUnlock.todayStep || 'Kisa teknik blok ekle.'}
+          <strong>Eksik:</strong> ${cozyModalText(nextUnlock.missing || 'Bir temiz iz daha gerekli.')}<br>
+          <strong>Bugunku mini adim:</strong> ${cozyModalText(nextUnlock.todayStep || 'Kisa teknik blok ekle.')}
         </div>
       ` : ''}
       ${linkedRegions.length ? renderModalSection('BAGLI HATLAR', renderModalGrid([
         { label: 'Vucut', value: linkedRegions.join(' / ') },
-        { label: 'Hareket', value: nextUnlock.linkedMovement || '-' },
+        { label: 'Hareket', value: cozyModalText(nextUnlock.linkedMovement || '-') },
       ])) : ''}
       ${renderModalSection('AYNI DAL', renderModalGrid(siblings.map(node => ({
         label: node.status === 'done' ? 'ACIK' : node.status === 'prog' ? 'AKTIF' : 'KILIT',
-        value: node.name,
+        value: cozyModalText(node.name),
       }))))}
-      <div class="modal-tip">Siradaki acilim, skill agacindaki en yakin ilerleme nodu. Kosulu karsiladiginda otomatik acilir.</div>
+      <div class="modal-tip">Siradaki acilim, acilim dallarindaki en yakin ilerleme nodu. Kosulu karsiladiginda otomatik acilir.</div>
     `,
   })
 }
@@ -416,7 +453,7 @@ export function openAvatarModal(profile) {
   const criticalStat = (profile.stats || []).find(stat => stat.critical)
   const liveTip = criticalStat
     ? `${criticalStat.label} su an en zayif halka. ${profile.currentFocus || 'Siradaki seansi buna gore sec.'}`
-    : (profile.currentFocus ? `Su an odak: ${profile.currentFocus}.` : 'Hybrid denge korunuyor.')
+    : (profile.currentFocus ? `Su an odak: ${cozyModalText(profile.currentFocus)}.` : 'Karma denge korunuyor.')
 
   openDetailModal({
     icon: avatarMark(profile),
@@ -429,7 +466,7 @@ export function openAvatarModal(profile) {
       </div>
       ${renderModalGrid([
         { label: 'Toplam Seans', value: profile.sessions },
-        { label: 'Toplam Hacim', value: profile.totalVolume },
+        { label: 'Toplam Yuk', value: profile.totalVolume },
         { label: 'Toplam Set', value: profile.totalSets },
         { label: 'Toplam Sure', value: profile.totalTime },
       ])}

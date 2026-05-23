@@ -22,13 +22,29 @@ function escapeHtml(value = '') {
     .replace(/'/g, '&#39;')
 }
 
+function cozyAskText(value = '') {
+  return String(value || '')
+    .replace(/\btrunk control\b/gi, 'govde kontrolu')
+    .replace(/\bbuild['’]?i\b/gi, 'rotasi')
+    .replace(/\bbuild\w*\b/gi, 'rota')
+    .replace(/\bPush\b/gi, 'Itis')
+    .replace(/\bPull\b/gi, 'Cekis')
+    .replace(/\bCore\b/gi, 'Govde')
+    .replace(/\bRecovery\b/gi, 'toparlanma')
+    .replace(/\bWorkout\b/gi, 'antrenman')
+    .replace(/\bHybrid\b/gi, 'karma')
+    .replace(/\bCoach\b/gi, 'ODIE')
+    .replace(/\bSinyal\b/gi, 'Iz')
+    .replace(/\bsinyal\b/gi, 'iz')
+}
+
 function explainButton(key, label, className = 'explain-link metric-explain') {
   return `<button type="button" class="${className}" data-explain="${escapeHtml(key)}" aria-haspopup="dialog" aria-label="${escapeHtml(label)} aciklamasini ac">${escapeHtml(label)}</button>`
 }
 
 function renderList(items = [], empty = 'Veri yok.') {
   if (!items.length) return `<div class="ask-empty">${empty}</div>`
-  return items.map(item => `<li>${escapeHtml(item)}</li>`).join('')
+  return items.map(item => `<li>${escapeHtml(cozyAskText(item))}</li>`).join('')
 }
 
 function summarizeLatest(item) {
@@ -66,12 +82,12 @@ function sampleQuestions(profile, presence = {}) {
   if (Array.isArray(presence.quickPrompts) && presence.quickPrompts.length) {
     return presence.quickPrompts
   }
-  const className = profile.class || 'hybrid build'
-  const focus = profile.currentFocus || 'core stabilitesi'
+  const className = cozyAskText(profile.class || 'karma rota')
+  const focus = cozyAskText(profile.currentFocus || 'govde stabilitesi')
   return [
     `Bu hafta ${focus} icin en akilli 2 seans ne olsun?`,
     `${className} cizgisini korurken en cok hangi taraf geri kaliyor?`,
-    'Yarin hafif ama etkili bir recovery gunu nasil kurulur?',
+    'Yarin hafif ama etkili bir toparlanma gunu nasil kurulur?',
   ]
 }
 
@@ -109,7 +125,7 @@ function renderTranscript(latest) {
           <span>SEN</span>
           <span>${formatWhen(latest.createdAt)}</span>
         </div>
-      <div class="ask-bubble-body">${escapeHtml(latest.question)}</div>
+      <div class="ask-bubble-body">${escapeHtml(cozyAskText(latest.question))}</div>
     </article>
 
     <article class="ask-bubble odie">
@@ -117,9 +133,9 @@ function renderTranscript(latest) {
           <span>ODIE</span>
           <span>${escapeHtml(latest.model || 'aktif mod')}</span>
         </div>
-      <div class="ask-bubble-title">${escapeHtml(latest.title)}</div>
-      <div class="ask-bubble-body">${escapeHtml(latest.answer)}</div>
-      ${latest.checkIn ? `<div class="ask-bubble-checkin">${escapeHtml(latest.checkIn)}</div>` : ''}
+      <div class="ask-bubble-title">${escapeHtml(cozyAskText(latest.title))}</div>
+      <div class="ask-bubble-body">${escapeHtml(cozyAskText(latest.answer))}</div>
+      ${latest.checkIn ? `<div class="ask-bubble-checkin">${escapeHtml(cozyAskText(latest.checkIn))}</div>` : ''}
     </article>
 
     ${pending}
@@ -214,7 +230,7 @@ export function renderAsk(state, profile) {
       <article class="glass-card ask-hero ask-hero-live">
           <div>
           <div class="eyebrow">${explainButton('ask-line', "ODIE'ye Sor", 'explain-link eyebrow-explain')}</div>
-          <h3>${explainButton('ask-line', 'Sohbet et, ODIE baglami tutsun', 'explain-link explain-heading')}</h3>
+          <h3>${explainButton('ask-line', 'Sohbet et, ODIE izleri tutsun', 'explain-link explain-heading')}</h3>
           <p>${escapeHtml(presence.chatLine || 'Soruyu yaz; ODIE son rutin, hafiza ve bugunku sinyalleri beraber okuyacak.')}</p>
         </div>
         <div class="ask-hero-pills">
@@ -226,7 +242,7 @@ export function renderAsk(state, profile) {
 
       <article class="ask-companion-card tone-${escapeHtml(presence.tone || 'calm')}">
         <div class="ask-companion-copy">
-          <span>ODIE'nin kafasi</span>
+          <span>ODIE'nin defteri</span>
           <strong>${escapeHtml(presence.headline || 'Canli baglam')}</strong>
           <p>${escapeHtml(presence.routineLine || '')}</p>
         </div>
@@ -241,7 +257,7 @@ export function renderAsk(state, profile) {
         <section class="glass-card ask-console">
           <div class="ask-console-head">
             <div>
-              <div class="mini-label">${explainButton('ask-line', 'ODIE Soru Hatti')}</div>
+              <div class="mini-label">${explainButton('ask-line', 'ODIE Soru Defteri')}</div>
               <strong>${explainButton('ask-line', 'Sorunu yaz', 'explain-link')}</strong>
             </div>
             <span class="ask-status-chip ${askState.loadingAnswer ? 'live' : ''}">${askState.loadingAnswer ? 'OKUYOR' : 'HAZIR'}</span>
@@ -269,7 +285,7 @@ export function renderAsk(state, profile) {
             >${escapeHtml(askState.draft)}</textarea>
             <div class="ask-form-footer">
               <div class="ask-sample-row">
-                ${samples.map(sample => `<button type="button" class="ask-sample-chip" data-ask-sample="${escapeHtml(sample)}">${escapeHtml(sample)}</button>`).join('')}
+                ${samples.map(sample => `<button type="button" class="ask-sample-chip" data-ask-sample="${escapeHtml(sample)}">${escapeHtml(cozyAskText(sample))}</button>`).join('')}
               </div>
               <button type="submit" class="ask-submit" ${askState.loadingAnswer ? 'disabled' : ''}>${askState.loadingAnswer ? 'ODIE okuyor...' : 'Deftere yaz'}</button>
             </div>
@@ -280,23 +296,23 @@ export function renderAsk(state, profile) {
               <div class="ask-response-top">
                 <div>
                   <div class="mini-label">${explainButton('ask-answer', 'Kisa Yorum')}</div>
-                  <strong>${escapeHtml(latest.title)}</strong>
+                  <strong>${escapeHtml(cozyAskText(latest.title))}</strong>
                 </div>
                 <span>${formatWhen(latest.createdAt)} / ${escapeHtml(latest.model || 'aktif mod')}</span>
               </div>
-              <p class="ask-response-answer">${escapeHtml(latest.answer || 'Cevap metni yok.')}</p>
+              <p class="ask-response-answer">${escapeHtml(cozyAskText(latest.answer || 'Cevap metni yok.'))}</p>
               <div class="ask-response-grid">
                 <div class="ask-detail-card">
-                  <div class="mini-label">${explainButton('evidence', 'Bakilan Sinyal')}</div>
-                  <ul>${renderList(latest.evidence, 'Ek sinyal cikarilmadi.')}</ul>
+                  <div class="mini-label">${explainButton('evidence', 'Bakilan Iz')}</div>
+                  <ul>${renderList(latest.evidence, 'Ek iz cikarilmadi.')}</ul>
                 </div>
                 <div class="ask-detail-card">
                   <div class="mini-label">${explainButton('ask-next', 'Ne Yapalim')}</div>
                   <ul>${renderList(latest.nextSteps, 'Net sonraki adim onerisi yok.')}</ul>
                 </div>
               </div>
-              ${latest.memoryNote ? `<div class="ask-memory-note"><span class="mini-label">${explainButton('ask-memory', 'Aklimda Tutsun')}</span><p>${escapeHtml(latest.memoryNote)}</p></div>` : ''}
-              ${latest.routineSnapshot ? `<div class="ask-memory-note"><span class="mini-label">Rutin Izi</span><p>${escapeHtml(latest.routineSnapshot)}</p></div>` : ''}
+              ${latest.memoryNote ? `<div class="ask-memory-note"><span class="mini-label">${explainButton('ask-memory', 'Aklimda Tutsun')}</span><p>${escapeHtml(cozyAskText(latest.memoryNote))}</p></div>` : ''}
+              ${latest.routineSnapshot ? `<div class="ask-memory-note"><span class="mini-label">Rutin Izi</span><p>${escapeHtml(cozyAskText(latest.routineSnapshot))}</p></div>` : ''}
             </article>
           ` : `
             <div class="ask-empty-state">

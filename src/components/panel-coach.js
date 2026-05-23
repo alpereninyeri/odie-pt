@@ -16,6 +16,29 @@ function _escapeHtml(value = '') {
     .replace(/'/g, '&#39;')
 }
 
+function _cozyTrainingLabel(value = '') {
+  return String(value || '-')
+    .replace(/\btrunk control\b/gi, 'govde kontrolu')
+    .replace(/\bbuild['’]?i\b/gi, 'rotasi')
+    .replace(/\bbuild\w*\b/gi, 'rota')
+    .replace(/\bPush\b/gi, 'Itis')
+    .replace(/\bPull\b/gi, 'Cekis')
+    .replace(/\bCore\b/gi, 'Govde')
+    .replace(/\bStrength\b/gi, 'Kuvvet')
+    .replace(/\bMobility\b/gi, 'Mobilite')
+    .replace(/\bSkill\b/gi, 'Teknik')
+    .replace(/\bLocomotion\b/gi, 'Hareket')
+    .replace(/\bRecovery\b/gi, 'Toparlanma')
+    .replace(/\bGlobal\b/gi, 'Genel')
+    .replace(/\bClass\b/gi, 'Sinif')
+    .replace(/\bCoach\b/gi, 'ODIE')
+    .replace(/\bODIE note confirmed by athlete\b/gi, 'ODIE notu onaylandi')
+    .replace(/\bODIE note flagged by athlete\b/gi, 'ODIE notu isaretlendi')
+    .replace(/\bODIE note stale or lagging behind current rota\b/gi, 'ODIE notu eski kaldi')
+    .replace(/\bODIE tone and framing preferred by athlete\b/gi, 'ODIE tonu iyi bulundu')
+    .replace(/\bDrill\b/gi, 'Teknik parca')
+}
+
 function _visibleSections(note) {
   return (note?.sections || []).filter(section => !section?.hidden)
 }
@@ -145,7 +168,7 @@ function _renderSurvivalConsole(p) {
           ${(warnings.length ? warnings : ['Aktif dikkat uyarisi yok.']).slice(0, 3).map(item => `
             <div class="survival-warning-card ${warnings.length ? 'warn' : ''}">
               <span class="mini-label">${_explain('field-note', 'Saha Notu')}</span>
-              <strong>${item}</strong>
+              <strong>${_escapeHtml(_cozyTrainingLabel(item))}</strong>
             </div>
           `).join('')}
         </div>
@@ -169,7 +192,7 @@ function _renderCoachConfidence(p) {
     : [
       factRows.length ? `${factRows.length} seans izi` : null,
       blockCount ? `${blockCount} calisma blogu` : null,
-      latestWorkout?.source === 'hevy' ? 'Hevy structured veri' : null,
+      latestWorkout?.source === 'hevy' ? 'Hevy defteri' : null,
     ].filter(Boolean)
   ).slice(0, 3)
   const blockMix = (latestWorkout?.blockMix || []).slice(0, 3)
@@ -179,7 +202,7 @@ function _renderCoachConfidence(p) {
       <div class="coach-confidence-surface compact">
         <div class="coach-memory-head">
           <div>
-            <div class="eyebrow">${_explain('session-reading', 'Seans Okumasi', 'explain-link eyebrow-explain')}</div>
+            <div class="eyebrow">${_explain('session-reading', 'Seans Defteri', 'explain-link eyebrow-explain')}</div>
             <h3>${_explain('session-reading', 'Yeni seans geldikce burasi dolacak', 'explain-link explain-heading')}</h3>
           </div>
         </div>
@@ -192,8 +215,8 @@ function _renderCoachConfidence(p) {
     <div class="coach-confidence-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">${_explain('session-reading', 'Seans Okumasi', 'explain-link eyebrow-explain')}</div>
-          <h3>${_explain('session-reading', 'ODIE bu seansi nasil okudu', 'explain-link explain-heading')}</h3>
+          <div class="eyebrow">${_explain('session-reading', 'Seans Defteri', 'explain-link eyebrow-explain')}</div>
+          <h3>${_explain('session-reading', "ODIE'nin okudugu iz", 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${_explain('confidence', _confidenceLabel(confidenceLevel))}</span>
@@ -204,23 +227,23 @@ function _renderCoachConfidence(p) {
       <div class="coach-memory-grid coach-confidence-grid">
         <div class="coach-memory-card tone-${confidenceLevel === 'high' ? 'fire' : confidenceLevel === 'medium' ? 'warn' : 'danger'}">
           <div class="coach-memory-top">
-            <strong>${_explain('parsed-piece', 'Seans Sinyali', 'explain-link')}</strong>
+            <strong>${_explain('parsed-piece', 'Seans Izi', 'explain-link')}</strong>
             <span>${factRows.length}</span>
           </div>
-          <p>Hevy veya nottan ${signalCount} sinyal ve ${blockCount} calisma blogu okundu.</p>
+          <p>Hevy veya nottan ${signalCount} iz ve ${blockCount} calisma blogu okundu.</p>
         </div>
         <div class="coach-memory-card tone-calm">
           <div class="coach-memory-top">
-            <strong>${_explain('main-load', 'Ana Yuk', 'explain-link')}</strong>
-            <span>${latestWorkout?.type || '-'}</span>
+            <strong>${_explain('main-load', 'Ana Hat', 'explain-link')}</strong>
+            <span>${_escapeHtml(_cozyTrainingLabel(latestWorkout?.type || '-'))}</span>
           </div>
-          <p>${blockMix.length ? blockMix.map(item => `${item.kind} ${item.percent}%`).join(' / ') : 'Yuk dagilimi okunamadi.'}</p>
+          <p>${blockMix.length ? blockMix.map(item => `${_escapeHtml(_cozyTrainingLabel(item.kind))} ${item.percent}%`).join(' / ') : 'Yuk dagilimi okunamadi.'}</p>
         </div>
       </div>
 
-      <div class="mini-label">${_explain('evidence', 'Odie Neye Bakti')}</div>
+      <div class="mini-label">${_explain('evidence', 'Bakilan Izler')}</div>
       <div class="coach-confidence-reasons">
-        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${reason}</span>`).join('') : '<span class="coach-memory-empty">Daha iyi okuma icin set, sure, mesafe veya drill bilgisi yardimci olur.</span>'}
+        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${_escapeHtml(_cozyTrainingLabel(reason))}</span>`).join('') : '<span class="coach-memory-empty">Daha iyi okuma icin set, sure, mesafe veya teknik parca bilgisi yardimci olur.</span>'}
       </div>
     </div>
   `
@@ -241,8 +264,8 @@ function _renderMemoryLedger(p) {
     <div class="coach-memory-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">${_explain('memory', 'Kalici Hafiza', 'explain-link eyebrow-explain')}</div>
-          <h3>${_explain('memory', 'ODIE senden ne ogrenmis', 'explain-link explain-heading')}</h3>
+          <div class="eyebrow">${_explain('memory', 'Kalici Notlar', 'explain-link eyebrow-explain')}</div>
+          <h3>${_explain('memory', 'ODIE neyi aklinda tutuyor', 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${memories.length} aktif</span>
@@ -254,10 +277,10 @@ function _renderMemoryLedger(p) {
         ${memories.length ? memories.map(item => `
           <div class="coach-memory-card tone-${_memoryTone(item)}">
             <div class="coach-memory-top">
-              <strong>${item.scope || 'global'}</strong>
+            <strong>${_escapeHtml(_cozyTrainingLabel(item.scope || 'genel'))}</strong>
               <span>${Math.round((Number(item.confidence) || 0) * 100)}%</span>
             </div>
-            <p>${item.summary || item.key}</p>
+            <p>${_escapeHtml(_cozyTrainingLabel(item.summary || item.key))}</p>
           </div>
         `).join('') : '<div class="coach-memory-empty">Henuz kalici bir not birikmedi. Yanlis veya eksik yorumlari isaretledikce burasi dolar.</div>'}
       </div>
@@ -265,7 +288,7 @@ function _renderMemoryLedger(p) {
       <div class="coach-feedback-strip">
         <div>
           <div class="mini-label">${_explain('coach-feedback', 'Geri Bildirim')}</div>
-          <strong>${_explain('coach-feedback', 'Son coach yorumunu isaretle', 'explain-link')}</strong>
+          <strong>${_explain('coach-feedback', 'Son ODIE notunu isaretle', 'explain-link')}</strong>
         </div>
         <div class="coach-feedback-actions">
           <button class="coach-feedback-btn" data-memory-feedback="correct">DOGRU</button>
@@ -279,7 +302,7 @@ function _renderMemoryLedger(p) {
         ${feedback.length ? feedback.map(item => `
           <div class="coach-feedback-row">
             <span>${feedbackLabel(item.feedbackType)}</span>
-            <p>${item.note || 'Kisa geri bildirim'}</p>
+            <p>${_escapeHtml(_cozyTrainingLabel(item.note || 'Kisa geri bildirim'))}</p>
           </div>
         `).join('') : '<div class="coach-memory-empty">Henuz feedback kaydi yok.</div>'}
       </div>
@@ -327,7 +350,7 @@ export function renderCoach(p) {
         <div style="font-size:48px;opacity:.4">OD</div>
         <div style="font-size:14px;letter-spacing:3px;opacity:.7">ODIE MASADA DEGIL</div>
         <div style="font-size:11px;opacity:.65;max-width:280px;text-align:center;line-height:1.5">
-          Henuz coach raporu yok. Telegram'a yeni bir antrenman yazdiginda burada sade ve okunur bir yorum goreceksin.
+          Henuz ODIE notu yok. Telegram'a yeni bir antrenman yazdiginda burada sade ve okunur bir yorum goreceksin.
         </div>
       </div>
       ${support}`
@@ -354,7 +377,7 @@ export function renderCoach(p) {
         <div class="coach-avatar">OD</div>
         <div class="coach-npc-info">
           <div class="coach-npc-name">ODIE</div>
-          <div class="coach-npc-sub">canli performans yorumu</div>
+          <div class="coach-npc-sub">bugunun not defteri</div>
         </div>
         <div class="coach-meta">
           <div class="coach-date">${cn.date}</div>
@@ -362,7 +385,7 @@ export function renderCoach(p) {
         </div>
       </div>
       <div class="coach-strip">
-        <span class="coach-pill">${_explain('live-context', 'CANLI BAGLAM')}</span>
+        <span class="coach-pill">${_explain('live-context', 'CANLI IZ')}</span>
         <span class="coach-pill">${warningCount} ${_explain('field-note', 'uyari')}</span>
         <span class="coach-pill">${questCount} ${_explain('active-quests', 'acik hedef')}</span>
       </div>
@@ -473,7 +496,7 @@ function _typewriterSection(lines, containerEl, token, onDone) {
     lineEl.className = 'coach-line'
     containerEl.appendChild(lineEl)
 
-    const raw = lines[lineIndex]
+    const raw = _cozyTrainingLabel(lines[lineIndex])
     if (!raw) {
       lineIndex += 1
       setTimeout(typeLine, 60)
@@ -511,7 +534,7 @@ function _skipAll(p) {
     const statEl = document.getElementById(`coach-st-${index}`)
     if (secEl) secEl.classList.add('active')
     if (bodyEl) {
-      bodyEl.innerHTML = (section.lines || []).map(line => `<div class="coach-line">${_parseMarkup(line)}</div>`).join('')
+      bodyEl.innerHTML = (section.lines || []).map(line => `<div class="coach-line">${_parseMarkup(_cozyTrainingLabel(line))}</div>`).join('')
     }
     if (statEl) {
       statEl.textContent = 'TAMAMLANDI'

@@ -7,11 +7,8 @@ import { buildNextSessionRecommendation } from './data/next-session-engine.js'
 import { buildOdiePresence } from './data/odie-presence.js'
 import { computeProfileStatsSnapshotDaysAgo, formatMonthShort, getLocalDateString, normalizeDateString } from './data/rules.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
-import { renderCoach, initCoach } from './components/panel-coach.js'
-import { renderAsk, initAsk } from './components/panel-ask.js'
 import { renderDailyChecklist, initDailyChecklist } from './components/daily-checklist.js'
 import { renderHeatmap } from './components/heatmap-calendar.js'
-import { openWorkoutForm } from './components/workout-form.js'
 import { initModal, closeModal, openModal, openAvatarModal, openArchetypeModal, openFocusModal, openStatModal, openStatCalibrationModal, openUnlockModal } from './components/modal.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
@@ -19,8 +16,8 @@ import { goalTitle, riskToneLabel, sourceLabel, uiLabel } from './data/ui-copy.j
 
 const tabs = [
   { key: 'today', label: 'Bugun', icon: 'home' },
-  { key: 'character', label: 'Vital OS', icon: 'char' },
-  { key: 'quests', label: 'Quest', icon: 'quest' },
+  { key: 'character', label: 'Karakter', icon: 'char' },
+  { key: 'quests', label: 'Pano', icon: 'quest' },
   { key: 'odie', label: 'ODIE', icon: 'pulse' },
 ]
 
@@ -31,6 +28,9 @@ let activeSkillBranch = 0
 let activeQuestTab = 'daily'
 let _renderQueued = false
 let _lastAppMarkup = ''
+let _workoutFormModule = null
+let _odiePanelModules = null
+let _odiePanelModulesPromise = null
 let _semanticCache = {
   workouts: null,
   dailyLogs: null,
@@ -40,6 +40,34 @@ let _semanticCache = {
 injectToastStyles()
 initTheme()
 initTelegramMiniApp()
+
+async function openWorkoutFormLazy(options) {
+  if (!_workoutFormModule) {
+    _workoutFormModule = import('./components/workout-form.js')
+  }
+  const mod = await _workoutFormModule
+  return mod.openWorkoutForm(options)
+}
+
+function ensureOdiePanelsLoaded() {
+  if (_odiePanelModules) return _odiePanelModules
+  if (!_odiePanelModulesPromise) {
+    _odiePanelModulesPromise = Promise.all([
+      import('./components/panel-coach.js'),
+      import('./components/panel-ask.js'),
+    ]).then(([coach, ask]) => {
+      _odiePanelModules = { ...coach, ...ask }
+      if (activeTab === 'odie') scheduleRender({ immediate: true })
+      return _odiePanelModules
+    }).catch(error => {
+      _odiePanelModulesPromise = null
+      console.error('[odie-panel] load error:', error)
+      showToast({ icon: '!', title: 'ODIE odasi acilmadi', msg: 'Panel yuklenirken takildi.', rarity: 'common' })
+      return null
+    })
+  }
+  return null
+}
 
 store.init().then(() => {
   renderApp()
@@ -198,11 +226,11 @@ function pageTitle(tabKey, profile) {
     case 'today':
       return `${profile.nick} - Bugun`
     case 'character':
-      return `${profile.nick} Vital OS`
+      return `${profile.nick} Karakter Defteri`
     case 'quests':
-      return `${profile.nick} Quest Log`
+      return `${profile.nick} Kasaba Panosu`
     case 'odie':
-      return odieMode === 'ask' ? "ODIE'ye Sor" : 'ODIE Yorumu'
+      return odieMode === 'ask' ? "ODIE'ye Sor" : 'ODIE Defteri'
     default:
       return profile.nick
   }
@@ -339,6 +367,19 @@ const KIND_TR_MAP = {
   mixed: 'karma',
 }
 
+const WORKOUT_TYPE_LABELS = [
+  ['Push', 'Itis'],
+  ['Pull', 'Cekis'],
+  ['Shoulder', 'Omuz'],
+  ['Core', 'Govde'],
+  ['Workout', 'Antrenman'],
+  ['Recovery', 'Toparlanma'],
+  ['Strength', 'Kuvvet'],
+  ['Mobility', 'Mobilite'],
+  ['Skill', 'Teknik'],
+  ['Conditioning', 'Kondisyon'],
+]
+
 function localizeKindWords(text = '') {
   let out = String(text)
   for (const [en, tr] of Object.entries(KIND_TR_MAP)) {
@@ -347,39 +388,66 @@ function localizeKindWords(text = '') {
   return out
 }
 
+function displayWorkoutType(text = '') {
+  let out = String(text || 'Seans')
+  for (const [en, tr] of WORKOUT_TYPE_LABELS) {
+    out = out.replace(new RegExp(`\\b${en}\\b`, 'gi'), tr)
+  }
+  return out
+}
+
+function cozyDisplayText(text = '') {
+  return displayWorkoutType(text)
+    .replace(/\btrunk control\b/gi, 'govde kontrolu')
+    .replace(/\bbuild['’]?i\b/gi, 'rotasi')
+    .replace(/\bbuild\w*\b/gi, 'rota')
+    .replace(/\bglobal\b/gi, 'genel')
+    .replace(/\bclass\b/gi, 'sinif')
+    .replace(/\bcoach\b/gi, 'ODIE')
+    .replace(/\bsource\b/gi, 'defter')
+    .replace(/\bsignal\b/gi, 'iz')
+    .replace(/\bblock\b/gi, 'blok')
+    .replace(/\bdrill\b/gi, 'teknik parca')
+}
+
+function cozyConfidenceLabel(confidence = '') {
+  const key = String(confidence || 'seed').toUpperCase()
+  return ({ HIGH: 'NET', MEDIUM: 'ORTA', LOW: 'AZ', SEED: 'DEFTER' })[key] || displayWorkoutType(key)
+}
+
 function buildTodayLead(state, latestWorkout = null) {
   if (latestWorkout) {
     if (String(latestWorkout.source || '').toLowerCase() === 'apple_health') {
       const distance = Number(latestWorkout.distanceKm) ? `${Math.round(latestWorkout.distanceKm * 10) / 10} km` : `${latestWorkout.durationMin || 0} dakika`
-      const terrain = (latestWorkout.tags || []).includes('terrain') ? 'arazi yuruyusu' : (latestWorkout.type || 'hareket')
+      const terrain = (latestWorkout.tags || []).includes('terrain') ? 'arazi yuruyusu' : displayWorkoutType(latestWorkout.type || 'hareket')
       return `Apple Health ${distance} ${terrain} kaydini yazdi. ODIE bunu yorgunluk, XP ve bugunku hamleye dahil ediyor.`
     }
     const meta = [
       latestWorkout.durationMin ? `${latestWorkout.durationMin} dakika` : null,
-      latestWorkout.volumeKg ? `${Math.round(latestWorkout.volumeKg).toLocaleString('tr-TR')} kg hacim` : null,
+      latestWorkout.volumeKg ? `${Math.round(latestWorkout.volumeKg).toLocaleString('tr-TR')} kg yuk` : null,
       latestWorkout.source === 'hevy' ? 'Hevy senkron' : null,
     ].filter(Boolean).join(' / ')
-    return `${formatMonthShort(latestWorkout.date)} ${latestWorkout.type || 'seans'} kaydi tamam. ${meta || 'Detay az, ama kayit geldi.'}`
+    return `${formatMonthShort(latestWorkout.date)} ${displayWorkoutType(latestWorkout.type || 'seans')} kaydi tamam. ${meta || 'Detay az, ama kayit geldi.'}`
   }
   const score = Number(state.health?.readiness?.score)
   if (Number.isFinite(score)) {
     if (score >= 80) return 'Bugun ana blok icin iyi gorunuyor. Hevy ve Telegram akisi geldikce kart kendini yeniler.'
-    if (score >= 60) return 'Normal tempo uygun. Son veriler yuk, kaynak ve ritim panellerine dusuyor.'
+    if (score >= 60) return 'Normal tempo uygun. Son veriler yuk, defter ve ritim panellerine dusuyor.'
     if (score >= 40) return 'Kontrollu git. Teknik, core veya daha kisa bir seans mantikli.'
     return 'Yorgunluk yuksek gorunuyor. Bugun hafif teknik veya kisa hareket yeter.'
   }
-  return 'Hevy ve Telegram kayitlari geldikce karakter karti, skill agaci ve gorevler canli veriden guncellenir.'
+  return 'Hevy ve Telegram kayitlari geldikce karakter karti, acilim dallari ve gorevler canli veriden guncellenir.'
 }
 
 const FRONT_STAT_ORDER = ['str', 'agi', 'end', 'dex', 'con', 'sta']
 
 const STAT_UI_META = {
-  str: { trait: 'Power', tone: 'str' },
-  agi: { trait: 'Flow', tone: 'agi' },
-  end: { trait: 'Engine', tone: 'end' },
-  dex: { trait: 'Skill', tone: 'dex' },
-  con: { trait: 'Core', tone: 'con' },
-  sta: { trait: 'Energy', tone: 'sta' },
+  str: { trait: 'Guc', tone: 'str' },
+  agi: { trait: 'Akis', tone: 'agi' },
+  end: { trait: 'Nefes', tone: 'end' },
+  dex: { trait: 'Teknik', tone: 'dex' },
+  con: { trait: 'Govde', tone: 'con' },
+  sta: { trait: 'Enerji', tone: 'sta' },
 }
 
 function getFrontStats(state, profile) {
@@ -411,7 +479,7 @@ function renderInfographicStatBoard(state, profile, nextSession = {}) {
     ? `HEVY LIVE ${formatMonthShort(nextSession.sourceHealth.latestHevyDate)}`
     : 'HEVY LIVE bekliyor'
   const className = state.profile.classObj?.name || profile.class || 'OdiePT'
-  const focus = state.profile.currentFocus || nextSession.primaryGoal?.title || 'Hybrid build'
+  const focus = displayWorkoutType(state.profile.currentFocus || nextSession.primaryGoal?.title || 'Karma rota')
 
   return `
     <article class="glass-card infographic-stat-board" aria-label="RPG karakter stat panosu">
@@ -447,7 +515,7 @@ function renderInfographicStatNode(stat) {
   const label = stat.label || stat.key.toUpperCase()
   const value = Math.round(Number(stat.val) || 0)
   const rank = stat.rank || value
-  const confidence = String(stat.confidence || 'seed').toUpperCase()
+  const confidence = cozyConfidenceLabel(stat.confidence)
   return `
     <button
       class="stat-node stat-tone-${escapeHtml(stat.tone || stat.key)} ${stat.critical ? 'is-critical' : ''}"
@@ -529,7 +597,7 @@ function renderOdieLiveCard(presence = {}, { compact = false, action = true } = 
         <div class="odie-live-face" aria-hidden="true"><i></i><b></b></div>
         <div>
           <span>ODIE Live</span>
-          <strong>${escapeHtml(presence.headline || 'ODIE baglami okuyor')}</strong>
+          <strong>${escapeHtml(presence.headline || 'ODIE izleri okuyor')}</strong>
           <small>${escapeHtml(presence.moodLabel || 'canli mod')} / ${escapeHtml(presence.dataConfidence ?? '--')}% veri netligi</small>
         </div>
       </div>
@@ -540,7 +608,7 @@ function renderOdieLiveCard(presence = {}, { compact = false, action = true } = 
       ${action ? `
         <div class="odie-live-actions">
           <button type="button" data-tab="odie">ODIE ile konus</button>
-          <button type="button" data-action="open-health-shortcut">Kaynaklari bagla</button>
+          <button type="button" data-action="open-health-shortcut">Defterleri bagla</button>
         </div>
       ` : ''}
     </article>
@@ -671,14 +739,14 @@ function renderPrestigeAnatomySheet(bodyMapState, profile, className = '') {
           <em>${escapeHtml(className || 'Karakter')}</em>
         </span>
         <span class="anatomy-orbit" aria-hidden="true"></span>
-        <span class="prestige-anatomy-art is-retired" aria-hidden="true">Vital OS</span>
+        <span class="prestige-anatomy-art is-retired" aria-hidden="true">Karakter</span>
         ${renderPrestigeHeatLayer(bodyMapState, priorityRegion)}
       </button>
 
       <div class="anatomy-status-rail" aria-label="Vucut durumu">
         <button class="anatomy-rail-card tone-priority" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}">
           <span>Odak bolge</span>
-          <strong>${escapeHtml(priorityRegion?.label || 'Core')}</strong>
+          <strong>${escapeHtml(priorityRegion?.label || 'Govde')}</strong>
           <small>${escapeHtml(priorityMovement?.label || 'Mobilite')} hatti</small>
         </button>
         <button class="anatomy-rail-card ${injury ? 'tone-injury' : 'tone-ready'}" data-action="open-body-region" data-region-id="${escapeHtml(injury?.regionId || priorityRegion?.id || 'core')}">
@@ -689,7 +757,7 @@ function renderPrestigeAnatomySheet(bodyMapState, profile, className = '') {
         <button class="anatomy-rail-card tone-quest" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}">
           <span>Ara gorev</span>
           <strong>${escapeHtml(quest?.name || 'Mini hamle')}</strong>
-          <small>${escapeHtml(quest?.desc || 'Bugunun temiz ilerleme isi')}</small>
+          <small>${escapeHtml(cozyDisplayText(quest?.desc || 'Bugunun temiz ilerleme isi'))}</small>
         </button>
       </div>
 
@@ -760,10 +828,10 @@ function getVitalOsModel(state = {}, bodyMapState = null, nextSession = null) {
   const unlock = bodyMapState?.unlockTargets?.[0] || null
   const dataConfidence = cleanScore(vital.dataConfidence ?? summary?.dataConfidence ?? state.healthStatus?.dailySummary?.dataConfidence ?? 0)
   const readinessConfidence = ({ high: 'yuksek', medium: 'orta', low: 'dusuk' })[state.health?.readiness?.confidence] || 'orta'
-  const activeCommand = nextSession?.coachCommand || quest?.desc || 'Bugunu temiz veriyle kapat.'
+  const activeCommand = cozyDisplayText(nextSession?.coachCommand || quest?.desc || 'Bugunu temiz veriyle kapat.')
   const risk = injury
     ? `${injury.label || 'Bilek'} temkinde: %${Math.round(injury.recoveryPct ?? 0)} toparlandi, ${Math.round(injury.etaDays ?? 0)} gun agir grip yok.`
-    : nextSession?.warnings?.[0] || state.health?.warnings?.[0]?.desc || 'Risk sinyali sakin.'
+    : cozyDisplayText(nextSession?.warnings?.[0] || state.health?.warnings?.[0]?.desc || 'Risk sinyali sakin.')
 
   return {
     summary,
@@ -787,8 +855,8 @@ function renderVitalPulsePanel(state, bodyMapState, nextSession = null) {
   return `
     <div class="vital-pulse-panel">
       <div class="vital-pulse-head">
-        <span>Vital OS</span>
-        <strong>${model.dataConfidence}% veri netligi</strong>
+        <span>Karakter Odasi</span>
+        <strong>${model.dataConfidence}% okuma netligi</strong>
       </div>
       <div class="vital-ring-grid">
         ${model.rings.map(renderVitalRing).join('')}
@@ -807,26 +875,26 @@ function renderHealthBridgeCard(state = {}) {
   const appleWorkout = healthStatus.lastAppleWorkout || (state.workouts || []).find(workout => String(workout.source || '').toLowerCase() === 'apple_health')
   const sourceRows = [
     ['Hevy', sources.hevy || 'configured'],
-    ['Apple Workout', sources.appleWorkout || (appleWorkout ? 'linked' : 'waiting')],
-    ['Apple Sleep', sources.appleSleep || 'waiting'],
-    ['Apple Heart', sources.appleHeart || 'waiting'],
-    ['Manual', sources.manual || 'available'],
+    ['Apple Antrenman', sources.appleWorkout || (appleWorkout ? 'linked' : 'waiting')],
+    ['Apple Uyku', sources.appleSleep || 'waiting'],
+    ['Apple Kalp', sources.appleHeart || 'waiting'],
+    ['Manuel', sources.manual || 'available'],
   ]
   const latestText = appleWorkout
     ? `${formatMonthShort(appleWorkout.date)} / ${appleWorkout.distanceKm ? `${Math.round(appleWorkout.distanceKm * 10) / 10} km` : `${appleWorkout.durationMin || 0} dk`}`
-    : (healthStatus.missing ? 'Migration bekliyor' : 'Shortcut bekliyor')
-  const lastSync = healthStatus.lastSyncAt ? formatMonthShort(healthStatus.lastSyncAt) : 'sync yok'
+    : (healthStatus.missing ? 'Kurulum bekliyor' : 'Kestirme bekliyor')
+  const lastSync = healthStatus.lastSyncAt ? formatMonthShort(healthStatus.lastSyncAt) : 'iz yok'
   const lastError = healthStatus.lastError?.error || ''
   return `
     <article class="health-bridge-card">
       <div>
-        <span>${renderExplainButton('apple-health', 'Canli Kaynaklar', 'explain-link metric-explain')}</span>
-        <strong>Hevy kuvvet, Apple yasam verisi</strong>
-        <small>${escapeHtml(latestText)} / son sync ${escapeHtml(lastSync)}${lastError ? ` / hata: ${escapeHtml(lastError).slice(0, 80)}` : ''}</small>
+        <span>${renderExplainButton('apple-health', 'Canli Defterler', 'explain-link metric-explain')}</span>
+        <strong>Hevy kuvvet defteri, Apple yasam izi</strong>
+        <small>${escapeHtml(latestText)} / son iz ${escapeHtml(lastSync)}${lastError ? ` / hata: ${escapeHtml(lastError).slice(0, 80)}` : ''}</small>
       </div>
       <div class="health-source-grid">
         ${sourceRows.map(([label, status]) => `
-          <span class="source-state tone-${escapeHtml(status)}"><b>${escapeHtml(label)}</b><i>${escapeHtml(status)}</i></span>
+          <span class="source-state tone-${escapeHtml(status)}"><b>${escapeHtml(label)}</b><i>${escapeHtml(sourceStateLabel(status))}</i></span>
         `).join('')}
       </div>
       <div class="health-bridge-actions">
@@ -835,6 +903,18 @@ function renderHealthBridgeCard(state = {}) {
       </div>
     </article>
   `
+}
+
+function sourceStateLabel(status = '') {
+  const key = String(status || '').toLowerCase()
+  return ({
+    configured: 'bagli',
+    linked: 'bagli',
+    available: 'hazir',
+    waiting: 'bekliyor',
+    missing: 'eksik',
+    error: 'hata',
+  })[key] || String(status || 'bekliyor').replace(/_/g, ' ')
 }
 
 const HUNTER_ICON_PATHS = {
@@ -866,8 +946,8 @@ function buildHunterOdieLine({ state = {}, nextSession = {}, bodyMapState = {}, 
   if (injury) return `${injury.label || 'Beden'} hala nazli. Bugun ego degil, temiz tekrar kazanir.`
   if (fatigue >= 75) return 'Motor isinmis ama depo bos. Bugun karakteri parlatan sey toparlanma.'
   if (armor < 55 || (Number.isFinite(readiness) && readiness < 45)) return 'Kalkan ince. Kisa, temiz ve kontrollu hamle bugunun galibiyeti.'
-  if (warning) return `${compactText(warning, 72)}. Puan sabirdan gelir.`
-  return decision.command || nextSession.coachCommand || 'Bugun kucuk artis yeter. Karakteri ileri tasiyan sey temiz kayit.'
+  if (warning) return `${compactText(cozyDisplayText(warning), 72)}. Puan sabirdan gelir.`
+  return cozyDisplayText(decision.command || nextSession.coachCommand || 'Bugun kucuk artis yeter. Karakteri ileri tasiyan sey temiz kayit.')
 }
 
 function buildHunterArc({ state = {}, profile = {}, nextSession = {}, bodyMapState = {}, activeQuest = null, latestWorkout = null } = {}) {
@@ -877,14 +957,14 @@ function buildHunterArc({ state = {}, profile = {}, nextSession = {}, bodyMapSta
   const hevy = nextSession.sourceHealth || buildHevyLiveSummary(state.workouts || [], profile)
   const stats = getFrontStats(state, profile)
   const rank = aggregateRank(stats)
-  const source = hevy.latestHevyDate ? `HEVY ${formatMonthShort(hevy.latestHevyDate)}` : latestWorkout ? sourceLabel(latestWorkout.source) : 'Kaynak bekliyor'
+  const source = hevy.latestHevyDate ? `HEVY ${formatMonthShort(hevy.latestHevyDate)}` : latestWorkout ? sourceLabel(latestWorkout.source) : 'Defter bekliyor'
   return {
     decision,
     title,
-    chapter: `Chapter ${profile.level || 1}`,
+    chapter: `Gun ${profile.level || 1}`,
     rank,
     source,
-    line: buildHunterOdieLine({ state, nextSession, bodyMapState, decision }),
+    line: cozyDisplayText(buildHunterOdieLine({ state, nextSession, bodyMapState, decision })),
   }
 }
 
@@ -929,7 +1009,7 @@ function buildHunterRewardChips(nextSession = {}, bodyMapState = {}, latestWorko
   }
   for (const cap of nextSession.progressionCaps || []) {
     if (chips.length >= 3) break
-    chips.push({ label: compactText(cap, 22), tone: 'guard' })
+    chips.push({ label: compactText(cozyDisplayText(cap), 22), tone: 'guard' })
   }
   if (!chips.length) chips.push({ label: 'XP temiz kayittan', tone: 'xp' })
   return chips.slice(0, 3)
@@ -986,7 +1066,7 @@ function buildHunterQuestCards({ state = {}, profile = {}, nextSession = {}, bod
   const priorityRegion = bodyMapState?.priority?.region || null
   const recovery = state.profile?.recovery
   const mainTitle = goalTitle(nextSession.primaryGoal) || decision.title
-  const mainDetail = mainBlock.target || nextSession.coachCommand || decision.command
+  const mainDetail = cozyDisplayText(mainBlock.target || nextSession.coachCommand || decision.command)
   const recoveryTitle = injury ? `${injury.label || 'Bolge'} korumasi` : 'Kalkan Onarimi'
   const recoveryDetail = injury
     ? `${Math.round(injury.recoveryPct ?? 0)}% toparlandi / ${Math.round(injury.etaDays ?? 0)} gun temkin`
@@ -995,7 +1075,7 @@ function buildHunterQuestCards({ state = {}, profile = {}, nextSession = {}, bod
 
   return [
     {
-      label: 'Main Quest',
+      label: 'Ana Gorev',
       title: mainTitle,
       detail: compactText(mainDetail, 78),
       reward: buildHunterRewardChips(nextSession, bodyMapState, latestWorkout)[0]?.label || '+XP',
@@ -1003,19 +1083,19 @@ function buildHunterQuestCards({ state = {}, profile = {}, nextSession = {}, bod
       action: 'open-workout',
     },
     {
-      label: 'Recovery',
+      label: 'Kalkan',
       title: recoveryTitle,
       detail: compactText(recoveryDetail, 78),
-      reward: injury ? 'risk lock' : 'kalkan +',
+      reward: injury ? 'risk kilidi' : 'kalkan +',
       tone: injury ? 'danger' : 'recovery',
       action: injury ? 'open-body-region' : 'open-health-shortcut',
       regionId: injury?.regionId || priorityRegion?.id || 'core',
     },
     {
-      label: 'Side Quest',
+      label: 'Ara Gorev',
       title: optionalQuest?.name || supportBlock.target || 'Mini ritim',
-      detail: compactText(optionalQuest?.desc || supportBlock.label || decision.next || 'Kisa ama temiz adim', 78),
-      reward: optionalQuest?.reward || 'streak koru',
+      detail: compactText(cozyDisplayText(optionalQuest?.desc || supportBlock.label || decision.next || 'Kisa ama temiz adim'), 78),
+      reward: optionalQuest?.reward || 'seri koru',
       tone: 'side',
       action: optionalQuest ? '' : 'open-workout',
       tab: optionalQuest ? 'quests' : '',
@@ -1048,8 +1128,8 @@ function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {},
   const className = state.profile.classObj?.name || profile.class || 'OdiePT'
   const nextUnlock = bodyMapState?.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
   const unlockHint = nextUnlock?.progress != null
-    ? `${Math.round(nextUnlock.progress)}% unlock`
-    : summarizeUnlockHint(nextUnlock, profile.skills || []) || 'unlock takipte'
+    ? `${Math.round(nextUnlock.progress)}% acilim`
+    : summarizeUnlockHint(nextUnlock, profile.skills || []) || 'acilim takipte'
 
   return `
     <section class="game-day-screen tone-${nextSession.tone || arc.decision.tone || 'calm'}" style="--xp-pct:${xpPct}%">
@@ -1110,8 +1190,8 @@ function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {},
           <em>Hazir ${readinessLabel}</em>
         </div>
         <ul class="game-board-notes">
-          <li>${escapeHtml(compactText(nextSession.coachCommand || arc.decision.command, 86))}</li>
-          <li>${escapeHtml(compactText(nextSession.primaryGoal?.subtitle || arc.decision.reason || unlockHint, 86))}</li>
+          <li>${escapeHtml(compactText(cozyDisplayText(nextSession.coachCommand || arc.decision.command), 86))}</li>
+          <li>${escapeHtml(compactText(cozyDisplayText(nextSession.primaryGoal?.subtitle || arc.decision.reason || unlockHint), 86))}</li>
         </ul>
         ${renderHunterRewardChips(nextSession, bodyMapState, latestWorkout)}
         <div class="game-action-row">
@@ -1146,7 +1226,7 @@ function renderTodayPage(state, profile, semantic, ui = buildUiRuntime(state, pr
   const recentSessions = (state.workouts || []).slice(0, 3)
   const latestWorkout = ui.latestWorkout || recentSessions[0] || null
   const lead = buildTodayLead(state, latestWorkout)
-  const title = latestWorkout ? `${formatMonthShort(latestWorkout.date)} / ${latestWorkout.type || 'Seans'}` : readinessTitle(readiness)
+  const title = latestWorkout ? `${formatMonthShort(latestWorkout.date)} / ${displayWorkoutType(latestWorkout.type || 'Seans')}` : readinessTitle(readiness)
   const heroMetric = latestWorkout?.durationMin
     ? latestWorkout.durationMin
     : Number.isFinite(readiness)
@@ -1199,7 +1279,7 @@ function renderTodayPage(state, profile, semantic, ui = buildUiRuntime(state, pr
           <div class="home-metrics-grid">
             <div><span>${renderExplainButton('armor', 'Can', 'explain-link metric-explain')}</span><strong>${armor}</strong></div>
             <div><span>${renderExplainButton('fatigue', 'Yorgunluk', 'explain-link metric-explain')}</span><strong>${fatigue}</strong></div>
-            <div><span>${renderExplainButton('hacim', 'Hacim', 'explain-link metric-explain')}</span><strong>${escapeHtml(profile.totalVolume || '0 kg')}</strong></div>
+            <div><span>${renderExplainButton('hacim', 'Yuk', 'explain-link metric-explain')}</span><strong>${escapeHtml(profile.totalVolume || '0 kg')}</strong></div>
             <div><span>${renderExplainButton('seri', 'Seri', 'explain-link metric-explain')}</span><strong>${streak}g</strong></div>
           </div>
 
@@ -1219,7 +1299,7 @@ function renderTodayPage(state, profile, semantic, ui = buildUiRuntime(state, pr
               <strong>${escapeHtml(activeQuest.name)}</strong>
               <span>${activeQuest.progress}/${activeQuest.total}</span>
             </div>
-            <p>${escapeHtml(activeQuest.desc || '')}</p>
+            <p>${escapeHtml(cozyDisplayText(activeQuest.desc || ''))}</p>
           </article>
         ` : ''}
 
@@ -1272,16 +1352,16 @@ const EXPLAINERS = {
     title: 'Denge Kapatma',
     summary: 'Son 30 gunde geride kalan hattin kisa bir blokla tamamlanmasi demek.',
     bullets: [
-      'Ornek: push/pull cok yuksek ama core azsa seansa 8-10 dk core ile baslamak.',
+      'Ornek: itis/cekis cok yuksek ama govde azsa seansa 8-10 dk govde ile baslamak.',
       'Amac ana programi bozmak degil; acik kalan halkayi kapatmak.',
-      'Bu kart genelde Core, Bacak, mobilite veya recovery eksigi gorunurse cikar.',
+      'Bu kart genelde govde, bacak, mobilite veya toparlanma eksigi gorunurse cikar.',
     ],
   },
   'recovery-gunu': {
     title: 'Toparlanma Gunu',
     summary: 'Yuk bindirmek yerine toparlanmayi hizlandiran gun.',
     bullets: [
-      'Yorgunluk yuksekken agir push/pull yerine yuruyus, mobilite veya hafif form isi secilir.',
+      'Yorgunluk yuksekken agir itis/cekis yerine yuruyus, mobilite veya hafif form isi secilir.',
       'Hedef XP kasmak degil; bir sonraki verimli seansi acmaktir.',
       'Toparlanma sayaci ilerledikce karar tekrar normale donebilir.',
     ],
@@ -1290,7 +1370,7 @@ const EXPLAINERS = {
     title: 'Form Gunu',
     summary: 'Risk varken tamamen durmadan, yuk yerine form temizligi calismak.',
     bullets: [
-      'Rekor denemesi veya hacim kovalamak yerine form, destek seti ve dusuk riskli bloklar.',
+      'Rekor denemesi veya yuk kovalamak yerine form, destek seti ve dusuk riskli bloklar.',
       'Kalkan dusuk veya hazirlik zayifken kullanilir.',
       'Seans kisa kalabilir; veri girisi yine de build ritmini korur.',
     ],
@@ -1332,7 +1412,7 @@ const EXPLAINERS = {
   },
   'denge-paneli': {
     title: 'Denge Paneli',
-    summary: 'Son 30 gunde Push, Pull, Bacak ve Core hatlarinin ne kadar calistigini karsilastirir.',
+    summary: 'Son 30 gunde itis, cekis, bacak ve govde hatlarinin ne kadar calistigini karsilastirir.',
     bullets: [
       'Bar uzunlugu en yuksek hatta gore normalize edilir.',
       'Sari bar en geride kalan hatti isaret eder.',
@@ -1340,11 +1420,11 @@ const EXPLAINERS = {
     ],
   },
   push: {
-    title: 'Push',
+    title: 'Itis',
     summary: 'Itis hatti: bench, press, dips, push-up, triceps ve gogus/omuz baskin isler.',
   },
   pull: {
-    title: 'Pull',
+    title: 'Cekis',
     summary: 'Cekis hatti: row, pull-up, pulldown, curl, dead hang ve sirt/biceps isleri.',
   },
   legs: {
@@ -1352,27 +1432,27 @@ const EXPLAINERS = {
     summary: 'Alt vucut hatti: squat, lunge, leg press, calf, posterior chain ve kosu/yuruyus bacak etkisi.',
   },
   core: {
-    title: 'Core',
+    title: 'Govde',
     summary: 'Govde stabilitesi hatti: hollow, plank, leg raise, L-sit, anti-rotation ve trunk kontrolu.',
     bullets: [
-      "ODIE core'u sadece yuruyusten saymaz; direkt core veya block sinyali arar.",
-      'Core gerideyse skill ve sakatlik toleransi da etkilenebilir.',
+      "ODIE govde isini sadece yuruyusten saymaz; direkt govde veya blok izi arar.",
+      'Govde gerideyse teknik ve sakatlik toleransi da etkilenebilir.',
     ],
   },
   xp: {
     title: 'XP',
     summary: 'Seansin karakter ilerlemesine yazdigi puan.',
     bullets: [
-      "Seans tipi, streak, class carpani, PR ve survival durumu XP'yi etkiler.",
+      "Seans tipi, seri, sinif carpani, PR ve kalkan durumu XP'yi etkiler.",
       'Yorgunluk asiri yuksekse agir seans XP verimi dusebilir.',
     ],
   },
   hacim: {
-    title: 'Hacim',
+    title: 'Yuk Defteri',
     summary: 'Kaldirilan toplam yuk. Genelde kilo x tekrar toplamidir.',
     bullets: [
       'Bodyweight hareketlerde kilo bilgisi varsa daha dogru hesaplanir.',
-      'Hacim tek basina iyi seans demek degildir; sure, set ve recovery ile birlikte okunur.',
+      'Yuk tek basina iyi seans demek degildir; sure, set ve toparlanma ile birlikte okunur.',
     ],
   },
   seri: {
@@ -1380,12 +1460,12 @@ const EXPLAINERS = {
     summary: 'Arka arkaya gelen antrenman gunleri. Bosluk uzarsa seri kirilir.',
   },
   kaynak: {
-    title: 'Kaynak',
-    summary: 'Workout verisinin nereden geldigini gosterir: Hevy, Telegram, Apple Health veya web/manual.',
+    title: 'Defter',
+    summary: 'Antrenman verisinin nereden geldigini gosterir: Hevy, Telegram, Apple Health veya web/manual.',
   },
   'apple-health': {
     title: 'Apple Health',
-    summary: 'iPhone ve Apple Watch hareket verisini OdiePT workout motoruna tasiyan Kestirme koprusu.',
+    summary: 'iPhone ve Apple Watch hareket verisini OdiePT antrenman motoruna tasiyan Kestirme koprusu.',
     bullets: [
       'Web app Health verisini kendi kendine cekemez; iPhone izniyle Kestirme veriyi endpoint e yollar.',
       'Yuruyus, hiking, kosu ve bisiklet seanslari XP, yorgunluk, hareket hatti ve bugunun hamlesine yazilir.',
@@ -1394,14 +1474,14 @@ const EXPLAINERS = {
   },
   ritim: {
     title: 'Ritim',
-    summary: 'Son 7 gunde workout veya daily log izi olan gun sayisi.',
+    summary: 'Son 7 gunde antrenman veya gunluk iz olan gun sayisi.',
     bullets: [
-      'Ritim sadece agir antrenman degil; recovery logu da davranis zincirini gosterir.',
+      'Ritim sadece agir antrenman degil; toparlanma kaydi da davranis zincirini gosterir.',
     ],
   },
   datalarim: {
     title: 'Datalarim',
-    summary: 'Son 7 seansin yuk grafigi. Hacim varsa kilo, yoksa sure/set/XP sinyali kullanilir.',
+    summary: 'Son 7 seansin yuk grafigi. Kilo varsa yuk, yoksa sure/set/XP izi kullanilir.',
   },
   readiness: {
     title: 'Hazirlik',
@@ -1411,7 +1491,7 @@ const EXPLAINERS = {
     title: 'Vucut Durumu',
     summary: 'Bugunku can, yorgunluk ve seri ozetidir. Kart, karakterin seansa ne kadar acik oldugunu hizli okutur.',
     bullets: [
-      'Can armor degerinden, yorgunluk fatigue degerinden gelir.',
+      'Can kalkan degerinden, yorgunluk yuk sayacindan gelir.',
       'Seri davranis zincirini gosterir; tek basina agir calismak zorunda degildir.',
     ],
   },
@@ -1427,7 +1507,7 @@ const EXPLAINERS = {
     title: 'Karakter Tipi',
     summary: 'Son antrenman deseninden tureyen aktif RPG arketipi.',
     bullets: [
-      'Push/pull/core/hareket dagilimi degistikce karakter tipi de degisebilir.',
+      'Itis/cekis/govde/hareket dagilimi degistikce karakter tipi de degisebilir.',
       'Karakter tipi XP ve toparlanma gibi kucuk pasif etkiler tasir.',
     ],
   },
@@ -1456,7 +1536,7 @@ const EXPLAINERS = {
     ],
   },
   'skill-tree': {
-    title: 'Skill Agaci',
+    title: 'Acilim Dallari',
     summary: 'Uzun vadeli hareket yeteneklerini dal mantigiyla takip eder.',
     bullets: [
       'Acik dugum tamamlanmis, isinan dugum ilerleyen, kilitli dugum henuz acilmamis beceridir.',
@@ -1465,7 +1545,7 @@ const EXPLAINERS = {
   },
   'daily-checklist': {
     title: 'Gunluk Durum',
-    summary: 'Su, uyku, adim ve mood kaydi recovery hesabina destek sinyali verir.',
+    summary: 'Su, uyku, adim ve his kaydi toparlanma hesabina destek izi verir.',
     bullets: [
       'Bu kayitlar tek seans yerine genel hazirlik trendini duzeltir.',
       'Eksik log, ODIE kararini daha temkinli yapabilir.',
@@ -1483,7 +1563,7 @@ const EXPLAINERS = {
     title: 'Seans Detayi',
     summary: 'Kaydedilen antrenmanin ham veriye en yakin ozeti.',
     bullets: [
-      'Sure, hacim, set, XP, PR ve kaynak burada birlikte gorunur.',
+      'Sure, yuk, set, XP, PR ve defter burada birlikte gorunur.',
       'Bloklar egzersizlerin hangi hatta yazildigini gosterir.',
     ],
   },
@@ -1496,7 +1576,7 @@ const EXPLAINERS = {
   },
   bloklar: {
     title: 'Bloklar',
-    summary: 'Seansin parcalara ayrilmis calisma hatlari: strength, core, locomotion, mobility, skill gibi.',
+    summary: 'Seansin parcalara ayrilmis calisma hatlari: kuvvet, govde, hareket, mobilite ve teknik gibi.',
   },
   fact: {
     title: 'Seans Izi',
@@ -1508,11 +1588,11 @@ const EXPLAINERS = {
   },
   water: {
     title: 'Su',
-    summary: 'Gunluk su kaydi. Recovery yorumunda destek sinyali olarak kullanilir.',
+    summary: 'Gunluk su kaydi. Toparlanma yorumunda destek izi olarak kullanilir.',
   },
   sleep: {
     title: 'Uyku',
-    summary: 'Son gun uyku saati. Hazirlik ve recovery kararlarinda en guclu yan sinyallerden biridir.',
+    summary: 'Son gun uyku saati. Hazirlik ve toparlanma kararlarinda en guclu yan izlerden biridir.',
   },
   steps: {
     title: 'Adim',
@@ -1520,7 +1600,7 @@ const EXPLAINERS = {
   },
   mood: {
     title: 'Mood',
-    summary: 'Bugunku his skoru. Coach kararini tek basina degil, fatigue ve armor ile birlikte etkiler.',
+    summary: 'Bugunku his skoru. ODIE kararini tek basina degil, yorgunluk ve kalkanla birlikte etkiler.',
   },
   'activity-map': {
     title: 'Aktivite Haritasi',
@@ -1543,7 +1623,7 @@ const EXPLAINERS = {
     summary: 'Survival motorunun yakaladigi pratik uyari veya olumlu sinyal.',
   },
   'session-reading': {
-    title: 'Seans Okumasi',
+    title: 'Seans Defteri',
     summary: 'ODIE son seansi hangi hareket, sure, yuk ve blok sinyalleriyle okudugunu gosterir.',
   },
   confidence: {
@@ -1551,28 +1631,28 @@ const EXPLAINERS = {
     summary: 'Seans kaydinda Odie yorumunu besleyecek ne kadar somut veri oldugunu gosterir.',
   },
   'parsed-piece': {
-    title: 'Seans Sinyali',
+    title: 'Seans Izi',
     summary: 'Seans notundan veya Hevy verisinden okunan hareket, set, sure ve mesafe parcalari.',
   },
   'main-load': {
-    title: 'Ana Yuk',
+    title: 'Ana Hat',
     summary: 'Seansin baskin calisma tipi ve blok dagilimi.',
   },
   evidence: {
-    title: 'Bakilan Sinyal',
-    summary: 'Coach veya Ask cevabinda dikkate alinan somut seans ve trend parcalari.',
+    title: 'Bakilan Izler',
+    summary: 'ODIE cevabinda dikkate alinan somut seans ve trend parcalari.',
   },
   memory: {
-    title: 'Kalici Hafiza',
+    title: 'Kalici Notlar',
     summary: "ODIE'nin senden ogrendigi kalici tercih, risk ve hedef notlari.",
   },
   'live-context': {
-    title: 'Canli Baglam',
-    summary: 'Coach yorumunun o anki seans, uyarilar ve acik hedeflerle beslendigini gosterir.',
+    title: 'Canli Iz',
+    summary: 'ODIE notunun o anki seans, uyarilar ve acik hedeflerle beslendigini gosterir.',
   },
   'ask-line': {
-    title: 'ODIE Hatti',
-    summary: 'Sorularin ayri kaydoldugu ve cevaplarin workout/recovery baglamindan uretildigi panel.',
+    title: 'ODIE Defteri',
+    summary: 'Sorularin ayri kaydoldugu ve cevaplarin antrenman/toparlanma izlerinden uretildigi panel.',
   },
   'ask-answer': {
     title: 'Kisa Yorum',
@@ -1592,7 +1672,7 @@ const EXPLAINERS = {
   },
   'workout-form': {
     title: 'Yeni Seans Ekle',
-    summary: 'Web uzerinden manuel workout kaydi girme modali.',
+    summary: 'Web uzerinden manuel antrenman kaydi girme modali.',
   },
   'workout-date': {
     title: 'Tarih',
@@ -1604,7 +1684,7 @@ const EXPLAINERS = {
   },
   duration: {
     title: 'Sure',
-    summary: 'Seansin dakika cinsinden suresi. Hacim yoksa yuk tahmininde destek sinyali olur.',
+    summary: 'Seansin dakika cinsinden suresi. Yuk yoksa karar icin destek izi olur.',
   },
   distance: {
     title: 'Mesafe',
@@ -1615,7 +1695,7 @@ const EXPLAINERS = {
     summary: 'Tirmanis veya parkur gibi islerde yukseklik kazanimi.',
   },
   highlight: {
-    title: 'Highlight',
+    title: 'Kisa Not',
     summary: 'Seansin en onemli notu: PR, temiz tekrar, zorlanan bolge veya ozel durum.',
   },
   notes: {
@@ -1624,15 +1704,15 @@ const EXPLAINERS = {
   },
   exercises: {
     title: 'Egzersizler',
-    summary: 'Hareket, tekrar, kilo veya sure detaylari. Hacim ve PR hesaplarini guclendirir.',
+    summary: 'Hareket, tekrar, kilo veya sure detaylari. Yuk ve PR hesaplarini guclendirir.',
   },
   volume: {
-    title: 'Toplam Hacim',
+    title: 'Toplam Yuk',
     summary: 'Formdaki egzersizlerden hesaplanan toplam kg yukudur.',
   },
   hevy: {
     title: 'Hevy',
-    summary: 'Hevy uygulamasindan gelen structured workout kaydi.',
+    summary: 'Hevy uygulamasindan gelen yapili antrenman kaydi.',
   },
   'hevy-live': {
     title: 'Hevy Live',
@@ -1743,7 +1823,7 @@ function buildTodayDecision(state, activeQuest = null) {
     key: 'normal-seans',
     tone: 'calm',
     title: 'Kucuk Artis Gunu',
-    command: latest ? `${latest.type || 'Ana blok'} temposu acilabilir.` : 'Ilk seansi net logla.',
+    command: latest ? `${displayWorkoutType(latest.type || 'Ana blok')} temposu acilabilir.` : 'Ilk seansi net logla.',
     reason: `Yorgunluk ${Math.round(fatigue)}, kalkan ${Math.round(armor)}.`,
     next: nextQuest || 'Set, sure ve hareketleri temiz gir.',
   }
@@ -1762,7 +1842,7 @@ function renderNextSessionCard(nextSession = {}) {
     : 'HEVY LIVE / sync bekliyor'
   const primaryBlock = blocks[0] || {}
   const supportBlock = blocks[1] || {}
-  const command = nextSession.coachCommand || goal.subtitle || 'Veri geldikce recete olusur.'
+  const command = cozyDisplayText(nextSession.coachCommand || goal.subtitle || 'Veri geldikce recete olusur.')
 
   return `
     <article class="glass-card next-session-card next-move-strip tone-${tone}">
@@ -1781,19 +1861,19 @@ function renderNextSessionCard(nextSession = {}) {
 
       <div class="next-session-blocks">
         <div class="next-block ${escapeHtml(primaryBlock.kind || 'main')}">
-          <span>${escapeHtml(primaryBlock.label || 'Ana gorev')}</span>
-          <strong>${escapeHtml(primaryBlock.target || '-')}</strong>
+          <span>${escapeHtml(cozyDisplayText(primaryBlock.label || 'Ana gorev'))}</span>
+          <strong>${escapeHtml(cozyDisplayText(primaryBlock.target || '-'))}</strong>
         </div>
         <div class="next-block ${escapeHtml(supportBlock.kind || 'support')}">
-          <span>${escapeHtml(supportBlock.label || 'Destek')}</span>
-          <strong>${escapeHtml(supportBlock.target || '-')}</strong>
+          <span>${escapeHtml(cozyDisplayText(supportBlock.label || 'Destek'))}</span>
+          <strong>${escapeHtml(cozyDisplayText(supportBlock.target || '-'))}</strong>
         </div>
       </div>
 
       <div class="next-session-foot">
         <span>${renderExplainButton('hevy-live', hevyLabel, 'explain-link metric-explain')}</span>
-        <span>${renderExplainButton('progression-cap', caps[0] || 'Artis tavani temiz', 'explain-link metric-explain')}</span>
-        <span>${escapeHtml(warnings[0] || evidence[0] || 'Risk sinyali yok')}</span>
+        <span>${renderExplainButton('progression-cap', cozyDisplayText(caps[0] || 'Artis tavani temiz'), 'explain-link metric-explain')}</span>
+        <span>${escapeHtml(cozyDisplayText(warnings[0] || evidence[0] || 'Risk sinyali yok'))}</span>
       </div>
     </article>
   `
@@ -1812,7 +1892,7 @@ function renderTodayDecisionCard(state, profile, activeQuest) {
         <div>
           <div class="eyebrow">${renderExplainButton('today-decision', 'Bugunun Karari', 'explain-link eyebrow-explain')}</div>
           <h3>${renderExplainButton(decision.key, decision.title, 'explain-link explain-heading')}</h3>
-          <p>${escapeHtml(decision.command)}</p>
+          <p>${escapeHtml(cozyDisplayText(decision.command))}</p>
         </div>
         <div class="today-decision-meter">
           <strong>${Math.round(Number(state.profile?.fatigue) || 0)}</strong>
@@ -1820,8 +1900,8 @@ function renderTodayDecisionCard(state, profile, activeQuest) {
         </div>
       </div>
       <div class="today-decision-foot">
-        <span>${escapeHtml(decision.reason)}</span>
-        <span>${escapeHtml(decision.next)}</span>
+        <span>${escapeHtml(cozyDisplayText(decision.reason))}</span>
+        <span>${escapeHtml(cozyDisplayText(decision.next))}</span>
         <span>${escapeHtml(recoveryLabel)}</span>
       </div>
     </article>
@@ -1893,10 +1973,10 @@ function renderInsightMeter(label, value, tone = 'ok') {
 function buildDisciplineBalance(state) {
   const recent = recentWorkoutsSince(state.workouts || [], 30)
   const totals = {
-    push: { key: 'push', label: 'Push', value: 0 },
-    pull: { key: 'pull', label: 'Pull', value: 0 },
+    push: { key: 'push', label: 'Itis', value: 0 },
+    pull: { key: 'pull', label: 'Cekis', value: 0 },
     legs: { key: 'legs', label: 'Bacak', value: 0 },
-    core: { key: 'core', label: 'Core', value: 0 },
+    core: { key: 'core', label: 'Govde', value: 0 },
   }
 
   for (const workout of recent) {
@@ -1928,7 +2008,7 @@ function renderDisciplineBalanceCard(state) {
       <div class="insight-card-head">
         <div>
           <div class="eyebrow">${renderExplainButton('denge-paneli', 'Denge Paneli', 'explain-link eyebrow-explain')}</div>
-          <h3>${renderExplainButton('denge-paneli', 'Push / Pull / Bacak / Core', 'explain-link explain-heading')}</h3>
+          <h3>${renderExplainButton('denge-paneli', 'Itis / Cekis / Bacak / Govde', 'explain-link explain-heading')}</h3>
         </div>
         <strong>${balance.sample}</strong>
       </div>
@@ -1961,7 +2041,7 @@ function renderCoachFeedbackDashboard(state) {
       <div class="insight-card-head">
         <div>
           <div class="eyebrow">${renderExplainButton('coach-feedback', 'ODIE Hafiza', 'explain-link eyebrow-explain')}</div>
-          <h3>${renderExplainButton('coach-feedback', 'Coach ayari', 'explain-link explain-heading')}</h3>
+          <h3>${renderExplainButton('coach-feedback', 'ODIE ayari', 'explain-link explain-heading')}</h3>
         </div>
         <strong>${total}</strong>
       </div>
@@ -1971,7 +2051,7 @@ function renderCoachFeedbackDashboard(state) {
         <span><b>${counts.outdated || 0}</b>ESKI</span>
         <span><b>${counts.prefer || 0}</b>TON</span>
       </div>
-      <p>${latest ? `${latest.feedbackType} / ${latest.note || 'son isaret'}` : 'Coach kartindan isaret geldikce ODIE daha net konusur.'}</p>
+      <p>${latest ? `${latest.feedbackType} / ${latest.note || 'son isaret'}` : 'ODIE defterinden isaret geldikce ses daha netlesir.'}</p>
     </article>
   `
 }
@@ -2074,7 +2154,7 @@ function buildHomeLoadBars(workouts = [], profile = {}) {
       return {
         value,
         label: shortDateLabel(workout.date),
-        title: `${formatMonthShort(workout.date)} / ${workout.type || 'Seans'} / ${volume ? `${formatCompactMetric(volume)} kg` : `${Math.round(minutes)} dk`}`,
+        title: `${formatMonthShort(workout.date)} / ${displayWorkoutType(workout.type || 'Seans')} / ${volume ? `${formatCompactMetric(volume)} kg` : `${Math.round(minutes)} dk`}`,
       }
     })
     : (profile.stats || []).slice(0, 7).map(stat => ({
@@ -2212,7 +2292,7 @@ function renderHomeRadar(profile) {
 }
 
 function renderTodaySessionItem(workout) {
-  const title = `${formatMonthShort(workout.date)} / ${workout.type || 'Seans'}`
+  const title = `${formatMonthShort(workout.date)} / ${displayWorkoutType(workout.type || 'Seans')}`
   const meta = [
     workout.durationMin ? `${workout.durationMin}dk` : null,
     workout.distanceKm ? `${workout.distanceKm}km` : null,
@@ -2239,25 +2319,43 @@ function openSessionDetailModal(workout, state) {
   const blocks = workout.blocks || []
   const statDelta = workout.statDelta || workout.stat_delta || {}
   const facts = (state.workoutFacts || []).filter(item => String(item.workoutId || item.workout_id || '') === String(workout.id)).slice(0, 6)
-  const title = `${formatMonthShort(workout.date)} / ${workout.type || 'Seans'}`
+  const title = `${formatMonthShort(workout.date)} / ${displayWorkoutType(workout.type || 'Seans')}`
   const source = String(workout.source || 'manual').toUpperCase()
   const nextUnlock = findNextUnlock(profile.skills || [])
+  const statHits = ['str', 'agi', 'end', 'dex', 'con', 'sta']
+    .map(key => ({ key: key.toUpperCase(), value: Number(statDelta?.[key]) || 0 }))
+    .filter(item => item.value > 0)
+    .sort((a, b) => b.value - a.value)
+  const topStat = statHits[0]
   const questLine = workout.xpEarned
-    ? `Quest tamam. +${workout.xpEarned} XP karaktere yazildi.`
-    : 'Quest kaydi tamam. Siradaki gelisim icin veri islendi.'
+    ? `Gorev bitti. +${workout.xpEarned} XP kayda gecti.`
+    : 'Gorev kaydi kapandi. Siradaki gelisim icin veri islendi.'
+  const odieLine = workout.hasPr
+    ? 'Bugun tabela degisti; yarin ego degil toparlanma kazanir.'
+    : topStat
+      ? `${topStat.key} biraz daha parliyor. Kucuk iz, uzun yolda kalir.`
+      : 'Temiz kayit bile karakteri ileri iter. Bugunun izi duruyor.'
+  const loot = [
+    workout.xpEarned ? `+${workout.xpEarned} XP` : null,
+    topStat ? `${topStat.key} +${Math.round(topStat.value)}` : null,
+    workout.hasPr ? 'PR izi' : null,
+    source === 'HEVY' ? 'Hevy canli' : source,
+  ].filter(Boolean).slice(0, 4)
+  const completionBadge = workout.hasPr ? 'PR' : workout.xpEarned ? 'BITTI' : 'NOT'
+  const completionBadgeClass = workout.hasPr ? 'pr' : workout.xpEarned ? 'clear' : 'log'
   const metrics = [
     { label: 'Sure', value: workout.durationMin ? `${workout.durationMin} dk` : '-', explain: 'session-detail' },
-    { label: 'Hacim', value: workout.volumeKg ? `${Math.round(workout.volumeKg).toLocaleString('tr-TR')} kg` : '-', explain: 'hacim' },
+    { label: 'Yuk', value: workout.volumeKg ? `${Math.round(workout.volumeKg).toLocaleString('tr-TR')} kg` : '-', explain: 'hacim' },
     { label: 'Set', value: workout.sets || '-', explain: 'session-detail' },
     { label: 'XP', value: workout.xpEarned ? `+${workout.xpEarned}` : '-', explain: 'xp' },
-    { label: 'Kaynak', value: source, explain: source === 'HEVY' ? 'hevy' : 'kaynak' },
+    { label: 'Defter', value: source, explain: source === 'HEVY' ? 'hevy' : 'kaynak' },
     { label: 'PR', value: workout.hasPr ? 'VAR' : 'YOK', explain: 'pr' },
   ]
 
   openModal(`
     <div class="modal-head">
-      <span style="font-size:22px">QC</span>
-      <div class="modal-head-title">${renderExplainButton('session-detail', 'Quest Complete', 'explain-link modal-title-explain')}</div>
+      <span style="font-size:22px">OK</span>
+      <div class="modal-head-title">${renderExplainButton('session-detail', 'Gorev Tamam', 'explain-link modal-title-explain')}</div>
       <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
     </div>
     <div class="modal-body session-detail-modal quest-complete-modal">
@@ -2265,13 +2363,16 @@ function openSessionDetailModal(workout, state) {
         <div>
           <div class="mini-label">${escapeHtml(title)}</div>
           <strong>${escapeHtml(workout.highlight || questLine)}</strong>
-          <p>${escapeHtml(workout.notes || questLine)}</p>
+          <p>${escapeHtml(odieLine)}</p>
         </div>
-        <span>${escapeHtml(workout.xpEarned ? `+${workout.xpEarned} XP` : workout.primaryCategory || 'done')}</span>
+        <span class="quest-complete-badge ${completionBadgeClass}">${escapeHtml(completionBadge)}</span>
+      </div>
+      <div class="quest-loot-row">
+        ${loot.map(item => `<span>${escapeHtml(item)}</span>`).join('')}
       </div>
       <div class="quest-complete-line">
         <span>${escapeHtml(questLine)}</span>
-        <strong>${escapeHtml(nextUnlock?.name ? `Next unlock: ${nextUnlock.name}` : 'Next unlock takipte')}</strong>
+        <strong>${escapeHtml(nextUnlock?.name ? `Siradaki kilit: ${nextUnlock.name}` : 'Siradaki kilit takipte')}</strong>
       </div>
       <div class="modal-grid">
         ${metrics.map(item => `
@@ -2281,16 +2382,16 @@ function openSessionDetailModal(workout, state) {
           </div>
         `).join('')}
       </div>
-      <div class="modal-section-label">${renderExplainButton('stat-delta', 'Stat Etkisi', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('stat-delta', 'Stat Izi', 'explain-link metric-explain')}</div>
       ${renderSessionStatDelta(statDelta)}
-      <div class="modal-section-label">${renderExplainButton('bloklar', 'Calisma Hatlari', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('bloklar', 'Blok Izleri', 'explain-link metric-explain')}</div>
       ${renderSessionBlocks(blocks)}
-      <div class="modal-section-label">${renderExplainButton('fact', 'SEANS IZI', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('fact', 'Seans Izi', 'explain-link metric-explain')}</div>
       ${facts.length ? `
         <div class="session-fact-list">
           ${facts.map(fact => `<span>${escapeHtml(fact.label || fact.raw || fact.blockKind || 'fact')}</span>`).join('')}
         </div>
-      ` : '<div class="modal-coach">Bu seans icin ayri seans izi yok; bloklar workout verisinden okunuyor.</div>'}
+      ` : '<div class="modal-coach">Bu seans icin ayri seans izi yok; bloklar antrenman defterinden okunuyor.</div>'}
     </div>
   `)
 }
@@ -2299,7 +2400,7 @@ function renderSessionStatDelta(delta = {}) {
   const items = ['str', 'agi', 'end', 'dex', 'con', 'sta']
     .map(key => ({ key: key.toUpperCase(), value: Number(delta?.[key]) || 0 }))
     .filter(item => item.value > 0)
-  if (!items.length) return '<div class="modal-coach">Bu kayitta stat delta sinyali yok.</div>'
+  if (!items.length) return '<div class="modal-coach">Bu kayitta stat izi yok.</div>'
   return `
     <div class="session-delta-pills">
       ${items.map(item => `<span>${item.key} +${item.value}</span>`).join('')}
@@ -2324,8 +2425,8 @@ function renderSessionBlocks(blocks = []) {
         return `
           <div class="session-block-row">
             <div>
-              <strong>${escapeHtml(block.label || block.kind)}</strong>
-              <span>${escapeHtml(block.kind || 'mixed')} ${meta ? `/ ${meta}` : ''}</span>
+              <strong>${escapeHtml(cozyDisplayText(localizeKindWords(block.label || block.kind)))}</strong>
+              <span>${escapeHtml(cozyDisplayText(localizeKindWords(block.kind || 'mixed')))} ${meta ? `/ ${meta}` : ''}</span>
             </div>
             <div class="session-block-meter"><i style="width:${width}%"></i></div>
           </div>
@@ -2380,7 +2481,7 @@ function renderHunterCharacterArc(state, profile, semantic, ui = buildUiRuntime(
   const activeQuest = ui.activeQuest
   const arc = buildHunterArc({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout: latest })
   const nextUnlock = bodyMapState?.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
-  const latestGain = latest?.xpEarned ? `Son quest +${latest.xpEarned} XP` : latest ? `${formatMonthShort(latest.date)} kaydi islendi` : 'Ilk kayit bekleniyor'
+  const latestGain = latest?.xpEarned ? `Son gorev +${latest.xpEarned} XP` : latest ? `${formatMonthShort(latest.date)} kaydi islendi` : 'Ilk kayit bekleniyor'
   return `
     <article class="hunter-character-arc">
       <div class="hunter-character-head">
@@ -2398,12 +2499,12 @@ function renderHunterCharacterArc(state, profile, semantic, ui = buildUiRuntime(
           <strong class="hunter-character-value">${escapeHtml(latestGain)}</strong>
         </div>
         <div class="hunter-character-cell">
-          <span class="hunter-field-label">Next unlock</span>
+          <span class="hunter-field-label">Siradaki acilim</span>
           <strong class="hunter-character-value">${escapeHtml(nextUnlock?.name || 'Takipte')}</strong>
         </div>
         <div class="hunter-character-cell">
-          <span class="hunter-field-label">Class</span>
-          <strong class="hunter-character-value">${escapeHtml(state.profile.classObj?.name || profile.class || 'Class stabil')}</strong>
+          <span class="hunter-field-label">Sinif</span>
+          <strong class="hunter-character-value">${escapeHtml(state.profile.classObj?.name || profile.class || 'Sinif stabil')}</strong>
         </div>
       </div>
     </article>
@@ -2444,7 +2545,7 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
     <article class="character-arena vital-os-arena" style="--xp-pct:${xpPct}%">
       <header class="vital-os-topbar">
         <div>
-          <span>Vital OS</span>
+          <span>Karakter Odasi</span>
           <h2>${escapeHtml(profile.nick)}</h2>
           <p>L${escapeHtml(profile.level || 1)} / ${escapeHtml(rank)} / ${escapeHtml(className)}</p>
         </div>
@@ -2456,7 +2557,7 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
 
       <section class="vital-os-odie">
         <div>
-          <span>ODIE baglami</span>
+          <span>ODIE notu</span>
           <strong>${escapeHtml(presence.headline)}</strong>
           <p>${escapeHtml(presence.chatLine)}</p>
         </div>
@@ -2468,9 +2569,9 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
           ${model.rings.map(renderVitalRing).join('')}
         </div>
         <div class="vital-os-summary">
-          <span>Bugunku Emir</span>
+          <span>Bugunku rota</span>
           <strong>${escapeHtml(goalTitle(nextSession.primaryGoal) || quest?.name || 'Temiz Gun')}</strong>
-          <p>${escapeHtml(model.activeCommand)}</p>
+          <p>${escapeHtml(cozyDisplayText(model.activeCommand))}</p>
         </div>
       </div>
 
@@ -2483,12 +2584,12 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
         ${renderMirogluCommandCard({
           label: 'Ara Gorev',
           title: quest?.name || 'Gunluk halka',
-          detail: quest?.why || quest?.desc || 'Bugunun XP hattini guvenli kapat.',
+          detail: cozyDisplayText(quest?.why || quest?.desc || 'Bugunun XP hattini guvenli kapat.'),
           tone: quest?.safeMode ? 'injury' : 'focus',
         })}
         ${renderMirogluCommandCard({
           label: uiLabel('unlock'),
-          title: unlock?.name || 'Stable Build',
+          title: unlock?.name || 'Stabil yol',
           detail: unlockDetail.slice(0, 96),
           tone: 'unlock',
           action: 'open-unlock',
@@ -2496,7 +2597,7 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
         ${renderMirogluCommandCard({
           label: 'XP Nereden Gelir?',
           title: bodyMapState?.xpPreview?.text || `XP ${xpCur}/${xpMax}`,
-          detail: 'Workout, hareket, uyku onarimi, kalp stabilitesi ve gorev bagli.',
+          detail: 'Antrenman, hareket, uyku onarimi, kalp stabilitesi ve gorev bagli.',
           tone: 'xp',
         })}
       </div>
@@ -2580,10 +2681,10 @@ function renderPassportStat(stat, nextUnlock = null, bodyMapState = {}) {
 
 function summarizeSkillProgress(skills = []) {
   const nodes = skills.flatMap(branch => branch.items || [])
-  if (!nodes.length) return 'Skill verisi bekliyor'
+  if (!nodes.length) return 'Acilim verisi bekliyor'
   const done = nodes.filter(node => node.status === 'done').length
   const progress = nodes.filter(node => node.status === 'prog').length
-  return `${done} unlock / ${progress} aktif`
+  return `${done} acilim / ${progress} aktif`
 }
 
 function renderCalibrationCallout(profile) {
@@ -2592,7 +2693,7 @@ function renderCalibrationCallout(profile) {
     <button class="stat-calibration-card" data-action="open-stat-calibration">
       <span class="sec">Kurulum Kalibrasyonu</span>
       <strong>Ranklari kilitle</strong>
-      <small>18 kisa cevap. Sadece baslangic guvenini ayarlar; workout verisine dokunmaz.</small>
+      <small>18 kisa cevap. Sadece baslangic guvenini ayarlar; antrenman verisine dokunmaz.</small>
     </button>
   `
 }
@@ -2644,17 +2745,17 @@ function renderPortraitBanner(state, profile) {
 function renderTrioCards(state, profile, semantic) {
   const liveClass = state.profile.classObj || {}
   const className = liveClass.name || profile.class
-  const focus = state.profile.currentFocus || 'Hybrid denge'
+  const focus = cozyDisplayText(state.profile.currentFocus || 'Karma denge')
   const nextUnlock = findNextUnlock(profile.skills || [])
   const nextUnlockHint = summarizeUnlockHint(nextUnlock, profile.skills || [])
-  const focusSignal = (liveClass.signals || []).slice(0, 1).join(' / ') || `Variety ${semantic.variety || 0}`
+  const focusSignal = cozyDisplayText((liveClass.signals || []).slice(0, 1).join(' / ') || `Cesitlilik ${semantic.variety || 0}`)
 
   return `
     <div class="trio-grid">
       <button class="trio-card" data-action="open-archetype">
         <span class="pixel-label">${escapeHtml(uiLabel('archetype'))}</span>
         <strong>${escapeHtml(className)}</strong>
-        <small>${escapeHtml((liveClass.reason || 'Aktif build').slice(0, 36))}</small>
+        <small>${escapeHtml(cozyDisplayText(liveClass.reason || 'Aktif yol').slice(0, 36))}</small>
       </button>
       <button class="trio-card" data-action="open-focus">
         <span class="pixel-label">${escapeHtml(uiLabel('focus'))}</span>
@@ -2663,8 +2764,8 @@ function renderTrioCards(state, profile, semantic) {
       </button>
       <button class="trio-card" data-action="open-unlock">
         <span class="pixel-label">${escapeHtml(uiLabel('unlock'))}</span>
-        <strong>${escapeHtml(nextUnlock?.name || 'Stable Build')}</strong>
-        <small>${escapeHtml((nextUnlockHint || 'Takipte').slice(0, 36))}</small>
+        <strong>${escapeHtml(nextUnlock?.name || 'Stabil yol')}</strong>
+        <small>${escapeHtml(cozyDisplayText(nextUnlockHint || 'Takipte').slice(0, 36))}</small>
       </button>
     </div>
   `
@@ -2693,8 +2794,9 @@ function renderStatPixelCard(stat, latestDelta = {}) {
   const val = Math.round(Number(stat.val) || 0)
   const rank = stat.rank || val
   const confidence = String(stat.confidence || 'seed').toUpperCase()
+  const confidenceLabel = cozyConfidenceLabel(confidence)
   const delta = Number(latestDelta?.[stat.key]) || 0
-  const upFlag = delta > 0 ? `<span class="stat-pixel-flag" style="background:var(--cozy-moss)">UP</span>` : ''
+  const upFlag = delta > 0 ? `<span class="stat-pixel-flag" style="background:var(--cozy-moss)">+</span>` : ''
   const critFlag = stat.critical ? `<span class="stat-pixel-flag">F</span>` : ''
   return `
     <button class="stat-pixel stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'crit' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" aria-label="${escapeHtml(stat.name)} detayini ac">
@@ -2704,7 +2806,7 @@ function renderStatPixelCard(stat, latestDelta = {}) {
           <span class="pixel-label">${stat.label}</span>
           <strong>${escapeHtml(rank)}${critFlag}${upFlag}</strong>
         </div>
-        <div class="stat-rank-meta">${escapeHtml(confidence)} / raw ${val}</div>
+        <div class="stat-rank-meta">${escapeHtml(confidenceLabel)} / ham ${val}</div>
         <div class="pix-bar pix-bar-thin"><div class="pix-bar-fill ${stat.critical ? 'red' : ''}" style="width:${val}%"></div></div>
       </div>
     </button>
@@ -2803,14 +2905,14 @@ function renderSkillTreePixel(profile) {
     <article class="glass-card skill-pixel">
       <div class="panel-head">
         <div>
-          <div class="pixel-label">${renderExplainButton('skill-tree', 'Skill Tree', 'explain-link metric-explain')}</div>
-          <div class="panel-title">${renderExplainButton('skill-tree', 'Branch noktalari', 'explain-link explain-heading')}</div>
+          <div class="pixel-label">${renderExplainButton('skill-tree', 'Acilim Dallari', 'explain-link metric-explain')}</div>
+          <div class="panel-title">${renderExplainButton('skill-tree', 'Acilim noktalari', 'explain-link explain-heading')}</div>
         </div>
       </div>
       <div class="branch-tabs">
         ${branches.map((branch, i) => `
           <button class="branch-tab ${i === idx ? 'active' : ''} ${branch.warning ? 'warn' : ''}" data-skill-branch="${i}">
-            ${escapeHtml(stripBranchEmoji(branch.branch))}
+            ${escapeHtml(cozyBranchLabel(branch.branch))}
           </button>
         `).join('')}
       </div>
@@ -2825,10 +2927,30 @@ function stripBranchEmoji(branchName = '') {
   return String(branchName).replace(/[^\w\s-]/g, '').trim().replace(/\s+TREE$/i, '').trim()
 }
 
+function cozyBranchLabel(branchName = '') {
+  const clean = stripBranchEmoji(branchName)
+  const lower = clean.toLowerCase()
+  if (lower.includes('acro')) return 'Akrobatik'
+  if (lower.includes('strength')) return 'Kuvvet'
+  if (lower.includes('mobility')) return 'Mobilite'
+  if (lower.includes('core')) return 'Govde'
+  return clean || 'Dal'
+}
+
+function cozySkillSubtitle(item = {}) {
+  const raw = String(item.req || item.val || '')
+  return raw
+    .replace(/UNLOCKED/gi, 'ACIK')
+    .replace(/LOCKED/gi, 'KILITLI')
+    .replace(/IN PROG/gi, 'YOLDA')
+    .replace(/REQ:/gi, 'GEREK:')
+    .replace(/BARANI ACIK/gi, 'BARANI ACIK')
+}
+
 function renderSkillNode(item) {
   const status = item.status || 'lock'
   const glyph = status === 'done' ? 'OK' : status === 'prog' ? '...' : 'X'
-  const subtitle = item.req || item.val || ''
+  const subtitle = cozySkillSubtitle(item)
   return `
     <div class="skill-node ${status}">
       <span class="skill-node-glyph">${glyph}</span>
@@ -2858,8 +2980,8 @@ function renderQuestPixel(profile) {
         </div>
       </div>
       <div class="quest-pixel-tabs">
-        <button class="branch-tab ${activeQuestTab === 'daily' ? 'active' : ''}" data-quest-tab="daily">Daily ${daily.filter(q => !q.done).length}/${daily.length}</button>
-        <button class="branch-tab ${activeQuestTab === 'weekly' ? 'active' : ''}" data-quest-tab="weekly">Weekly ${weekly.filter(q => !q.done).length}/${weekly.length}</button>
+        <button class="branch-tab ${activeQuestTab === 'daily' ? 'active' : ''}" data-quest-tab="daily">Gunluk ${daily.filter(q => !q.done).length}/${daily.length}</button>
+        <button class="branch-tab ${activeQuestTab === 'weekly' ? 'active' : ''}" data-quest-tab="weekly">Haftalik ${weekly.filter(q => !q.done).length}/${weekly.length}</button>
       </div>
       <div class="quest-list">
         ${visible.length ? visible.map(renderQuestTicket).join('') : '<div class="today-session-empty">Aktif gorev yok.</div>'}
@@ -2872,19 +2994,19 @@ function renderQuestTicket(quest) {
   const total = Number(quest.total) || 1
   const progress = Number(quest.progress) || 0
   const pct = Math.max(0, Math.min(100, Math.round((progress / total) * 100)))
-  const sourceTag = quest.fromClass ? '<span class="quest-source class">CLASS</span>' : quest.fromCoach ? '<span class="quest-source coach">COACH</span>' : ''
+  const sourceTag = quest.fromClass ? '<span class="quest-source class">SINIF</span>' : quest.fromCoach ? '<span class="quest-source coach">ODIE</span>' : ''
   return `
     <div class="quest-ticket ${quest.done ? 'done' : ''}${quest.fromClass ? ' class-quest' : ''}">
       <span class="quest-icon">${quest.icon || '*'}</span>
       <div class="quest-body">
         <div class="quest-title-row">
-          <strong>${escapeHtml(quest.name)}</strong>
+          <strong>${escapeHtml(cozyDisplayText(quest.name))}</strong>
           ${sourceTag}
         </div>
         <div class="pix-bar pix-bar-thin"><div class="pix-bar-fill ${quest.done ? 'green' : ''}" style="width:${pct}%"></div></div>
         <div class="quest-meta">
           <small>${progress}/${total}</small>
-          <small class="reward">${escapeHtml(quest.reward || '')}</small>
+          <small class="reward">${escapeHtml(cozyDisplayText(quest.reward || ''))}</small>
         </div>
       </div>
     </div>
@@ -2904,8 +3026,8 @@ function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, pr
         <div class="quest-arc-head">
           <span class="quest-arc-mark">${renderHunterIcon('target')}</span>
           <div>
-            <span class="hunter-kicker">Training Arc</span>
-            <h2 class="quest-arc-title">${escapeHtml(arc.title)}</h2>
+            <span class="hunter-kicker">Antrenman Rotasi</span>
+            <h2 class="quest-arc-title">${escapeHtml(cozyDisplayText(arc.title))}</h2>
           </div>
           <span class="quest-arc-badge">${escapeHtml(arc.rank)}</span>
         </div>
@@ -2916,7 +3038,7 @@ function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, pr
             <strong class="hunter-field-value">${escapeHtml(arc.chapter)}</strong>
           </div>
           <div class="quest-arc-field">
-            <span class="hunter-field-label">Kaynak</span>
+            <span class="hunter-field-label">Defter</span>
             <strong class="hunter-field-value">${escapeHtml(arc.source)}</strong>
           </div>
           <div class="quest-arc-field">
@@ -2954,6 +3076,7 @@ function summarizeUnlockHint(nextUnlock, skills = []) {
 
 function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state, profile, semantic)) {
   const nextSession = ui.nextSession
+  const panelModules = ensureOdiePanelsLoaded()
   const coachProfile = {
     ...profile,
     profile: state.profile,
@@ -2981,11 +3104,22 @@ function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state
         <button class="odie-switcher-btn ${odieMode === 'ask' ? 'active' : ''}" data-odie-mode="ask">SOR</button>
       </div>
 
-      ${odieMode === 'coach' ? `
+      ${!panelModules ? `
+        <article class="coach-terminal odie-loading-panel">
+          <div class="coach-header">
+            <div class="coach-avatar">OD</div>
+            <div class="coach-npc-info">
+              <div class="coach-npc-name">ODIE</div>
+              <div class="coach-npc-sub">defteri aciliyor</div>
+            </div>
+          </div>
+          <div class="modal-coach">Kisa bir nefes. Oda hazirlaniyor.</div>
+        </article>
+      ` : odieMode === 'coach' ? `
         <div class="coach-shell">
-          ${renderCoach(coachProfile)}
+          ${panelModules.renderCoach(coachProfile)}
         </div>
-      ` : renderAsk(state, profile)}
+      ` : panelModules.renderAsk(state, profile)}
     </section>
   `
 }
@@ -3000,8 +3134,8 @@ function renderOdieCommandRoom(state, profile, nextSession = {}, bodyMapState = 
   const latestHevy = hevy.latestHevyDate ? formatMonthShort(hevy.latestHevyDate) : 'sync bekliyor'
   const confidence = Number(nextSession.confidence)
   const confidenceLabel = Number.isFinite(confidence) ? `${Math.round(confidence)}%` : '--'
-  const warning = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || 'Risk sinyali yok'
-  const command = nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.'
+  const warning = cozyDisplayText(nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || 'Risk sinyali yok')
+  const command = cozyDisplayText(nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.')
   const presence = buildOdiePresence({ state, profile, nextSession })
   const hunterLine = buildHunterOdieLine({
     state,
@@ -3015,17 +3149,17 @@ function renderOdieCommandRoom(state, profile, nextSession = {}, bodyMapState = 
       <div class="odie-room-top">
         <div class="odie-room-mark" aria-hidden="true"><i></i><b></b></div>
         <div>
-          <span>ODIE Koc Odasi</span>
-          <h2>${escapeHtml(goalTitle(goal) || 'Bugunku karar')}</h2>
+          <span>ODIE Odasi</span>
+          <h2>${escapeHtml(cozyDisplayText(goalTitle(goal) || 'Bugunku karar'))}</h2>
         </div>
       </div>
 
       <section class="odie-room-chat">
-        <span>${escapeHtml(presence.moodLabel || 'canli mod')}</span>
-        <p>${escapeHtml(hunterLine || presence.chatLine || command)}</p>
+        <span>${escapeHtml(presence.moodLabel || 'hazir mod')}</span>
+        <p>${escapeHtml(cozyDisplayText(hunterLine || presence.chatLine || command))}</p>
       </section>
 
-      <p class="odie-room-order">${escapeHtml(compactText(command, 118))}</p>
+      <p class="odie-room-order">${escapeHtml(compactText(cozyDisplayText(command), 118))}</p>
 
       <div class="odie-room-grid">
         ${renderRevMeter('readiness', uiLabel('readiness'), readiness, 'xp')}
@@ -3038,7 +3172,7 @@ function renderOdieCommandRoom(state, profile, nextSession = {}, bodyMapState = 
       <div class="odie-room-signals">
         <span>${renderExplainButton('hevy-live', `HEVY ${latestHevy}`, 'explain-link metric-explain')}</span>
         <span>${renderExplainButton('confidence', `${uiLabel('confidence')} ${confidenceLabel}`, 'explain-link metric-explain')}</span>
-        <span>${escapeHtml(warning)}</span>
+        <span>${escapeHtml(cozyDisplayText(warning))}</span>
       </div>
     </article>
   `
@@ -3054,9 +3188,9 @@ function renderOdieHallmark(nextSession = {}) {
   return `
     <article class="odie-hallmark tone-${nextSession.tone || 'calm'}">
       <div class="odie-hallmark-main">
-        <span>ODIE Karar Hatti</span>
-        <h2>${escapeHtml(goalTitle(goal) || 'Bugunku karar')}</h2>
-        <p>${escapeHtml(nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.')}</p>
+        <span>ODIE Not Defteri</span>
+        <h2>${escapeHtml(cozyDisplayText(goalTitle(goal) || 'Bugunku karar'))}</h2>
+        <p>${escapeHtml(cozyDisplayText(nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.'))}</p>
       </div>
       <div class="odie-hallmark-meta">
         <div><span>HEVY</span><strong>${escapeHtml(latestHevy)}</strong></div>
@@ -3116,7 +3250,7 @@ function renderBodyEventForm(region) {
       </div>
       <label class="body-event-note">
         <span>Not</span>
-        <textarea name="note" rows="3" placeholder="Orn: bilek kas temelli, agir grip ve push temkinli...">${escapeHtml(region?.injury?.note || '')}</textarea>
+        <textarea name="note" rows="3" placeholder="Orn: bilek kas temelli, agir grip ve itis temkinli...">${escapeHtml(cozyDisplayText(region?.injury?.note || ''))}</textarea>
       </label>
       <button class="modal-primary-action" type="submit">Beden kaydini yaz</button>
     </form>
@@ -3225,7 +3359,7 @@ function openHealthShortcutModal() {
       <section class="shortcut-hero">
         <span>Bilal modu</span>
         <strong>iPhone veriyi toplar, OdiePt'ye POST atar.</strong>
-        <p>Telefonunda 3 kestirme kuracagiz. Sabah uyku+nabiz, antrenman bitince workout, gece gunluk hareket gider. Odie bunlari XP, yorgunluk, toparlanma ve bugunun emrine katar.</p>
+        <p>Telefonunda 3 kestirme kuracagiz. Sabah uyku+nabiz, antrenman bitince seans, gece gunluk hareket gider. Odie bunlari XP, yorgunluk, toparlanma ve bugunun rotasina katar.</p>
         <a href="shortcuts://create-shortcut" class="shortcut-open-link">Kestirmeler'i ac</a>
       </section>
 
@@ -3273,31 +3407,31 @@ function openHealthShortcutModal() {
 
       <div class="shortcut-rhythm-grid">
         <section class="shortcut-rhythm-card">
-          <span>Sabah Sync</span>
+          <span>Sabah Izi</span>
           <strong>Uyku + kalp</strong>
           <p>Sabah 08:00 otomasyonu. Health'ten Sleep Analysis, Resting Heart Rate ve HRV SDNN bul. Degerleri JSON'daki ilgili yerlere Magic Variable olarak bagla.</p>
         </section>
         <section class="shortcut-rhythm-card">
-          <span>Workout End</span>
+          <span>Antrenman Sonu</span>
           <strong>Antrenman bitince</strong>
-          <p>Apple Watch Workout bitti tetikleyicisi. Son workout'u bul; tip, baslangic, bitis, sure, mesafe, kalori, nabiz ve varsa yukseltiyi gonder.</p>
+          <p>Apple Watch antrenman bitti tetikleyicisi. Son seansi bul; tip, baslangic, bitis, sure, mesafe, kalori, nabiz ve varsa yukseltiyi gonder.</p>
         </section>
         <section class="shortcut-rhythm-card">
-          <span>Gece Sync</span>
+          <span>Gece Izi</span>
           <strong>Gun ozeti</strong>
           <p>23:30 otomasyonu. Adim, yurume/kosma mesafesi, aktif enerji, egzersiz dakikasi, kat/yukselti gibi gunluk hareketi yollar.</p>
         </section>
       </div>
 
-      ${shortcutCodeBlock('shortcut-morning-json', 'Sabah Sync sablonu', examples.morningSync, 'Uyku ve kalp degerlerini Apple Health sample sonucundan doldur.')}
-      ${shortcutCodeBlock('shortcut-workout-json', 'Workout End sablonu', examples.workoutEnd, '12 km doga yuruyusu gibi aktiviteler buradan Odie workout olarak duser.')}
-      ${shortcutCodeBlock('shortcut-night-json', 'Gece Sync sablonu', examples.nightSync, 'Workout sayilmayan gunluk hareket bile yorgunluk ve XP hesabina girer.')}
+      ${shortcutCodeBlock('shortcut-morning-json', 'Sabah izi sablonu', examples.morningSync, 'Uyku ve kalp degerlerini Apple Health sample sonucundan doldur.')}
+      ${shortcutCodeBlock('shortcut-workout-json', 'Antrenman sonu sablonu', examples.workoutEnd, '12 km doga yuruyusu gibi aktiviteler buradan Odie seansi olarak duser.')}
+      ${shortcutCodeBlock('shortcut-night-json', 'Gece izi sablonu', examples.nightSync, 'Antrenman sayilmayan gunluk hareket bile yorgunluk ve XP hesabina girer.')}
 
       <section class="shortcut-step-card">
         <span>3</span>
         <div>
           <strong>Son kontrol</strong>
-          <p>Shortcut calisinca sitede Vital OS > Canli Kaynaklar kartina bak. Apple Sleep, Apple Heart veya Apple Workout "linked" olduysa veri sisteme girdi. 401 token yanlis, 503 migration eksik, bos cevap Health izni eksik demek.</p>
+          <p>Kestirme calisinca sitede Karakter > Canli Defterler kartina bak. Apple Uyku, Apple Kalp veya Apple Antrenman "baglandi" olduysa veri sisteme girdi. 401 token yanlis, 503 migration eksik, bos cevap Health izni eksik demek.</p>
         </div>
       </section>
 
@@ -3340,7 +3474,7 @@ function openBodyRegionModal(regionId) {
           <small>${escapeHtml(region.injury.tissue || 'Kas temelli')} / %${Math.round(region.injury.recoveryPct ?? 0)} toparlandi / ${Math.round(region.injury.etaDays ?? 0)} gun</small>
         </div>
       ` : ''}
-      <div class="modal-coach">${escapeHtml(region.source || 'Canli veri bekleniyor.')}</div>
+      <div class="modal-coach">${escapeHtml(cozyDisplayText(region.source || 'Canli veri bekleniyor.'))}</div>
       ${linkedLines.length ? `
         <div class="region-modal-list">
           <strong>Hareket hattı</strong>
@@ -3357,7 +3491,7 @@ function openBodyRegionModal(regionId) {
         <div class="region-modal-quest">
           <span>Bugünkü ara görev</span>
           <strong>${escapeHtml(quest.name)}</strong>
-          <small>${escapeHtml(quest.why || quest.desc || '')}</small>
+          <small>${escapeHtml(cozyDisplayText(quest.why || quest.desc || ''))}</small>
         </div>
       ` : ''}
       ${renderBodyEventForm(region)}
@@ -3418,8 +3552,12 @@ function initActivePage(tabKey, profile) {
       initDailyChecklist()
       break
     case 'odie':
-      if (odieMode === 'coach') initCoach(profile)
-      else initAsk(profile)
+      if (!_odiePanelModules) {
+        ensureOdiePanelsLoaded()
+        break
+      }
+      if (odieMode === 'coach') _odiePanelModules.initCoach(profile)
+      else _odiePanelModules.initAsk(profile)
       break
   }
 }
@@ -3552,18 +3690,22 @@ document.addEventListener('click', event => {
   }
 
   if (action === 'open-workout') {
-    openWorkoutForm()
+    openWorkoutFormLazy().catch(() => {
+      showToast({ icon: '!', title: 'Form acilmadi', msg: 'Seans formu yuklenirken takildi.', rarity: 'common' })
+    })
     return
   }
 
   if (action === 'open-walk-form') {
-    openWorkoutForm({
+    openWorkoutFormLazy({
       type: 'Yuruyus',
       distanceKm: 12,
       durationMin: 150,
       elevationM: 0,
       highlight: 'Doga yuruyusu',
       notes: 'Apple Health baglanana kadar manuel hizli kayit.',
+    }).catch(() => {
+      showToast({ icon: '!', title: 'Form acilmadi', msg: 'Yuruyus formu yuklenirken takildi.', rarity: 'common' })
     })
     return
   }

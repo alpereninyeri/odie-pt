@@ -45,11 +45,67 @@ function _formatDateLabel(dateStr) {
   return `${Number(d)} ${MONTH_LABELS[Number(m) - 1]} ${y}`
 }
 
+function _renderMobileTrail(workouts = [], aggregated, todayStr) {
+  const totalDays = 84
+  const today = new Date(`${normalizeDateString(todayStr)}T00:00:00`)
+  const startTs = today.getTime() - ((totalDays - 1) * 86400000)
+  const cells = []
+  let activeDays = 0
+  let totalMinutes = 0
+
+  for (let index = 0; index < totalDays; index += 1) {
+    const cellDate = new Date(startTs + (index * 86400000))
+    const dateStr = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, '0')}-${String(cellDate.getDate()).padStart(2, '0')}`
+    const entry = aggregated.get(dateStr)
+    const duration = entry?.durationMin || 0
+    const t = tone(duration)
+    const isToday = dateStr === normalizeDateString(todayStr)
+    if (duration) {
+      activeDays += 1
+      totalMinutes += duration
+    }
+    const tooltip = entry
+      ? `${_formatDateLabel(dateStr)} / ${duration}dk / ${entry.sessions} seans`
+      : `${_formatDateLabel(dateStr)} / seans yok`
+    cells.push(`<span class="heatmap-seed tone-${t}${isToday ? ' today' : ''}" title="${escapeAttr(tooltip)}"></span>`)
+  }
+
+  const latest = (workouts || [])
+    .filter(item => normalizeDateString(item.date))
+    .slice()
+    .sort((a, b) => normalizeDateString(b.date).localeCompare(normalizeDateString(a.date)))[0]
+  const latestLabel = latest ? `${_formatDateLabel(normalizeDateString(latest.date))} / ${latest.type || 'seans'}` : 'Ilk iz bekleniyor'
+
+  return `
+    <article class="glass-card heatmap-card heatmap-mobile-card">
+      <div class="section-top">
+        <div>
+          <div class="eyebrow">${explainButton('activity-map', '12 hafta ritim', 'explain-link eyebrow-explain')}</div>
+          <h3>${explainButton('activity-map', 'Ritim tarlasi', 'explain-link explain-heading')}</h3>
+        </div>
+        <div class="heatmap-summary">${activeDays} aktif / ${Math.round(totalMinutes / 60)}s</div>
+      </div>
+      <div class="heatmap-mobile-shell">
+        <div class="heatmap-mobile-grid" aria-label="Son 12 hafta antrenman ritmi">
+          ${cells.join('')}
+        </div>
+        <div class="heatmap-mobile-note">
+          <span>Son iz</span>
+          <strong>${escapeAttr(latestLabel)}</strong>
+        </div>
+      </div>
+    </article>
+  `
+}
+
 export function renderHeatmap(workouts = [], todayStr = getLocalDateString()) {
   const today = new Date(`${normalizeDateString(todayStr)}T00:00:00`)
   const todayDow = (today.getDay() + 6) % 7
 
   const mobile = _isMobile()
+  const aggregated = _aggregate(workouts)
+  if (mobile) return _renderMobileTrail(workouts, aggregated, todayStr)
+
   const totalDays = mobile ? 182 : 365
   const startTs = today.getTime() - ((totalDays - 1) * 86400000)
   const startDate = new Date(startTs)
@@ -58,7 +114,6 @@ export function renderHeatmap(workouts = [], todayStr = getLocalDateString()) {
   const totalCells = firstSundayOffset + totalDays + (6 - todayDow)
   const weekCount = Math.ceil(totalCells / 7)
 
-  const aggregated = _aggregate(workouts)
   const cells = []
   let lastMonthLabeled = -1
   const monthLabels = []
