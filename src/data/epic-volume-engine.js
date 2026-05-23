@@ -1,5 +1,5 @@
 /**
- * Epic Volume & Geography Engine
+ * Volume trail engine
  * -------------------------------
  * Tier eşiklerini tarar, mevcut değer için geçilen ve sonraki hedefi döner.
  * UI ise "Şu anda X, %YY → Z" gibi epic bir mesaj üretebilir.

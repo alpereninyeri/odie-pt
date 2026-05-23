@@ -21,9 +21,8 @@ Yani yeni workout, memory, coach note, ask history gibi seyler her zaman `profil
 ### UI
 - `src/main.js`
 - `src/styles/odie-ui.css`
-- `src/styles/heroic-rpg.css`
-- `src/styles/infographic-game.css`
-- `src/styles/mobile-revolution.css`
+- `src/styles/cozy-rpg/mobile.css`
+- `src/assets/game/cozy/*`
 - `src/components/*`
 
 ### Data / derived logic

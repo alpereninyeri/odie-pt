@@ -90,7 +90,7 @@ export const profile = {
     },
     {
       key: 'sta', label: 'STA', name: 'Stamina', val: 63,
-      color: 'var(--gold)', icon: '⚡',
+      color: 'var(--cozy-peach, var(--accent-2))', icon: '⚡',
       desc: '13 Nis\'te 4 saat hareket — 2.5h parkour + 1.5h yürüyüş. Bu seansla yeni max rekoru kırıldı.',
       coach: '150 dakikalık parkour seansı eski max\'in (90dk) %67 üzerinde. Aerobik kapasiten gerçek anlamda var, sadece aktive etmen gerekiyordu. Bu tempoyu hafta 2-3 kez tutarsan STA 75\'i geçer.',
       detail: [
@@ -263,11 +263,11 @@ export const profile = {
 
   health: {
     metrics: [
-      { icon: '⏱️', label: 'Ortalama Seans', val: '64 dk',    sub: 'Son 10 antrenman',       color: 'var(--dim)' },
+      { icon: '⏱️', label: 'Ortalama Seans', val: '64 dk',    sub: 'Son 10 antrenman',       color: 'var(--cozy-ink-soft, var(--dim))' },
       { icon: '🛡️', label: 'Readiness',      val: '85/100',   sub: 'healthy',                 color: 'var(--grn)' },
       { icon: '🗺️', label: 'Toplam Mesafe',  val: '0 km',     sub: 'Tahmini outdoor toplam', color: 'var(--cobalt)' },
       { icon: '⚖️', label: 'Kilo',           val: '72 kg',    sub: '172cm / Güncellendi',     color: 'var(--grn)' },
-      { icon: '📏', label: 'BMI',            val: '24.3',     sub: '72kg / 172cm',             color: 'var(--dim)' },
+      { icon: '📏', label: 'BMI',            val: '24.3',     sub: '72kg / 172cm',             color: 'var(--cozy-ink-soft, var(--dim))' },
     ],
     warnings: [],
   },

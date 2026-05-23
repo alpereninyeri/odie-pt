@@ -252,7 +252,7 @@ export function renderAsk(state, profile) {
               <span class="ask-terminal-dot amber"></span>
               <span class="ask-terminal-dot cobalt"></span>
               <span class="ask-terminal-dot emerald"></span>
-              <strong>ODIE://soru-hatti</strong>
+              <strong>ODIE defteri</strong>
             </div>
             <div class="ask-terminal-log">
               ${renderTranscript(latest)}
@@ -271,7 +271,7 @@ export function renderAsk(state, profile) {
               <div class="ask-sample-row">
                 ${samples.map(sample => `<button type="button" class="ask-sample-chip" data-ask-sample="${escapeHtml(sample)}">${escapeHtml(sample)}</button>`).join('')}
               </div>
-              <button type="submit" class="ask-submit" ${askState.loadingAnswer ? 'disabled' : ''}>${askState.loadingAnswer ? 'ODIE dusunuyor...' : 'Soruyu Gonder'}</button>
+              <button type="submit" class="ask-submit" ${askState.loadingAnswer ? 'disabled' : ''}>${askState.loadingAnswer ? 'ODIE okuyor...' : 'Deftere yaz'}</button>
             </div>
           </form>
 

@@ -1,5 +1,5 @@
 /**
- * Epic Volume & Geography Raider
+ * Volume trail config
  * -------------------------------
  * Toplam hacim (kg) ve yürüyüş/parkour mesafesi (km) ilerlemeyi
  * doğa ve vahşi yaşamla karşılaştırır. Tek bir teknoloji ya da

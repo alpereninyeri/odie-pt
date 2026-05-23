@@ -1,4 +1,4 @@
-import { LIKERT_RESPONSE_LABELS, STAT_CALIBRATION_QUESTIONS, normalizeStatCalibration } from '../data/stat-scale.js'
+﻿import { LIKERT_RESPONSE_LABELS, STAT_CALIBRATION_QUESTIONS, normalizeStatCalibration } from '../data/stat-scale.js'
 
 let _onClose = null
 
@@ -106,8 +106,8 @@ function miniBarChart(data, color) {
     const isLast = index === count - 1
     return `
       <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="${color}" opacity="${isLast ? 1 : 0.35}" rx="2"/>
-      <text x="${x + barWidth / 2}" y="${height - 2}" text-anchor="middle" fill="var(--dim)" font-size="8" font-family="'JetBrains Mono', monospace">${point.date}</text>
-      <text x="${x + barWidth / 2}" y="${y - 3}" text-anchor="middle" fill="${isLast ? color : 'var(--dim)'}" font-size="8" font-family="'JetBrains Mono', monospace">${point.val}</text>
+      <text x="${x + barWidth / 2}" y="${height - 2}" text-anchor="middle" fill="var(--cozy-ink-soft, var(--dim))" font-size="8" font-family="'JetBrains Mono', monospace">${point.date}</text>
+      <text x="${x + barWidth / 2}" y="${y - 3}" text-anchor="middle" fill="${isLast ? color : 'var(--cozy-ink-soft, var(--dim))'}" font-size="8" font-family="'JetBrains Mono', monospace">${point.val}</text>
     `
   }).join('')
 
@@ -140,12 +140,12 @@ export function openStatModal(stat) {
   const rawScore = Math.round(Number(stat.rawVal ?? stat.val) || 0)
   openDetailModal({
     icon: stat.label || stat.key || 'ST',
-    title: `${stat.name} Codex`,
+    title: `${stat.name} Kaydi`,
     body: `
       <div class="modal-stat-big" style="color:${stat.color}">
-        ${rank}<span style="font-size:16px;color:var(--dim);margin-left:8px">${stat.rankLabel || 'Rank'}</span>
+        ${rank} <span style="font-size:16px;color:var(--cozy-ink-soft, var(--dim));margin-left:8px">${stat.rankLabel || 'Rank'}</span>
       </div>
-      ${stat.critical ? '<div style="text-align:center;margin-bottom:8px"><span class="grade-pill grade-crit">CRITICAL</span></div>' : ''}
+      ${stat.critical ? '<div style="text-align:center;margin-bottom:8px"><span class="grade-pill grade-crit">Dikkat</span></div>' : ''}
       <div class="modal-desc">${stat.desc}</div>
       <div class="modal-coach">${stat.coach}</div>
       ${renderModalGrid([
@@ -159,11 +159,10 @@ export function openStatModal(stat) {
         value: detail.val,
         pillClass: `grade-pill ${gradePillClass(detail.val)}`,
       })))}
-      <div class="modal-tip">Field note: Ana okuma ranktir; 0-100 motor skoru sadece hesaplama ve radar icin tutulur.</div>
+      <div class="modal-tip">Oyun notu: Ana okuma ranktir; 0-100 motor skoru sadece hesaplama ve radar icin tutulur.</div>
     `,
   })
 }
-
 export function openStatCalibrationModal({ calibration = {}, onSave } = {}) {
   const normalized = normalizeStatCalibration(calibration)
   const currentAnswers = normalized.answers || {}
@@ -223,16 +222,16 @@ export function openStatCalibrationModal({ calibration = {}, onSave } = {}) {
 export function openPerfModal(perf) {
   openDetailModal({
     icon: perf.icon,
-    title: `${perf.name} Forge`,
+    title: `${perf.name} Kaydi`,
     body: `
-      <div class="modal-stat-big" style="color:var(--gold);font-size:38px;padding-bottom:8px">${perf.val}</div>
+      <div class="modal-stat-big" >${perf.val}</div>
       <div class="modal-desc">${perf.note}</div>
-      ${miniBarChart(perf.history, 'var(--gold)')}
+      ${miniBarChart(perf.history, 'var(--cozy-moss-dark, var(--accent-2))')}
       ${renderModalGrid((perf.details || []).map(detail => ({
         label: detail.label,
         value: detail.val,
       })))}
-      <div class="modal-tip">Forge note: ${perf.tip}</div>
+      <div class="modal-tip">Kayit notu: ${perf.tip}</div>
     `,
   })
 }
@@ -252,14 +251,14 @@ export function openEpicVolumeModal(currentKg, tiers) {
           <div class="epic-tier-msg">${tier.msg}</div>
           ${!achieved ? `<div class="epic-tier-bar"><div class="epic-tier-fill" style="width:${pct}%"></div></div>` : ''}
         </div>
-        <div class="epic-tier-badge">${achieved ? 'OK' : 'LOCK'}</div>
+        <div class="epic-tier-badge">${achieved ? 'OK' : 'BEKLE'}</div>
       </div>
     `
   }).join('')
 
   openDetailModal({
     icon: 'VOL',
-    title: 'Epic Volume Ledger',
+    title: 'Hacim Gunlugu',
     body: `
       <div class="epic-total">
         <div class="epic-total-val">${currentKg.toLocaleString('tr-TR')} kg</div>
@@ -283,13 +282,13 @@ export function openClassModal(cls) {
     body: `
       <div style="text-align:center;padding:8px 0 16px">
         <div style="font-size:72px;margin-bottom:8px">${cls.icon}</div>
-        <div style="font-family:'Cinzel',serif;font-size:18px;color:${cls.color};margin-bottom:4px">${cls.name}</div>
-        <div style="font-size:11px;color:var(--dim);letter-spacing:.5px">${cls.subName || ''}</div>
+        <div style="font-size:18px;color:${cls.color};margin-bottom:4px">${cls.name}</div>
+        <div style="font-size:11px;color:var(--cozy-ink-soft, var(--dim));letter-spacing:.5px">${cls.subName || ''}</div>
       </div>
       <div class="modal-desc">${cls.desc}</div>
-      <div class="modal-coach"><strong>Buff:</strong> ${cls.buff}</div>
+      <div class="modal-coach"><strong>Etki:</strong> ${cls.buff}</div>
       ${cls.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${cls.reason}</div>` : ''}
-      ${renderModalSection('CLASS SIGNALS', renderSignalGrid(signals))}
+      ${renderModalSection('SINIF SINYALI', renderSignalGrid(signals))}
       ${renderModalSection('STAT CARPANI', renderEntryGrid(statEntries, {
         labelFormatter: key => key.toUpperCase(),
         valueFormatter: (_, value) => `x${value.toFixed(2)}`,
@@ -312,16 +311,16 @@ export function openArchetypeModal({ classObj, profile, semantic, criticalStat }
     body: `
       <div style="text-align:center;padding:10px 0 14px">
         <div style="font-size:60px;margin-bottom:6px">${classObj?.icon || profile.avatar}</div>
-        <div style="font-family:'Cinzel',serif;font-size:17px;color:var(--mmo-gold-2, var(--gold));margin-bottom:4px">${classObj?.name || profile.class}</div>
-        <div style="font-size:11px;color:var(--mmo-ink-dim, var(--dim));letter-spacing:.8px">${profile.subClass || ''} · ${profile.rank || ''}</div>
+        <div style="font-size:17px;color:var(--cozy-ink);margin-bottom:4px">${classObj?.name || profile.class}</div>
+        <div style="font-size:11px;color:var(--cozy-ink-soft, var(--dim));letter-spacing:.8px">${profile.subClass || ''} / ${profile.rank || ''}</div>
       </div>
       ${classObj?.desc ? `<div class="modal-desc">${classObj.desc}</div>` : ''}
-      ${classObj?.buff ? `<div class="modal-coach"><strong>Buff:</strong> ${classObj.buff}</div>` : ''}
+      ${classObj?.buff ? `<div class="modal-coach"><strong>Etki:</strong> ${classObj.buff}</div>` : ''}
       ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu yol:</strong> ${classObj.reason}</div>` : ''}
-      ${criticalStat ? `<div class="modal-coach" style="border-color:rgba(208,74,64,.45)"><strong>Kritik Nokta:</strong> ${criticalStat.label} ${criticalStat.val}/100 — ${criticalStat.name}</div>` : ''}
-      ${renderModalSection('CLASS SIGNALS', renderSignalGrid(signals))}
-      ${renderModalSection('CHAIN LOAD', renderEntryGrid(chainEntries))}
-      <div class="modal-tip">Sınıfın son 10 antrenman deseninden okunur; yeni blok biçimi girdikçe otomatik değişir.</div>
+      ${criticalStat ? `<div class="modal-coach" style="border-color:rgba(208,74,64,.45)"><strong>Kritik Nokta:</strong> ${criticalStat.label} ${criticalStat.val}/100 - ${criticalStat.name}</div>` : ''}
+      ${renderModalSection('SINIF SINYALI', renderSignalGrid(signals))}
+      ${renderModalSection('HAREKET IZI', renderEntryGrid(chainEntries))}
+      <div class="modal-tip">Sinifin son 10 antrenman deseninden okunur; yeni blok bicimi girdikce otomatik degisir.</div>
     `,
   })
 }
@@ -335,7 +334,7 @@ export function openFocusModal({ focus, classObj, criticalStats, semantic, profi
     label: stat.label,
     value: `${stat.val}/100`,
     itemStyle: 'border-color:rgba(208,74,64,.45)',
-    valueStyle: 'color:var(--mmo-blood, var(--red))',
+    valueStyle: 'color:var(--cozy-rose, var(--red))',
   })))
   const stateGrid = renderModalGrid([
     { label: 'Recovery', value: `${recoveryDisc}%` },
@@ -345,16 +344,16 @@ export function openFocusModal({ focus, classObj, criticalStats, semantic, profi
   ])
 
   openDetailModal({
-    icon: '◈',
+    icon: 'OD',
     title: 'Bugunku Odak',
     body: `
       <div style="text-align:center;padding:6px 0 14px">
-        <div style="font-family:'Cinzel Decorative',serif;font-size:22px;color:var(--mmo-gold-2, var(--gold));letter-spacing:.5px">${focus || 'Hybrid denge'}</div>
-        <div style="font-size:11px;color:var(--mmo-ink-dim, var(--dim));margin-top:4px;letter-spacing:.8px">aktif odak — son 14 gün verisinden</div>
+        <div style="font-size:22px;color:var(--cozy-ink);letter-spacing:.5px">${focus || 'Hybrid denge'}</div>
+        <div style="font-size:11px;color:var(--cozy-ink-soft, var(--dim));margin-top:4px;letter-spacing:.8px">aktif odak - son 14 gun verisinden</div>
       </div>
-      ${focusGrid ? `${renderModalSection('ZAYIF HALKA', focusGrid)}` : '<div class="modal-coach">Şu an kritik stat yok — dengen yerinde.</div>'}
+      ${focusGrid ? `${renderModalSection('ZAYIF HALKA', focusGrid)}` : '<div class="modal-coach">Su an kritik stat yok - dengen yerinde.</div>'}
       ${classObj?.reason ? `<div class="modal-coach"><strong>Neden bu odak:</strong> ${classObj.reason}</div>` : ''}
-      ${renderModalSection('AKTİF SİNYAL', renderSignalGrid(signals))}
+      ${renderModalSection('AKTIF SINYAL', renderSignalGrid(signals))}
       ${renderModalSection('DURUM', stateGrid)}
       <div class="modal-tip">Odak, kritik stat + seans deseni + sinif sinyalinin bilesimidir. Bir sonraki secimin bunu nasil iter ongorusu ODIE'dedir.</div>
     `,
@@ -364,17 +363,17 @@ export function openFocusModal({ focus, classObj, criticalStats, semantic, profi
 export function openUnlockModal({ nextUnlock, skills }) {
   if (!nextUnlock) {
     openDetailModal({
-      icon: '✦',
+      icon: '*',
       title: 'Siradaki Acilim',
-      body: '<div class="modal-coach">Bütün yakın kilitler açık — yeni skill dalları ODIE üzerinden tetiklenecek.</div>',
+      body: '<div class="modal-coach">Butun yakin kilitler acik - yeni skill dallari ODIE uzerinden tetiklenecek.</div>',
     })
     return
   }
 
   const branch = String(nextUnlock.branch || '').replace(/[^\w\s-]/g, '').trim()
   const status = nextUnlock.status || 'locked'
-  const statusLabel = status === 'prog' ? 'AKTİF BASKI' : status === 'done' ? 'AÇIK' : 'KİLİTLİ'
-  const statusColor = status === 'prog' ? 'var(--mmo-gold-2, var(--gold))' : status === 'done' ? 'var(--mmo-emerald, var(--grn))' : 'var(--mmo-ink-dim, var(--dim))'
+  const statusLabel = status === 'prog' ? 'AKTIF BASKI' : status === 'done' ? 'ACIK' : 'KILITLI'
+  const statusColor = status === 'prog' ? 'var(--cozy-peach)' : status === 'done' ? 'var(--cozy-moss)' : 'var(--cozy-ink-soft)'
   const progress = Number(nextUnlock.progress)
   const linkedRegions = Array.isArray(nextUnlock.linkedRegions) ? nextUnlock.linkedRegions : []
   const siblings = (skills || [])
@@ -383,12 +382,12 @@ export function openUnlockModal({ nextUnlock, skills }) {
     ?.slice(0, 3) || []
 
   openDetailModal({
-    icon: '✦',
+    icon: '*',
     title: nextUnlock.name,
     body: `
       <div style="text-align:center;padding:6px 0 12px">
-        <div style="font-family:'Cinzel Decorative',serif;font-size:22px;color:var(--mmo-gold-2, var(--gold));letter-spacing:.5px">${nextUnlock.name}</div>
-        ${branch ? `<div style="font-size:11px;color:var(--mmo-ink-dim, var(--dim));margin-top:4px;letter-spacing:.8px">${branch}</div>` : ''}
+        <div style="font-size:22px;color:var(--cozy-ink);letter-spacing:.5px">${nextUnlock.name}</div>
+        ${branch ? `<div style="font-size:11px;color:var(--cozy-ink-soft, var(--dim));margin-top:4px;letter-spacing:.8px">${branch}</div>` : ''}
         <div style="margin-top:8px"><span class="grade-pill" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span></div>
       </div>
       ${nextUnlock.desc ? `<div class="modal-desc">${nextUnlock.desc}</div>` : ''}
@@ -405,7 +404,7 @@ export function openUnlockModal({ nextUnlock, skills }) {
         { label: 'Hareket', value: nextUnlock.linkedMovement || '-' },
       ])) : ''}
       ${renderModalSection('AYNI DAL', renderModalGrid(siblings.map(node => ({
-        label: node.status === 'done' ? 'AÇIK' : node.status === 'prog' ? 'AKTİF' : 'KİLİT',
+        label: node.status === 'done' ? 'ACIK' : node.status === 'prog' ? 'AKTIF' : 'KILIT',
         value: node.name,
       }))))}
       <div class="modal-tip">Siradaki acilim, skill agacindaki en yakin ilerleme nodu. Kosulu karsiladiginda otomatik acilir.</div>
@@ -425,8 +424,8 @@ export function openAvatarModal(profile) {
     body: `
       <div style="text-align:center;padding:16px 0 12px">
         <div style="font-size:56px;margin-bottom:8px">${avatarMark(profile)}</div>
-        <div style="font-family:'Cinzel',serif;font-size:18px;color:var(--gold);margin-bottom:4px">${profile.class}</div>
-        <div style="font-size:12px;color:var(--dim)">${profile.subClass} · ${profile.rank}</div>
+        <div style="font-size:18px;color:var(--cozy-ink);margin-bottom:4px">${profile.class}</div>
+        <div style="font-size:12px;color:var(--cozy-ink-soft, var(--dim))">${profile.subClass} / ${profile.rank}</div>
       </div>
       ${renderModalGrid([
         { label: 'Toplam Seans', value: profile.sessions },

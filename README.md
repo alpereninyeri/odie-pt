@@ -54,9 +54,13 @@ src/
   main.js
   styles/
     odie-ui.css
-    heroic-rpg.css
-    infographic-game.css
-    mobile-revolution.css
+    cozy-rpg/mobile.css
+  assets/game/cozy/
+    cozy-today-village.jpg
+    cozy-vital-room.jpg
+    cozy-quest-board.jpg
+    cozy-odie-room.jpg
+    cozy-icon-sheet.jpg
   components/
     panel-coach.js
     panel-ask.js

@@ -1,8 +1,5 @@
 import './styles/odie-ui.css'
-import './styles/heroic-rpg.css'
-import './styles/infographic-game.css'
-import './styles/mobile-revolution.css'
-import './styles/hunter/mobile-rpg.css'
+import './styles/cozy-rpg/mobile.css'
 import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
 import { BODY_REGION_OPTIONS } from './data/body-events.js'
@@ -907,7 +904,7 @@ function renderHunterStatDock(stats = []) {
         const rank = stat.rank || Math.round(value)
         return `
           <button class="game-stat-seed stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'is-critical' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" style="--stat-pct:${value}%" aria-label="${escapeHtml(stat.name || stat.label)} detayini ac">
-            <span class="game-stat-rune">${renderHunterIcon(iconFor[stat.key] || 'target')}</span>
+            <span class="game-stat-seed-icon">${renderHunterIcon(iconFor[stat.key] || 'target')}</span>
             <span class="game-stat-copy">
               <span>${escapeHtml(stat.label || stat.key?.toUpperCase() || 'ST')}</span>
               <strong>${escapeHtml(rank)}</strong>
@@ -2697,7 +2694,7 @@ function renderStatPixelCard(stat, latestDelta = {}) {
   const rank = stat.rank || val
   const confidence = String(stat.confidence || 'seed').toUpperCase()
   const delta = Number(latestDelta?.[stat.key]) || 0
-  const upFlag = delta > 0 ? `<span class="stat-pixel-flag" style="background:var(--mmo-emerald)">UP</span>` : ''
+  const upFlag = delta > 0 ? `<span class="stat-pixel-flag" style="background:var(--cozy-moss)">UP</span>` : ''
   const critFlag = stat.critical ? `<span class="stat-pixel-flag">F</span>` : ''
   return `
     <button class="stat-pixel stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'crit' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" aria-label="${escapeHtml(stat.name)} detayini ac">

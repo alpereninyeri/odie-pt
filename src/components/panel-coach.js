@@ -325,7 +325,7 @@ export function renderCoach(p) {
       ${_renderSurvivalConsole(p)}
       <div class="coach-terminal coach-terminal-empty" style="min-height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
         <div style="font-size:48px;opacity:.4">OD</div>
-        <div style="font-size:14px;letter-spacing:3px;opacity:.7">ODIE OFFLINE</div>
+        <div style="font-size:14px;letter-spacing:3px;opacity:.7">ODIE MASADA DEGIL</div>
         <div style="font-size:11px;opacity:.65;max-width:280px;text-align:center;line-height:1.5">
           Henuz coach raporu yok. Telegram'a yeni bir antrenman yazdiginda burada sade ve okunur bir yorum goreceksin.
         </div>
@@ -368,12 +368,12 @@ export function renderCoach(p) {
       </div>
       <div class="coach-body" id="coach-body">
         <div class="coach-init-line" id="coach-init">
-          <span>ODIE yukleniyor</span><span class="coach-blink">_</span>
+          <span>ODIE notlari aciyor</span><span class="coach-blink">_</span>
         </div>
         ${shells}
       </div>
       <div class="coach-footer">
-        <button class="coach-skip-btn" id="coach-skip">HEPSINI AC</button>
+        <button class="coach-skip-btn" id="coach-skip">DEFTERI AC</button>
         <div class="coach-xp-badge">${cn.xpNote}</div>
       </div>
     </div>
