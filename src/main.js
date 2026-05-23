@@ -2,6 +2,7 @@ import './styles/odie-ui.css'
 import './styles/heroic-rpg.css'
 import './styles/infographic-game.css'
 import './styles/mobile-revolution.css'
+import './styles/hunter/mobile-rpg.css'
 import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
 import { BODY_REGION_OPTIONS } from './data/body-events.js'
@@ -22,6 +23,7 @@ import { goalTitle, riskToneLabel, sourceLabel, uiLabel } from './data/ui-copy.j
 const tabs = [
   { key: 'today', label: 'Bugun', icon: 'home' },
   { key: 'character', label: 'Vital OS', icon: 'char' },
+  { key: 'quests', label: 'Quest', icon: 'quest' },
   { key: 'odie', label: 'ODIE', icon: 'pulse' },
 ]
 
@@ -115,13 +117,14 @@ function renderApp() {
   const state = store.getState()
   const profile = store.getProfile()
   const semantic = getSemanticProfile(state.workouts || [], state.dailyLogs || [])
+  const ui = buildUiRuntime(state, profile, semantic)
 
   const appMarkup = `
     <div class="modal-bg" id="statModal">
       <div class="modal" id="modalContent"></div>
     </div>
 
-    ${renderMobileHud(state, profile)}
+    ${renderMobileHud(state, profile, semantic, ui)}
 
     <div class="app-shell app-shell-v6">
       <aside class="app-nav glass-card">
@@ -159,7 +162,7 @@ function renderApp() {
         </header>
 
         <section class="page-content">
-          ${renderPage(activeTab, state, profile, semantic)}
+          ${renderPage(activeTab, state, profile, semantic, ui)}
         </section>
       </main>
     </div>
@@ -178,12 +181,29 @@ function renderApp() {
   window.__refreshActivePanel = () => scheduleRender({ immediate: true })
 }
 
+function buildUiRuntime(state, profile, semantic) {
+  const bodyMapState = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
+  const nextSession = buildNextSessionRecommendation({
+    profile: { ...state.profile, ...profile },
+    workouts: state.workouts || [],
+    dailyLogs: state.dailyLogs || [],
+    memoryFeedback: state.memoryFeedback || [],
+    health: state.health || {},
+    bodyEvents: state.bodyEvents || [],
+  })
+  const activeQuest = bodyMapState?.dailyQuest || [...(profile.quests?.daily || []), ...(profile.quests?.weekly || [])].find(quest => !quest.done)
+  const latestWorkout = (state.workouts || [])[0] || null
+  return { activeQuest, bodyMapState, latestWorkout, nextSession }
+}
+
 function pageTitle(tabKey, profile) {
   switch (tabKey) {
     case 'today':
       return `${profile.nick} - Bugun`
     case 'character':
       return `${profile.nick} Vital OS`
+    case 'quests':
+      return `${profile.nick} Quest Log`
     case 'odie':
       return odieMode === 'ask' ? "ODIE'ye Sor" : 'ODIE Yorumu'
     default:
@@ -191,8 +211,17 @@ function pageTitle(tabKey, profile) {
   }
 }
 
-function renderMobileHud(state, profile) {
-  const presence = buildOdiePresence({ state, profile })
+function renderMobileHud(state, profile, semantic = {}, ui = buildUiRuntime(state, profile, semantic)) {
+  const bodyMapState = ui.bodyMapState
+  const nextSession = ui.nextSession
+  const activeQuest = ui.activeQuest
+  const presence = buildOdiePresence({ state, profile, nextSession, bodyMapState })
+  const hunterLine = buildHunterOdieLine({
+    state,
+    nextSession,
+    bodyMapState,
+    decision: buildTodayDecision(state, activeQuest),
+  })
   const xpCur = profile?.xp?.current ?? 0
   const xpMax = profile?.xp?.max || 1
   const pct = Math.max(0, Math.min(100, Math.round((xpCur / xpMax) * 100)))
@@ -204,6 +233,7 @@ function renderMobileHud(state, profile) {
   const hudSideValue = Number.isFinite(readinessScore) ? Math.round(readinessScore) : streak
   const hudSideKey = Number.isFinite(readinessScore) ? 'readiness' : 'seri'
   const hudSideLabel = Number.isFinite(readinessScore) ? 'hazir' : 'seri'
+  const rank = aggregateRank(getFrontStats(state, profile))
   const statValue = key => {
     const stat = (profile.stats || []).find(item => item.key === key)
     return stat?.rank || Math.round(Number(stat?.val ?? state.profile?.stats?.[key]) || 0)
@@ -216,14 +246,14 @@ function renderMobileHud(state, profile) {
 
   return `
     <div class="mobile-hud-wrap">
-      <div class="mobile-hud mobile-hud-v6">
+      <div class="mobile-hud mobile-hud-v6 hunter-global-card">
         <button class="mobile-hud-avatar mobile-hud-sigil" data-action="open-avatar" aria-label="Profili ac">${renderMiniSigil(profile)}</button>
         <div class="mobile-hud-center">
           <div class="mobile-hud-topline">
             <span>${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'OdiePT', 'explain-link hud-explain')}</span>
-            <span class="source-pill">${renderExplainButton(source === 'HEVY' ? 'hevy' : 'kaynak', source === 'HEVY' ? 'HEVY LIVE' : 'CANLI', 'explain-link source-explain')}</span>
+            <span class="source-pill">${renderExplainButton(source === 'HEVY' ? 'hevy' : 'kaynak', source === 'HEVY' ? 'HEVY' : 'CANLI', 'explain-link source-explain')}</span>
           </div>
-          <div class="mobile-hud-nick">${profile.nick}<span>L${level}</span></div>
+          <div class="mobile-hud-nick">${profile.nick}<span>L${level} / ${escapeHtml(rank)}</span></div>
           <div class="mobile-hud-xpbar"><div class="mobile-hud-xpfill" style="width:${pct}%"></div></div>
           <div class="mobile-hud-stats">
             ${hudStats.map(stat => `
@@ -241,7 +271,7 @@ function renderMobileHud(state, profile) {
       </div>
       <div class="mobile-hud-voice tone-${escapeHtml(presence.tone || 'calm')}">
         <b>ODIE</b>
-        <span>${escapeHtml(presence.hudLine || presence.routineLine || '')}</span>
+        <span>${escapeHtml(compactText(hunterLine || presence.hudLine || presence.routineLine || '', 92))}</span>
       </div>
     </div>
   `
@@ -262,6 +292,8 @@ function renderNavGlyph(kind) {
       return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20h-5.5v-4.8h-5V20H4z"/></svg>`
     case 'char':
       return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v6c0 4.4 3.1 7.7 8 9 4.9-1.3 8-4.6 8-9V7l-8-4z"/></svg>`
+    case 'quest':
+      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`
     case 'pulse':
       return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-4 3 9 2-5h7"/></svg>`
     default:
@@ -274,14 +306,16 @@ function avatarMark(profile = {}) {
   return escapeHtml(nick.replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase() || 'OD')
 }
 
-function renderPage(tabKey, state, profile, semantic) {
+function renderPage(tabKey, state, profile, semantic, ui) {
   switch (tabKey) {
     case 'today':
-      return renderTodayPage(state, profile, semantic)
+      return renderTodayPage(state, profile, semantic, ui)
     case 'character':
-      return renderCharacterPage(state, profile, semantic)
+      return renderCharacterPage(state, profile, semantic, ui)
+    case 'quests':
+      return renderQuestPage(state, profile, semantic, ui)
     case 'odie':
-      return renderOdiePage(state, profile)
+      return renderOdiePage(state, profile, semantic, ui)
     default:
       return ''
   }
@@ -516,70 +550,6 @@ function renderOdieLiveCard(presence = {}, { compact = false, action = true } = 
   `
 }
 
-function crestMarkFromClass(className = '') {
-  const letters = String(className || 'ODIE')
-    .split(/\s+/)
-    .map(part => part.trim()[0])
-    .filter(Boolean)
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-  return letters || 'OD'
-}
-
-function renderOdieCrest(state, profile, {
-  className = state.profile?.classObj?.name || profile.class || 'OdiePT',
-  rank = profile.rank || 'Unranked',
-  armor = Number(state.profile?.armor) || 0,
-  fatigue = Number(state.profile?.fatigue) || 0,
-  confidence = null,
-  modifier = '',
-} = {}) {
-  const xpPct = percentOf(profile?.xp?.current, profile?.xp?.max)
-  const readiness = Number(state.health?.readiness?.score)
-  const readinessPct = Number.isFinite(readiness) ? clamp(readiness) : xpPct
-  const dataNet = Number.isFinite(Number(confidence))
-    ? clamp(confidence)
-    : profile.calibration?.completedAt
-      ? 88
-      : 62
-  const vitals = [
-    { key: 'armor', label: uiLabel('armor'), value: armor, tone: 'armor' },
-    { key: 'fatigue', label: uiLabel('fatigue'), value: fatigue, tone: 'fatigue' },
-    { key: 'confidence', label: uiLabel('confidence'), value: dataNet, tone: 'confidence' },
-  ]
-
-  return `
-    <button
-      class="odie-crest ${modifier}"
-      data-action="open-avatar"
-      aria-label="${escapeHtml(profile.nick || 'Profil')} karakter muhrunu ac"
-      style="--xp-pct:${xpPct}%;--readiness-pct:${readinessPct}%"
-    >
-      <span class="crest-ring" aria-hidden="true">
-        <i></i>
-        <span class="crest-core">
-          <span>L${escapeHtml(profile.level || 1)} / ${escapeHtml(rank)}</span>
-          <strong>${escapeHtml(crestMarkFromClass(className))}</strong>
-          <small>${escapeHtml(className)}</small>
-        </span>
-      </span>
-      <span class="crest-vitals">
-        ${vitals.map(item => {
-          const value = clamp(item.value)
-          return `
-            <span class="crest-vital tone-${escapeHtml(item.tone)}" style="--vital:${value}%">
-              <b>${escapeHtml(item.label)}</b>
-              <strong>${Math.round(value)}</strong>
-              <i aria-hidden="true"><em></em></i>
-            </span>
-          `
-        }).join('')}
-      </span>
-    </button>
-  `
-}
-
 function renderRevMeter(explainKey, label, value, tone = 'ok') {
   const pct = clamp(value)
   const display = Number.isFinite(Number(value)) ? Math.round(Number(value)) : '--'
@@ -594,28 +564,11 @@ function renderRevMeter(explainKey, label, value, tone = 'ok') {
   `
 }
 
-function renderRevStatStrip(stats = [], className = '') {
-  return `
-    <div class="rev-stat-strip ${className}">
-      ${stats.map(stat => {
-        const value = clamp(stat.val)
-        const rank = stat.rank || Math.round(value)
-        return `
-          <button
-            class="rev-stat-pill stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'is-critical' : ''}"
-            data-action="open-stat"
-            data-stat-key="${escapeHtml(stat.key)}"
-            style="--stat-pct:${value}%"
-            aria-label="${escapeHtml(stat.name || stat.label || stat.key)} detayini ac"
-          >
-            <span>${escapeHtml(stat.label || stat.key?.toUpperCase() || 'ST')}</span>
-            <strong>${escapeHtml(rank)}</strong>
-            <i aria-hidden="true"><b></b></i>
-          </button>
-        `
-      }).join('')}
-    </div>
-  `
+function compactText(value = '', max = 72) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim()
+  if (!text) return ''
+  if (text.length <= max) return text
+  return `${text.slice(0, Math.max(0, max - 3)).trim()}...`
 }
 
 function regionById(bodyMapState, id) {
@@ -761,7 +714,7 @@ function renderXpRoute(bodyMapState) {
   if (!parts.length) return ''
   return `
     <div class="xp-route" aria-label="Bugun XP nereden gelir">
-      <span>Bugun XP nereden gelir?</span>
+      <span>XP ROTASI</span>
       <div>
         ${parts.slice(0, 4).map(part => `<b>+${Math.round(part.value)} ${escapeHtml(part.label)}</b>`).join('')}
       </div>
@@ -887,109 +840,314 @@ function renderHealthBridgeCard(state = {}) {
   `
 }
 
-function renderMobileCommandCenter(state, profile, semantic, nextSession = {}, latestWorkout = null, activeQuest = null, bodyMapState = null) {
-  const stats = getFrontStats(state, profile)
-  const readinessValue = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
-  const readiness = Number.isFinite(readinessValue) ? Math.round(readinessValue) : null
-  const armor = Math.round(Number(state.profile?.armor) || 0)
-  const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
-  const xpPct = percentOf(profile?.xp?.current, profile?.xp?.max)
-  const decision = buildTodayDecision(state, activeQuest)
-  const goal = nextSession.primaryGoal || {}
-  const blocks = nextSession.blocks || []
-  const primaryBlock = blocks[0] || {}
-  const supportBlock = blocks[1] || {}
-  const hevy = nextSession.sourceHealth || buildHevyLiveSummary(state.workouts || [], profile)
-  const latestSource = sourceLabel(latestWorkout?.source)
-  const loadValue = latestWorkout?.volumeKg
-    ? `${formatCompactMetric(latestWorkout.volumeKg)} kg`
-    : latestWorkout?.durationMin
-      ? `${Math.round(latestWorkout.durationMin)} dk`
-      : `${profile.sessions || 0} seans`
-  const riskLabel = riskToneLabel({ fatigue, armor, readiness })
-  const pulseLabel = latestWorkout?.date ? formatMonthShort(latestWorkout.date) : `${profile.sessions || 0} seans`
-  const className = state.profile.classObj?.name || profile.class || 'OdiePT'
-  const focus = state.profile.currentFocus || goal.title || decision.title
-  const risk = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || decision.reason
-  const confidence = Number(nextSession.confidence)
-  const confidenceLabel = Number.isFinite(confidence) ? `${Math.round(confidence)}%` : '--'
-  const gameQuest = bodyMapState?.dailyQuest || activeQuest
-  const presence = buildOdiePresence({ state, profile, nextSession, bodyMapState })
+const HUNTER_ICON_PATHS = {
+  blade: '<path d="M14 3l7 7-4 1-7 7-4-4 7-7 1-4Z"/><path d="M5 19l4-4"/>',
+  heart: '<path d="M12 21s-7-4.4-9-9.3C1.7 8.4 3.6 5 7 5c2 0 3.2 1.1 5 3 1.8-1.9 3-3 5-3 3.4 0 5.3 3.4 4 6.7C19 16.6 12 21 12 21Z"/>',
+  flame: '<path d="M12 22c4 0 7-2.8 7-6.5 0-2.8-1.7-5.1-3.7-7.1-.7 2.2-2 3.4-3.3 4.1.5-3.4-.9-6.2-4-9.5.1 4-2.3 6.1-3.4 8.4C3 14.6 4.5 22 12 22Z"/>',
+  pulse: '<path d="M3 12h4l2-5 4 10 2-5h6"/>',
+  target: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  shield: '<path d="M12 3 5 6v5c0 4 2.7 7.1 7 8 4.3-.9 7-4 7-8V6l-7-3Z"/><path d="M9 12l2 2 4-5"/>',
+  log: '<path d="M7 3h8l4 4v14H7V3Z"/><path d="M15 3v5h4M9 13h6M9 17h6"/>',
+  coach: '<path d="M5 6h14v9H9l-4 4V6Z"/><path d="M9 10h6M9 13h4"/>',
+  sync: '<path d="M5 7h8a4 4 0 0 1 0 8H9"/><path d="M9 11l-4 4 4 4"/><path d="M15 5h2a4 4 0 0 1 0 8h-2"/>',
+}
 
+function renderHunterIcon(kind = 'target') {
   return `
-    <article class="mobile-command-center tone-${nextSession.tone || decision.tone || 'calm'}" style="--xp-pct:${xpPct}%">
-      <div class="command-identity-row">
-        <div class="command-id">
-          <span>${renderExplainButton('class', className, 'explain-link command-class')}</span>
-          <h2>${escapeHtml(profile.nick)}</h2>
-          <small>${escapeHtml(profile.rank || 'Unranked')} / ${escapeHtml(focus)}</small>
-        </div>
-        <div class="command-readiness">
-          <span>${renderExplainButton('readiness', uiLabel('readiness'), 'explain-link rev-explain')}</span>
-          <strong>${readiness ?? '--'}</strong>
-        </div>
-      </div>
-
-      ${renderOdieLiveCard(presence, { compact: true, action: false })}
-
-      <div class="command-order">
-        <div>
-          <span>${renderExplainButton('next-session', uiLabel('command'), 'explain-link command-label')}</span>
-          <h3>${escapeHtml(goalTitle(goal) || decision.title)}</h3>
-        </div>
-        <p>${escapeHtml(nextSession.coachCommand || decision.command)}</p>
-        ${renderXpRoute(bodyMapState)}
-      </div>
-
-      <div class="command-stage">
-        ${renderVitalPulsePanel(state, bodyMapState, nextSession)}
-      </div>
-
-      <div class="command-life-strip">
-        <span><b>${escapeHtml(uiLabel('source'))}</b>${escapeHtml(latestSource)}</span>
-        <span><b>${escapeHtml(uiLabel('pulse'))}</b>${escapeHtml(pulseLabel)}</span>
-        <span><b>${escapeHtml(uiLabel('risk'))}</b>${escapeHtml(riskLabel)}</span>
-      </div>
-
-      <div class="command-blocks">
-        <div>
-          <span>${escapeHtml(primaryBlock.label || 'Ana hamle')}</span>
-          <strong>${escapeHtml(primaryBlock.target || decision.next)}</strong>
-        </div>
-        <div>
-          <span>${escapeHtml(gameQuest?.fromGame ? 'Ara gorev' : (supportBlock.label || 'Risk'))}</span>
-          <strong>${escapeHtml(gameQuest?.name || risk)}</strong>
-        </div>
-      </div>
-
-      ${renderRevStatStrip(stats, 'command-stat-strip')}
-
-      <div class="command-footer">
-        <span>${renderExplainButton('hevy-live', hevy.latestHevyDate ? `HEVY ${formatMonthShort(hevy.latestHevyDate)}` : 'HEVY bekliyor', 'explain-link metric-explain')}</span>
-        <span>${escapeHtml(latestSource)} / ${escapeHtml(loadValue)}</span>
-        <span>${renderExplainButton('confidence', `${uiLabel('confidence')} ${confidenceLabel}`, 'explain-link metric-explain')}</span>
-      </div>
-    </article>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      ${HUNTER_ICON_PATHS[kind] || HUNTER_ICON_PATHS.target}
+    </svg>
   `
 }
 
-function renderTodayPage(state, profile, semantic) {
-  const nextSession = buildNextSessionRecommendation({
-    profile: { ...state.profile, ...profile },
-    workouts: state.workouts || [],
-    dailyLogs: state.dailyLogs || [],
-    memoryFeedback: state.memoryFeedback || [],
-    health: state.health || {},
-    bodyEvents: state.bodyEvents || [],
-  })
+function buildHunterOdieLine({ state = {}, nextSession = {}, bodyMapState = {}, decision = {} } = {}) {
+  const injury = bodyMapState?.injuries?.[0] || bodyMapState?.priority?.region?.injury || null
+  const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
+  const armor = Math.round(Number(state.profile?.armor) || 0)
+  const readiness = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
+  const warning = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || ''
+  if (injury) return `${injury.label || 'Beden'} hala nazli. Bugun ego degil, temiz tekrar kazanir.`
+  if (fatigue >= 75) return 'Motor isinmis ama depo bos. Bugun karakteri parlatan sey toparlanma.'
+  if (armor < 55 || (Number.isFinite(readiness) && readiness < 45)) return 'Kalkan ince. Kisa, temiz ve kontrollu hamle bugunun galibiyeti.'
+  if (warning) return `${compactText(warning, 72)}. Puan sabirdan gelir.`
+  return decision.command || nextSession.coachCommand || 'Bugun kucuk artis yeter. Karakteri ileri tasiyan sey temiz kayit.'
+}
+
+function buildHunterArc({ state = {}, profile = {}, nextSession = {}, bodyMapState = {}, activeQuest = null, latestWorkout = null } = {}) {
+  const decision = buildTodayDecision(state, activeQuest)
+  const goal = nextSession.primaryGoal || {}
+  const title = goalTitle(goal) || decision.title || activeQuest?.name || 'Temiz Ilerleme'
+  const hevy = nextSession.sourceHealth || buildHevyLiveSummary(state.workouts || [], profile)
+  const stats = getFrontStats(state, profile)
+  const rank = aggregateRank(stats)
+  const source = hevy.latestHevyDate ? `HEVY ${formatMonthShort(hevy.latestHevyDate)}` : latestWorkout ? sourceLabel(latestWorkout.source) : 'Kaynak bekliyor'
+  return {
+    decision,
+    title,
+    chapter: `Chapter ${profile.level || 1}`,
+    rank,
+    source,
+    line: buildHunterOdieLine({ state, nextSession, bodyMapState, decision }),
+  }
+}
+
+function renderHunterStatDock(stats = []) {
+  const iconFor = {
+    str: 'blade',
+    agi: 'pulse',
+    end: 'flame',
+    dex: 'target',
+    con: 'shield',
+    sta: 'heart',
+  }
+  return `
+    <div class="game-stat-row" aria-label="Karakter statlari">
+      ${stats.slice(0, 6).map(stat => {
+        const value = clamp(stat.val)
+        const rank = stat.rank || Math.round(value)
+        return `
+          <button class="game-stat-seed stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'is-critical' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" style="--stat-pct:${value}%" aria-label="${escapeHtml(stat.name || stat.label)} detayini ac">
+            <span class="game-stat-rune">${renderHunterIcon(iconFor[stat.key] || 'target')}</span>
+            <span class="game-stat-copy">
+              <span>${escapeHtml(stat.label || stat.key?.toUpperCase() || 'ST')}</span>
+              <strong>${escapeHtml(rank)}</strong>
+            </span>
+          </button>
+        `
+      }).join('')}
+    </div>
+  `
+}
+
+function buildHunterRewardChips(nextSession = {}, bodyMapState = {}, latestWorkout = null) {
+  const chips = []
+  const delta = latestWorkout?.statDelta || latestWorkout?.stat_delta || {}
+  for (const key of FRONT_STAT_ORDER) {
+    const value = Number(delta?.[key]) || 0
+    if (value > 0) chips.push({ label: `${key.toUpperCase()} +${Math.round(value)}`, tone: key })
+  }
+  for (const part of bodyMapState?.xpPreview?.parts || []) {
+    if (chips.length >= 3) break
+    chips.push({ label: `+${Math.round(part.value)} ${part.label}`, tone: 'xp' })
+  }
+  for (const cap of nextSession.progressionCaps || []) {
+    if (chips.length >= 3) break
+    chips.push({ label: compactText(cap, 22), tone: 'guard' })
+  }
+  if (!chips.length) chips.push({ label: 'XP temiz kayittan', tone: 'xp' })
+  return chips.slice(0, 3)
+}
+
+function renderHunterRewardChips(nextSession, bodyMapState, latestWorkout) {
+  return `
+    <div class="game-loot-row">
+      ${buildHunterRewardChips(nextSession, bodyMapState, latestWorkout).map(chip => `
+        <span class="game-loot tone-${escapeHtml(chip.tone)}">
+          ${renderHunterIcon(chip.tone === 'guard' ? 'shield' : chip.tone === 'xp' ? 'flame' : 'target')}
+          <span>${escapeHtml(chip.label)}</span>
+        </span>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderHunterQuestCard({ title, label, detail, reward, tone = 'main', action = '', tab = '', explain = '', regionId = '' }) {
+  const icon = tone === 'recovery' || tone === 'danger' ? 'shield' : tone === 'side' ? 'pulse' : 'target'
+  const attrs = [
+    'type="button"',
+    `class="game-note tone-${escapeHtml(tone)}"`,
+    `data-quest="${escapeHtml(tone === 'danger' ? 'recovery' : tone)}"`,
+    `aria-label="${escapeHtml(title)} detayini ac"`,
+  ]
+  if (action) attrs.push(`data-action="${escapeHtml(action)}"`)
+  if (tab) attrs.push(`data-tab="${escapeHtml(tab)}"`)
+  if (explain && !action && !tab) attrs.push(`data-explain="${escapeHtml(explain)}"`)
+  if (regionId) attrs.push(`data-region-id="${escapeHtml(regionId)}"`)
+  return `
+    <button ${attrs.join(' ')}>
+      <span class="game-note-pin">${renderHunterIcon(icon)}</span>
+      <span class="game-note-body">
+        <span class="game-note-top">
+          <span>
+            <span class="game-note-kind">${escapeHtml(label)}</span>
+            <strong class="game-note-title">${escapeHtml(title)}</strong>
+          </span>
+          <em>${escapeHtml(reward)}</em>
+        </span>
+        <small class="game-note-copy">${escapeHtml(detail)}</small>
+      </span>
+    </button>
+  `
+}
+
+function buildHunterQuestCards({ state = {}, profile = {}, nextSession = {}, bodyMapState = {}, activeQuest = null, latestWorkout = null } = {}) {
+  const decision = buildTodayDecision(state, activeQuest)
+  const blocks = nextSession.blocks || []
+  const mainBlock = blocks[0] || {}
+  const supportBlock = blocks[1] || {}
+  const injury = bodyMapState?.injuries?.[0] || bodyMapState?.priority?.region?.injury || null
+  const priorityRegion = bodyMapState?.priority?.region || null
+  const recovery = state.profile?.recovery
+  const mainTitle = goalTitle(nextSession.primaryGoal) || decision.title
+  const mainDetail = mainBlock.target || nextSession.coachCommand || decision.command
+  const recoveryTitle = injury ? `${injury.label || 'Bolge'} korumasi` : 'Kalkan Onarimi'
+  const recoveryDetail = injury
+    ? `${Math.round(injury.recoveryPct ?? 0)}% toparlandi / ${Math.round(injury.etaDays ?? 0)} gun temkin`
+    : recovery ? `${recovery.progressPct}% toparlanma isledi` : 'Uyku, su ve adim bugunku yakit'
+  const optionalQuest = bodyMapState?.dailyQuest || activeQuest
+
+  return [
+    {
+      label: 'Main Quest',
+      title: mainTitle,
+      detail: compactText(mainDetail, 78),
+      reward: buildHunterRewardChips(nextSession, bodyMapState, latestWorkout)[0]?.label || '+XP',
+      tone: 'main',
+      action: 'open-workout',
+    },
+    {
+      label: 'Recovery',
+      title: recoveryTitle,
+      detail: compactText(recoveryDetail, 78),
+      reward: injury ? 'risk lock' : 'kalkan +',
+      tone: injury ? 'danger' : 'recovery',
+      action: injury ? 'open-body-region' : 'open-health-shortcut',
+      regionId: injury?.regionId || priorityRegion?.id || 'core',
+    },
+    {
+      label: 'Side Quest',
+      title: optionalQuest?.name || supportBlock.target || 'Mini ritim',
+      detail: compactText(optionalQuest?.desc || supportBlock.label || decision.next || 'Kisa ama temiz adim', 78),
+      reward: optionalQuest?.reward || 'streak koru',
+      tone: 'side',
+      action: optionalQuest ? '' : 'open-workout',
+      tab: optionalQuest ? 'quests' : '',
+      explain: optionalQuest ? 'active-quests' : '',
+    },
+  ]
+}
+
+function renderHunterQuestLane(args) {
+  return `
+    <div class="game-note-lane" aria-label="Gunluk gorev rotasi">
+      <div class="game-lane-head">
+        <h3>Kasaba panosu</h3>
+        <span>3 not</span>
+      </div>
+      <div class="game-note-list">
+        ${buildHunterQuestCards(args).map(renderHunterQuestCard).join('')}
+      </div>
+    </div>
+  `
+}
+
+function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {}, latestWorkout = null, activeQuest = null, bodyMapState = null) {
+  const stats = getFrontStats(state, profile)
+  const arc = buildHunterArc({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout })
+  const xpPct = percentOf(profile?.xp?.current, profile?.xp?.max)
+  const readiness = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
+  const readinessLabel = Number.isFinite(readiness) ? Math.round(readiness) : '--'
+  const streak = Number(state.profile?.streak?.current) || 0
+  const className = state.profile.classObj?.name || profile.class || 'OdiePT'
+  const nextUnlock = bodyMapState?.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
+  const unlockHint = nextUnlock?.progress != null
+    ? `${Math.round(nextUnlock.progress)}% unlock`
+    : summarizeUnlockHint(nextUnlock, profile.skills || []) || 'unlock takipte'
+
+  return `
+    <section class="game-day-screen tone-${nextSession.tone || arc.decision.tone || 'calm'}" style="--xp-pct:${xpPct}%">
+      <div class="game-night-grain" aria-hidden="true"></div>
+
+      <header class="game-topbar">
+        <button class="game-player-tag" data-action="open-avatar" aria-label="Profili ac">
+          <span class="game-face" aria-hidden="true"></span>
+          <span>
+            <span>Day ${escapeHtml(profile.level || 1)}</span>
+            <strong>${escapeHtml(profile.nick || 'Oyuncu')}</strong>
+          </span>
+        </button>
+        <div class="game-meter-mini">
+          <span>Rank</span>
+          <strong>${escapeHtml(arc.rank)}</strong>
+        </div>
+        <div class="game-meter-mini live">
+          <span>${escapeHtml(arc.source)}</span>
+          <strong>${streak}g seri</strong>
+        </div>
+      </header>
+
+      <button class="game-world-stage" data-action="open-avatar" aria-label="Gunluk oyun sahnesini ac">
+        <span class="game-sky" aria-hidden="true"></span>
+        <span class="game-moon" aria-hidden="true"></span>
+        <span class="game-stars" aria-hidden="true"></span>
+        <span class="game-hill hill-back" aria-hidden="true"></span>
+        <span class="game-hill hill-front" aria-hidden="true"></span>
+        <span class="game-ground" aria-hidden="true"></span>
+        <span class="game-player-shadow" aria-hidden="true"><i></i><b></b></span>
+        <span class="game-campfire" aria-hidden="true"><i></i><b></b></span>
+        <span class="game-sign rank-sign" aria-hidden="true">${escapeHtml(arc.rank)}</span>
+        <span class="game-sign level-sign" aria-hidden="true">L${escapeHtml(profile.level || 1)}</span>
+        <span class="game-story-panel">
+          <span class="game-kicker">${escapeHtml(arc.chapter)} / ${escapeHtml(className)}</span>
+          <strong>${escapeHtml(arc.title)}</strong>
+          <small>${escapeHtml(arc.line)}</small>
+        </span>
+        <span class="game-xp-log">
+          <span>
+            <b>XP</b>
+            <em>${escapeHtml(profile.xp?.current || 0)}/${escapeHtml(profile.xp?.max || 2000)}</em>
+          </span>
+          <i><b style="width:${xpPct}%"></b></i>
+        </span>
+      </button>
+
+      ${renderHunterStatDock(stats)}
+
+      <article class="game-quest-board">
+        <div class="game-board-head">
+          <span class="game-board-icon">${renderHunterIcon('log')}</span>
+          <span>
+            <span>Bugunun isi</span>
+            <strong>${escapeHtml(arc.title)}</strong>
+          </span>
+          <em>Hazir ${readinessLabel}</em>
+        </div>
+        <ul class="game-board-notes">
+          <li>${escapeHtml(compactText(nextSession.coachCommand || arc.decision.command, 86))}</li>
+          <li>${escapeHtml(compactText(nextSession.primaryGoal?.subtitle || arc.decision.reason || unlockHint, 86))}</li>
+        </ul>
+        ${renderHunterRewardChips(nextSession, bodyMapState, latestWorkout)}
+        <div class="game-action-row">
+          <button class="game-primary-btn" type="button" data-action="open-workout">Kayda yaz</button>
+          <button class="game-ghost-btn" type="button" data-tab="quests">Panoyu ac</button>
+        </div>
+      </article>
+
+      ${renderHunterQuestLane({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout })}
+
+      <footer class="game-logbook">
+        <span>Sonraki acilim</span>
+        <p>${renderHunterIcon('flame')} ${escapeHtml(unlockHint)}. Bugunun yolu uzun degil, temiz.</p>
+        ${latestWorkout?.id ? `
+          <button class="game-ghost-btn" type="button" data-action="open-session-detail" data-workout-id="${escapeHtml(latestWorkout.id)}">Son kayit</button>
+        ` : `
+          <button class="game-ghost-btn" type="button" data-action="open-workout">Ilk kayit</button>
+        `}
+      </footer>
+    </section>
+  `
+}
+
+function renderTodayPage(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
+  const nextSession = ui.nextSession
+  const bodyMapState = ui.bodyMapState
+  const activeQuest = ui.activeQuest
   const readiness = Number(state.health?.readiness?.score)
   const armor = Math.round(Number(state.profile?.armor) || 0)
   const fatigue = Math.round(Number(state.profile?.fatigue) || 0)
   const streak = Number(state.profile?.streak?.current) || 0
-  const bodyMapState = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
-  const activeQuest = bodyMapState?.dailyQuest || [...(profile.quests?.daily || []), ...(profile.quests?.weekly || [])].find(quest => !quest.done)
   const recentSessions = (state.workouts || []).slice(0, 3)
-  const latestWorkout = recentSessions[0] || null
+  const latestWorkout = ui.latestWorkout || recentSessions[0] || null
   const lead = buildTodayLead(state, latestWorkout)
   const title = latestWorkout ? `${formatMonthShort(latestWorkout.date)} / ${latestWorkout.type || 'Seans'}` : readinessTitle(readiness)
   const heroMetric = latestWorkout?.durationMin
@@ -1001,95 +1159,98 @@ function renderTodayPage(state, profile, semantic) {
   const sourceLabel = latestWorkout?.source === 'hevy' ? 'HEVY SON KAYIT' : latestWorkout ? 'SON SEANS' : 'BUGUN'
 
   return `
-    <section class="today-page today-infographic-page">
-      ${renderMobileCommandCenter(state, profile, semantic, nextSession, latestWorkout, activeQuest, bodyMapState)}
-      ${renderHealthBridgeCard(state)}
-      ${renderInfographicStatBoard(state, profile, nextSession)}
-      ${renderNextSessionCard(nextSession)}
+    <section class="today-page today-hunter-page">
+      ${renderTodayHunterCardScreen(state, profile, semantic, nextSession, latestWorkout, activeQuest, bodyMapState)}
 
-      <article class="home-cockpit">
-        <div class="home-cockpit-main">
-          <button class="home-avatar-frame" data-action="open-avatar" aria-label="Profili ac">
-            <span>${avatarMark(profile)}</span>
-            <small>L${profile.level || 1}</small>
-          </button>
+      <div class="today-legacy-desktop">
+        ${renderHealthBridgeCard(state)}
+        ${renderInfographicStatBoard(state, profile, nextSession)}
+        ${renderNextSessionCard(nextSession)}
 
-          <div class="home-identity">
-            <div class="today-hero-eyebrow">${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'OdiePT', 'explain-link eyebrow-explain')}</div>
-            <h2>${escapeHtml(profile.nick)}</h2>
-            <div class="home-xp-line">
-              <span>${renderExplainButton('xp', 'XP', 'explain-link metric-explain')}</span>
-              <div class="pix-bar pix-bar-thin"><div class="pix-bar-fill" style="width:${Math.max(0, Math.min(100, Math.round(((profile.xp?.current || 0) / (profile.xp?.max || 1)) * 100)))}%"></div></div>
-              <strong>${profile.xp?.current || 0}/${profile.xp?.max || 2000}</strong>
+        <article class="home-cockpit">
+          <div class="home-cockpit-main">
+            <button class="home-avatar-frame" data-action="open-avatar" aria-label="Profili ac">
+              <span>${avatarMark(profile)}</span>
+              <small>L${profile.level || 1}</small>
+            </button>
+
+            <div class="home-identity">
+              <div class="today-hero-eyebrow">${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'OdiePT', 'explain-link eyebrow-explain')}</div>
+              <h2>${escapeHtml(profile.nick)}</h2>
+              <div class="home-xp-line">
+                <span>${renderExplainButton('xp', 'XP', 'explain-link metric-explain')}</span>
+                <div class="pix-bar pix-bar-thin"><div class="pix-bar-fill" style="width:${Math.max(0, Math.min(100, Math.round(((profile.xp?.current || 0) / (profile.xp?.max || 1)) * 100)))}%"></div></div>
+                <strong>${profile.xp?.current || 0}/${profile.xp?.max || 2000}</strong>
+              </div>
+            </div>
+
+            ${renderHomeRadar(profile)}
+          </div>
+
+          <div class="home-session-card">
+            <div>
+              <span>${renderExplainButton(latestWorkout?.source === 'hevy' ? 'hevy' : 'kaynak', sourceLabel, 'explain-link metric-explain')}</span>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(lead)}</p>
+            </div>
+            <div class="today-hero-score">
+              <strong>${heroMetric || '--'}</strong>
+              <small>${heroMetricLabel}</small>
             </div>
           </div>
 
-          ${renderHomeRadar(profile)}
-        </div>
-
-        <div class="home-session-card">
-          <div>
-            <span>${renderExplainButton(latestWorkout?.source === 'hevy' ? 'hevy' : 'kaynak', sourceLabel, 'explain-link metric-explain')}</span>
-            <strong>${escapeHtml(title)}</strong>
-            <p>${escapeHtml(lead)}</p>
+          <div class="home-metrics-grid">
+            <div><span>${renderExplainButton('armor', 'Can', 'explain-link metric-explain')}</span><strong>${armor}</strong></div>
+            <div><span>${renderExplainButton('fatigue', 'Yorgunluk', 'explain-link metric-explain')}</span><strong>${fatigue}</strong></div>
+            <div><span>${renderExplainButton('hacim', 'Hacim', 'explain-link metric-explain')}</span><strong>${escapeHtml(profile.totalVolume || '0 kg')}</strong></div>
+            <div><span>${renderExplainButton('seri', 'Seri', 'explain-link metric-explain')}</span><strong>${streak}g</strong></div>
           </div>
-          <div class="today-hero-score">
-            <strong>${heroMetric || '--'}</strong>
-            <small>${heroMetricLabel}</small>
-          </div>
-        </div>
 
-        <div class="home-metrics-grid">
-          <div><span>${renderExplainButton('armor', 'Can', 'explain-link metric-explain')}</span><strong>${armor}</strong></div>
-          <div><span>${renderExplainButton('fatigue', 'Yorgunluk', 'explain-link metric-explain')}</span><strong>${fatigue}</strong></div>
-          <div><span>${renderExplainButton('hacim', 'Hacim', 'explain-link metric-explain')}</span><strong>${escapeHtml(profile.totalVolume || '0 kg')}</strong></div>
-          <div><span>${renderExplainButton('seri', 'Seri', 'explain-link metric-explain')}</span><strong>${streak}g</strong></div>
-        </div>
-
-        ${renderHomeDataDeck(state, profile, nextSession)}
-      </article>
-
-      <div class="today-insight-grid">
-        ${renderRecoveryTrendCard(state)}
-        ${renderDisciplineBalanceCard(state)}
-        ${renderCoachFeedbackDashboard(state)}
-      </div>
-
-      ${activeQuest ? `
-        <article class="card-strip" data-tab="character">
-          <div class="mini-label">${renderExplainButton('active-quests', 'Siradaki Gorev', 'explain-link metric-explain')}</div>
-          <div class="card-strip-row">
-            <strong>${escapeHtml(activeQuest.name)}</strong>
-            <span>${activeQuest.progress}/${activeQuest.total}</span>
-          </div>
-          <p>${escapeHtml(activeQuest.desc || '')}</p>
+          ${renderHomeDataDeck(state, profile, nextSession)}
         </article>
-      ` : ''}
 
-      <article class="card-strip">
-        <div class="mini-label">${renderExplainButton('daily-status', 'Vucut Durumu', 'explain-link metric-explain')}</div>
-        <div class="card-strip-row">
-          <span>${renderExplainButton('armor', 'Can', 'explain-link metric-explain')} ${armor}</span>
-          <span>${renderExplainButton('fatigue', 'Yorgunluk', 'explain-link metric-explain')} ${fatigue}</span>
-          <span>${renderExplainButton('seri', 'Seri', 'explain-link metric-explain')} ${streak}g</span>
+        <div class="today-insight-grid">
+          ${renderRecoveryTrendCard(state)}
+          ${renderDisciplineBalanceCard(state)}
+          ${renderCoachFeedbackDashboard(state)}
         </div>
-      </article>
 
-      <article class="glass-card today-sessions">
-        <div class="section-top">
-          <div>
-            <div class="eyebrow">${renderExplainButton('session-detail', 'Son Seanslar', 'explain-link eyebrow-explain')}</div>
-            <strong>${renderExplainButton('session-detail', 'Yakin gecmis', 'explain-link explain-heading')}</strong>
+        ${activeQuest ? `
+          <article class="card-strip" data-tab="character">
+            <div class="mini-label">${renderExplainButton('active-quests', 'Siradaki Gorev', 'explain-link metric-explain')}</div>
+            <div class="card-strip-row">
+              <strong>${escapeHtml(activeQuest.name)}</strong>
+              <span>${activeQuest.progress}/${activeQuest.total}</span>
+            </div>
+            <p>${escapeHtml(activeQuest.desc || '')}</p>
+          </article>
+        ` : ''}
+
+        <article class="card-strip">
+          <div class="mini-label">${renderExplainButton('daily-status', 'Vucut Durumu', 'explain-link metric-explain')}</div>
+          <div class="card-strip-row">
+            <span>${renderExplainButton('armor', 'Can', 'explain-link metric-explain')} ${armor}</span>
+            <span>${renderExplainButton('fatigue', 'Yorgunluk', 'explain-link metric-explain')} ${fatigue}</span>
+            <span>${renderExplainButton('seri', 'Seri', 'explain-link metric-explain')} ${streak}g</span>
           </div>
-        </div>
-        ${recentSessions.length ? `
-          <ul class="today-session-list">
-            ${recentSessions.map(renderTodaySessionItem).join('')}
-          </ul>
-        ` : `
-          <div class="today-session-empty">Hevy veya Telegram kaydi bekleniyor.</div>
-        `}
-      </article>
+        </article>
+
+        <article class="glass-card today-sessions">
+          <div class="section-top">
+            <div>
+              <div class="eyebrow">${renderExplainButton('session-detail', 'Son Seanslar', 'explain-link eyebrow-explain')}</div>
+              <strong>${renderExplainButton('session-detail', 'Yakin gecmis', 'explain-link explain-heading')}</strong>
+            </div>
+          </div>
+          ${recentSessions.length ? `
+            <ul class="today-session-list">
+              ${recentSessions.map(renderTodaySessionItem).join('')}
+            </ul>
+          ` : `
+            <div class="today-session-empty">Hevy veya Telegram kaydi bekleniyor.</div>
+          `}
+        </article>
+      </div>
     </section>
   `
 }
@@ -2077,11 +2238,16 @@ function renderTodaySessionItem(workout) {
 
 function openSessionDetailModal(workout, state) {
   if (!workout) return
+  const profile = store.getProfile()
   const blocks = workout.blocks || []
   const statDelta = workout.statDelta || workout.stat_delta || {}
   const facts = (state.workoutFacts || []).filter(item => String(item.workoutId || item.workout_id || '') === String(workout.id)).slice(0, 6)
   const title = `${formatMonthShort(workout.date)} / ${workout.type || 'Seans'}`
   const source = String(workout.source || 'manual').toUpperCase()
+  const nextUnlock = findNextUnlock(profile.skills || [])
+  const questLine = workout.xpEarned
+    ? `Quest tamam. +${workout.xpEarned} XP karaktere yazildi.`
+    : 'Quest kaydi tamam. Siradaki gelisim icin veri islendi.'
   const metrics = [
     { label: 'Sure', value: workout.durationMin ? `${workout.durationMin} dk` : '-', explain: 'session-detail' },
     { label: 'Hacim', value: workout.volumeKg ? `${Math.round(workout.volumeKg).toLocaleString('tr-TR')} kg` : '-', explain: 'hacim' },
@@ -2093,18 +2259,22 @@ function openSessionDetailModal(workout, state) {
 
   openModal(`
     <div class="modal-head">
-      <span style="font-size:22px">LOG</span>
-      <div class="modal-head-title">${renderExplainButton('session-detail', title, 'explain-link modal-title-explain')}</div>
+      <span style="font-size:22px">QC</span>
+      <div class="modal-head-title">${renderExplainButton('session-detail', 'Quest Complete', 'explain-link modal-title-explain')}</div>
       <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
     </div>
-    <div class="modal-body session-detail-modal">
-      <div class="session-detail-hero">
+    <div class="modal-body session-detail-modal quest-complete-modal">
+      <div class="quest-complete-hero">
         <div>
-          <div class="mini-label">Highlight</div>
-          <strong>${escapeHtml(workout.highlight || 'Seans kaydi')}</strong>
-          <p>${escapeHtml(workout.notes || 'Ek not yok.')}</p>
+          <div class="mini-label">${escapeHtml(title)}</div>
+          <strong>${escapeHtml(workout.highlight || questLine)}</strong>
+          <p>${escapeHtml(workout.notes || questLine)}</p>
         </div>
-        <span>${escapeHtml(workout.primaryCategory || 'mixed')}</span>
+        <span>${escapeHtml(workout.xpEarned ? `+${workout.xpEarned} XP` : workout.primaryCategory || 'done')}</span>
+      </div>
+      <div class="quest-complete-line">
+        <span>${escapeHtml(questLine)}</span>
+        <strong>${escapeHtml(nextUnlock?.name ? `Next unlock: ${nextUnlock.name}` : 'Next unlock takipte')}</strong>
       </div>
       <div class="modal-grid">
         ${metrics.map(item => `
@@ -2179,10 +2349,11 @@ function escapeHtml(value = '') {
 
 /* ---------- Character page (Pixel MMO sheet) ---------- */
 
-function renderCharacterPage(state, profile, semantic) {
+function renderCharacterPage(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
   return `
-    <section class="character-page">
-      ${renderCharacterArena(state, profile, semantic)}
+    <section class="character-page hunter-character-page">
+      ${renderHunterCharacterArc(state, profile, semantic, ui)}
+      ${renderCharacterArena(state, profile, semantic, ui)}
       ${renderHealthBridgeCard(state)}
       ${renderPortraitBanner(state, profile)}
       ${renderTrioCards(state, profile, semantic)}
@@ -2205,6 +2376,43 @@ function renderCharacterPage(state, profile, semantic) {
   `
 }
 
+function renderHunterCharacterArc(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
+  const bodyMapState = ui.bodyMapState
+  const nextSession = ui.nextSession
+  const latest = ui.latestWorkout || null
+  const activeQuest = ui.activeQuest
+  const arc = buildHunterArc({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout: latest })
+  const nextUnlock = bodyMapState?.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
+  const latestGain = latest?.xpEarned ? `Son quest +${latest.xpEarned} XP` : latest ? `${formatMonthShort(latest.date)} kaydi islendi` : 'Ilk kayit bekleniyor'
+  return `
+    <article class="hunter-character-arc">
+      <div class="hunter-character-head">
+        <span class="hunter-character-mark">${renderHunterIcon('shield')}</span>
+        <div>
+          <span class="hunter-kicker">${escapeHtml(arc.chapter)}</span>
+          <h2 class="hunter-character-title">${escapeHtml(profile.nick)} gelisim kaydi</h2>
+        </div>
+        <span class="hunter-character-rank">${escapeHtml(arc.rank)}</span>
+      </div>
+      <p class="hunter-character-copy">${escapeHtml(arc.line)}</p>
+      <div class="hunter-character-grid">
+        <div class="hunter-character-cell">
+          <span class="hunter-field-label">Son kazanim</span>
+          <strong class="hunter-character-value">${escapeHtml(latestGain)}</strong>
+        </div>
+        <div class="hunter-character-cell">
+          <span class="hunter-field-label">Next unlock</span>
+          <strong class="hunter-character-value">${escapeHtml(nextUnlock?.name || 'Takipte')}</strong>
+        </div>
+        <div class="hunter-character-cell">
+          <span class="hunter-field-label">Class</span>
+          <strong class="hunter-character-value">${escapeHtml(state.profile.classObj?.name || profile.class || 'Class stabil')}</strong>
+        </div>
+      </div>
+    </article>
+  `
+}
+
 function renderMirogluCommandCard({ label, title, detail, tone = 'focus', action = '', regionId = '' }) {
   const tag = action ? 'button' : 'div'
   const attrs = action
@@ -2219,16 +2427,9 @@ function renderMirogluCommandCard({ label, title, detail, tone = 'focus', action
   `
 }
 
-function renderVitalOsArena(state, profile, semantic) {
-  const bodyMapState = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
-  const nextSession = buildNextSessionRecommendation({
-    profile: { ...state.profile, ...profile },
-    workouts: state.workouts || [],
-    dailyLogs: state.dailyLogs || [],
-    memoryFeedback: state.memoryFeedback || [],
-    health: state.health || {},
-    bodyEvents: state.bodyEvents || [],
-  })
+function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
+  const bodyMapState = ui.bodyMapState
+  const nextSession = ui.nextSession
   const model = getVitalOsModel(state, bodyMapState, nextSession)
   const presence = buildOdiePresence({ state, profile, nextSession, bodyMapState })
   const xpCur = profile?.xp?.current ?? 0
@@ -2306,8 +2507,8 @@ function renderVitalOsArena(state, profile, semantic) {
   `
 }
 
-function renderCharacterArena(state, profile, semantic) {
-  return renderVitalOsArena(state, profile, semantic)
+function renderCharacterArena(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
+  return renderVitalOsArena(state, profile, semantic, ui)
 }
 
 function buildCharacterStatusEffect(bodyMapState = {}, state = {}) {
@@ -2693,6 +2894,47 @@ function renderQuestTicket(quest) {
   `
 }
 
+function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
+  const nextSession = ui.nextSession
+  const bodyMapState = ui.bodyMapState
+  const activeQuest = ui.activeQuest
+  const latestWorkout = ui.latestWorkout || null
+  const arc = buildHunterArc({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout })
+
+  return `
+    <section class="quest-arc-page">
+      <article class="quest-arc-hero tone-${escapeHtml(nextSession.tone || arc.decision.tone || 'calm')}">
+        <div class="quest-arc-head">
+          <span class="quest-arc-mark">${renderHunterIcon('target')}</span>
+          <div>
+            <span class="hunter-kicker">Training Arc</span>
+            <h2 class="quest-arc-title">${escapeHtml(arc.title)}</h2>
+          </div>
+          <span class="quest-arc-badge">${escapeHtml(arc.rank)}</span>
+        </div>
+        <p class="quest-arc-copy">${escapeHtml(arc.line)}</p>
+        <div class="quest-arc-fields">
+          <div class="quest-arc-field">
+            <span class="hunter-field-label">Bugun</span>
+            <strong class="hunter-field-value">${escapeHtml(arc.chapter)}</strong>
+          </div>
+          <div class="quest-arc-field">
+            <span class="hunter-field-label">Kaynak</span>
+            <strong class="hunter-field-value">${escapeHtml(arc.source)}</strong>
+          </div>
+          <div class="quest-arc-field">
+            <span class="hunter-field-label">Odul</span>
+            <strong class="hunter-field-value">${escapeHtml(buildHunterRewardChips(nextSession, bodyMapState, latestWorkout)[0]?.label || '+XP')}</strong>
+          </div>
+        </div>
+        ${renderHunterRewardChips(nextSession, bodyMapState, latestWorkout)}
+      </article>
+      ${renderHunterQuestLane({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout })}
+      ${renderQuestPixel(profile)}
+    </section>
+  `
+}
+
 function findNextUnlock(skills = []) {
   for (const branch of skills) {
     const next = (branch.items || []).find(item => item.status !== 'done')
@@ -2713,15 +2955,8 @@ function summarizeUnlockHint(nextUnlock, skills = []) {
 
 /* ---------- ODIE merged page (Yorum + Sor) ---------- */
 
-function renderOdiePage(state, profile) {
-  const nextSession = buildNextSessionRecommendation({
-    profile: { ...state.profile, ...profile },
-    workouts: state.workouts || [],
-    dailyLogs: state.dailyLogs || [],
-    memoryFeedback: state.memoryFeedback || [],
-    health: state.health || {},
-    bodyEvents: state.bodyEvents || [],
-  })
+function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state, profile, semantic)) {
+  const nextSession = ui.nextSession
   const coachProfile = {
     ...profile,
     profile: state.profile,
@@ -2742,7 +2977,7 @@ function renderOdiePage(state, profile) {
 
   return `
     <section class="odie-page">
-      ${renderOdieCommandRoom(state, profile, nextSession)}
+      ${renderOdieCommandRoom(state, profile, nextSession, ui.bodyMapState)}
       ${renderOdieHallmark(nextSession)}
       <div class="odie-switcher">
         <button class="odie-switcher-btn ${odieMode === 'coach' ? 'active' : ''}" data-odie-mode="coach">YORUM</button>
@@ -2758,7 +2993,7 @@ function renderOdiePage(state, profile) {
   `
 }
 
-function renderOdieCommandRoom(state, profile, nextSession = {}) {
+function renderOdieCommandRoom(state, profile, nextSession = {}, bodyMapState = state.bodyMapState || {}) {
   const goal = nextSession.primaryGoal || {}
   const readinessValue = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
   const readiness = Number.isFinite(readinessValue) ? Math.round(readinessValue) : '--'
@@ -2771,6 +3006,12 @@ function renderOdieCommandRoom(state, profile, nextSession = {}) {
   const warning = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || 'Risk sinyali yok'
   const command = nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.'
   const presence = buildOdiePresence({ state, profile, nextSession })
+  const hunterLine = buildHunterOdieLine({
+    state,
+    nextSession,
+    bodyMapState,
+    decision: buildTodayDecision(state),
+  })
 
   return `
     <article class="odie-command-room tone-${nextSession.tone || 'calm'}">
@@ -2784,10 +3025,10 @@ function renderOdieCommandRoom(state, profile, nextSession = {}) {
 
       <section class="odie-room-chat">
         <span>${escapeHtml(presence.moodLabel || 'canli mod')}</span>
-        <p>${escapeHtml(presence.chatLine || command)}</p>
+        <p>${escapeHtml(hunterLine || presence.chatLine || command)}</p>
       </section>
 
-      <p class="odie-room-order">${escapeHtml(command)}</p>
+      <p class="odie-room-order">${escapeHtml(compactText(command, 118))}</p>
 
       <div class="odie-room-grid">
         ${renderRevMeter('readiness', uiLabel('readiness'), readiness, 'xp')}
