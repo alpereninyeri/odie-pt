@@ -38,6 +38,12 @@ function cozyAskText(value = '') {
     .replace(/\bsinyal\b/gi, 'iz')
 }
 
+function compactAskText(value = '', max = 132) {
+  const text = cozyAskText(value || '').replace(/\s+/g, ' ').trim()
+  if (!text) return ''
+  return text.length > max ? `${text.slice(0, max - 3).trim()}...` : text
+}
+
 function explainButton(key, label, className = 'explain-link metric-explain') {
   return `<button type="button" class="${className}" data-explain="${escapeHtml(key)}" aria-haspopup="dialog" aria-label="${escapeHtml(label)} aciklamasini ac">${escapeHtml(label)}</button>`
 }
@@ -45,6 +51,11 @@ function explainButton(key, label, className = 'explain-link metric-explain') {
 function renderList(items = [], empty = 'Veri yok.') {
   if (!items.length) return `<div class="ask-empty">${empty}</div>`
   return items.map(item => `<li>${escapeHtml(cozyAskText(item))}</li>`).join('')
+}
+
+function renderMiniList(items = [], empty = 'temiz') {
+  if (!items.length) return `<small>${escapeHtml(empty)}</small>`
+  return `<small>${items.map(item => escapeHtml(compactAskText(item, 38))).join(' / ')}</small>`
 }
 
 function summarizeLatest(item) {
@@ -224,125 +235,63 @@ export function renderAsk(state, profile) {
   const focus = state.profile?.currentFocus || 'Hybrid denge'
   const memoryCount = (state.athleteMemory || []).length
   const sourceCount = (presence.sourceLine || '').split('/').filter(Boolean).length
+  const answer = compactAskText(latest?.answer || presence.chatLine || 'Soruyu yaz; ODIE bugunku izi kisa okuyacak.', 142)
+  const history = askState.items.slice(0, 3)
 
   return `
-    <section class="surface-stack ask-page">
-      <article class="glass-card ask-hero ask-hero-live">
-          <div>
-          <div class="eyebrow">${explainButton('ask-line', "ODIE'ye Sor", 'explain-link eyebrow-explain')}</div>
-          <h3>${explainButton('ask-line', 'Sohbet et, ODIE izleri tutsun', 'explain-link explain-heading')}</h3>
-          <p>${escapeHtml(presence.chatLine || 'Soruyu yaz; ODIE son rutin, hafiza ve bugunku sinyalleri beraber okuyacak.')}</p>
+    <section class="village-ask-card tone-${escapeHtml(presence.tone || 'calm')}">
+      <div class="village-ask-head">
+        <span>ODIE'ye sor</span>
+        <strong>${escapeHtml(latest ? compactAskText(latest.title, 36) : 'Kisa defter')}</strong>
+        <em class="${askState.loadingAnswer ? 'live' : ''}">${askState.loadingAnswer ? 'okuyor' : 'hazir'}</em>
+      </div>
+
+      <div class="village-ask-signals">
+        <span><b>${memoryCount}</b><small>hafiza</small></span>
+        <span><b>${Number.isFinite(readiness) ? Math.round(readiness) : '--'}</b><small>hazir</small></span>
+        <span><b>${sourceCount}</b><small>kaynak</small></span>
+      </div>
+
+      <form id="odie-ask-form" class="village-ask-form ask-form">
+        <textarea
+          id="odie-ask-input"
+          class="village-ask-input ask-input"
+          rows="3"
+          maxlength="600"
+          placeholder="Bugun neyi abartmayalim?"
+        >${escapeHtml(askState.draft)}</textarea>
+        <div class="village-ask-tools">
+          <div class="village-ask-samples">
+            ${samples.slice(0, 2).map(sample => `<button type="button" class="ask-sample-chip village-ask-chip" data-ask-sample="${escapeHtml(sample)}">${escapeHtml(compactAskText(sample, 34))}</button>`).join('')}
+          </div>
+          <button type="submit" class="ask-submit village-ask-submit" ${askState.loadingAnswer ? 'disabled' : ''}>${askState.loadingAnswer ? 'Okuyor' : 'Yaz'}</button>
         </div>
-        <div class="ask-hero-pills">
-          <span class="ask-pill">${explainButton('class', state.profile?.classObj?.name || profile.class || 'Karakter')}</span>
-          <span class="ask-pill">${Number.isFinite(readiness) ? `${readiness}/100 ${explainButton('readiness', 'hazirlik')}` : `${profile.sessions || 0} ${explainButton('session-detail', 'seans')}`}</span>
-          <span class="ask-pill">${explainButton('current-focus', focus)}</span>
+      </form>
+
+      <article class="village-answer-card">
+        <div>
+          <span>${latest ? formatWhen(latest.createdAt) : compactAskText(focus, 22)}</span>
+          <strong>${escapeHtml(latest ? compactAskText(latest.question, 58) : 'Soruyu yaz, bugunku izi okuyalim.')}</strong>
         </div>
+        <p>${escapeHtml(answer)}</p>
       </article>
 
-      <article class="ask-companion-card tone-${escapeHtml(presence.tone || 'calm')}">
-        <div class="ask-companion-copy">
-          <span>ODIE'nin defteri</span>
-          <strong>${escapeHtml(presence.headline || 'Canli baglam')}</strong>
-          <p>${escapeHtml(presence.routineLine || '')}</p>
+      ${latest ? `
+        <div class="village-answer-row">
+          <span><b>Iz</b>${renderMiniList(latest.evidence.slice(0, 2), 'temiz')}</span>
+          <span><b>Hamle</b>${renderMiniList(latest.nextSteps.slice(0, 2), 'sakin')}</span>
         </div>
-        <div class="ask-context-grid">
-          <span><b>hafiza</b><strong>${memoryCount}</strong><small>aktif not</small></span>
-          <span><b>kaynak</b><strong>${sourceCount}</strong><small>${escapeHtml(presence.dataConfidence ?? '--')}% net</small></span>
-          <span><b>mod</b><strong>${escapeHtml(presence.moodLabel || 'canli')}</strong><small>bugunku ton</small></span>
-        </div>
-      </article>
+      ` : ''}
 
-      <div class="ask-layout">
-        <section class="glass-card ask-console">
-          <div class="ask-console-head">
-            <div>
-              <div class="mini-label">${explainButton('ask-line', 'ODIE Soru Defteri')}</div>
-              <strong>${explainButton('ask-line', 'Sorunu yaz', 'explain-link')}</strong>
-            </div>
-            <span class="ask-status-chip ${askState.loadingAnswer ? 'live' : ''}">${askState.loadingAnswer ? 'OKUYOR' : 'HAZIR'}</span>
-          </div>
-
-          <div class="ask-terminal-shell">
-            <div class="ask-terminal-topbar">
-              <span class="ask-terminal-dot amber"></span>
-              <span class="ask-terminal-dot cobalt"></span>
-              <span class="ask-terminal-dot emerald"></span>
-              <strong>ODIE defteri</strong>
-            </div>
-            <div class="ask-terminal-log">
-              ${renderTranscript(latest)}
-            </div>
-          </div>
-
-          <form id="odie-ask-form" class="ask-form">
-            <textarea
-              id="odie-ask-input"
-              class="ask-input"
-              rows="5"
-              maxlength="600"
-              placeholder="Orn: Odie, bugunku uyku + son antrenmana gore neyi abartmayalim?"
-            >${escapeHtml(askState.draft)}</textarea>
-            <div class="ask-form-footer">
-              <div class="ask-sample-row">
-                ${samples.map(sample => `<button type="button" class="ask-sample-chip" data-ask-sample="${escapeHtml(sample)}">${escapeHtml(cozyAskText(sample))}</button>`).join('')}
-              </div>
-              <button type="submit" class="ask-submit" ${askState.loadingAnswer ? 'disabled' : ''}>${askState.loadingAnswer ? 'ODIE okuyor...' : 'Deftere yaz'}</button>
-            </div>
-          </form>
-
-          ${latest ? `
-            <article class="ask-response-card">
-              <div class="ask-response-top">
-                <div>
-                  <div class="mini-label">${explainButton('ask-answer', 'Kisa Yorum')}</div>
-                  <strong>${escapeHtml(cozyAskText(latest.title))}</strong>
-                </div>
-                <span>${formatWhen(latest.createdAt)} / ${escapeHtml(latest.model || 'aktif mod')}</span>
-              </div>
-              <p class="ask-response-answer">${escapeHtml(cozyAskText(latest.answer || 'Cevap metni yok.'))}</p>
-              <div class="ask-response-grid">
-                <div class="ask-detail-card">
-                  <div class="mini-label">${explainButton('evidence', 'Bakilan Iz')}</div>
-                  <ul>${renderList(latest.evidence, 'Ek iz cikarilmadi.')}</ul>
-                </div>
-                <div class="ask-detail-card">
-                  <div class="mini-label">${explainButton('ask-next', 'Ne Yapalim')}</div>
-                  <ul>${renderList(latest.nextSteps, 'Net sonraki adim onerisi yok.')}</ul>
-                </div>
-              </div>
-              ${latest.memoryNote ? `<div class="ask-memory-note"><span class="mini-label">${explainButton('ask-memory', 'Aklimda Tutsun')}</span><p>${escapeHtml(cozyAskText(latest.memoryNote))}</p></div>` : ''}
-              ${latest.routineSnapshot ? `<div class="ask-memory-note"><span class="mini-label">Rutin Izi</span><p>${escapeHtml(cozyAskText(latest.routineSnapshot))}</p></div>` : ''}
-            </article>
-          ` : `
-            <div class="ask-empty-state">
-              <strong>Ilk soruyu sor ve ODIE'den baglama dayali cevap al.</strong>
-              <p>Bu panel soru gecmisini ayri tutar; tekrar eden hedefler ve kaygilar zamanla daha okunur hale gelir.</p>
-            </div>
-          `}
-        </section>
-
-        <aside class="glass-card ask-history">
-          <div class="ask-history-head">
-            <div>
-              <div class="mini-label">${explainButton('ask-history', 'Soru Gecmisi')}</div>
-              <strong>${explainButton('ask-history', 'Son sorular', 'explain-link')}</strong>
-            </div>
-            <span class="ask-status-chip">${askState.loadingHistory ? 'ESITLENIYOR' : `${askState.items.length} kayit`}</span>
-          </div>
-
-          <div class="ask-history-list">
-            ${askState.loadingHistory && !askState.items.length ? '<div class="ask-empty">Gecmis yukleniyor...</div>' : ''}
-            ${askState.items.map(item => `
-              <button class="ask-history-item" type="button" data-ask-history="${escapeHtml(item.id)}">
-                <strong>${escapeHtml(item.question)}</strong>
-                <span>${formatWhen(item.createdAt)}</span>
-              </button>
-            `).join('')}
-            ${!askState.loadingHistory && !askState.items.length && !askState.historyError ? '<div class="ask-empty">Henuz soru gecmisi yok.</div>' : ''}
-            ${askState.historyError && !askState.items.length ? `<div class="ask-empty ask-empty-error">${escapeHtml(askState.historyError)}</div>` : ''}
-          </div>
-        </aside>
+      <div class="village-ask-history">
+        ${askState.loadingHistory && !history.length ? '<span class="village-history-empty">Gecmis geliyor</span>' : ''}
+        ${history.map(item => `
+          <button class="village-history-chip" type="button" data-ask-history="${escapeHtml(item.id)}">
+            ${escapeHtml(compactAskText(item.question, 42))}
+          </button>
+        `).join('')}
+        ${!askState.loadingHistory && !history.length && !askState.historyError ? '<span class="village-history-empty">Henuz soru yok</span>' : ''}
+        ${askState.historyError && !history.length ? `<span class="village-history-empty">${escapeHtml(askState.historyError)}</span>` : ''}
       </div>
     </section>
   `

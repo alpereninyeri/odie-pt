@@ -3600,7 +3600,7 @@ function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state
 
   return `
     <section class="odie-page cozy-odie-page village-page">
-      <section class="village-screen village-odie-screen tone-${escapeHtml(model.tone)}">
+      <section class="village-screen village-odie-screen mode-${escapeHtml(odieMode)} tone-${escapeHtml(model.tone)}">
         ${renderVillageLocket(model, true)}
 
         <article class="village-scene village-notebook-scene">
