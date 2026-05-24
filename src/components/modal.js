@@ -138,6 +138,9 @@ function cozyModalText(value = '') {
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
     .replace(/\bbuild\w*\b/gi, 'rota')
+    .replace(/\bdriver\b/gi, 'isaret')
+    .replace(/\braw\b/gi, 'ham')
+    .replace(/\bconfidence\b/gi, 'netlik')
     .replace(/\bPush\b/gi, 'Itis')
     .replace(/\bPull\b/gi, 'Cekis')
     .replace(/\bCore\b/gi, 'Govde')
@@ -150,6 +153,12 @@ function cozyModalText(value = '') {
 function confidenceLabel(value = '') {
   const key = String(value || 'seed').toUpperCase()
   return ({ HIGH: 'NET', MEDIUM: 'ORTA', LOW: 'AZ', SEED: 'DEFTER' })[key] || cozyModalText(key)
+}
+
+function softModalLine(value = '', fallback = 'Bugunun izi sakin, net is yeterli.') {
+  const text = cozyModalText(value || fallback).replace(/\s+/g, ' ').trim()
+  if (!text) return fallback
+  return text.length > 118 ? `${text.slice(0, 115).trim()}...` : text
 }
 
 function statDetailLabel(label = '') {
@@ -177,26 +186,25 @@ export function openStatModal(stat) {
   const baseScore = Math.round(Number(stat.rawVal ?? stat.val) || 0)
   openDetailModal({
     icon: stat.label || stat.key || 'ST',
-    title: `${stat.name} Kaydi`,
+    title: `${stat.name || stat.label || stat.key || 'ST'} tohumu`,
     body: `
       <div class="modal-stat-big" style="color:${stat.color}">
         ${rank} <span style="font-size:16px;color:var(--cozy-ink-soft, var(--dim));margin-left:8px">${stat.rankLabel || 'Rank'}</span>
       </div>
       ${stat.critical ? '<div style="text-align:center;margin-bottom:8px"><span class="grade-pill grade-crit">Dikkat</span></div>' : ''}
-      <div class="modal-desc">${cozyModalText(stat.desc)}</div>
-      <div class="modal-coach">${cozyModalText(stat.coach)}</div>
+      <div class="modal-desc">${softModalLine(stat.coach || stat.desc)}</div>
       ${renderModalGrid([
-        { label: 'Rank ici ilerleme', value: `${progress}%` },
-        { label: 'Iz netligi', value: confidence },
-        { label: 'Temel puan', value: `${baseScore}/100` },
-        { label: 'S Rank kapisi', value: stat.sUnlocked ? 'acik' : 'kanit bekliyor' },
+        { label: 'Iz', value: `${progress}%` },
+        { label: 'Netlik', value: confidence },
+        { label: 'Puan', value: `${baseScore}/100` },
+        { label: 'S kapisi', value: stat.sUnlocked ? 'acik' : 'bekliyor' },
       ])}
       ${renderModalGrid((stat.detail || []).map(detail => ({
         label: statDetailLabel(detail.label),
         value: cozyModalText(detail.val),
         pillClass: `grade-pill ${gradePillClass(detail.val)}`,
       })))}
-      <div class="modal-tip">Oyun notu: Ana isaret ranktir; 0-100 temel puan sadece arka defter hesabi icin tutulur.</div>
+      <div class="modal-tip">Oyun notu: rank buyumeyi gosterir; puan arka defterde kalir.</div>
     `,
   })
 }

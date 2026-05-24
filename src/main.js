@@ -149,44 +149,9 @@ function renderApp() {
       <div class="modal" id="modalContent"></div>
     </div>
 
-    ${renderMobileHud(state, profile, semantic, ui)}
-
-    <div class="app-shell app-shell-v6">
-      <aside class="app-nav glass-card">
-        <div class="nav-brand">
-          <div class="nav-brand-mark">${avatarMark(profile)}</div>
-          <div>
-            <div class="nav-brand-title">OdiePT</div>
-            <div class="nav-brand-sub">${renderExplainButton('class', state.profile.classObj?.name || profile.class || 'Karakter', 'explain-link nav-explain')}</div>
-          </div>
-        </div>
-
-        <nav class="nav-list">
-          ${tabs.map(tab => renderNavButton(tab, activeTab === tab.key)).join('')}
-        </nav>
-
-        <div class="nav-status glass-subtle">
-          <div class="mini-label">${renderExplainButton('current-focus', uiLabel('focus'), 'explain-link metric-explain')}</div>
-            <div class="nav-status-title">${state.profile.currentFocus || 'Hybrid denge'}</div>
-          <div class="nav-status-sub">${Number(state.health?.readiness?.score) || '--'}/100 ${renderExplainButton('readiness', 'hazirlik', 'explain-link metric-explain')}</div>
-        </div>
-      </aside>
-
-      <main class="app-main">
-        <header class="topbar">
-          <div>
-            <div class="eyebrow">${tabs.find(tab => tab.key === activeTab)?.label || 'Bugun'}</div>
-            <h1 class="page-title">${pageTitle(activeTab, profile)}</h1>
-          </div>
-          <div class="topbar-actions">
-            <button class="avatar-chip" data-action="open-avatar" aria-label="Profili ac">
-              <span class="avatar-chip-icon">${avatarMark(profile)}</span>
-              <span>${profile.nick}</span>
-            </button>
-          </div>
-        </header>
-
-        <section class="page-content">
+    <div class="app-shell app-shell-v6 village-app-shell">
+      <main class="app-main village-app-main" aria-label="${escapeHtml(pageTitle(activeTab, profile))}">
+        <section class="page-content village-page-content">
           ${renderPage(activeTab, state, profile, semantic, ui)}
         </section>
       </main>
@@ -304,9 +269,9 @@ function renderMobileHud(state, profile, semantic = {}, ui = buildUiRuntime(stat
 
 function renderNavButton(tab, isActive, mobile = false) {
   return `
-    <button class="${mobile ? 'bottom-tab' : 'nav-button'} ${isActive ? 'active' : ''}" data-tab="${tab.key}">
+    <button class="${mobile ? 'bottom-tab' : 'nav-button'} ${isActive ? 'active' : ''}" data-tab="${tab.key}" aria-pressed="${isActive ? 'true' : 'false'}">
       <span class="nav-icon">${renderNavGlyph(tab.icon)}</span>
-      <span>${tab.label}</span>
+      <span class="bottom-tab-label">${tab.label}</span>
     </button>
   `
 }
@@ -314,13 +279,13 @@ function renderNavButton(tab, isActive, mobile = false) {
 function renderNavGlyph(kind) {
   switch (kind) {
     case 'home':
-      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20h-5.5v-4.8h-5V20H4z"/></svg>`
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.5 11.5 12 5.5l7.5 6V20h-5v-4.7h-5V20h-5z"/></svg>`
     case 'char':
-      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v6c0 4.4 3.1 7.7 8 9 4.9-1.3 8-4.6 8-9V7l-8-4z"/></svg>`
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.8 5 7v5.6c0 4 2.7 6.8 7 8 4.3-1.2 7-4 7-8V7z"/><path d="M9.2 12.2h5.6M10.2 15h3.6"/></svg>`
     case 'quest':
-      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.5 5.5h11v13h-11z"/><path d="M9 9h6M9 12h5M9 15h3"/><path d="M8 3.8v3M16 3.8v3"/></svg>`
     case 'pulse':
-      return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-4 3 9 2-5h7"/></svg>`
+      return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 15.5c3-6 13-6 16 0"/><path d="M7 12.4c2.2-3.2 7.8-3.2 10 0"/><path d="M12 15.5v3"/></svg>`
     default:
       return kind
   }
@@ -329,6 +294,403 @@ function renderNavGlyph(kind) {
 function avatarMark(profile = {}) {
   const nick = String(profile.nick || 'OD')
   return escapeHtml(nick.replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase() || 'OD')
+}
+
+const VILLAGE_STAT_NAMES = {
+  str: 'STR',
+  agi: 'AGI',
+  end: 'END',
+  dex: 'DEX',
+  con: 'CON',
+  sta: 'STA',
+}
+
+const VILLAGE_GLYPHS = {
+  sun: '<circle cx="12" cy="12" r="4.3"/><path d="M12 2.8v2.4M12 18.8v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.8 12h2.4M18.8 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/>',
+  shield: '<path d="M12 3.4 5.5 6.2v5.4c0 3.9 2.4 6.7 6.5 8 4.1-1.3 6.5-4.1 6.5-8V6.2z"/><path d="M9 12l2 2 4-4.6"/>',
+  fog: '<path d="M4 9.5h16M6.2 13h11.6M5.2 16.5h13.6"/>',
+  spark: '<path d="M12 3l1.8 5 5.2 1.9-5.2 1.9L12 17l-1.8-5.2L5 9.9 10.2 8z"/>',
+  seed: '<path d="M12 20c-4-2.2-5.3-5.5-3.7-9.8C12.6 11.6 14.3 15 12 20Z"/><path d="M12 20c4-2.4 5.1-6 3.4-10.6C11.6 11 10.2 15 12 20Z"/><path d="M12 20v-7"/>',
+  board: '<path d="M6.5 5.5h11v13h-11z"/><path d="M9 9h6M9 12h5M9 15h3"/><path d="M8 3.8v3M16 3.8v3"/>',
+  book: '<path d="M5 5.5h6.5c1.2 0 2 .8 2 2v12c0-1.2-.8-2-2-2H5z"/><path d="M19 5.5h-5.5c-1.2 0-2 .8-2 2v12c0-1.2.8-2 2-2H19z"/>',
+  heart: '<path d="M12 20s-6.5-4-8.2-8.3C2.7 8.8 4.3 6 7.1 6c1.7 0 2.8.9 4.9 3 2.1-2.1 3.2-3 4.9-3 2.8 0 4.4 2.8 3.3 5.7C18.5 16 12 20 12 20Z"/>',
+  foot: '<path d="M8 19c1.7 1.5 4.2.4 4.1-2.1-.1-2.2-1.5-3.4-2.6-5.3C8.3 9.5 9.2 6.4 11.7 5.3"/><path d="M14.4 5.3c2.6.7 3.3 3.8 1.8 6.1-1.2 1.8-2.8 2.8-3 5.1"/>',
+  hevy: '<path d="M7 7h10v10H7z"/><path d="M4 12h3M17 12h3M9 5v14M15 5v14"/>',
+  note: '<path d="M6.5 4.5h8.2l2.8 2.8v12.2h-11z"/><path d="M14.7 4.5v3h3M9 11h6M9 15h4"/>',
+  lock: '<path d="M7 10h10v9H7z"/><path d="M9 10V8a3 3 0 0 1 6 0v2"/>',
+}
+
+function renderVillageGlyph(kind = 'spark') {
+  return `
+    <svg class="village-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      ${VILLAGE_GLYPHS[kind] || VILLAGE_GLYPHS.spark}
+    </svg>
+  `
+}
+
+function villageDisplay(value, fallback = '-') {
+  const text = cozyDisplayText(value || fallback)
+  return escapeHtml(compactText(text, 54))
+}
+
+function villageStatStage(value = 0) {
+  const score = clamp(value)
+  if (score >= 76) return 'bloom'
+  if (score >= 52) return 'bud'
+  if (score >= 28) return 'sprout'
+  return 'seed'
+}
+
+function villageIntensityPct(value = 'moderate') {
+  const key = String(value || 'moderate').toLowerCase()
+  if (key.includes('hard') || key.includes('heavy')) return 84
+  if (key.includes('easy') || key.includes('light')) return 38
+  return 62
+}
+
+function localBalanceLabel(item = {}) {
+  const key = String(item.key || '').toLowerCase()
+  return ({
+    push: 'Itis',
+    pull: 'Cekis',
+    legs: 'Bacak',
+    core: 'Govde',
+  })[key] || cozyDisplayText(item.label || key || 'Hat')
+}
+
+function getHealthSummary(state = {}) {
+  return state.health?.vitalScores?.summary || state.healthDailySummary || state.healthStatus?.dailySummary || null
+}
+
+function buildVillageModel(state = {}, profile = {}, semantic = {}, ui = buildUiRuntime(state, profile, semantic)) {
+  const bodyMapState = ui.bodyMapState || {}
+  const nextSession = ui.nextSession || {}
+  const latestWorkout = ui.latestWorkout || (state.workouts || [])[0] || null
+  const activeQuest = ui.activeQuest || bodyMapState.dailyQuest || null
+  const stats = getFrontStats(state, profile)
+  const rank = aggregateRank(stats)
+  const xpCur = Number(profile?.xp?.current) || 0
+  const xpMax = Number(profile?.xp?.max) || 2000
+  const xpPct = percentOf(xpCur, xpMax)
+  const readiness = cleanScore(nextSession.readiness?.score ?? state.health?.readiness?.score ?? 0)
+  const armor = cleanScore(nextSession.readiness?.armor ?? state.profile?.armor ?? 100)
+  const fatigue = cleanScore(nextSession.readiness?.fatigue ?? state.profile?.fatigue ?? 0)
+  const healthSummary = getHealthSummary(state)
+  const sourceHealth = nextSession.sourceHealth || buildHevyLiveSummary(state.workouts || [], profile)
+  const presence = buildOdiePresence({ state, profile, nextSession, bodyMapState })
+  const decision = buildTodayDecision(state, activeQuest)
+  const goal = nextSession.primaryGoal || {}
+  const title = goalTitle(goal) || activeQuest?.name || decision.title || 'Temiz Gun'
+  const odieLine = buildHunterOdieLine({ state, nextSession, bodyMapState, decision }) || presence.chatLine || decision.command
+  const unlock = bodyMapState.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
+  const className = state.profile?.classObj?.name || profile.class || 'OdiePT'
+  const balanceSource = nextSession.questImpact?.balance || buildDisciplineBalance(state)
+  const balanceItems = (balanceSource.items || []).map(item => ({
+    key: item.key,
+    label: localBalanceLabel(item),
+    value: Number(item.sets ?? item.value) || 0,
+    pct: clamp(item.pct ?? item.value ?? item.sets ?? 0),
+  }))
+  const dailyLog = state.dailyLogs?.[0] || {}
+  const sources = [
+    {
+      key: 'hevy',
+      label: 'HV',
+      icon: 'hevy',
+      lit: Boolean(sourceHealth.hevyCount || String(latestWorkout?.source || '').toLowerCase() === 'hevy'),
+      detail: sourceHealth.latestHevyDate ? formatMonthShort(sourceHealth.latestHevyDate) : 'bekliyor',
+    },
+    {
+      key: 'sleep',
+      label: 'UY',
+      icon: 'spark',
+      lit: Boolean(sourceHealth.appleSleepLinked || healthSummary?.sleepScore || healthSummary?.totalSleepHours || dailyLog.sleepHours),
+      detail: healthSummary?.totalSleepHours ? `${Number(healthSummary.totalSleepHours).toFixed(1)}s` : dailyLog.sleepHours ? `${Number(dailyLog.sleepHours).toFixed(1)}s` : 'bekliyor',
+    },
+    {
+      key: 'heart',
+      label: 'KA',
+      icon: 'heart',
+      lit: Boolean(sourceHealth.appleHeartLinked || healthSummary?.heartScore || healthSummary?.restingHeartRate),
+      detail: healthSummary?.heartScore ? Math.round(healthSummary.heartScore) : 'bekliyor',
+    },
+    {
+      key: 'move',
+      label: 'AD',
+      icon: 'foot',
+      lit: Boolean(sourceHealth.appleActivityLinked || healthSummary?.steps || dailyLog.steps),
+      detail: formatCompactMetric(healthSummary?.steps || dailyLog.steps || 0),
+    },
+    {
+      key: 'log',
+      label: 'LG',
+      icon: 'note',
+      lit: Boolean(state.dailyLogs?.length || state.athleteMemory?.length || state.memoryFeedback?.length),
+      detail: state.dailyLogs?.length ? `${state.dailyLogs.length} iz` : 'bekliyor',
+    },
+  ]
+
+  return {
+    state,
+    profile,
+    semantic,
+    ui,
+    bodyMapState,
+    nextSession,
+    latestWorkout,
+    activeQuest,
+    stats,
+    rank,
+    xpCur,
+    xpMax,
+    xpPct,
+    readiness,
+    armor,
+    fatigue,
+    healthSummary,
+    sourceHealth,
+    presence,
+    decision,
+    goal,
+    title,
+    odieLine: compactText(cozyDisplayText(odieLine), 84),
+    unlock,
+    className,
+    balanceItems,
+    sources,
+    tone: nextSession.tone || decision.tone || presence.tone || 'calm',
+  }
+}
+
+function renderVillageLocket(model, compact = false) {
+  const streak = Number(model.state.profile?.streak?.current) || 0
+  return `
+    <header class="village-locket ${compact ? 'compact' : ''}">
+      <button class="village-player" data-action="open-avatar" aria-label="Profili ac">
+        <span class="village-player-mark">${avatarMark(model.profile)}</span>
+        <span>
+          <small>L${escapeHtml(model.profile.level || 1)}</small>
+          <strong>${escapeHtml(model.profile.nick || 'Oyuncu')}</strong>
+        </span>
+      </button>
+      <div class="village-rank-stamp">
+        <small>R</small>
+        <strong>${escapeHtml(model.rank)}</strong>
+      </div>
+      <div class="village-streak-stamp">
+        <small>S</small>
+        <strong>${streak}g</strong>
+      </div>
+    </header>
+  `
+}
+
+function renderVillageSourceBeads(sources = []) {
+  return `
+    <div class="village-source-beads" aria-label="Canli veri boncuklari">
+      ${sources.map(source => `
+        <span class="village-source-bead ${source.lit ? 'is-lit' : ''} tone-${escapeHtml(source.key)}" title="${escapeHtml(source.detail)}">
+          ${renderVillageGlyph(source.icon)}
+          <b>${escapeHtml(source.label)}</b>
+        </span>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderVillageCompass(model) {
+  const rings = [
+    { key: 'ready', label: 'Hazir', value: model.readiness, icon: 'sun' },
+    { key: 'armor', label: 'Kalkan', value: model.armor, icon: 'shield' },
+    { key: 'fatigue', label: 'Yuk', value: model.fatigue, icon: 'fog', reverse: true },
+  ]
+  return `
+    <div class="village-compass" aria-label="Gun pusulasi">
+      ${rings.map(ring => `
+        <button class="village-compass-orb tone-${ring.key}" data-explain="${ring.key === 'ready' ? 'readiness' : ring.key}" style="--pct:${clamp(ring.value)}%;--deg:${clamp(ring.value) * 3.6}deg" aria-label="${escapeHtml(ring.label)} ${Math.round(ring.value)}">
+          ${renderVillageGlyph(ring.icon)}
+          <strong>${Math.round(ring.value)}</strong>
+          <span>${escapeHtml(ring.label)}</span>
+        </button>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderVillageXpTrail(model) {
+  const unlockLabel = model.unlock?.name || 'Siradaki kilit'
+  const unlockProgress = model.unlock?.progress != null ? clamp(model.unlock.progress) : null
+  return `
+    <div class="village-xp-trail" style="--xp:${model.xpPct}%">
+      <div class="village-xp-road" aria-label="XP yolu">
+        <i></i>
+        <span class="milestone start"></span>
+        <span class="milestone mid"></span>
+        <span class="milestone end"></span>
+      </div>
+      <div class="village-xp-meta">
+        <span>${model.xpCur}/${model.xpMax}</span>
+        <strong>${escapeHtml(compactText(unlockLabel, 22))}${unlockProgress != null ? ` ${unlockProgress}%` : ''}</strong>
+      </div>
+    </div>
+  `
+}
+
+function renderVillageStatGarden(stats = []) {
+  return `
+    <div class="village-stat-garden" aria-label="Stat bahcesi">
+      ${stats.slice(0, 6).map(stat => {
+        const value = clamp(stat.val)
+        const label = VILLAGE_STAT_NAMES[stat.key] || stat.label || stat.key
+        const rank = stat.rank || Math.round(value)
+        return `
+          <button class="village-stat-seed stat-tone-${escapeHtml(stat.key)} stage-${villageStatStage(value)} ${stat.critical ? 'is-critical' : ''}" data-action="open-stat" data-stat-key="${escapeHtml(stat.key)}" style="--stat:${value}%;" aria-label="${escapeHtml(label)} ${escapeHtml(rank)} detayini ac">
+            <span class="village-seed-icon" aria-hidden="true"></span>
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(rank)}</strong>
+          </button>
+        `
+      }).join('')}
+    </div>
+  `
+}
+
+function renderVillageBalanceBridge(items = []) {
+  const list = items.length ? items : [
+    { key: 'push', label: 'Itis', pct: 0, value: 0 },
+    { key: 'pull', label: 'Cekis', pct: 0, value: 0 },
+    { key: 'legs', label: 'Bacak', pct: 0, value: 0 },
+    { key: 'core', label: 'Govde', pct: 0, value: 0 },
+  ]
+  return `
+    <div class="village-balance-bridge" aria-label="Denge koprusu">
+      ${list.slice(0, 4).map(item => `
+        <span class="bridge-post tone-${escapeHtml(item.key || '')}" style="--pct:${clamp(item.pct)}%">
+          <i></i>
+          <b>${escapeHtml(item.label)}</b>
+        </span>
+      `).join('')}
+    </div>
+  `
+}
+
+function buildVillageQuestCards(model) {
+  const blocks = model.nextSession.blocks || []
+  const injury = model.bodyMapState?.injuries?.[0] || model.bodyMapState?.priority?.region?.injury || null
+  const quest = model.bodyMapState?.dailyQuest || model.activeQuest || null
+  const mainBlock = blocks[0] || {}
+  const supportBlock = blocks[1] || {}
+  const reward = buildHunterRewardChips(model.nextSession, model.bodyMapState, model.latestWorkout)
+  return [
+    {
+      tone: 'main',
+      label: 'Ana',
+      title: model.title,
+      detail: mainBlock.target || model.nextSession.primaryGoal?.subtitle || model.decision.command,
+      reward: reward[0]?.label || '+XP',
+      icon: 'spark',
+      action: 'open-workout',
+      intensity: mainBlock.intensity || 'moderate',
+    },
+    {
+      tone: injury ? 'risk' : 'guard',
+      label: 'Kalkan',
+      title: injury ? (injury.label || 'Temkin') : 'Onarim',
+      detail: injury ? `${Math.round(injury.recoveryPct ?? 0)}% temiz / ${Math.round(injury.etaDays ?? 0)}g` : (model.nextSession.warnings?.[0] || 'Uyku, su, adim'),
+      reward: injury ? 'risk -' : 'kalkan +',
+      icon: 'shield',
+      action: injury ? 'open-body-region' : 'open-health-shortcut',
+      regionId: injury?.regionId || model.bodyMapState?.priority?.region?.id || 'core',
+      intensity: 'easy',
+    },
+    {
+      tone: 'side',
+      label: 'Ara',
+      title: quest?.name || supportBlock.label || 'Mini ritim',
+      detail: quest?.step || quest?.desc || supportBlock.target || model.decision.next,
+      reward: quest?.reward || reward[1]?.label || 'seri',
+      icon: 'seed',
+      action: quest ? 'open-body-region' : 'open-workout',
+      regionId: quest?.linkedRegion || model.bodyMapState?.priority?.region?.id || 'core',
+      intensity: supportBlock.intensity || 'easy',
+    },
+  ]
+}
+
+function renderVillageQuestSlip(card, index = 0) {
+  const attrs = [
+    'type="button"',
+    `class="village-quest-slip tone-${escapeHtml(card.tone)}"`,
+    `style="--intensity:${villageIntensityPct(card.intensity)}%"`,
+    `aria-label="${escapeHtml(card.title)}"`,
+  ]
+  if (card.action) attrs.push(`data-action="${escapeHtml(card.action)}"`)
+  if (card.regionId) attrs.push(`data-region-id="${escapeHtml(card.regionId)}"`)
+  return `
+    <button ${attrs.join(' ')}>
+      <span class="quest-slip-pin">${renderVillageGlyph(card.icon)}</span>
+      <span class="quest-slip-body">
+        <span class="quest-slip-top">
+          <small>${escapeHtml(card.label)}</small>
+          <em>${escapeHtml(card.reward)}</em>
+        </span>
+        <strong>${villageDisplay(card.title, 'Gorev')}</strong>
+        <span class="quest-slip-meter"><i></i></span>
+      </span>
+      <span class="quest-slip-step">${index + 1}</span>
+    </button>
+  `
+}
+
+function renderVillageBodyMap(model) {
+  const regions = [...(model.bodyMapState?.regions || [])]
+    .sort((left, right) => (Number(right.risk) + Number(right.load)) - (Number(left.risk) + Number(left.load)))
+    .slice(0, 5)
+  const priority = model.bodyMapState?.priority?.region || regions[0]
+  return `
+    <button class="village-body-map" data-action="open-body-region" data-region-id="${escapeHtml(priority?.id || 'core')}" aria-label="Beden haritasini ac">
+      <span class="body-paper" aria-hidden="true">
+        <i class="body-head"></i>
+        <i class="body-torso"></i>
+        <i class="body-arm left"></i>
+        <i class="body-arm right"></i>
+        <i class="body-leg left"></i>
+        <i class="body-leg right"></i>
+        ${regions.map((region, index) => `
+          <b class="body-spot spot-${index} tone-${escapeHtml(region.trend || 'hazir')}" style="--risk:${clamp(region.risk)}%"></b>
+        `).join('')}
+      </span>
+      <span class="body-map-note">
+        <small>Beden</small>
+        <strong>${escapeHtml(priority?.label || 'Govde')}</strong>
+      </span>
+    </button>
+  `
+}
+
+function renderVillageUnlockPath(model) {
+  const unlock = model.unlock
+  const progress = unlock?.progress != null ? clamp(unlock.progress) : 0
+  const title = unlock?.name || 'Acilim bekliyor'
+  return `
+    <button class="village-unlock-path" data-action="open-unlock" style="--unlock:${progress}%">
+      <span class="unlock-charm">${renderVillageGlyph(unlock ? 'spark' : 'lock')}</span>
+      <span>
+        <small>Acilim</small>
+        <strong>${villageDisplay(title, 'Acilim')}</strong>
+      </span>
+      <i aria-hidden="true"><b></b></i>
+    </button>
+  `
+}
+
+function renderVillageRhythmField(model) {
+  const rhythm = buildHomeRhythm(model.state)
+  return `
+    <div class="village-rhythm-field" aria-label="Haftalik ritim">
+      ${rhythm.days.map(day => `<span class="${day.active ? 'active' : ''}" title="${escapeHtml(day.title)}"><b>${escapeHtml(day.label)}</b></span>`).join('')}
+    </div>
+  `
 }
 
 function renderPage(tabKey, state, profile, semantic, ui) {
@@ -1120,6 +1482,55 @@ function renderHunterQuestLane(args) {
 }
 
 function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {}, latestWorkout = null, activeQuest = null, bodyMapState = null) {
+  const model = buildVillageModel(state, profile, semantic, { nextSession, latestWorkout, activeQuest, bodyMapState })
+  const questCards = buildVillageQuestCards(model)
+  const primary = questCards[0]
+
+  return `
+    <section class="village-screen village-today-screen tone-${escapeHtml(model.tone)}">
+      ${renderVillageLocket(model)}
+
+      <article class="village-scene village-map-scene">
+        <div class="village-map-art" aria-hidden="true">
+          <span class="map-sun"></span>
+          <span class="map-path"></span>
+          <span class="map-cabin"></span>
+          <span class="map-player-dot"></span>
+        </div>
+        <div class="village-scene-hud">
+          ${renderVillageSourceBeads(model.sources)}
+          ${renderVillageCompass(model)}
+        </div>
+        <div class="village-scene-bottom">
+          ${renderVillageXpTrail(model)}
+          <button class="village-main-sign" data-action="open-workout">
+            <small>Bugunun isi</small>
+            <strong>${villageDisplay(model.title, 'Gorev')}</strong>
+            <span>${villageDisplay(model.odieLine, 'Temiz tekrar kazanir.')}</span>
+          </button>
+        </div>
+      </article>
+
+      ${renderVillageStatGarden(model.stats)}
+
+      <article class="village-board-card">
+        <div class="village-board-top">
+          <span class="board-mark">${renderVillageGlyph('board')}</span>
+          <strong>${villageDisplay(primary.title, 'Ana gorev')}</strong>
+          <em>${escapeHtml(primary.reward)}</em>
+        </div>
+        <div class="village-board-graphic">
+          ${renderVillageBalanceBridge(model.balanceItems)}
+        </div>
+        <div class="village-board-actions">
+          <button class="village-primary-action" type="button" data-action="open-workout">Kayda yaz</button>
+          ${model.latestWorkout?.id ? `<button class="village-quiet-action village-trace-action" type="button" data-action="open-session-detail" data-workout-id="${escapeHtml(model.latestWorkout.id)}">Son iz</button>` : ''}
+          <button class="village-quiet-action" type="button" data-tab="quests">Pano</button>
+        </div>
+      </article>
+    </section>
+  `
+
   const stats = getFrontStats(state, profile)
   const arc = buildHunterArc({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout })
   const xpPct = percentOf(profile?.xp?.current, profile?.xp?.max)
@@ -1224,6 +1635,12 @@ function renderTodayPage(state, profile, semantic, ui = buildUiRuntime(state, pr
   const streak = Number(state.profile?.streak?.current) || 0
   const recentSessions = (state.workouts || []).slice(0, 3)
   const latestWorkout = ui.latestWorkout || recentSessions[0] || null
+  return `
+    <section class="today-page today-hunter-page village-page">
+      ${renderTodayHunterCardScreen(state, profile, semantic, nextSession, latestWorkout, activeQuest, bodyMapState)}
+    </section>
+  `
+
   const lead = buildTodayLead(state, latestWorkout)
   const title = latestWorkout ? `${formatMonthShort(latestWorkout.date)} / ${displayWorkoutType(latestWorkout.type || 'Seans')}` : readinessTitle(readiness)
   const heroMetric = latestWorkout?.durationMin
@@ -2447,6 +2864,41 @@ function escapeHtml(value = '') {
 /* ---------- Character page (Pixel MMO sheet) ---------- */
 
 function renderCharacterPage(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
+  const model = buildVillageModel(state, profile, semantic, ui)
+  const vital = getVitalOsModel(state, model.bodyMapState, model.nextSession)
+  return `
+    <section class="character-page hunter-character-page cozy-character-page village-page">
+      <section class="village-screen village-character-screen tone-${escapeHtml(model.tone)}">
+        ${renderVillageLocket(model, true)}
+
+        <article class="village-scene village-cabin-scene">
+          <div class="village-cabin-art" aria-hidden="true">
+            <span class="cabin-window"></span>
+            <span class="cabin-rack"></span>
+            <span class="cabin-mat"></span>
+          </div>
+          <div class="village-cabin-grid">
+            ${renderVillageBodyMap(model)}
+            ${renderVillageUnlockPath(model)}
+          </div>
+          ${renderVillageSourceBeads(model.sources)}
+        </article>
+
+        ${renderVillageStatGarden(model.stats)}
+
+        <article class="village-panel village-vitals-panel">
+          <div class="village-panel-head">
+            <span>${renderVillageGlyph('shield')}</span>
+            <strong>Oda durumu</strong>
+            <em>${vital.dataConfidence}% iz</em>
+          </div>
+          ${renderVillageCompass(model)}
+          ${renderVillageRhythmField(model)}
+        </article>
+      </section>
+    </section>
+  `
+
   return `
     <section class="character-page hunter-character-page cozy-character-page">
       ${renderHunterCharacterArc(state, profile, semantic, ui)}
@@ -3014,6 +3466,42 @@ function renderQuestTicket(quest) {
 }
 
 function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
+  const model = buildVillageModel(state, profile, semantic, ui)
+  const cards = buildVillageQuestCards(model)
+  return `
+    <section class="quest-arc-page cozy-quest-page village-page">
+      <section class="village-screen village-quest-screen tone-${escapeHtml(model.tone)}">
+        ${renderVillageLocket(model, true)}
+
+        <article class="village-scene village-board-scene">
+          <div class="village-board-art" aria-hidden="true">
+            <span class="board-roof"></span>
+            <span class="board-planks"></span>
+            <span class="board-string"></span>
+          </div>
+          <div class="village-board-title">
+            <span>${renderVillageGlyph('board')}</span>
+            <strong>Kasaba panosu</strong>
+            <em>3 not</em>
+          </div>
+          <div class="village-quest-slip-list">
+            ${cards.map(renderVillageQuestSlip).join('')}
+          </div>
+        </article>
+
+        <article class="village-panel village-route-panel">
+          <div class="village-panel-head">
+            <span>${renderVillageGlyph('spark')}</span>
+            <strong>Rota izi</strong>
+            <em>${escapeHtml(model.rank)}</em>
+          </div>
+          ${renderVillageBalanceBridge(model.balanceItems)}
+          ${renderVillageXpTrail(model)}
+        </article>
+      </section>
+    </section>
+  `
+
   const nextSession = ui.nextSession
   const bodyMapState = ui.bodyMapState
   const activeQuest = ui.activeQuest
@@ -3075,6 +3563,7 @@ function summarizeUnlockHint(nextUnlock, skills = []) {
 
 function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state, profile, semantic)) {
   const nextSession = ui.nextSession
+  const model = buildVillageModel(state, profile, semantic, ui)
   const panelModules = ensureOdiePanelsLoaded()
   const coachProfile = {
     ...profile,
@@ -3093,6 +3582,50 @@ function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state
     consecutiveHeavy: state.profile?.consecutiveHeavy,
     survivalWarnings: state.profile?.survivalWarnings || [],
   }
+
+  const panel = !panelModules ? `
+    <article class="village-odie-panel village-loading-note">
+      <span>${renderVillageGlyph('book')}</span>
+      <strong>Defter aciliyor</strong>
+    </article>
+  ` : odieMode === 'coach' ? `
+    <div class="coach-shell village-odie-panel">
+      ${panelModules.renderCoach(coachProfile)}
+    </div>
+  ` : `
+    <div class="village-odie-panel village-ask-panel">
+      ${panelModules.renderAsk(state, profile)}
+    </div>
+  `
+
+  return `
+    <section class="odie-page cozy-odie-page village-page">
+      <section class="village-screen village-odie-screen tone-${escapeHtml(model.tone)}">
+        ${renderVillageLocket(model, true)}
+
+        <article class="village-scene village-notebook-scene">
+          <div class="village-notebook-art" aria-hidden="true">
+            <span class="notebook-left"></span>
+            <span class="notebook-right"></span>
+            <span class="notebook-pencil"></span>
+          </div>
+          <div class="village-note-bubble">
+            <small>ODIE defteri</small>
+            <strong>${villageDisplay(model.title, 'Bugunku karar')}</strong>
+            <p>${villageDisplay(model.odieLine, 'Temiz tekrar kazanir.')}</p>
+          </div>
+          ${renderVillageSourceBeads(model.sources)}
+        </article>
+
+        <div class="odie-switcher village-switcher">
+          <button class="odie-switcher-btn ${odieMode === 'coach' ? 'active' : ''}" data-odie-mode="coach">Yorum</button>
+          <button class="odie-switcher-btn ${odieMode === 'ask' ? 'active' : ''}" data-odie-mode="ask">Sor</button>
+        </div>
+
+        ${panel}
+      </section>
+    </section>
+  `
 
   return `
     <section class="odie-page cozy-odie-page">
