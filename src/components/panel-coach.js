@@ -317,9 +317,9 @@ function _renderCoachCompanion(p = {}) {
       <div class="coach-companion-head">
         <div class="coach-avatar live">OD</div>
         <div>
-          <span>ODIE canli</span>
+          <span>ODIE notu</span>
           <strong>${_escapeHtml(presence.headline)}</strong>
-          <small>${_escapeHtml(presence.moodLabel)} / ${_escapeHtml(presence.dataConfidence)}% veri netligi</small>
+          <small>${_escapeHtml(presence.moodLabel)} / ${_escapeHtml(presence.dataConfidence)}% iz netligi</small>
         </div>
       </div>
       <p>${_escapeHtml(presence.chatLine)}</p>

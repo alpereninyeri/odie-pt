@@ -5,7 +5,7 @@ const UI_LABELS = {
   risk: 'Dikkat',
   source: 'Defter',
   pulse: 'Son iz',
-  confidence: 'Okuma netligi',
+  confidence: 'Iz netligi',
   command: 'Bugunun Rotasi',
   class: 'Karakter Tipi',
   focus: 'Bugunku Odak',

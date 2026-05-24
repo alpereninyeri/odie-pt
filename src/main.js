@@ -598,7 +598,7 @@ function renderOdieLiveCard(presence = {}, { compact = false, action = true } = 
         <div>
           <span>ODIE Live</span>
           <strong>${escapeHtml(presence.headline || 'ODIE izleri okuyor')}</strong>
-          <small>${escapeHtml(presence.moodLabel || 'canli mod')} / ${escapeHtml(presence.dataConfidence ?? '--')}% veri netligi</small>
+          <small>${escapeHtml(presence.moodLabel || 'canli mod')} / ${escapeHtml(presence.dataConfidence ?? '--')}% iz netligi</small>
         </div>
       </div>
       <p>${escapeHtml(presence.chatLine || presence.hudLine || '')}</p>
@@ -843,7 +843,7 @@ function getVitalOsModel(state = {}, bodyMapState = null, nextSession = null) {
     risk,
     rings: [
       { key: 'load', label: 'Yuk', value: load, reverse: true, detail: summary?.steps ? `${Math.round(summary.steps).toLocaleString('tr-TR')} adim` : `${Math.round(state.profile?.fatigue || 0)} yorgunluk` },
-      { key: 'recovery', label: 'Toparlanma', value: recovery, detail: `${readinessConfidence} guven` },
+      { key: 'recovery', label: 'Onarim', value: recovery, detail: `${readinessConfidence} iz` },
       { key: 'sleep', label: 'Uyku', value: sleep, detail: summary?.totalSleepHours ? `${Number(summary.totalSleepHours).toFixed(1)} saat` : 'izin bekliyor' },
       { key: 'heart', label: 'Kalp', value: heart, detail: summary?.hrvSdnn ? `HRV ${Math.round(summary.hrvSdnn)} / RHR ${Math.round(summary.restingHeartRate || 0)}` : 'nabiz bekliyor' },
     ],
@@ -856,7 +856,7 @@ function renderVitalPulsePanel(state, bodyMapState, nextSession = null) {
     <div class="vital-pulse-panel">
       <div class="vital-pulse-head">
         <span>Karakter Odasi</span>
-        <strong>${model.dataConfidence}% okuma netligi</strong>
+        <strong>${model.dataConfidence}% iz netligi</strong>
       </div>
       <div class="vital-ring-grid">
         ${model.rings.map(renderVitalRing).join('')}
@@ -1005,7 +1005,8 @@ function buildHunterRewardChips(nextSession = {}, bodyMapState = {}, latestWorko
   }
   for (const part of bodyMapState?.xpPreview?.parts || []) {
     if (chips.length >= 3) break
-    chips.push({ label: `+${Math.round(part.value)} ${part.label}`, tone: 'xp' })
+    const label = cozyDisplayText(part.label || 'XP').replace(/\bXP\b/gi, 'iz')
+    chips.push({ label: `+${Math.round(part.value)} ${compactText(label, 16)}`, tone: 'xp' })
   }
   for (const cap of nextSession.progressionCaps || []) {
     if (chips.length >= 3) break
@@ -1132,19 +1133,19 @@ function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {},
     : summarizeUnlockHint(nextUnlock, profile.skills || []) || 'acilim takipte'
 
   return `
-    <section class="game-day-screen tone-${nextSession.tone || arc.decision.tone || 'calm'}" style="--xp-pct:${xpPct}%">
+    <section class="game-day-screen cozy-today-screen tone-${nextSession.tone || arc.decision.tone || 'calm'}" style="--xp-pct:${xpPct}%">
       <div class="game-night-grain" aria-hidden="true"></div>
 
       <header class="game-topbar">
         <button class="game-player-tag" data-action="open-avatar" aria-label="Profili ac">
           <span class="game-face" aria-hidden="true"></span>
           <span>
-            <span>Day ${escapeHtml(profile.level || 1)}</span>
+            <span>Gun ${escapeHtml(profile.level || 1)}</span>
             <strong>${escapeHtml(profile.nick || 'Oyuncu')}</strong>
           </span>
         </button>
         <div class="game-meter-mini">
-          <span>Rank</span>
+          <span>Rutbe</span>
           <strong>${escapeHtml(arc.rank)}</strong>
         </div>
         <div class="game-meter-mini live">
@@ -1199,8 +1200,6 @@ function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {},
           <button class="game-ghost-btn" type="button" data-tab="quests">Panoyu ac</button>
         </div>
       </article>
-
-      ${renderHunterQuestLane({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout })}
 
       <footer class="game-logbook">
         <span>Sonraki acilim</span>
@@ -1560,18 +1559,18 @@ const EXPLAINERS = {
     ],
   },
   'session-detail': {
-    title: 'Seans Detayi',
-    summary: 'Kaydedilen antrenmanin ham veriye en yakin ozeti.',
+    title: 'Seans Defteri',
+    summary: 'Kaydedilen antrenmanin deftere en yakin ozeti.',
     bullets: [
       'Sure, yuk, set, XP, PR ve defter burada birlikte gorunur.',
       'Bloklar egzersizlerin hangi hatta yazildigini gosterir.',
     ],
   },
   'stat-delta': {
-    title: 'Stat Delta',
-    summary: 'Bu seansin STR/AGI/END/DEX/CON/STA tarafina yazdigi etkidir.',
+    title: 'Stat Izi',
+    summary: 'Bu seansin STR/AGI/END/DEX/CON/STA tarafina yazdigi kisa izdir.',
     bullets: [
-      'Delta tek seans etkisidir; toplam stat kalibrasyonu tum gecmise bakar.',
+      'Tek seans izi kucuktur; toplam rank tum gecmise bakar.',
     ],
   },
   bloklar: {
@@ -2449,17 +2448,18 @@ function escapeHtml(value = '') {
 
 function renderCharacterPage(state, profile, semantic, ui = buildUiRuntime(state, profile, semantic)) {
   return `
-    <section class="character-page hunter-character-page">
+    <section class="character-page hunter-character-page cozy-character-page">
       ${renderHunterCharacterArc(state, profile, semantic, ui)}
       ${renderCharacterArena(state, profile, semantic, ui)}
-      ${renderHealthBridgeCard(state)}
-      ${renderPortraitBanner(state, profile)}
-      ${renderTrioCards(state, profile, semantic)}
       ${renderCalibrationCallout(profile)}
-      ${renderStatGridPixel(state, profile)}
-      ${renderStatRadar(state, profile)}
-      ${renderSkillTreePixel(profile)}
-      ${renderQuestPixel(profile)}
+      <article class="cozy-stat-dock-card">
+        <div class="game-lane-head">
+          <h3>Stat tohumlari</h3>
+          <span>6 iz</span>
+        </div>
+        ${renderHunterStatDock(getFrontStats(state, profile))}
+      </article>
+      ${renderTrioCards(state, profile, semantic)}
       <article class="glass-card recovery-pixel">
         <div class="section-top">
           <div>
@@ -2550,7 +2550,7 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
           <p>L${escapeHtml(profile.level || 1)} / ${escapeHtml(rank)} / ${escapeHtml(className)}</p>
         </div>
         <button class="vital-os-confidence" data-action="open-health-shortcut">
-          <span>Veri Netligi</span>
+          <span>Iz Netligi</span>
           <strong>${model.dataConfidence}%</strong>
         </button>
       </header>
@@ -2595,9 +2595,9 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
           action: 'open-unlock',
         })}
         ${renderMirogluCommandCard({
-          label: 'XP Nereden Gelir?',
+          label: 'XP izi',
           title: bodyMapState?.xpPreview?.text || `XP ${xpCur}/${xpMax}`,
-          detail: 'Antrenman, hareket, uyku onarimi, kalp stabilitesi ve gorev bagli.',
+          detail: 'Temiz kayit, uyku, hareket ve gorev birlikte sayilir.',
           tone: 'xp',
         })}
       </div>
@@ -2806,7 +2806,7 @@ function renderStatPixelCard(stat, latestDelta = {}) {
           <span class="pixel-label">${stat.label}</span>
           <strong>${escapeHtml(rank)}${critFlag}${upFlag}</strong>
         </div>
-        <div class="stat-rank-meta">${escapeHtml(confidenceLabel)} / ham ${val}</div>
+        <div class="stat-rank-meta">${escapeHtml(confidenceLabel)} / temel ${val}</div>
         <div class="pix-bar pix-bar-thin"><div class="pix-bar-fill ${stat.critical ? 'red' : ''}" style="width:${val}%"></div></div>
       </div>
     </button>
@@ -3021,7 +3021,7 @@ function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, pr
   const arc = buildHunterArc({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout })
 
   return `
-    <section class="quest-arc-page">
+    <section class="quest-arc-page cozy-quest-page">
       <article class="quest-arc-hero tone-${escapeHtml(nextSession.tone || arc.decision.tone || 'calm')}">
         <div class="quest-arc-head">
           <span class="quest-arc-mark">${renderHunterIcon('target')}</span>
@@ -3049,7 +3049,6 @@ function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, pr
         ${renderHunterRewardChips(nextSession, bodyMapState, latestWorkout)}
       </article>
       ${renderHunterQuestLane({ state, profile, nextSession, bodyMapState, activeQuest, latestWorkout })}
-      ${renderQuestPixel(profile)}
     </section>
   `
 }
@@ -3096,9 +3095,8 @@ function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state
   }
 
   return `
-    <section class="odie-page">
+    <section class="odie-page cozy-odie-page">
       ${renderOdieCommandRoom(state, profile, nextSession, ui.bodyMapState)}
-      ${renderOdieHallmark(nextSession)}
       <div class="odie-switcher">
         <button class="odie-switcher-btn ${odieMode === 'coach' ? 'active' : ''}" data-odie-mode="coach">YORUM</button>
         <button class="odie-switcher-btn ${odieMode === 'ask' ? 'active' : ''}" data-odie-mode="ask">SOR</button>
@@ -3170,7 +3168,7 @@ function renderOdieCommandRoom(state, profile, nextSession = {}, bodyMapState = 
       ${renderOdieMemoryChips(presence.memoryCards || [])}
 
       <div class="odie-room-signals">
-        <span>${renderExplainButton('hevy-live', `HEVY ${latestHevy}`, 'explain-link metric-explain')}</span>
+        <span>${renderExplainButton('hevy-live', `Son kayit ${latestHevy}`, 'explain-link metric-explain')}</span>
         <span>${renderExplainButton('confidence', `${uiLabel('confidence')} ${confidenceLabel}`, 'explain-link metric-explain')}</span>
         <span>${escapeHtml(cozyDisplayText(warning))}</span>
       </div>
@@ -3435,7 +3433,7 @@ function openHealthShortcutModal() {
         </div>
       </section>
 
-      <div class="modal-coach">ODIE ham veriyi hafiza coplugune yazmaz. Ham Apple verisi ledger'da kalir; hafizaya sadece "az uyku PR'i dusuruyor" gibi anlamli pattern girer.</div>
+      <div class="modal-coach">ODIE her ayrintiyi hafizaya doldurmaz. Apple kaydi defterde kalir; hafizaya sadece "az uyku PR'i dusuruyor" gibi anlamli izler girer.</div>
     </div>
   `)
 }

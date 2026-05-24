@@ -174,7 +174,7 @@ export function openStatModal(stat) {
   const rank = stat.rank || 'F'
   const progress = Math.round(Number(stat.progressToNext) || 0)
   const confidence = confidenceLabel(stat.confidence)
-  const rawScore = Math.round(Number(stat.rawVal ?? stat.val) || 0)
+  const baseScore = Math.round(Number(stat.rawVal ?? stat.val) || 0)
   openDetailModal({
     icon: stat.label || stat.key || 'ST',
     title: `${stat.name} Kaydi`,
@@ -187,8 +187,8 @@ export function openStatModal(stat) {
       <div class="modal-coach">${cozyModalText(stat.coach)}</div>
       ${renderModalGrid([
         { label: 'Rank ici ilerleme', value: `${progress}%` },
-        { label: 'Guven', value: confidence },
-        { label: 'Ham skor', value: `${rawScore}/100` },
+        { label: 'Iz netligi', value: confidence },
+        { label: 'Temel puan', value: `${baseScore}/100` },
         { label: 'S Rank kapisi', value: stat.sUnlocked ? 'acik' : 'kanit bekliyor' },
       ])}
       ${renderModalGrid((stat.detail || []).map(detail => ({
@@ -196,7 +196,7 @@ export function openStatModal(stat) {
         value: cozyModalText(detail.val),
         pillClass: `grade-pill ${gradePillClass(detail.val)}`,
       })))}
-      <div class="modal-tip">Oyun notu: Ana okuma ranktir; 0-100 ham skor sadece hesaplama ve radar icin tutulur.</div>
+      <div class="modal-tip">Oyun notu: Ana isaret ranktir; 0-100 temel puan sadece arka defter hesabi icin tutulur.</div>
     `,
   })
 }
