@@ -53,8 +53,8 @@ function hasTag(workout = {}, tag) {
 
 function buildBalance(workouts = []) {
   const totals = {
-    push: { key: 'push', label: 'Push', sets: 0 },
-    pull: { key: 'pull', label: 'Pull', sets: 0 },
+    push: { key: 'push', label: 'Gogus', sets: 0 },
+    pull: { key: 'pull', label: 'Sirt', sets: 0 },
     legs: { key: 'legs', label: 'Bacak', sets: 0 },
     core: { key: 'core', label: 'Core', sets: 0 },
   }
@@ -121,7 +121,7 @@ function buildSourceHealth(workouts = [], profile = {}, health = {}) {
     lastSync,
     label: hevy.length || appleHealth.length || appleSleepLinked || appleHeartLinked
       ? `Hevy ${hevy.length} / Apple workout ${appleHealth.length} / uyku ${appleSleepLinked ? 'var' : 'yok'} / kalp ${appleHeartLinked ? 'var' : 'yok'}`
-      : 'Canli kaynak bekliyor',
+      : 'Kayit bekliyor',
   }
 }
 
@@ -150,13 +150,13 @@ function commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hours
   const injuryLine = injuryPrefix(injury)
   const prefix = [appleLine, injuryLine].filter(Boolean).join(' ')
   if (goalKey === 'recovery') {
-    return `${prefix ? `${prefix} ` : ''}Bugun agir yuk yok. 30 dk yuruyus + 10 dk mobilite yap; kalkan ${Math.round(armor)} ustune cikana kadar ritmi koru.`
+    return `${prefix ? `${prefix} ` : ''}Bugun agir yuk yok. 30 dk yuruyus + 10 dk mobilite yap; can ${Math.round(armor)} ustune cikana kadar sakin git.`
   }
   if (goalKey === 'sleep-recovery') {
-    return `${prefix ? `${prefix} ` : ''}Uyku kalkani zayif. Bugun rekor kovalamiyoruz; 25 dk rahat yuruyus, 10 dk mobilite ve erken kapanis.`
+    return `${prefix ? `${prefix} ` : ''}Uyku zayif. Bugun rekor yok; 25 dk rahat yuruyus, 10 dk mobilite ve erken kapanis.`
   }
   if (goalKey === 'heart-calm') {
-    return `${prefix ? `${prefix} ` : ''}Kalp/HRV temkinli. Nabzi yormadan hareket et: 20-30 dk kolay tempo, 8 dk nefes ve mobilite.`
+    return `${prefix ? `${prefix} ` : ''}Kalp/HRV dusuk. Nabzi yormadan hareket et: 20-30 dk kolay tempo, 8 dk nefes ve mobilite.`
   }
   if (goalKey === 'strain-drain') {
     return `${prefix ? `${prefix} ` : ''}Gun ici yuk zaten dolu. Bacakta agir PR yok; ayak bilegi, kalf ve kalca bakimini temiz kapat.`
@@ -214,7 +214,7 @@ export function buildNextSessionRecommendation({
 
   if (latest) evidence.push(`Son seans: ${String(latest.source || '').toLowerCase() === 'hevy' ? 'Hevy' : latest.source || 'Manual'} / ${latest.type || 'seans'} / ${latest.durationMin || latest.duration_min || 0} dk`)
   evidence.push(`Ritim: 14 gunde ${recent14.length} seans, 30 gunde ${recent30.length} seans`)
-  evidence.push(`Hazir ${Math.round(readiness)}, kalkan ${Math.round(armor)}, kas yorgunlugu ${Math.round(fatigue)}${systemFatigue != null ? `, sistem yorgunlugu ${Math.round(systemFatigue)}` : ''}`)
+  evidence.push(`Hazir ${Math.round(readiness)}, can ${Math.round(armor)}, kas yorgunlugu ${Math.round(fatigue)}${systemFatigue != null ? `, genel yorgunluk ${Math.round(systemFatigue)}` : ''}`)
   if (sleepScore != null) evidence.push(`Uyku: skor ${Math.round(sleepScore)} / ${Number(dailySummary?.totalSleepHours || 0).toFixed(1)}s`)
   if (heartScore != null) evidence.push(`Kalp: skor ${Math.round(heartScore)} / HRV ${Math.round(Number(dailySummary?.hrvSdnn) || 0)} / RHR ${Math.round(Number(dailySummary?.restingHeartRate) || 0)}`)
   if (strainScore != null) evidence.push(`Gun yuku: ${Math.round(strainScore)} / adim ${Math.round(Number(dailySummary?.steps) || 0)}`)
@@ -247,24 +247,24 @@ export function buildNextSessionRecommendation({
   } else if (sleepScore != null && sleepScore < 45) {
     goalKey = 'sleep-recovery'
     tone = 'warn'
-    title = 'Kalkani Onar'
-    subtitle = 'Uyku borcu bugunun tavanini dusuruyor.'
+    title = 'Can topla'
+    subtitle = 'Uyku az; bugun tavan dusuk.'
     blocks = [
-      buildBlock('locomotion', 'Kolay hareket', '20-30 dk', 'Uyku dusukken kan dolasimi yeter; ego seti yok.', 'easy'),
-      buildBlock('mobility', 'Erken kapanis', '10 dk', 'Kalkan uykuyla onarilir, bugun sistemi yormuyoruz.', 'easy'),
+      buildBlock('locomotion', 'Kolay hareket', '20-30 dk', 'Uyku dusukken hafif hareket yeter.', 'easy'),
+      buildBlock('mobility', 'Erken kapanis', '10 dk', 'Bugun sistemi yormuyoruz.', 'easy'),
     ]
-    progressionCaps.push('Uyku kalkani donmeden PR bonusu kilitli.')
-    warnings.push(`Uyku skoru ${Math.round(sleepScore)}; agir yuk bugun temkinli.`)
+    progressionCaps.push('Uyku toparlanmadan PR yok.')
+    warnings.push(`Uyku skoru ${Math.round(sleepScore)}; agir yuk bugun dikkat.`)
   } else if (heartScore != null && heartScore < 45) {
     goalKey = 'heart-calm'
     tone = 'warn'
     title = 'Sakin Gun'
-    subtitle = 'Kalp/HRV sinyali bugun ritmi kisiyor.'
+    subtitle = 'Kalp/HRV bugun tempoyu kisiyor.'
     blocks = [
       buildBlock('locomotion', 'Dusuk nabiz hareket', '20-30 dk', 'HRV/RHR temkinli; nabiz kovalamiyoruz.', 'easy'),
-      buildBlock('breath', 'Nefes + mobilite', '8-10 dk', 'Sistem yorgunlugunu azaltan en temiz yol.', 'easy'),
+      buildBlock('breath', 'Nefes + mobilite', '8-10 dk', 'Yorgunlugu azaltan en temiz yol.', 'easy'),
     ]
-    progressionCaps.push('Nabiz sinyali toparlanana kadar agir interval ve PR yok.')
+    progressionCaps.push('Nabiz toparlanana kadar agir interval ve PR yok.')
     warnings.push(`Kalp skoru ${Math.round(heartScore)}; sinir sistemi temkinli okunuyor.`)
   } else if (strainScore != null && strainScore >= 72) {
     goalKey = 'strain-drain'
@@ -281,10 +281,10 @@ export function buildNextSessionRecommendation({
     goalKey = 'recovery'
     tone = 'danger'
     title = 'Toparlanma Gunu'
-    subtitle = 'Bugun agir yuk degil, vucudu yeniden kur.'
+    subtitle = 'Bugun agir yuk degil, toparlanma.'
     blocks = [
       buildBlock('locomotion', 'Hafif yuruyus', '25-35 dk', 'Yorgunluk yuksek; kan dolasimi yeter.', 'easy'),
-      buildBlock('mobility', 'Mobilite + nefes', '10 dk', 'Kalkan toparlanmadan agir yuk riskli.', 'easy'),
+      buildBlock('mobility', 'Mobilite + nefes', '10 dk', 'Can dusukken agir yuk riskli.', 'easy'),
     ]
     progressionCaps.push('Agirlik artisi yok, PR denemesi yok.')
     warnings.push(`Yorgunluk ${Math.round(effectiveFatigue)}; agir seans bugun kilitli.`)
@@ -327,7 +327,7 @@ export function buildNextSessionRecommendation({
 
   if (activeFeedbackRisk) warnings.push('Bazi eski ODIE yorumlari isaretlenmis; bugun daha temkinli okuyorum.')
   if (activeInjury) warnings.unshift(activeInjury.odieInterpretation?.command || activeInjury.note || `${activeInjury.label || 'Sakatlik'} temkinde.`)
-  if (!sourceHealth.hevyCount) warnings.push('Son kayitlarda Hevy yok; sync hattini kontrol etmek iyi olur.')
+  if (!sourceHealth.hevyCount) warnings.push('Son kayitlarda Hevy yok; eslemeyi kontrol etmek iyi olur.')
 
   const confidence = clamp(
     42

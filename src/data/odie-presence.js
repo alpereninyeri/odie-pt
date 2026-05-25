@@ -1,4 +1,5 @@
 import { formatMonthShort, getLocalDateString, normalizeDateString } from './rules.js'
+import { plainCopyText } from './ui-copy.js'
 
 function clamp(value, min = 0, max = 100) {
   const numeric = Number(value)
@@ -40,7 +41,7 @@ function daysSince(dateValue, today = getLocalDateString()) {
 }
 
 function cozyTrainingLabel(value = '') {
-  return String(value || 'seans')
+  const localized = String(value || 'seans')
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
     .replace(/\bbuild\w*\b/gi, 'rota')
@@ -53,6 +54,7 @@ function cozyTrainingLabel(value = '') {
     .replace(/\bMobility\b/gi, 'Mobilite')
     .replace(/\bGlobal\b/gi, 'Genel')
     .replace(/\bClass\b/gi, 'Sinif')
+  return plainCopyText(localized)
 }
 
 function formatWorkout(workout = null) {
@@ -160,28 +162,28 @@ function routineLine({ latestWorkout, summary, today, sources }) {
     const age = daysSince(latestWorkout.date, today)
     const source = String(latestWorkout.source || '').toLowerCase()
     if (source === 'apple_health') {
-      return `${formatWorkout(latestWorkout)} kaydi yasam yukune yazildi; bunu sadece kardiyo diye gecmiyorum.`
+      return `${formatWorkout(latestWorkout)} kaydi gunluk yuke eklendi.`
     }
-    if (age === 0) return `${formatWorkout(latestWorkout)} bugun geldi; karar motoru bunu canli okuyor.`
-    if (age === 1) return `${formatWorkout(latestWorkout)} dun geldi; bugun etkisi hala masada.`
-    return `${formatWorkout(latestWorkout)} ${age} gun onceydi; yeni veri gelene kadar temkinli okuyorum.`
+    if (age === 0) return `${formatWorkout(latestWorkout)} bugun geldi.`
+    if (age === 1) return `${formatWorkout(latestWorkout)} dun geldi; bugun etkisi var.`
+    return `${formatWorkout(latestWorkout)} ${age} gun onceydi; yeni kayit gelene kadar sakin gidiyoruz.`
   }
   if (summary?.steps || summary?.totalSleepHours) {
     return `Bugun ${Math.round(Number(summary.steps) || 0).toLocaleString('tr-TR')} adim ve ${Math.round((Number(summary.totalSleepHours) || Number(summary.sleepHours) || 0) * 10) / 10}s uyku var.`
   }
-  if (!sources.schemaReady) return 'Health ledger hazir degil; migration acilinca Apple uyku, kalp ve hareket karar motoruna dusecek.'
-  return 'Hevy, Apple ve manuel kayit bekleniyor; veri geldikce dilim de sertlesir.'
+  if (!sources.schemaReady) return 'Health kurulumu hazir degil; acilinca uyku, kalp ve hareket karta dusecek.'
+  return 'Hevy, Apple veya manuel kayit bekleniyor.'
 }
 
 function chooseMood({ readiness, summary, injury, latestWorkout }) {
-  if (injury) return { key: 'guard', label: 'temkin modu', tone: 'warn' }
-  if (Number(summary?.sleepScore) > 0 && Number(summary.sleepScore) < 42) return { key: 'sleep', label: 'kalkan onarimi', tone: 'warn' }
+  if (injury) return { key: 'guard', label: 'dikkat', tone: 'warn' }
+  if (Number(summary?.sleepScore) > 0 && Number(summary.sleepScore) < 42) return { key: 'sleep', label: 'uyku zayif', tone: 'warn' }
   if (Number(summary?.heartScore) > 0 && Number(summary.heartScore) < 42) return { key: 'calm', label: 'sakin gun', tone: 'danger' }
   if (Number(summary?.strainScore) > 78) return { key: 'strain', label: 'gun yuku fazla', tone: 'warn' }
-  if (readiness != null && readiness >= 78) return { key: 'ready', label: 'seans acilir', tone: 'fire' }
-  if (readiness != null && readiness >= 58) return { key: 'steady', label: 'kontrollu tempo', tone: 'calm' }
-  if (latestWorkout) return { key: 'read', label: 'baglam okunuyor', tone: 'calm' }
-  return { key: 'listening', label: 'veri bekliyor', tone: 'muted' }
+  if (readiness != null && readiness >= 78) return { key: 'ready', label: 'seans hazir', tone: 'fire' }
+  if (readiness != null && readiness >= 58) return { key: 'steady', label: 'normal tempo', tone: 'calm' }
+  if (latestWorkout) return { key: 'read', label: 'kayit geldi', tone: 'calm' }
+  return { key: 'listening', label: 'kayit bekliyor', tone: 'muted' }
 }
 
 function buildTalk({ mood, readiness, summary, latestWorkout, injury, nextSession, bodyMapState }) {
@@ -189,27 +191,27 @@ function buildTalk({ mood, readiness, summary, latestWorkout, injury, nextSessio
   if (injury) {
     const recovery = injury.recoveryPct != null ? `%${Math.round(Number(injury.recoveryPct) || 0)} toparlandi` : 'temkin aktif'
     const days = injury.etaDays != null ? `, ${Math.round(Number(injury.etaDays) || 0)} gun daha` : ''
-    return `Bilek/bolge kaydi ${recovery}${days}. Bugun agir grip ve ego setini kilitliyorum; puan guvenli secimden gelir.`
+    return `Bilek/bolge ${recovery}${days}. Bugun agir grip yok; guvenli hareket yeter.`
   }
   if (mood.key === 'sleep') {
-    return `Uyku kalkanin ince. Bugun buyuk kahramanlik degil; 25-35 dk hafif hareket, mobilite ve erken kapanis daha akilli.`
+    return `Uyku zayif. Bugun 25-35 dk hafif hareket, mobilite ve erken kapanis daha iyi.`
   }
   if (mood.key === 'calm') {
-    return `Kalp sinyali sakin gun diyor. Nabiz/HRV tarafini zorlamadan teknik tekrar, yuruyus ve nefes isini onde tutuyoruz.`
+    return `Kalp dusuk. Nabzi zorlamadan teknik tekrar, yuruyus ve nefes onde.`
   }
   if (mood.key === 'strain') {
-    return `Gunluk hareket yuku yuksek. ${latestWorkout ? formatWorkout(latestWorkout) : 'Aktivite'} ustune agir PR koymak yerine kalf, ayak bilegi ve core bakimi daha iyi.`
+    return `Gunluk hareket yuksek. ${latestWorkout ? formatWorkout(latestWorkout) : 'Aktivite'} ustune agir PR yerine kalf, ayak bilegi ve core bakimi daha iyi.`
   }
   if (readiness != null && readiness >= 78) {
-    return `Hazirlik ${readiness}. ${goalTitle} acilir ama yine de son seti temiz formda birakiyoruz; bugun akilli artis gunu.`
+    return `Hazirlik ${readiness}. ${goalTitle} acilir; son set temiz kalsin.`
   }
   if (readiness != null && readiness >= 58) {
-    return `Hazirlik ${readiness}. Seans var, ama ben bunu kontrollu tempo diye okuyorum; once form, sonra kilo.`
+    return `Hazirlik ${readiness}. Seans var; once form, sonra kilo.`
   }
   if (summary) {
-    return `Apple verisi iceri giriyor: uyku ${Math.round(Number(summary.sleepScore) || 0)}, kalp ${Math.round(Number(summary.heartScore) || 0)}, yuk ${Math.round(Number(summary.strainScore) || 0)}. Simdi ODIE sadece Hevy'ye bakmiyor.`
+    return `Apple kaydi geldi: uyku ${Math.round(Number(summary.sleepScore) || 0)}, kalp ${Math.round(Number(summary.heartScore) || 0)}, yuk ${Math.round(Number(summary.strainScore) || 0)}.`
   }
-  return 'Seni tanimaya devam ediyorum. Hevy, Apple ve manuel notlar geldikce cevaplar daha az panel, daha cok yaninda konusan koc gibi olacak.'
+  return 'Kayit geldikce cevaplar daha net olacak.'
 }
 
 function buildMemoryCards(state = {}) {
@@ -237,7 +239,7 @@ function buildQuickPrompts({ summary, latestWorkout, injury, bodyMapState }) {
   if (injury) prompts.push('Bilek temkiniyle bugun hangi hareketleri kesiyoruz?')
   if (summary?.totalSleepHours || summary?.sleepScore) prompts.push('Uyku ve HRV bugunku seansi nasil degistiriyor?')
   if (latestWorkout?.source === 'apple_health') prompts.push('Bu yuruyus bugunku yorgunluk ve XP hesabina nasil giriyor?')
-  if (bodyMapState?.dailyQuest?.name) prompts.push(`${bodyMapState.dailyQuest.name} gorevi hangi acilima yaklastirir?`)
+  if (bodyMapState?.dailyQuest?.name) prompts.push(`${bodyMapState.dailyQuest.name} gorevi neye yaklastirir?`)
   prompts.push('Bu hafta beni en hizli ne gelistirir, neyi abartmayalim?')
   return [...new Set(prompts)].slice(0, 4)
 }
@@ -278,12 +280,12 @@ export function buildOdiePresence({
     tone: mood.tone,
     moodLabel: mood.label,
     headline: mood.key === 'ready'
-      ? 'ODIE seansi aciyor'
+      ? 'Seans hazir'
       : mood.key === 'guard'
-        ? 'ODIE frene basti'
+        ? 'Dikkat'
         : mood.key === 'listening'
-          ? 'ODIE veri bekliyor'
-          : 'ODIE izleri okuyor',
+          ? 'Kayit bekliyor'
+          : 'Durum hazir',
     hudLine: talk,
     chatLine: talk,
     routineLine: routine,

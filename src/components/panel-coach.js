@@ -1,5 +1,6 @@
 import { store } from '../data/store.js'
 import { buildOdiePresence } from '../data/odie-presence.js'
+import { plainCopyText } from '../data/ui-copy.js'
 
 let _token = 0
 
@@ -17,7 +18,7 @@ function _escapeHtml(value = '') {
 }
 
 function _cozyTrainingLabel(value = '') {
-  return String(value || '-')
+  const localized = String(value || '-')
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
@@ -51,6 +52,7 @@ function _cozyTrainingLabel(value = '') {
     .replace(/\bODIE note stale or lagging behind current rota\b/gi, 'ODIE notu eski kaldi')
     .replace(/\bODIE tone and framing preferred by athlete\b/gi, 'ODIE tonu iyi bulundu')
     .replace(/\bDrill\b/gi, 'Teknik parca')
+  return plainCopyText(localized)
 }
 
 function _compactCoachText(value = '', max = 58) {
@@ -164,8 +166,8 @@ function _renderSurvivalConsole(p) {
     <section class="survival-console">
       <div class="section-top">
         <div>
-          <div class="eyebrow">${_explain('survival-console', 'Durum Hatti', 'explain-link eyebrow-explain')}</div>
-          <h3>${_explain('survival-console', 'Yorgunluk, toparlanma ve risk ozeti', 'explain-link explain-heading')}</h3>
+          <div class="eyebrow">${_explain('survival-console', 'Durum', 'explain-link eyebrow-explain')}</div>
+          <h3>${_explain('survival-console', 'Yorgunluk ve dikkat', 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${p.sessions || 0} seans</span>
@@ -175,7 +177,7 @@ function _renderSurvivalConsole(p) {
 
       <div class="survival-console-grid">
         <div class="survival-console-main">
-          ${_meter('Kalkan', armor, armor <= 35 ? 'injury' : armor <= 60 ? 'fatigue' : 'armor', 'armor')}
+          ${_meter('Can', armor, armor <= 35 ? 'injury' : armor <= 60 ? 'fatigue' : 'armor', 'armor')}
           ${_meter('Yorgunluk', fatigue, fatigue >= 70 ? 'injury' : 'fatigue', 'fatigue')}
         </div>
 
@@ -187,7 +189,7 @@ function _renderSurvivalConsole(p) {
           </div>
           ${(warnings.length ? warnings : ['Aktif dikkat uyarisi yok.']).slice(0, 3).map(item => `
             <div class="survival-warning-card ${warnings.length ? 'warn' : ''}">
-              <span class="mini-label">${_explain('field-note', 'Saha Notu')}</span>
+              <span class="mini-label">${_explain('field-note', 'Not')}</span>
               <strong>${_escapeHtml(_cozyTrainingLabel(item))}</strong>
             </div>
           `).join('')}
@@ -212,7 +214,7 @@ function _renderCoachConfidence(p) {
     : [
       factRows.length ? `${factRows.length} seans izi` : null,
       blockCount ? `${blockCount} calisma blogu` : null,
-      latestWorkout?.source === 'hevy' ? 'Hevy defteri' : null,
+      latestWorkout?.source === 'hevy' ? 'Hevy kaydi' : null,
     ].filter(Boolean)
   ).slice(0, 3)
   const blockMix = (latestWorkout?.blockMix || []).slice(0, 3)
@@ -222,11 +224,11 @@ function _renderCoachConfidence(p) {
       <div class="coach-confidence-surface compact">
         <div class="coach-memory-head">
           <div>
-            <div class="eyebrow">${_explain('session-reading', 'Seans Defteri', 'explain-link eyebrow-explain')}</div>
-            <h3>${_explain('session-reading', 'Yeni seans geldikce burasi dolacak', 'explain-link explain-heading')}</h3>
+            <div class="eyebrow">${_explain('session-reading', 'Seans Kaydi', 'explain-link eyebrow-explain')}</div>
+            <h3>${_explain('session-reading', 'Yeni seans gelince dolar', 'explain-link explain-heading')}</h3>
           </div>
         </div>
-        <div class="coach-memory-empty">ODIE yeni seans geldiginde ne kadar net okudugunu ve neye dayandigini burada gosterecek.</div>
+        <div class="coach-memory-empty">Yeni seans gelince neye dayandigini burada gosterir.</div>
       </div>
     `
   }
@@ -235,12 +237,12 @@ function _renderCoachConfidence(p) {
     <div class="coach-confidence-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">${_explain('session-reading', 'Seans Defteri', 'explain-link eyebrow-explain')}</div>
-          <h3>${_explain('session-reading', "ODIE'nin okudugu iz", 'explain-link explain-heading')}</h3>
+          <div class="eyebrow">${_explain('session-reading', 'Seans Kaydi', 'explain-link eyebrow-explain')}</div>
+          <h3>${_explain('session-reading', 'Son seans', 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${_explain('confidence', _confidenceLabel(confidenceLevel))}</span>
-          <span class="coach-pill">${confidenceScore}/100 ${_explain('confidence', 'okuma')}</span>
+          <span class="coach-pill">${confidenceScore}/100 ${_explain('confidence', 'durum')}</span>
         </div>
       </div>
 
@@ -261,9 +263,9 @@ function _renderCoachConfidence(p) {
         </div>
       </div>
 
-      <div class="mini-label">${_explain('evidence', 'Bakilan Izler')}</div>
+      <div class="mini-label">${_explain('evidence', 'Bakilan Notlar')}</div>
       <div class="coach-confidence-reasons">
-        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${_escapeHtml(_cozyTrainingLabel(reason))}</span>`).join('') : '<span class="coach-memory-empty">Daha iyi okuma icin set, sure, mesafe veya teknik parca bilgisi yardimci olur.</span>'}
+        ${reasons.length ? reasons.map(reason => `<span class="signal-chip">${_escapeHtml(_cozyTrainingLabel(reason))}</span>`).join('') : '<span class="coach-memory-empty">Daha iyi cevap icin set, sure, mesafe veya teknik not ekle.</span>'}
       </div>
     </div>
   `
@@ -284,8 +286,8 @@ function _renderMemoryLedger(p) {
     <div class="coach-memory-surface">
       <div class="coach-memory-head">
         <div>
-          <div class="eyebrow">${_explain('memory', 'Kalici Notlar', 'explain-link eyebrow-explain')}</div>
-          <h3>${_explain('memory', 'ODIE neyi aklinda tutuyor', 'explain-link explain-heading')}</h3>
+          <div class="eyebrow">${_explain('memory', 'Notlar', 'explain-link eyebrow-explain')}</div>
+          <h3>${_explain('memory', 'Aklinda olanlar', 'explain-link explain-heading')}</h3>
         </div>
         <div class="coach-memory-pills">
           <span class="coach-pill">${memories.length} aktif</span>
@@ -339,7 +341,7 @@ function _renderCoachCompanion(p = {}) {
         <div>
           <span>ODIE notu</span>
           <strong>${_escapeHtml(_compactCoachText(presence.headline, 34))}</strong>
-          <small>${_escapeHtml(_compactCoachText(presence.moodLabel, 18))} / ${_escapeHtml(presence.dataConfidence)}% okuma</small>
+          <small>${_escapeHtml(_compactCoachText(presence.moodLabel, 18))} / ${_escapeHtml(presence.dataConfidence)}% durum</small>
         </div>
       </div>
       <p>${_escapeHtml(_compactCoachText(presence.chatLine, 68))}</p>

@@ -12,7 +12,7 @@ import { renderHeatmap } from './components/heatmap-calendar.js'
 import { initModal, closeModal, openModal, openAvatarModal, openArchetypeModal, openFocusModal, openStatModal, openStatCalibrationModal, openUnlockModal } from './components/modal.js'
 import { injectToastStyles, showToast } from './components/toast.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
-import { goalTitle, riskToneLabel, sourceLabel, uiLabel } from './data/ui-copy.js'
+import { goalTitle, plainCopyText, riskToneLabel, sourceLabel, uiLabel } from './data/ui-copy.js'
 
 const tabs = [
   { key: 'today', label: 'Bugun', icon: 'home' },
@@ -21,8 +21,27 @@ const tabs = [
   { key: 'odie', label: 'ODIE', icon: 'pulse' },
 ]
 
+const todayUiVariants = [
+  { key: 'arena', label: 'Arena' },
+  { key: 'route', label: 'Rota' },
+  { key: 'card', label: 'Kart' },
+]
+
 const requestedTab = new URLSearchParams(window.location.search).get('tab')
+const requestedTodayVariant = new URLSearchParams(window.location.search).get('ui')
+const storedTodayVariant = (() => {
+  try {
+    return localStorage.getItem('odiept-today-variant')
+  } catch {
+    return null
+  }
+})()
 let activeTab = tabs.some(tab => tab.key === requestedTab) ? requestedTab : 'today'
+let activeTodayVariant = todayUiVariants.some(item => item.key === requestedTodayVariant)
+  ? requestedTodayVariant
+  : todayUiVariants.some(item => item.key === storedTodayVariant)
+    ? storedTodayVariant
+    : 'arena'
 let odieMode = 'coach'
 let activeSkillBranch = 0
 let activeQuestTab = 'daily'
@@ -191,9 +210,9 @@ function pageTitle(tabKey, profile) {
     case 'today':
       return `${profile.nick} - Bugun`
     case 'character':
-      return `${profile.nick} Karakter Odasi`
+      return `${profile.nick} Karakter`
     case 'quests':
-      return `${profile.nick} Kasaba Panosu`
+      return `${profile.nick} Gorevler`
     case 'odie':
       return odieMode === 'ask' ? "ODIE'ye Sor" : 'ODIE Notu'
     default:
@@ -305,6 +324,24 @@ const VILLAGE_STAT_NAMES = {
   sta: 'STA',
 }
 
+const HUD_STAT_LABELS = {
+  str: 'Guc',
+  agi: 'Hiz',
+  end: 'Day',
+  dex: 'Bec',
+  con: 'Can',
+  sta: 'Nef',
+}
+
+const HUD_STAT_GLYPHS = {
+  str: '<path d="M4.5 10h2v4h-2zM17.5 10h2v4h-2zM7 8.5h2.2v7H7zM14.8 8.5H17v7h-2.2zM9.2 11h5.6v2H9.2z"/>',
+  agi: '<path d="M13.2 2.8 5.8 13h5.1l-1.7 8.2 8-11h-5.1z"/>',
+  end: '<path d="M8.5 5.2c-2.5 1.5-3.8 4.1-3.8 7.4 0 3.2 1.6 5.6 4.2 6.7 1.2-2.5 1.4-5.2.8-8.2-.4-2-.8-3.9-1.2-5.9Z"/><path d="M15.5 5.2c2.5 1.5 3.8 4.1 3.8 7.4 0 3.2-1.6 5.6-4.2 6.7-1.2-2.5-1.4-5.2-.8-8.2.4-2 .8-3.9 1.2-5.9Z"/><path d="M12 4.6v15.2M9.4 11.6h5.2"/>',
+  dex: '<path d="M12 3.5v4M12 16.5v4M3.5 12h4M16.5 12h4"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.8"/>',
+  con: '<path d="M12 3.4 5.5 6.2v5.4c0 3.9 2.4 6.7 6.5 8 4.1-1.3 6.5-4.1 6.5-8V6.2z"/><path d="M8.8 12.1h6.4M12 8.9v6.4"/>',
+  sta: '<path d="M12.7 2.8c.5 3.2-2.8 4.4-2.8 7 0 1.3.8 2.3 2.1 2.3 1.9 0 2.8-1.8 2.2-3.9 2.9 2.1 4.1 4.4 3.7 7-.4 3-2.8 5.2-5.9 5.2s-5.5-2.1-5.9-5.1c-.4-2.8 1.2-5.1 4.8-7.6.9-.6 1.6-2.1 1.8-4.9Z"/>',
+}
+
 const VILLAGE_GLYPHS = {
   sun: '<circle cx="12" cy="12" r="4.3"/><path d="M12 2.8v2.4M12 18.8v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.8 12h2.4M18.8 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/>',
   shield: '<path d="M12 3.4 5.5 6.2v5.4c0 3.9 2.4 6.7 6.5 8 4.1-1.3 6.5-4.1 6.5-8V6.2z"/><path d="M9 12l2 2 4-4.6"/>',
@@ -351,10 +388,10 @@ function villageIntensityPct(value = 'moderate') {
 function localBalanceLabel(item = {}) {
   const key = String(item.key || '').toLowerCase()
   return ({
-    push: 'Itis',
-    pull: 'Cekis',
+    push: 'Gogus',
+    pull: 'Sirt',
     legs: 'Bacak',
-    core: 'Govde',
+    core: 'Core',
   })[key] || cozyDisplayText(item.label || key || 'Hat')
 }
 
@@ -395,38 +432,38 @@ function buildVillageModel(state = {}, profile = {}, semantic = {}, ui = buildUi
   const sources = [
     {
       key: 'hevy',
-      label: 'HV',
+      label: 'Hevy',
       icon: 'hevy',
       lit: Boolean(sourceHealth.hevyCount || String(latestWorkout?.source || '').toLowerCase() === 'hevy'),
-      detail: sourceHealth.latestHevyDate ? formatMonthShort(sourceHealth.latestHevyDate) : 'uyuyor',
+      detail: sourceHealth.latestHevyDate ? formatMonthShort(sourceHealth.latestHevyDate) : 'bekliyor',
     },
     {
       key: 'sleep',
-      label: 'UY',
+      label: 'Uyku',
       icon: 'spark',
       lit: Boolean(sourceHealth.appleSleepLinked || healthSummary?.sleepScore || healthSummary?.totalSleepHours || dailyLog.sleepHours),
-      detail: healthSummary?.totalSleepHours ? `${Number(healthSummary.totalSleepHours).toFixed(1)}s` : dailyLog.sleepHours ? `${Number(dailyLog.sleepHours).toFixed(1)}s` : 'uyuyor',
+      detail: healthSummary?.totalSleepHours ? `${Number(healthSummary.totalSleepHours).toFixed(1)}s` : dailyLog.sleepHours ? `${Number(dailyLog.sleepHours).toFixed(1)}s` : 'bekliyor',
     },
     {
       key: 'heart',
-      label: 'KA',
+      label: 'Kalp',
       icon: 'heart',
       lit: Boolean(sourceHealth.appleHeartLinked || healthSummary?.heartScore || healthSummary?.restingHeartRate),
-      detail: healthSummary?.heartScore ? Math.round(healthSummary.heartScore) : 'uyuyor',
+      detail: healthSummary?.heartScore ? Math.round(healthSummary.heartScore) : 'bekliyor',
     },
     {
       key: 'move',
-      label: 'AD',
+      label: 'Adim',
       icon: 'foot',
       lit: Boolean(sourceHealth.appleActivityLinked || healthSummary?.steps || dailyLog.steps),
       detail: formatCompactMetric(healthSummary?.steps || dailyLog.steps || 0),
     },
     {
       key: 'log',
-      label: 'LG',
+      label: 'Not',
       icon: 'note',
       lit: Boolean(state.dailyLogs?.length || state.athleteMemory?.length || state.memoryFeedback?.length),
-      detail: state.dailyLogs?.length ? `${state.dailyLogs.length} not` : 'uyuyor',
+      detail: state.dailyLogs?.length ? `${state.dailyLogs.length} not` : 'bekliyor',
     },
   ]
 
@@ -500,9 +537,9 @@ function renderVillageSourceBeads(sources = []) {
 
 function renderVillageCompass(model) {
   const rings = [
-    { key: 'ready', label: 'Isik', value: model.readiness, icon: 'sun' },
-    { key: 'armor', label: 'Akis', value: model.armor, icon: 'spark' },
-    { key: 'fatigue', label: 'Sis', value: model.fatigue, icon: 'fog', reverse: true },
+    { key: 'ready', label: 'Hazir', value: model.readiness, icon: 'sun' },
+    { key: 'armor', label: 'Can', value: model.armor, icon: 'spark' },
+    { key: 'fatigue', label: 'Yorgun', value: model.fatigue, icon: 'fog', reverse: true },
   ]
   return `
     <div class="village-compass" aria-label="Gun pusulasi">
@@ -557,10 +594,10 @@ function renderVillageStatGarden(stats = []) {
 
 function renderVillageBalanceBridge(items = []) {
   const list = items.length ? items : [
-    { key: 'push', label: 'Itis', pct: 0, value: 0 },
-    { key: 'pull', label: 'Cekis', pct: 0, value: 0 },
+    { key: 'push', label: 'Gogus', pct: 0, value: 0 },
+    { key: 'pull', label: 'Sirt', pct: 0, value: 0 },
     { key: 'legs', label: 'Bacak', pct: 0, value: 0 },
-    { key: 'core', label: 'Govde', pct: 0, value: 0 },
+    { key: 'core', label: 'Core', pct: 0, value: 0 },
   ]
   return `
     <div class="village-balance-bridge" aria-label="Denge koprusu">
@@ -594,10 +631,10 @@ function buildVillageQuestCards(model) {
     },
     {
       tone: injury ? 'guard' : 'guard',
-      label: 'Akis',
-      title: injury ? (injury.label || 'Yumusak rota') : 'Yumusak rota',
-      detail: injury ? `${Math.round(injury.recoveryPct ?? 0)}% temiz / ${Math.round(injury.etaDays ?? 0)}g` : (model.nextSession.warnings?.[0] || 'Uyku, su, adim'),
-      reward: injury ? 'sis -' : 'tempo +',
+      label: 'Sakin',
+      title: injury ? (injury.label || 'Dikkat') : 'Sakin git',
+      detail: injury ? `${Math.round(injury.recoveryPct ?? 0)}% iyi / ${Math.round(injury.etaDays ?? 0)}g` : (model.nextSession.warnings?.[0] || 'Uyku, su, adim'),
+      reward: injury ? 'risk -' : 'can +',
       icon: 'spark',
       action: injury ? 'open-body-region' : 'open-health-shortcut',
       regionId: injury?.regionId || model.bodyMapState?.priority?.region?.id || 'core',
@@ -605,10 +642,10 @@ function buildVillageQuestCards(model) {
     },
     {
       tone: 'side',
-      label: 'Ara',
-      title: quest?.name || supportBlock.label || 'Mini ritim',
+      label: 'Ek',
+      title: quest?.name || supportBlock.label || 'Mini is',
       detail: quest?.step || quest?.desc || supportBlock.target || model.decision.next,
-      reward: quest?.reward || reward[1]?.label || 'seri',
+      reward: quest?.reward || reward[1]?.label || 'seri +',
       icon: 'seed',
       action: quest ? 'open-body-region' : 'open-workout',
       regionId: quest?.linkedRegion || model.bodyMapState?.priority?.region?.id || 'core',
@@ -671,13 +708,13 @@ function renderVillageBodyMap(model) {
 function renderVillageUnlockPath(model) {
   const unlock = model.unlock
   const progress = unlock?.progress != null ? clamp(unlock.progress) : 0
-  const title = unlock?.name || 'Acilim bekliyor'
+  const title = unlock?.name || 'Hareket bekliyor'
   return `
     <button class="village-unlock-path" data-action="open-unlock" style="--unlock:${progress}%">
       <span class="unlock-charm">${renderVillageGlyph(unlock ? 'spark' : 'lock')}</span>
       <span>
-        <small>Acilim</small>
-        <strong>${villageDisplay(title, 'Acilim')}</strong>
+        <small>Yeni</small>
+        <strong>${villageDisplay(title, 'Hareket')}</strong>
       </span>
       <i aria-hidden="true"><b></b></i>
     </button>
@@ -690,6 +727,521 @@ function renderVillageRhythmField(model) {
     <div class="village-rhythm-field" aria-label="Haftalik ritim">
       ${rhythm.days.map(day => `<span class="${day.active ? 'active' : ''}" title="${escapeHtml(day.title)}"><b>${escapeHtml(day.label)}</b></span>`).join('')}
     </div>
+  `
+}
+
+function renderTodayVariantRail() {
+  return `
+    <div class="today-variant-rail" aria-label="Mobil UI alternatifleri">
+      ${todayUiVariants.map(item => `
+        <button
+          type="button"
+          class="${activeTodayVariant === item.key ? 'active' : ''}"
+          data-today-variant="${escapeHtml(item.key)}"
+          aria-pressed="${activeTodayVariant === item.key ? 'true' : 'false'}"
+        >
+          ${escapeHtml(item.label)}
+        </button>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderTodayVariantSurface(model, questCards = []) {
+  return renderTodayInfographicHud(model, questCards)
+}
+
+function renderTodayInfographicHud(model, questCards = []) {
+  const primary = questCards[0] || {}
+  const loadSeries = buildHudLoadSeries(model.state, model.profile)
+  return `
+    <article class="today-alt-card infograph-hud-shell" aria-label="Mobil infografik HUD">
+      ${renderHudMicroHeader(model, 'Bugun')}
+
+      <div class="infograph-hud-grid">
+        ${renderHudStatRadar(model.stats)}
+        <div class="infograph-hud-side">
+          ${renderHudVitals(model)}
+          ${renderHudLineChart(loadSeries)}
+        </div>
+      </div>
+
+      <div class="infograph-hud-bottom">
+        ${renderHudBodyMap(model)}
+        ${renderHudCommandDock(model, primary)}
+      </div>
+    </article>
+  `
+}
+
+function renderHudMicroHeader(model, context = 'Durum') {
+  const streak = Number(model.state?.profile?.streak?.current) || 0
+  const xp = `${model.xpCur}/${model.xpMax}`
+  return `
+    <header class="infograph-micro-header">
+      <button class="infograph-id" type="button" data-action="open-avatar" aria-label="Profili ac">
+        <span class="infograph-avatar">${avatarMark(model.profile)}</span>
+        <span class="infograph-id-copy">
+          <small>${escapeHtml(context)} / L${escapeHtml(model.profile.level || 1)}</small>
+          <strong>${escapeHtml(model.profile.nick || 'Oyuncu')}</strong>
+        </span>
+      </button>
+      <div class="infograph-rank-stack" aria-label="Rank ve XP">
+        <span>R${escapeHtml(model.rank)}</span>
+        <i style="--xp:${model.xpPct}%"><b></b></i>
+        <small>${escapeHtml(xp)}</small>
+      </div>
+      <div class="infograph-source-row">
+        ${renderHudSourceDots(model.sources)}
+        <span class="infograph-streak">${streak}g</span>
+      </div>
+    </header>
+  `
+}
+
+function renderHudSourceDots(sources = []) {
+  return (sources || []).slice(0, 5).map(source => `
+    <span
+      class="infograph-source-dot ${source.lit ? 'is-lit' : ''} tone-${escapeHtml(source.key)}"
+      title="${escapeHtml(source.label)} / ${escapeHtml(source.detail)}"
+      aria-label="${escapeHtml(source.label)} ${source.lit ? 'bagli' : 'bekliyor'}"
+    >
+      ${renderVillageGlyph(source.icon)}
+    </span>
+  `).join('')
+}
+
+function hudStatName(stat = {}) {
+  return HUD_STAT_LABELS[stat.key] || VILLAGE_STAT_NAMES[stat.key] || stat.label || stat.key || 'ST'
+}
+
+function renderHudStatGlyph(key = 'str') {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      ${HUD_STAT_GLYPHS[key] || HUD_STAT_GLYPHS.str}
+    </svg>
+  `
+}
+
+function renderHudStatRadar(stats = []) {
+  const orderedKeys = ['str', 'agi', 'end', 'dex', 'con', 'sta']
+  const ordered = orderedKeys
+    .map(key => (stats || []).find(stat => stat.key === key))
+    .filter(Boolean)
+  const list = ordered.length >= 6 ? ordered : (stats || []).slice(0, 6)
+  const size = 220
+  const cx = 110
+  const cy = 110
+  const radius = 72
+  const angleFor = index => (-Math.PI / 2) + (index * (2 * Math.PI / Math.max(1, list.length || 6)))
+  const point = (value, index, scale = 1) => {
+    const angle = angleFor(index)
+    const r = (clamp(value) / 100) * radius * scale
+    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)]
+  }
+  const polygon = list.map((stat, index) => point(Number(stat.val) || 0, index).map(item => item.toFixed(1)).join(',')).join(' ')
+  const rings = [0.33, 0.66, 1].map(scale => {
+    const points = list.map((_, index) => point(100, index, scale).map(item => item.toFixed(1)).join(',')).join(' ')
+    return `<polygon points="${points}" class="infograph-radar-ring"/>`
+  }).join('')
+  const axis = list.map((_, index) => {
+    const [x, y] = point(100, index)
+    return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="infograph-radar-axis"/>`
+  }).join('')
+  const nodes = list.map((stat, index) => {
+    const value = clamp(stat.val)
+    const label = hudStatName(stat)
+    const rank = stat.rank || Math.round(value)
+    const [x, y] = point(100, index, 1.16)
+    return `
+      <button
+        class="infograph-stat-node stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'is-critical' : ''}"
+        type="button"
+        data-action="open-stat"
+        data-stat-key="${escapeHtml(stat.key)}"
+        style="--x:${(x / size * 100).toFixed(1)}%;--y:${(y / size * 100).toFixed(1)}%;--stat:${value}%;"
+        aria-label="${escapeHtml(label)} ${escapeHtml(rank)}"
+      >
+        <span class="infograph-stat-icon" aria-hidden="true">${renderHudStatGlyph(stat.key)}</span>
+        <b>${escapeHtml(label)}</b>
+        <strong>${escapeHtml(rank)}</strong>
+      </button>
+    `
+  }).join('')
+
+  return `
+    <section class="infograph-radar-card" aria-label="Stat radar">
+      <div class="infograph-card-head">
+        <span>STAT</span>
+        <strong>${escapeHtml(modelSafeRank(stats))}</strong>
+      </div>
+      <div class="infograph-radar-stage">
+        <svg viewBox="0 0 ${size} ${size}" class="infograph-radar-svg" aria-hidden="true">
+          ${rings}
+          ${axis}
+          <polygon points="${polygon}" class="infograph-radar-fill"/>
+          <circle cx="${cx}" cy="${cy}" r="4" class="infograph-radar-core"/>
+        </svg>
+        ${nodes}
+      </div>
+    </section>
+  `
+}
+
+function modelSafeRank(stats = []) {
+  return aggregateRank((stats || []).length ? stats : [])
+}
+
+function buildHudLoadSeries(state = {}, profile = {}) {
+  const workouts = (state.workouts || []).slice(0, 7).reverse()
+  if (!workouts.length) {
+    return {
+      empty: true,
+      label: 'Yuk',
+      value: 'iz yok',
+      points: Array.from({ length: 7 }, (_, index) => ({ label: '-', value: 0, title: 'Kayit yok', tone: 'empty' })),
+    }
+  }
+  const points = workouts.map(workout => {
+    const volume = Number(workout.volumeKg) || 0
+    const minutes = Number(workout.durationMin) || 0
+    const sets = Number(workout.sets) || 0
+    const xp = Number(workout.xpEarned) || 0
+    const value = volume || (minutes * 75) || (sets * 180) || xp
+    return {
+      value,
+      label: shortDateLabel(workout.date),
+      title: `${formatMonthShort(workout.date)} / ${displayWorkoutType(workout.type || 'Seans')}`,
+      tone: String(workout.source || '').toLowerCase() === 'hevy' ? 'hevy' : 'manual',
+    }
+  })
+  const total = points.reduce((sum, item) => sum + item.value, 0)
+  const loadValue = total > 0 ? formatCompactMetric(total) : `${Math.round(avgStatValue(profile))}/100`
+  return {
+    empty: false,
+    label: 'Son 7',
+    value: loadValue,
+    points,
+  }
+}
+
+function renderHudLineChart(series = {}) {
+  const width = 226
+  const height = 92
+  const padX = 12
+  const padY = 12
+  const points = series.points || []
+  const max = Math.max(1, ...points.map(item => Number(item.value) || 0))
+  const count = Math.max(1, points.length - 1)
+  const coords = points.map((item, index) => {
+    const x = padX + ((width - (padX * 2)) * (index / count))
+    const ratio = series.empty ? 0.42 : ((Number(item.value) || 0) / max)
+    const y = (height - padY) - ((height - (padY * 2)) * ratio)
+    return { ...item, x, y }
+  })
+  const line = coords.map(item => `${item.x.toFixed(1)},${item.y.toFixed(1)}`).join(' ')
+  const area = coords.length ? `${padX},${height - padY} ${line} ${width - padX},${height - padY}` : ''
+  return `
+    <section class="infograph-load-card" aria-label="Yuk cizgisi">
+      <div class="infograph-card-head">
+        <span>${escapeHtml(series.label || 'Yuk')}</span>
+        <strong>${escapeHtml(series.value || 'iz yok')}</strong>
+      </div>
+      <svg viewBox="0 0 ${width} ${height}" class="infograph-line-svg" aria-hidden="true">
+        <path d="M ${padX} ${height - padY} H ${width - padX}" class="infograph-line-base"/>
+        ${area ? `<polygon points="${area}" class="infograph-line-area"/>` : ''}
+        <polyline points="${line}" class="infograph-load-line ${series.empty ? 'is-empty' : ''}"/>
+        ${coords.map(item => `<circle cx="${item.x.toFixed(1)}" cy="${item.y.toFixed(1)}" r="3.4" class="infograph-load-dot tone-${escapeHtml(item.tone)}"><title>${escapeHtml(item.title)}</title></circle>`).join('')}
+      </svg>
+      <div class="infograph-chart-labels">
+        ${coords.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
+      </div>
+    </section>
+  `
+}
+
+function renderHudVitals(model) {
+  const items = [
+    { key: 'readiness', label: 'Hazir', value: model.readiness, pct: model.readiness, tone: 'ready' },
+    { key: 'armor', label: 'Can', value: model.armor, pct: model.armor, tone: 'armor' },
+    { key: 'fatigue', label: 'Yorgun', value: model.fatigue, pct: 100 - model.fatigue, tone: 'fatigue' },
+  ]
+  return `
+    <section class="infograph-vitals" aria-label="Can Hazir Yorgun">
+      ${items.map(item => `
+        <button
+          class="infograph-vital tone-${escapeHtml(item.tone)}"
+          type="button"
+          data-explain="${escapeHtml(item.key)}"
+          style="--pct:${clamp(item.pct)}%;--deg:${clamp(item.pct) * 3.6}deg"
+          aria-label="${escapeHtml(item.label)} ${Math.round(item.value)}"
+        >
+          <i aria-hidden="true"></i>
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${Math.round(item.value)}</strong>
+        </button>
+      `).join('')}
+    </section>
+  `
+}
+
+function renderHudBodyMap(model) {
+  const regions = [...(model.bodyMapState?.regions || [])]
+    .sort((left, right) => (Number(right.risk) + Number(right.load)) - (Number(left.risk) + Number(left.load)))
+    .slice(0, 5)
+  const priority = model.bodyMapState?.priority?.region || regions[0] || {}
+  return `
+    <section class="infograph-body-card" aria-label="Beden risk haritasi">
+      <div class="infograph-card-head">
+        <span>Beden</span>
+        <strong>${escapeHtml(compactText(priority.label || 'Hazir', 12))}</strong>
+      </div>
+      <div class="infograph-body-stage">
+        <button
+          class="infograph-body-figure"
+          type="button"
+          data-action="open-body-region"
+          data-region-id="${escapeHtml(priority.id || 'core')}"
+          aria-label="Beden haritasini ac"
+        >
+          <span class="infograph-body-head"></span>
+          <span class="infograph-body-torso"></span>
+          <span class="infograph-body-arm left"></span>
+          <span class="infograph-body-arm right"></span>
+          <span class="infograph-body-leg left"></span>
+          <span class="infograph-body-leg right"></span>
+        </button>
+        ${regions.map((region, index) => `
+          <button
+            class="infograph-body-spot spot-${index} tone-${escapeHtml(region.trend || 'steady')}"
+            type="button"
+            data-action="open-body-region"
+            data-region-id="${escapeHtml(region.id || 'core')}"
+            style="--risk:${clamp(region.risk)}%;"
+            aria-label="${escapeHtml(region.label || 'Bolge')} ${Math.round(Number(region.risk) || 0)}"
+          ></button>
+        `).join('')}
+      </div>
+    </section>
+  `
+}
+
+function renderHudCommandDock(model, primary = {}) {
+  const reward = primary.reward || buildHunterRewardChips(model.nextSession, model.bodyMapState, model.latestWorkout)[0]?.label || '+XP'
+  const line = compactText(model.odieLine || model.decision?.command || 'Temiz tekrar.', 46)
+  return `
+    <section class="infograph-command-card" aria-label="Bugun komut">
+      <div class="infograph-command-top">
+        <span>${escapeHtml(primary.label || 'Ana')}</span>
+        <b>${escapeHtml(cozyDisplayText(reward))}</b>
+      </div>
+      <button class="infograph-command-main" type="button" data-action="open-workout">
+        <strong>${villageDisplay(model.title, 'Gorev')}</strong>
+        <small>${escapeHtml(line)}</small>
+      </button>
+      <button class="infograph-command-ghost" type="button" data-tab="quests">
+        ${renderVillageGlyph('board')}
+        <span>Pano</span>
+      </button>
+    </section>
+  `
+}
+
+function renderTodayArenaVariant(model, primary = {}) {
+  const metricRunes = [
+    { key: 'readiness', label: 'Hazir', value: model.readiness, tone: 'ready' },
+    { key: 'armor', label: 'Can', value: model.armor, tone: 'armor' },
+    { key: 'fatigue', label: 'Yorgun', value: model.fatigue, tone: 'fatigue', reverse: true },
+  ]
+  return `
+    <article class="today-alt-card today-arena-card" aria-label="Arena mobil UI alternatifi">
+      <div class="arena-topline">
+        <button class="arena-player-chip" type="button" data-action="open-avatar" aria-label="Profili ac">
+          <span>${avatarMark(model.profile)}</span>
+          <b>L${escapeHtml(model.profile.level || 1)}</b>
+        </button>
+        <div class="arena-rank-chip">
+          <small>Rank</small>
+          <strong>${escapeHtml(model.rank)}</strong>
+        </div>
+        ${renderVillageSourceBeads(model.sources)}
+      </div>
+
+      <div class="arena-stage" style="--xp:${model.xpPct}%">
+        <button class="arena-avatar-core" type="button" data-action="open-avatar" aria-label="Karakter kartini ac">
+          <span class="arena-avatar-img" aria-hidden="true"></span>
+          <b>${escapeHtml(model.profile.nick || 'Oyuncu')}</b>
+          <small>${escapeHtml(compactText(model.className, 18))}</small>
+        </button>
+        <div class="arena-stat-orbit">
+          ${model.stats.slice(0, 6).map(renderArenaStatOrb).join('')}
+        </div>
+        <div class="arena-xp-ring" aria-hidden="true"><i></i></div>
+      </div>
+
+      <div class="arena-metric-runes">
+        ${metricRunes.map(renderArenaMetricRune).join('')}
+      </div>
+
+      <div class="arena-command-dock">
+        <button class="arena-command-main" type="button" data-action="open-workout">
+          <span>${escapeHtml(primary.label || 'Ana')}</span>
+          <strong>${villageDisplay(model.title, 'Gorev')}</strong>
+        </button>
+        <button class="arena-command-mini" type="button" data-tab="quests">
+          <span>${renderVillageGlyph('board')}</span>
+          <b>${escapeHtml(cozyDisplayText(primary.reward || '+XP'))}</b>
+        </button>
+      </div>
+    </article>
+  `
+}
+
+function renderArenaStatOrb(stat, index = 0) {
+  const value = clamp(stat.val)
+  const label = VILLAGE_STAT_NAMES[stat.key] || stat.label || stat.key
+  const rank = stat.rank || Math.round(value)
+  return `
+    <button
+      class="arena-stat-orb stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'is-critical' : ''}"
+      type="button"
+      data-action="open-stat"
+      data-stat-key="${escapeHtml(stat.key)}"
+      style="--slot:${index};--stat:${value}%;"
+      aria-label="${escapeHtml(label)} ${escapeHtml(rank)}"
+    >
+      <span class="arena-stat-token" aria-hidden="true"></span>
+      <b>${escapeHtml(label)}</b>
+      <strong>${escapeHtml(rank)}</strong>
+    </button>
+  `
+}
+
+function renderArenaMetricRune(metric = {}) {
+  const value = clamp(metric.value)
+  const display = metric.reverse ? 100 - value : value
+  return `
+    <button
+      class="arena-metric-rune tone-${escapeHtml(metric.tone || metric.key)}"
+      type="button"
+      data-explain="${escapeHtml(metric.key)}"
+      style="--metric:${clamp(display)}%;"
+      aria-label="${escapeHtml(metric.label)} ${Math.round(value)}"
+    >
+      <i aria-hidden="true"></i>
+      <span>${escapeHtml(metric.label)}</span>
+      <strong>${Math.round(value)}</strong>
+    </button>
+  `
+}
+
+function renderTodayRouteVariant(model, questCards = []) {
+  return `
+    <article class="today-alt-card today-route-card" aria-label="Rota mobil UI alternatifi">
+      <div class="route-map-stage">
+        <div class="route-map-top">
+          ${renderVillageSourceBeads(model.sources)}
+          <span class="route-rank-badge">R${escapeHtml(model.rank)}</span>
+        </div>
+        <div class="route-path-line" aria-hidden="true">
+          <i></i>
+          <b></b>
+        </div>
+        <div class="route-node-stack">
+          ${questCards.slice(0, 3).map(renderRouteNode).join('')}
+        </div>
+        <div class="route-map-bottom">
+          ${renderVillageXpTrail(model)}
+        </div>
+      </div>
+
+      <div class="route-infographic-row">
+        ${renderVillageCompass(model)}
+        <button class="route-body-token" type="button" data-action="open-body-region" data-region-id="${escapeHtml(model.bodyMapState?.priority?.region?.id || 'core')}">
+          <span class="route-body-figure" aria-hidden="true"></span>
+          <b>${escapeHtml(compactText(model.bodyMapState?.priority?.region?.label || 'Beden', 14))}</b>
+        </button>
+      </div>
+
+      ${renderVillageStatGarden(model.stats)}
+    </article>
+  `
+}
+
+function renderRouteNode(card = {}, index = 0) {
+  const action = card.action || 'open-workout'
+  const regionAttr = card.regionId ? ` data-region-id="${escapeHtml(card.regionId)}"` : ''
+  return `
+    <button
+      class="route-node route-node-${index} tone-${escapeHtml(card.tone || 'main')}"
+      type="button"
+      data-action="${escapeHtml(action)}"${regionAttr}
+      style="--intensity:${villageIntensityPct(card.intensity)}%;"
+    >
+      <span class="route-node-icon">${renderVillageGlyph(card.icon || 'spark')}</span>
+      <span>
+        <b>${escapeHtml(card.label || `R${index + 1}`)}</b>
+        <strong>${villageDisplay(card.title, 'Gorev')}</strong>
+      </span>
+      <em>${escapeHtml(cozyDisplayText(card.reward || '+'))}</em>
+    </button>
+  `
+}
+
+function renderTodayCardVariant(model, questCards = []) {
+  const primary = questCards[0] || {}
+  return `
+    <article class="today-alt-card today-card-sheet" aria-label="Karakter karti mobil UI alternatifi">
+      <header class="card-sheet-head">
+        <button class="card-sheet-id" type="button" data-action="open-avatar" aria-label="Profili ac">
+          <span>${avatarMark(model.profile)}</span>
+          <strong>${escapeHtml(model.profile.nick || 'Oyuncu')}</strong>
+          <small>L${escapeHtml(model.profile.level || 1)} / R${escapeHtml(model.rank)}</small>
+        </button>
+        ${renderVillageSourceBeads(model.sources)}
+      </header>
+
+      <div class="card-sheet-grid">
+        ${renderVillageBodyMap(model)}
+        <div class="card-sheet-runes">
+          ${renderVillageCompass(model)}
+          ${renderVillageUnlockPath(model)}
+        </div>
+      </div>
+
+      <div class="card-stat-bars">
+        ${model.stats.slice(0, 6).map(renderCardStatBar).join('')}
+      </div>
+
+      <div class="card-balance-panel">
+        ${renderVillageBalanceBridge(model.balanceItems)}
+        <button class="card-primary-command" type="button" data-action="open-workout">
+          <span>${escapeHtml(primary.label || 'Ana')}</span>
+          <strong>${villageDisplay(model.title, 'Gorev')}</strong>
+        </button>
+      </div>
+    </article>
+  `
+}
+
+function renderCardStatBar(stat = {}) {
+  const value = clamp(stat.val)
+  const label = VILLAGE_STAT_NAMES[stat.key] || stat.label || stat.key
+  const rank = stat.rank || Math.round(value)
+  return `
+    <button
+      class="card-stat-bar stat-tone-${escapeHtml(stat.key)} ${stat.critical ? 'is-critical' : ''}"
+      type="button"
+      data-action="open-stat"
+      data-stat-key="${escapeHtml(stat.key)}"
+      style="--stat:${value}%;"
+      aria-label="${escapeHtml(label)} ${escapeHtml(rank)}"
+    >
+      <span class="card-stat-icon" aria-hidden="true"></span>
+      <b>${escapeHtml(label)}</b>
+      <i aria-hidden="true"><em></em></i>
+      <strong>${escapeHtml(rank)}</strong>
+    </button>
   `
 }
 
@@ -759,7 +1311,7 @@ function displayWorkoutType(text = '') {
 }
 
 function cozyDisplayText(text = '') {
-  return displayWorkoutType(text)
+  const localized = displayWorkoutType(text)
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
@@ -785,6 +1337,7 @@ function cozyDisplayText(text = '') {
     .replace(/\bdefter\w*/gi, 'not')
     .replace(/\biz netli[gğ]i\b/gi, 'okuma')
     .replace(/\bbakilan iz\w*/gi, 'notlar')
+  return plainCopyText(localized)
 }
 
 function cozyConfidenceLabel(confidence = '') {
@@ -797,30 +1350,30 @@ function buildTodayLead(state, latestWorkout = null) {
     if (String(latestWorkout.source || '').toLowerCase() === 'apple_health') {
       const distance = Number(latestWorkout.distanceKm) ? `${Math.round(latestWorkout.distanceKm * 10) / 10} km` : `${latestWorkout.durationMin || 0} dakika`
       const terrain = (latestWorkout.tags || []).includes('terrain') ? 'arazi yuruyusu' : displayWorkoutType(latestWorkout.type || 'hareket')
-      return `Apple Health ${distance} ${terrain} kaydini yazdi. ODIE bunu yorgunluk, XP ve bugunku hamleye dahil ediyor.`
+      return `Apple Health ${distance} ${terrain} kaydi geldi. Bugunku hedef buna gore guncellendi.`
     }
     const meta = [
       latestWorkout.durationMin ? `${latestWorkout.durationMin} dakika` : null,
       latestWorkout.volumeKg ? `${Math.round(latestWorkout.volumeKg).toLocaleString('tr-TR')} kg yuk` : null,
       latestWorkout.source === 'hevy' ? 'Hevy senkron' : null,
     ].filter(Boolean).join(' / ')
-    return `${formatMonthShort(latestWorkout.date)} ${displayWorkoutType(latestWorkout.type || 'seans')} kaydi tamam. ${meta || 'Detay az, ama kayit geldi.'}`
+    return `${formatMonthShort(latestWorkout.date)} ${displayWorkoutType(latestWorkout.type || 'seans')} kaydi tamam. ${meta || 'Detay az, kayit var.'}`
   }
   const score = Number(state.health?.readiness?.score)
   if (Number.isFinite(score)) {
-    if (score >= 80) return 'Bugun ana blok icin iyi gorunuyor. Hevy ve Telegram akisi geldikce kart kendini yeniler.'
-    if (score >= 60) return 'Normal tempo uygun. Son veriler yuk, not ve ritim panellerine dusuyor.'
+    if (score >= 80) return 'Bugun ana seans icin iyi gorunuyor.'
+    if (score >= 60) return 'Normal tempo uygun.'
     if (score >= 40) return 'Kontrollu git. Teknik, core veya daha kisa bir seans mantikli.'
     return 'Yorgunluk yuksek gorunuyor. Bugun hafif teknik veya kisa hareket yeter.'
   }
-  return 'Hevy ve Telegram kayitlari geldikce karakter karti, acilim dallari ve gorevler canli veriden guncellenir.'
+  return 'Hevy veya Telegram kaydi gelince kart guncellenir.'
 }
 
 const FRONT_STAT_ORDER = ['str', 'agi', 'end', 'dex', 'con', 'sta']
 
 const STAT_UI_META = {
   str: { trait: 'Guc', tone: 'str' },
-  agi: { trait: 'Akis', tone: 'agi' },
+  agi: { trait: 'Hiz', tone: 'agi' },
   end: { trait: 'Nefes', tone: 'end' },
   dex: { trait: 'Teknik', tone: 'dex' },
   con: { trait: 'Govde', tone: 'con' },
@@ -973,9 +1526,9 @@ function renderOdieLiveCard(presence = {}, { compact = false, action = true } = 
       <div class="odie-live-head">
         <div class="odie-live-face" aria-hidden="true"><i></i><b></b></div>
         <div>
-          <span>ODIE Live</span>
-          <strong>${escapeHtml(presence.headline || 'ODIE izleri okuyor')}</strong>
-          <small>${escapeHtml(presence.moodLabel || 'canli mod')} / ${escapeHtml(presence.dataConfidence ?? '--')}% okuma</small>
+          <span>ODIE</span>
+          <strong>${escapeHtml(presence.headline || 'Durum hazir')}</strong>
+          <small>${escapeHtml(presence.moodLabel || 'hazir')} / ${escapeHtml(presence.dataConfidence ?? '--')}% durum</small>
         </div>
       </div>
       <p>${escapeHtml(presence.chatLine || presence.hudLine || '')}</p>
@@ -1127,7 +1680,7 @@ function renderPrestigeAnatomySheet(bodyMapState, profile, className = '') {
           <small>${escapeHtml(priorityMovement?.label || 'Mobilite')} hatti</small>
         </button>
         <button class="anatomy-rail-card ${injury ? 'tone-injury' : 'tone-ready'}" data-action="open-body-region" data-region-id="${escapeHtml(injury?.regionId || priorityRegion?.id || 'core')}">
-          <span>${injury ? 'Sakin rota' : 'Akis'}</span>
+          <span>${injury ? 'Sakin rota' : 'Can'}</span>
           <strong>${escapeHtml(injury?.label || 'Stabil yuk')}</strong>
           <small>${escapeHtml(injurySummary)}</small>
         </button>
@@ -1233,7 +1786,7 @@ function renderVitalPulsePanel(state, bodyMapState, nextSession = null) {
     <div class="vital-pulse-panel">
       <div class="vital-pulse-head">
         <span>Karakter Odasi</span>
-        <strong>${model.dataConfidence}% okuma</strong>
+        <strong>${model.dataConfidence}% durum</strong>
       </div>
       <div class="vital-ring-grid">
         ${model.rings.map(renderVitalRing).join('')}
@@ -1265,7 +1818,7 @@ function renderHealthBridgeCard(state = {}) {
   return `
     <article class="health-bridge-card">
       <div>
-        <span>${renderExplainButton('apple-health', 'Canli Kayitlar', 'explain-link metric-explain')}</span>
+        <span>${renderExplainButton('apple-health', 'Guncel Kayitlar', 'explain-link metric-explain')}</span>
         <strong>Hevy kuvvet kaydi, Apple yasam notu</strong>
         <small>${escapeHtml(latestText)} / son iz ${escapeHtml(lastSync)}${lastError ? ` / hata: ${escapeHtml(lastError).slice(0, 80)}` : ''}</small>
       </div>
@@ -1320,11 +1873,11 @@ function buildHunterOdieLine({ state = {}, nextSession = {}, bodyMapState = {}, 
   const armor = Math.round(Number(state.profile?.armor) || 0)
   const readiness = Number(nextSession.readiness?.score ?? state.health?.readiness?.score)
   const warning = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || ''
-  if (injury) return `${injury.label || 'Beden'} hala nazli. Bugun ego degil, temiz tekrar kazanir.`
-  if (fatigue >= 75) return 'Motor isinmis ama depo bos. Bugun karakteri parlatan sey toparlanma.'
-  if (armor < 55 || (Number.isFinite(readiness) && readiness < 45)) return 'Akis ince. Kisa, temiz ve kontrollu hamle bugunun galibiyeti.'
-  if (warning) return `${compactText(cozyDisplayText(warning), 72)}. Puan sabirdan gelir.`
-  return cozyDisplayText(decision.command || nextSession.coachCommand || 'Bugun kucuk artis yeter. Karakteri ileri tasiyan sey temiz kayit.')
+  if (injury) return `${injury.label || 'Beden'} hassas. Bugun agir grip yok; temiz tekrar yeter.`
+  if (fatigue >= 75) return 'Yorgunluk yuksek. Bugun hafif hareket daha iyi.'
+  if (armor < 55 || (Number.isFinite(readiness) && readiness < 45)) return 'Can dusuk. Kisa ve kontrollu git.'
+  if (warning) return `${compactText(cozyDisplayText(warning), 72)}. Sakin kal.`
+  return cozyDisplayText(decision.command || nextSession.coachCommand || 'Bugun kucuk artis yeter. Kaydi temiz gir.')
 }
 
 function buildHunterArc({ state = {}, profile = {}, nextSession = {}, bodyMapState = {}, activeQuest = null, latestWorkout = null } = {}) {
@@ -1389,7 +1942,7 @@ function buildHunterRewardChips(nextSession = {}, bodyMapState = {}, latestWorko
     if (chips.length >= 3) break
     chips.push({ label: compactText(cozyDisplayText(cap), 22), tone: 'guard' })
   }
-  if (!chips.length) chips.push({ label: 'XP temiz kayittan', tone: 'xp' })
+  if (!chips.length) chips.push({ label: 'Temiz kayit +XP', tone: 'xp' })
   return chips.slice(0, 3)
 }
 
@@ -1453,7 +2006,7 @@ function buildHunterQuestCards({ state = {}, profile = {}, nextSession = {}, bod
 
   return [
     {
-      label: 'Ana Gorev',
+      label: 'Ana',
       title: mainTitle,
       detail: compactText(mainDetail, 78),
       reward: buildHunterRewardChips(nextSession, bodyMapState, latestWorkout)[0]?.label || '+XP',
@@ -1461,19 +2014,19 @@ function buildHunterQuestCards({ state = {}, profile = {}, nextSession = {}, bod
       action: 'open-workout',
     },
     {
-      label: 'Akis',
+      label: 'Sakin',
       title: recoveryTitle,
       detail: compactText(recoveryDetail, 78),
-      reward: injury ? 'sis -' : 'ritim +',
+      reward: injury ? 'risk -' : 'can +',
       tone: injury ? 'danger' : 'recovery',
       action: injury ? 'open-body-region' : 'open-health-shortcut',
       regionId: injury?.regionId || priorityRegion?.id || 'core',
     },
     {
-      label: 'Ara Gorev',
-      title: optionalQuest?.name || supportBlock.target || 'Mini ritim',
-      detail: compactText(cozyDisplayText(optionalQuest?.desc || supportBlock.label || decision.next || 'Kisa ama temiz adim'), 78),
-      reward: optionalQuest?.reward || 'seri koru',
+      label: 'Ek',
+      title: optionalQuest?.name || supportBlock.target || 'Mini is',
+      detail: compactText(cozyDisplayText(optionalQuest?.desc || supportBlock.label || decision.next || 'Kisa ve temiz adim'), 78),
+      reward: optionalQuest?.reward || 'seri +',
       tone: 'side',
       action: optionalQuest ? '' : 'open-workout',
       tab: optionalQuest ? 'quests' : '',
@@ -1486,7 +2039,7 @@ function renderHunterQuestLane(args) {
   return `
     <div class="game-note-lane" aria-label="Gunluk gorev rotasi">
       <div class="game-lane-head">
-        <h3>Kasaba panosu</h3>
+        <h3>Gorev panosu</h3>
         <span>3 not</span>
       </div>
       <div class="game-note-list">
@@ -1499,50 +2052,10 @@ function renderHunterQuestLane(args) {
 function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {}, latestWorkout = null, activeQuest = null, bodyMapState = null) {
   const model = buildVillageModel(state, profile, semantic, { nextSession, latestWorkout, activeQuest, bodyMapState })
   const questCards = buildVillageQuestCards(model)
-  const primary = questCards[0]
 
   return `
-    <section class="village-screen village-today-screen tone-${escapeHtml(model.tone)}">
-      ${renderVillageLocket(model)}
-
-      <article class="village-scene village-map-scene">
-        <div class="village-map-art" aria-hidden="true">
-          <span class="map-sun"></span>
-          <span class="map-path"></span>
-          <span class="map-cabin"></span>
-          <span class="map-player-dot"></span>
-        </div>
-        <div class="village-scene-hud">
-          ${renderVillageSourceBeads(model.sources)}
-          ${renderVillageCompass(model)}
-        </div>
-        <div class="village-scene-bottom">
-          ${renderVillageXpTrail(model)}
-          <button class="village-main-sign" data-action="open-workout">
-            <small>Bugunun isi</small>
-            <strong>${villageDisplay(model.title, 'Gorev')}</strong>
-            <span>${villageDisplay(model.odieLine, 'Temiz tekrar kazanir.')}</span>
-          </button>
-        </div>
-      </article>
-
-      ${renderVillageStatGarden(model.stats)}
-
-      <article class="village-board-card">
-        <div class="village-board-top">
-          <span class="board-mark">${renderVillageGlyph('board')}</span>
-          <strong>${villageDisplay(primary.title, 'Ana gorev')}</strong>
-          <em>${escapeHtml(cozyDisplayText(primary.reward))}</em>
-        </div>
-        <div class="village-board-graphic">
-          ${renderVillageBalanceBridge(model.balanceItems)}
-        </div>
-        <div class="village-board-actions">
-          <button class="village-primary-action" type="button" data-action="open-workout">Kayda yaz</button>
-          ${model.latestWorkout?.id ? `<button class="village-quiet-action village-trace-action" type="button" data-action="open-session-detail" data-workout-id="${escapeHtml(model.latestWorkout.id)}">Son seans</button>` : ''}
-          <button class="village-quiet-action" type="button" data-tab="quests">Pano</button>
-        </div>
-      </article>
+    <section class="village-screen village-today-screen today-variant-screen today-variant-hud tone-${escapeHtml(model.tone)}">
+      ${renderTodayVariantSurface(model, questCards)}
     </section>
   `
 
@@ -1555,8 +2068,8 @@ function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {},
   const className = state.profile.classObj?.name || profile.class || 'OdiePT'
   const nextUnlock = bodyMapState?.unlockTargets?.[0] || findNextUnlock(profile.skills || [])
   const unlockHint = nextUnlock?.progress != null
-    ? `${Math.round(nextUnlock.progress)}% acilim`
-    : summarizeUnlockHint(nextUnlock, profile.skills || []) || 'acilim takipte'
+    ? `${Math.round(nextUnlock.progress)}% hazir`
+    : summarizeUnlockHint(nextUnlock, profile.skills || []) || 'takipte'
 
   return `
     <section class="game-day-screen cozy-today-screen tone-${nextSession.tone || arc.decision.tone || 'calm'}" style="--xp-pct:${xpPct}%">
@@ -1628,7 +2141,7 @@ function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {},
       </article>
 
       <footer class="game-logbook">
-        <span>Sonraki acilim</span>
+        <span>Yeni hareket</span>
         <p>${renderHunterIcon('flame')} ${escapeHtml(unlockHint)}. Bugunun yolu uzun degil, temiz.</p>
         ${latestWorkout?.id ? `
           <button class="game-ghost-btn" type="button" data-action="open-session-detail" data-workout-id="${escapeHtml(latestWorkout.id)}">Son kayit</button>
@@ -2220,10 +2733,10 @@ function buildTodayDecision(state, activeQuest = null) {
     return {
       key: 'recovery-gunu',
       tone: 'danger',
-      title: 'Toparlanma Gunu',
-      command: 'Agir push/pull yok; 25-35 dk yuruyus veya mobilite.',
-      reason: `Yuk ${Math.round(fatigue)}. ${recovery ? `${recovery.progressPct}% toparlanma isledi.` : 'Rota sakin baslar.'}`,
-      next: balance.lowest?.key === 'core' ? '8 dk core aktivasyon eklenebilir.' : 'Yuk degil, ritim koru.',
+      title: 'Dinlenme',
+      command: 'Agir seans yok. 25-35 dk yuruyus veya mobilite.',
+      reason: `Yorgunluk ${Math.round(fatigue)}. ${recovery ? `${recovery.progressPct}% toparlandi.` : 'Sakin basla.'}`,
+      next: balance.lowest?.key === 'core' ? '8 dk core eklenebilir.' : 'Yuk degil, ritim koru.',
     }
   }
 
@@ -2231,10 +2744,10 @@ function buildTodayDecision(state, activeQuest = null) {
     return {
       key: 'kontrollu-teknik',
       tone: 'warn',
-      title: 'Form Gunu',
-      command: 'Kisa form blogu veya destek seti; rekor denemesi yok.',
-      reason: `Akis ${Math.round(armor)} ve isik ${Number.isFinite(readiness) ? Math.round(readiness) : '--'}/100.`,
-      next: nextQuest || 'Gunluk logu kapat, uyku/su sinyalini tamamla.',
+      title: 'Form',
+      command: 'Kisa form blogu veya destek seti. Rekor yok.',
+      reason: `Can ${Math.round(armor)}, hazirlik ${Number.isFinite(readiness) ? Math.round(readiness) : '--'}/100.`,
+      next: nextQuest || 'Gunluk kaydi kapat, uyku/su notunu gir.',
     }
   }
 
@@ -2242,21 +2755,21 @@ function buildTodayDecision(state, activeQuest = null) {
     return {
       key: 'denge-kapatma',
       tone: 'warn',
-      title: 'Hatti Kapat',
+      title: 'Eksigi kapat',
       command: balance.lowest.key === 'legs'
-        ? 'Bacak veya arka zincir blogu ekle.'
+        ? 'Bacak veya arka zincir ekle.'
         : 'Seansa direkt core ile basla.',
-      reason: `${balance.lowest.label} son 30 gunde en geride kalan hat.`,
-      next: nextQuest || 'Kisa ama net blok yeter.',
+      reason: `${balance.lowest.label} son 30 gunde geride.`,
+      next: nextQuest || 'Kisa ve net blok yeter.',
     }
   }
 
   return {
     key: 'normal-seans',
     tone: 'calm',
-    title: 'Kucuk Artis Gunu',
-    command: latest ? `${displayWorkoutType(latest.type || 'Ana blok')} temposu acilabilir.` : 'Ilk seansi net logla.',
-    reason: `Yuk ${Math.round(fatigue)}, akis ${Math.round(armor)}.`,
+    title: 'Kucuk artis',
+    command: latest ? `${displayWorkoutType(latest.type || 'Ana blok')} acilabilir.` : 'Ilk seansi net kaydet.',
+    reason: `Yorgunluk ${Math.round(fatigue)}, can ${Math.round(armor)}.`,
     next: nextQuest || 'Set, sure ve hareketleri temiz gir.',
   }
 }
@@ -2440,7 +2953,7 @@ function renderDisciplineBalanceCard(state) {
       <div class="insight-card-head">
         <div>
           <div class="eyebrow">${renderExplainButton('denge-paneli', 'Denge Paneli', 'explain-link eyebrow-explain')}</div>
-          <h3>${renderExplainButton('denge-paneli', 'Itis / Cekis / Bacak / Govde', 'explain-link explain-heading')}</h3>
+          <h3>${renderExplainButton('denge-paneli', 'Gogus / Sirt / Bacak / Core', 'explain-link explain-heading')}</h3>
         </div>
         <strong>${balance.sample}</strong>
       </div>
@@ -2885,7 +3398,7 @@ function renderCharacterPage(state, profile, semantic, ui = buildUiRuntime(state
   return `
     <section class="character-page hunter-character-page cozy-character-page village-page">
       <section class="village-screen village-character-screen tone-${escapeHtml(model.tone)}">
-        ${renderVillageLocket(model, true)}
+        ${renderHudMicroHeader(model, 'Karakter')}
 
         <article class="village-scene village-cabin-scene">
           <div class="village-cabin-art" aria-hidden="true">
@@ -2967,7 +3480,7 @@ function renderHunterCharacterArc(state, profile, semantic, ui = buildUiRuntime(
           <strong class="hunter-character-value">${escapeHtml(latestGain)}</strong>
         </div>
         <div class="hunter-character-cell">
-          <span class="hunter-field-label">Siradaki acilim</span>
+          <span class="hunter-field-label">Yeni hareket</span>
           <strong class="hunter-character-value">${escapeHtml(nextUnlock?.name || 'Takipte')}</strong>
         </div>
         <div class="hunter-character-cell">
@@ -3008,7 +3521,7 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
   const unlock = model.unlock || findNextUnlock(profile.skills || [])
   const unlockDetail = unlock?.progress != null
     ? cozyDisplayText(`%${Math.round(unlock.progress)} yakin / ${unlock.todayStep || unlock.missing || 'mini adim bekliyor'}`)
-    : summarizeUnlockHint(unlock, profile.skills || []) || 'Acilim icin canli veri bekliyor'
+    : summarizeUnlockHint(unlock, profile.skills || []) || 'Yeni hareket icin kayit bekliyor'
   return `
     <article class="character-arena vital-os-arena" style="--xp-pct:${xpPct}%">
       <header class="vital-os-topbar">
@@ -3018,7 +3531,7 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
           <p>L${escapeHtml(profile.level || 1)} / ${escapeHtml(rank)} / ${escapeHtml(className)}</p>
         </div>
         <button class="vital-os-confidence" data-action="open-health-shortcut">
-          <span>Okuma</span>
+          <span>Durum</span>
           <strong>${model.dataConfidence}%</strong>
         </button>
       </header>
@@ -3103,7 +3616,7 @@ function buildCharacterStatusEffect(bodyMapState = {}, state = {}) {
   if (armor < 60) {
     return {
       label: 'Aktif etki',
-      title: 'Akis ince',
+      title: 'Can dusuk',
       detail: 'Form ve mobilite bugun ana ilerleme hattidir.',
       regionId: bodyMapState.priority?.region?.id || 'shoulder',
       tone: 'guard',
@@ -3134,7 +3647,7 @@ function renderPassportStat(stat, nextUnlock = null, bodyMapState = {}) {
     )
   })
   const note = unlockLinked
-    ? `Acilima bagli: ${nextUnlock.name}`
+    ? `Yeni harekete bagli: ${nextUnlock.name}`
     : (stat.critical ? 'Zayif halka: once kontrol' : `${stat.trait || stat.name || 'Build'} hatti`)
 
   return `
@@ -3149,10 +3662,10 @@ function renderPassportStat(stat, nextUnlock = null, bodyMapState = {}) {
 
 function summarizeSkillProgress(skills = []) {
   const nodes = skills.flatMap(branch => branch.items || [])
-  if (!nodes.length) return 'Acilim verisi bekliyor'
+  if (!nodes.length) return 'Hareket kaydi bekliyor'
   const done = nodes.filter(node => node.status === 'done').length
   const progress = nodes.filter(node => node.status === 'prog').length
-  return `${done} acilim / ${progress} aktif`
+  return `${done} acik / ${progress} aktif`
 }
 
 function renderCalibrationCallout(profile) {
@@ -3373,8 +3886,8 @@ function renderSkillTreePixel(profile) {
     <article class="glass-card skill-pixel">
       <div class="panel-head">
         <div>
-          <div class="pixel-label">${renderExplainButton('skill-tree', 'Acilim Dallari', 'explain-link metric-explain')}</div>
-          <div class="panel-title">${renderExplainButton('skill-tree', 'Acilim noktalari', 'explain-link explain-heading')}</div>
+          <div class="pixel-label">${renderExplainButton('skill-tree', 'Hareket Dallari', 'explain-link metric-explain')}</div>
+          <div class="panel-title">${renderExplainButton('skill-tree', 'Yeni hareketler', 'explain-link explain-heading')}</div>
         </div>
       </div>
       <div class="branch-tabs">
@@ -3487,7 +4000,7 @@ function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, pr
   return `
     <section class="quest-arc-page cozy-quest-page village-page">
       <section class="village-screen village-quest-screen tone-${escapeHtml(model.tone)}">
-        ${renderVillageLocket(model, true)}
+        ${renderHudMicroHeader(model, 'Pano')}
 
         <article class="village-scene village-board-scene">
           <div class="village-board-art" aria-hidden="true">
@@ -3497,7 +4010,7 @@ function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, pr
           </div>
           <div class="village-board-title">
             <span>${renderVillageGlyph('board')}</span>
-            <strong>Kasaba panosu</strong>
+            <strong>Gorev panosu</strong>
             <em>3 not</em>
           </div>
           <div class="village-quest-slip-list">
@@ -3542,7 +4055,7 @@ function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, pr
             <strong class="hunter-field-value">${escapeHtml(arc.chapter)}</strong>
           </div>
           <div class="quest-arc-field">
-            <span class="hunter-field-label">Defter</span>
+            <span class="hunter-field-label">Kayit</span>
             <strong class="hunter-field-value">${escapeHtml(arc.source)}</strong>
           </div>
           <div class="quest-arc-field">
@@ -3617,7 +4130,7 @@ function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state
   return `
     <section class="odie-page cozy-odie-page village-page">
       <section class="village-screen village-odie-screen mode-${escapeHtml(odieMode)} tone-${escapeHtml(model.tone)}">
-        ${renderVillageLocket(model, true)}
+        ${renderHudMicroHeader(model, 'ODIE')}
 
         <article class="village-scene village-notebook-scene">
           <div class="village-notebook-art" aria-hidden="true">
@@ -4209,6 +4722,21 @@ document.addEventListener('click', event => {
   const questBtn = event.target.closest('[data-quest-tab]')
   if (questBtn) {
     activeQuestTab = questBtn.dataset.questTab
+    scheduleRender({ immediate: true })
+    return
+  }
+
+  const todayVariantBtn = event.target.closest('[data-today-variant]')
+  if (todayVariantBtn) {
+    const key = todayVariantBtn.dataset.todayVariant
+    if (!todayUiVariants.some(item => item.key === key)) return
+    activeTodayVariant = key
+    try {
+      localStorage.setItem('odiept-today-variant', key)
+    } catch {
+      // Storage can be unavailable in some embedded browsers.
+    }
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
     scheduleRender({ immediate: true })
     return
   }

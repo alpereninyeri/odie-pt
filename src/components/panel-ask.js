@@ -1,5 +1,6 @@
 import { showToast } from './toast.js'
 import { buildOdiePresence } from '../data/odie-presence.js'
+import { plainCopyText } from '../data/ui-copy.js'
 
 const askState = {
   loaded: false,
@@ -23,7 +24,7 @@ function escapeHtml(value = '') {
 }
 
 function cozyAskText(value = '') {
-  return String(value || '')
+  const localized = String(value || '')
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
@@ -50,6 +51,7 @@ function cozyAskText(value = '') {
     .replace(/kan\u0131t\w*/gi, 'not')
     .replace(/\biz netli[gğ]i\b/gi, 'okuma')
     .replace(/\bdefter\w*/gi, 'not')
+  return plainCopyText(localized)
 }
 
 function compactAskText(value = '', max = 132) {
@@ -125,7 +127,7 @@ function renderTranscript(latest) {
     return `
       <div class="ask-terminal-empty">
         <strong>ODIE burada.</strong>
-        <p>Hevy, Apple ve son notlardan kisa bir rota cikarir.</p>
+        <p>Son kayitlara bakip kisa cevap verir.</p>
       </div>
     `
   }
@@ -135,9 +137,9 @@ function renderTranscript(latest) {
       <article class="ask-bubble odie pending">
         <div class="ask-bubble-meta">
           <span>ODIE</span>
-          <span>baglam topluyor</span>
+          <span>bakiyor</span>
         </div>
-        <div class="ask-bubble-body">Uyku, kalp ve son antrenman ayni masada. Birazdan net konusacagim.</div>
+        <div class="ask-bubble-body">Son kayitlara bakiyorum. Az sonra net cevap.</div>
       </article>
     `
     : ''
@@ -263,7 +265,7 @@ export function renderAsk(state, profile) {
       <div class="village-ask-signals">
         <span><b>${memoryCount}</b><small>hafiza</small></span>
         <span><b>${Number.isFinite(readiness) ? Math.round(readiness) : '--'}</b><small>hazir</small></span>
-        <span><b>${sourceCount}</b><small>boncuk</small></span>
+        <span><b>${sourceCount}</b><small>kayit</small></span>
       </div>
 
       <form id="odie-ask-form" class="village-ask-form ask-form">
