@@ -18,6 +18,7 @@ function _escapeHtml(value = '') {
 
 function _cozyTrainingLabel(value = '') {
   return String(value || '-')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
     .replace(/\bbuild\w*\b/gi, 'rota')
@@ -32,11 +33,30 @@ function _cozyTrainingLabel(value = '') {
     .replace(/\bGlobal\b/gi, 'Genel')
     .replace(/\bClass\b/gi, 'Sinif')
     .replace(/\bCoach\b/gi, 'ODIE')
+    .replace(/\barmor\b/gi, 'akis')
+    .replace(/\bkalkan\w*\s+onar/gi, 'Ritmi Yakala')
+    .replace(/\bkalkan\w*/gi, 'akis')
+    .replace(/\brisk\w*/gi, 'sis')
+    .replace(/\btemkin\w*/gi, 'sakin rota')
+    .replace(/\bconfidence\w*/gi, 'okuma')
+    .replace(/\bevidence\w*/gi, 'not')
+    .replace(/\bmissing\w*/gi, 'uyuyan')
+    .replace(/\beksik\w*/gi, 'acik')
+    .replace(/\bkanit\w*/gi, 'not')
+    .replace(/kan\u0131t\w*/gi, 'not')
+    .replace(/\biz netli[gğ]i\b/gi, 'okuma')
+    .replace(/\bdefter\w*/gi, 'not')
     .replace(/\bODIE note confirmed by athlete\b/gi, 'ODIE notu onaylandi')
     .replace(/\bODIE note flagged by athlete\b/gi, 'ODIE notu isaretlendi')
     .replace(/\bODIE note stale or lagging behind current rota\b/gi, 'ODIE notu eski kaldi')
     .replace(/\bODIE tone and framing preferred by athlete\b/gi, 'ODIE tonu iyi bulundu')
     .replace(/\bDrill\b/gi, 'Teknik parca')
+}
+
+function _compactCoachText(value = '', max = 58) {
+  const text = _cozyTrainingLabel(value).replace(/\s+/g, ' ').trim()
+  if (text.length <= max) return text
+  return `${text.slice(0, Math.max(0, max - 3)).trim()}...`
 }
 
 function _visibleSections(note) {
@@ -58,7 +78,7 @@ function _mergeMood(current = 'calm', next = 'calm') {
 function _groupCoachSections(note) {
   const groups = {
     summary: { title: 'Bugunun Ozeti', mood: 'calm', lines: [] },
-    risk: { title: 'Risk ve Denge', mood: 'calm', lines: [] },
+    risk: { title: 'Sakin Rota', mood: 'calm', lines: [] },
     next: { title: 'Siradaki Adim', mood: 'calm', lines: [] },
   }
 
@@ -318,14 +338,14 @@ function _renderCoachCompanion(p = {}) {
         <div class="coach-avatar live">OD</div>
         <div>
           <span>ODIE notu</span>
-          <strong>${_escapeHtml(presence.headline)}</strong>
-          <small>${_escapeHtml(presence.moodLabel)} / ${_escapeHtml(presence.dataConfidence)}% iz netligi</small>
+          <strong>${_escapeHtml(_compactCoachText(presence.headline, 34))}</strong>
+          <small>${_escapeHtml(_compactCoachText(presence.moodLabel, 18))} / ${_escapeHtml(presence.dataConfidence)}% okuma</small>
         </div>
       </div>
-      <p>${_escapeHtml(presence.chatLine)}</p>
+      <p>${_escapeHtml(_compactCoachText(presence.chatLine, 68))}</p>
       <div class="coach-companion-signals">
-        ${(presence.signals || []).slice(0, 4).map(item => `
-          <span class="tone-${_escapeHtml(item.tone || 'calm')}"><b>${_escapeHtml(item.label)}</b><strong>${_escapeHtml(item.value)}</strong><small>${_escapeHtml(item.detail)}</small></span>
+        ${(presence.signals || []).slice(0, 3).map(item => `
+          <span class="tone-${_escapeHtml(item.tone || 'calm')}"><b>${_escapeHtml(_compactCoachText(item.label, 10))}</b><strong>${_escapeHtml(_compactCoachText(item.value, 10))}</strong></span>
         `).join('')}
       </div>
     </section>
@@ -335,72 +355,28 @@ function _renderCoachCompanion(p = {}) {
 export function renderCoach(p) {
   const cn = p.coachNote || { date: '', xpNote: '', sections: [] }
   const sections = _groupCoachSections(cn)
-  const support = `
-    <div class="coach-support-grid">
-      ${_renderCoachConfidence(p)}
-      ${_renderMemoryLedger(p)}
-    </div>
-  `
-
-  if (!sections.length) {
-    return `
-      ${_renderCoachCompanion(p)}
-      ${_renderSurvivalConsole(p)}
-      <div class="coach-terminal coach-terminal-empty" style="min-height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
-        <div style="font-size:48px;opacity:.4">OD</div>
-        <div style="font-size:14px;letter-spacing:3px;opacity:.7">ODIE MASADA DEGIL</div>
-        <div style="font-size:11px;opacity:.65;max-width:280px;text-align:center;line-height:1.5">
-          Henuz ODIE notu yok. Telegram'a yeni bir antrenman yazdiginda burada sade ve okunur bir yorum goreceksin.
-        </div>
-      </div>
-      ${support}`
-  }
-
-  const warningCount = Array.isArray(cn.warnings) ? cn.warnings.length : 0
-  const questCount = Array.isArray(p.quests?.weekly) ? p.quests.weekly.filter(quest => !quest.done).length : 0
-  const shells = sections.map((sec, index) => `
-    <div class="coach-section" id="coach-sec-${index}" data-mood="${sec.mood}">
-      <div class="coach-sec-head">
-        <span class="coach-sec-icon">${_moodIcon(sec.mood)}</span>
-        <span class="coach-sec-title">${sec.title}</span>
-        <span class="coach-sec-status" id="coach-st-${index}">BEKLEMEDE</span>
-      </div>
-      <div class="coach-sec-body" id="coach-sb-${index}"></div>
-    </div>`).join('')
-
+  const moves = sections.length ? sections : [
+    { title: 'Bugunun Ozeti', mood: 'calm', lines: ['Yeni seans gelince ODIE burada tek hamleyi yazar.'] },
+    { title: 'Siradaki Adim', mood: 'calm', lines: ['Bugun kisa, temiz ve kayitli bir tekrar yeter.'] },
+  ]
   return `
     ${_renderCoachCompanion(p)}
-    ${_renderSurvivalConsole(p)}
-    <div class="coach-terminal" id="coach-terminal">
-      <div class="coach-scanline"></div>
-      <div class="coach-header">
-        <div class="coach-avatar">OD</div>
-        <div class="coach-npc-info">
-          <div class="coach-npc-name">ODIE</div>
-          <div class="coach-npc-sub">bugunun not defteri</div>
-        </div>
-        <div class="coach-meta">
-          <div class="coach-date">${cn.date}</div>
-          <div class="coach-session">SEANS #${p.sessions}</div>
-        </div>
+    <div class="coach-game-card">
+      <div class="coach-game-head">
+        <span>ODIE</span>
+        <strong>${_escapeHtml(_compactCoachText(cn.xpNote || 'Bugunun yolu temiz.', 30))}</strong>
       </div>
-      <div class="coach-strip">
-        <span class="coach-pill">${_explain('live-context', 'CANLI IZ')}</span>
-        <span class="coach-pill">${warningCount} ${_explain('field-note', 'uyari')}</span>
-        <span class="coach-pill">${questCount} ${_explain('active-quests', 'acik hedef')}</span>
-      </div>
-      <div class="coach-body" id="coach-body">
-        <div class="coach-init-line" id="coach-init">
-          <span>ODIE notlari aciyor</span><span class="coach-blink">_</span>
-        </div>
-        ${shells}
-      </div>
-      <div class="coach-footer">
-        <button class="coach-skip-btn" id="coach-skip">DEFTERI AC</button>
-        <div class="coach-xp-badge">${cn.xpNote}</div>
+      <div class="coach-moment-grid">
+        ${moves.slice(0, 3).map((sec, index) => `
+          <article class="coach-moment-slip tone-${_escapeHtml(sec.mood || 'calm')}">
+            <span>${_moodIcon(sec.mood)} ${index + 1}</span>
+            <strong>${_escapeHtml(_compactCoachText(sec.title, 16))}</strong>
+            <p>${_escapeHtml(_compactCoachText((sec.lines || [])[0] || 'Kisa ve temiz.', 44))}</p>
+          </article>
+        `).join('')}
       </div>
     </div>
-    ${support}`
+  `
 }
 
 export function initCoach(p) {
@@ -420,6 +396,8 @@ export function initCoach(p) {
       })
     }
   })
+
+  if (!document.getElementById('coach-terminal')) return
 
   const sections = _groupCoachSections(p?.coachNote)
   if (!sections.length) return

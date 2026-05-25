@@ -24,6 +24,7 @@ function escapeHtml(value = '') {
 
 function cozyAskText(value = '') {
   return String(value || '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
     .replace(/\bbuild\w*\b/gi, 'rota')
@@ -34,8 +35,21 @@ function cozyAskText(value = '') {
     .replace(/\bWorkout\b/gi, 'antrenman')
     .replace(/\bHybrid\b/gi, 'karma')
     .replace(/\bCoach\b/gi, 'ODIE')
-    .replace(/\bSinyal\b/gi, 'Iz')
-    .replace(/\bsinyal\b/gi, 'iz')
+    .replace(/\bSinyal\b/gi, 'Not')
+    .replace(/\bsinyal\b/gi, 'not')
+    .replace(/\barmor\b/gi, 'akis')
+    .replace(/\bkalkan\w*\s+onar/gi, 'Ritmi Yakala')
+    .replace(/\bkalkan\w*/gi, 'akis')
+    .replace(/\brisk\w*/gi, 'sis')
+    .replace(/\btemkin\w*/gi, 'sakin rota')
+    .replace(/\bconfidence\w*/gi, 'okuma')
+    .replace(/\bevidence\w*/gi, 'not')
+    .replace(/\bmissing\w*/gi, 'uyuyan')
+    .replace(/\beksik\w*/gi, 'acik')
+    .replace(/\bkanit\w*/gi, 'not')
+    .replace(/kan\u0131t\w*/gi, 'not')
+    .replace(/\biz netli[gğ]i\b/gi, 'okuma')
+    .replace(/\bdefter\w*/gi, 'not')
 }
 
 function compactAskText(value = '', max = 132) {
@@ -111,7 +125,7 @@ function renderTranscript(latest) {
     return `
       <div class="ask-terminal-empty">
         <strong>ODIE burada.</strong>
-        <p>Hevy, Apple, hafiza ve son sorulari beraber okuyup konusur gibi cevap verecek.</p>
+        <p>Hevy, Apple ve son notlardan kisa bir rota cikarir.</p>
       </div>
     `
   }
@@ -123,7 +137,7 @@ function renderTranscript(latest) {
           <span>ODIE</span>
           <span>baglam topluyor</span>
         </div>
-        <div class="ask-bubble-body">Uyku, kalp, son antrenman, hafiza ve bugunku risk ayni masada. Birazdan net konusacagim.</div>
+        <div class="ask-bubble-body">Uyku, kalp ve son antrenman ayni masada. Birazdan net konusacagim.</div>
       </article>
     `
     : ''
@@ -235,21 +249,21 @@ export function renderAsk(state, profile) {
   const focus = state.profile?.currentFocus || 'Hybrid denge'
   const memoryCount = (state.athleteMemory || []).length
   const sourceCount = (presence.sourceLine || '').split('/').filter(Boolean).length
-  const answer = compactAskText(latest?.answer || presence.chatLine || 'Soruyu yaz; ODIE bugunku izi kisa okuyacak.', 142)
+  const answer = compactAskText(latest?.answer || presence.chatLine || 'Soruyu yaz; ODIE bugunku rotayi kisa okuyacak.', 66)
   const history = askState.items.slice(0, 3)
 
   return `
     <section class="village-ask-card tone-${escapeHtml(presence.tone || 'calm')}">
       <div class="village-ask-head">
         <span>ODIE'ye sor</span>
-        <strong>${escapeHtml(latest ? compactAskText(latest.title, 36) : 'Kisa defter')}</strong>
+        <strong>${escapeHtml(latest ? compactAskText(latest.title, 36) : 'Kisa rota')}</strong>
         <em class="${askState.loadingAnswer ? 'live' : ''}">${askState.loadingAnswer ? 'okuyor' : 'hazir'}</em>
       </div>
 
       <div class="village-ask-signals">
         <span><b>${memoryCount}</b><small>hafiza</small></span>
         <span><b>${Number.isFinite(readiness) ? Math.round(readiness) : '--'}</b><small>hazir</small></span>
-        <span><b>${sourceCount}</b><small>kaynak</small></span>
+        <span><b>${sourceCount}</b><small>boncuk</small></span>
       </div>
 
       <form id="odie-ask-form" class="village-ask-form ask-form">
@@ -262,7 +276,7 @@ export function renderAsk(state, profile) {
         >${escapeHtml(askState.draft)}</textarea>
         <div class="village-ask-tools">
           <div class="village-ask-samples">
-            ${samples.slice(0, 2).map(sample => `<button type="button" class="ask-sample-chip village-ask-chip" data-ask-sample="${escapeHtml(sample)}">${escapeHtml(compactAskText(sample, 34))}</button>`).join('')}
+            ${samples.slice(0, 2).map((sample, index) => `<button type="button" class="ask-sample-chip village-ask-chip" data-ask-sample="${escapeHtml(sample)}" aria-label="${escapeHtml(sample)}"><span aria-hidden="true">${index + 1}</span></button>`).join('')}
           </div>
           <button type="submit" class="ask-submit village-ask-submit" ${askState.loadingAnswer ? 'disabled' : ''}>${askState.loadingAnswer ? 'Okuyor' : 'Yaz'}</button>
         </div>
@@ -271,14 +285,14 @@ export function renderAsk(state, profile) {
       <article class="village-answer-card">
         <div>
           <span>${latest ? formatWhen(latest.createdAt) : compactAskText(focus, 22)}</span>
-          <strong>${escapeHtml(latest ? compactAskText(latest.question, 58) : 'Soruyu yaz, bugunku izi okuyalim.')}</strong>
+          <strong>${escapeHtml(latest ? compactAskText(latest.question, 40) : 'Rotayi okuyalim.')}</strong>
         </div>
         <p>${escapeHtml(answer)}</p>
       </article>
 
       ${latest ? `
         <div class="village-answer-row">
-          <span><b>Iz</b>${renderMiniList(latest.evidence.slice(0, 2), 'temiz')}</span>
+          <span><b>Not</b>${renderMiniList(latest.evidence.slice(0, 2), 'temiz')}</span>
           <span><b>Hamle</b>${renderMiniList(latest.nextSteps.slice(0, 2), 'sakin')}</span>
         </div>
       ` : ''}

@@ -1,11 +1,11 @@
 const UI_LABELS = {
-  readiness: 'Hazir',
-  armor: 'Kalkan',
-  fatigue: 'Yorgunluk',
-  risk: 'Dikkat',
-  source: 'Defter',
-  pulse: 'Son iz',
-  confidence: 'Iz netligi',
+  readiness: 'Isik',
+  armor: 'Akis',
+  fatigue: 'Sis',
+  risk: 'Sakin rota',
+  source: 'Kaynak',
+  pulse: 'Son seans',
+  confidence: 'Okuma',
   command: 'Bugunun Rotasi',
   class: 'Karakter Tipi',
   focus: 'Bugunku Odak',
@@ -19,7 +19,7 @@ const GOAL_TITLES = {
   onboarding: 'Ilk Temiz Kayit',
   recovery: 'Toparlanma Gunu',
   technical: 'Form Gunu',
-  'pr-hold': 'Rekor Sonrasi Temkin',
+  'pr-hold': 'Rekor Sonrasi Sakin Rota',
   balance: 'Hatti Kapat',
   progress: 'Kucuk Artis Gunu',
 }
@@ -34,7 +34,7 @@ export function goalTitle(goal = {}) {
 
 export function riskToneLabel({ fatigue = 0, armor = 100, readiness = null } = {}) {
   if (Number(fatigue) >= 70) return 'Yuksek dikkat'
-  if (Number(armor) < 60) return 'Kalkan dusuk'
+  if (Number(armor) < 60) return 'Akis dusuk'
   if (Number.isFinite(Number(readiness)) && Number(readiness) < 55) return 'Kontrollu'
   return 'Stabil'
 }
@@ -45,5 +45,5 @@ export function sourceLabel(source = '') {
   if (key === 'telegram') return 'TG'
   if (key === 'apple_health') return 'Apple Health'
   if (key) return 'WEB'
-  return 'Bekliyor'
+  return 'Uyuyor'
 }

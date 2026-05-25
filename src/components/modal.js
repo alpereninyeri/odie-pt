@@ -75,7 +75,7 @@ function renderModalSection(title, body) {
 function renderSignalGrid(signals = []) {
   if (!signals.length) return ''
   return renderModalGrid(signals.map(signal => ({
-    label: 'Iz',
+    label: 'Not',
     value: signal,
   })))
 }
@@ -135,12 +135,24 @@ function gradePillClass(value = '') {
 
 function cozyModalText(value = '') {
   return String(value || '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
     .replace(/\bbuild\w*\b/gi, 'rota')
     .replace(/\bdriver\b/gi, 'isaret')
-    .replace(/\braw\b/gi, 'ham')
-    .replace(/\bconfidence\b/gi, 'netlik')
+    .replace(/\braw\b/gi, 'arka puan')
+    .replace(/\bconfidence\w*/gi, 'okuma')
+    .replace(/\bevidence\w*/gi, 'not')
+    .replace(/\bmissing\w*/gi, 'uyuyan')
+    .replace(/\beksik\w*/gi, 'acik')
+    .replace(/\bkanit\w*/gi, 'not')
+    .replace(/kan\u0131t\w*/gi, 'not')
+    .replace(/\bkalkan\w*\s+onar/gi, 'Ritmi Yakala')
+    .replace(/\bkalkan\w*/gi, 'akis')
+    .replace(/\brisk\w*/gi, 'sis')
+    .replace(/\btemkin\w*/gi, 'sakin rota')
+    .replace(/\biz netli[gğ]i\b/gi, 'okuma')
+    .replace(/\bdefter\w*/gi, 'not')
     .replace(/\bPush\b/gi, 'Itis')
     .replace(/\bPull\b/gi, 'Cekis')
     .replace(/\bCore\b/gi, 'Govde')
@@ -152,7 +164,7 @@ function cozyModalText(value = '') {
 
 function confidenceLabel(value = '') {
   const key = String(value || 'seed').toUpperCase()
-  return ({ HIGH: 'NET', MEDIUM: 'ORTA', LOW: 'AZ', SEED: 'DEFTER' })[key] || cozyModalText(key)
+  return ({ HIGH: 'NET', MEDIUM: 'ORTA', LOW: 'YENI', SEED: 'UYUYOR' })[key] || cozyModalText(key)
 }
 
 function softModalLine(value = '', fallback = 'Bugunun izi sakin, net is yeterli.') {
@@ -194,9 +206,9 @@ export function openStatModal(stat) {
       ${stat.critical ? '<div style="text-align:center;margin-bottom:8px"><span class="grade-pill grade-crit">Dikkat</span></div>' : ''}
       <div class="modal-desc">${softModalLine(stat.coach || stat.desc)}</div>
       ${renderModalGrid([
-        { label: 'Iz', value: `${progress}%` },
-        { label: 'Netlik', value: confidence },
-        { label: 'Puan', value: `${baseScore}/100` },
+        { label: 'Yol', value: `${progress}%` },
+        { label: 'Okuma', value: confidence },
+        { label: 'Seviye', value: `${baseScore}/100` },
         { label: 'S kapisi', value: stat.sUnlocked ? 'acik' : 'bekliyor' },
       ])}
       ${renderModalGrid((stat.detail || []).map(detail => ({
@@ -204,7 +216,7 @@ export function openStatModal(stat) {
         value: cozyModalText(detail.val),
         pillClass: `grade-pill ${gradePillClass(detail.val)}`,
       })))}
-      <div class="modal-tip">Oyun notu: rank buyumeyi gosterir; puan arka defterde kalir.</div>
+      <div class="modal-tip">Oyun notu: rank buyumeyi gosterir; detay arka planda kalir.</div>
     `,
   })
 }
@@ -440,7 +452,7 @@ export function openUnlockModal({ nextUnlock, skills }) {
       ${Number.isFinite(progress) ? `
         <div class="modal-coach">
           <strong>Yakinlik:</strong> %${Math.round(progress)}<br>
-          <strong>Eksik:</strong> ${cozyModalText(nextUnlock.missing || 'Bir temiz iz daha gerekli.')}<br>
+          <strong>Yol:</strong> ${cozyModalText(nextUnlock.missing || 'Bir temiz tekrar daha gerekli.')}<br>
           <strong>Bugunku mini adim:</strong> ${cozyModalText(nextUnlock.todayStep || 'Kisa teknik blok ekle.')}
         </div>
       ` : ''}

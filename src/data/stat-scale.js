@@ -29,7 +29,7 @@ const RANKS = [
   { rank: 'C', label: 'Kuruluyor', min: 40, next: 55 },
   { rank: 'B', label: 'Stabil', min: 55, next: 72 },
   { rank: 'A', label: 'Guclu', min: 72, next: 88 },
-  { rank: 'S', label: 'Kanitli elit', min: 88, next: 100 },
+  { rank: 'S', label: 'Canli elit', min: 88, next: 100 },
 ]
 
 const DEFAULT_EVIDENCE = {

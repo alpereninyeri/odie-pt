@@ -191,11 +191,11 @@ function pageTitle(tabKey, profile) {
     case 'today':
       return `${profile.nick} - Bugun`
     case 'character':
-      return `${profile.nick} Karakter Defteri`
+      return `${profile.nick} Karakter Odasi`
     case 'quests':
       return `${profile.nick} Kasaba Panosu`
     case 'odie':
-      return odieMode === 'ask' ? "ODIE'ye Sor" : 'ODIE Defteri'
+      return odieMode === 'ask' ? "ODIE'ye Sor" : 'ODIE Notu'
     default:
       return profile.nick
   }
@@ -269,7 +269,7 @@ function renderMobileHud(state, profile, semantic = {}, ui = buildUiRuntime(stat
 
 function renderNavButton(tab, isActive, mobile = false) {
   return `
-    <button class="${mobile ? 'bottom-tab' : 'nav-button'} ${isActive ? 'active' : ''}" data-tab="${tab.key}" aria-pressed="${isActive ? 'true' : 'false'}">
+    <button class="${mobile ? 'bottom-tab' : 'nav-button'} ${isActive ? 'active' : ''}" data-tab="${tab.key}" aria-label="${escapeHtml(tab.label)}" aria-pressed="${isActive ? 'true' : 'false'}">
       <span class="nav-icon">${renderNavGlyph(tab.icon)}</span>
       <span class="bottom-tab-label">${tab.label}</span>
     </button>
@@ -398,21 +398,21 @@ function buildVillageModel(state = {}, profile = {}, semantic = {}, ui = buildUi
       label: 'HV',
       icon: 'hevy',
       lit: Boolean(sourceHealth.hevyCount || String(latestWorkout?.source || '').toLowerCase() === 'hevy'),
-      detail: sourceHealth.latestHevyDate ? formatMonthShort(sourceHealth.latestHevyDate) : 'bekliyor',
+      detail: sourceHealth.latestHevyDate ? formatMonthShort(sourceHealth.latestHevyDate) : 'uyuyor',
     },
     {
       key: 'sleep',
       label: 'UY',
       icon: 'spark',
       lit: Boolean(sourceHealth.appleSleepLinked || healthSummary?.sleepScore || healthSummary?.totalSleepHours || dailyLog.sleepHours),
-      detail: healthSummary?.totalSleepHours ? `${Number(healthSummary.totalSleepHours).toFixed(1)}s` : dailyLog.sleepHours ? `${Number(dailyLog.sleepHours).toFixed(1)}s` : 'bekliyor',
+      detail: healthSummary?.totalSleepHours ? `${Number(healthSummary.totalSleepHours).toFixed(1)}s` : dailyLog.sleepHours ? `${Number(dailyLog.sleepHours).toFixed(1)}s` : 'uyuyor',
     },
     {
       key: 'heart',
       label: 'KA',
       icon: 'heart',
       lit: Boolean(sourceHealth.appleHeartLinked || healthSummary?.heartScore || healthSummary?.restingHeartRate),
-      detail: healthSummary?.heartScore ? Math.round(healthSummary.heartScore) : 'bekliyor',
+      detail: healthSummary?.heartScore ? Math.round(healthSummary.heartScore) : 'uyuyor',
     },
     {
       key: 'move',
@@ -426,7 +426,7 @@ function buildVillageModel(state = {}, profile = {}, semantic = {}, ui = buildUi
       label: 'LG',
       icon: 'note',
       lit: Boolean(state.dailyLogs?.length || state.athleteMemory?.length || state.memoryFeedback?.length),
-      detail: state.dailyLogs?.length ? `${state.dailyLogs.length} iz` : 'bekliyor',
+      detail: state.dailyLogs?.length ? `${state.dailyLogs.length} not` : 'uyuyor',
     },
   ]
 
@@ -453,7 +453,7 @@ function buildVillageModel(state = {}, profile = {}, semantic = {}, ui = buildUi
     decision,
     goal,
     title,
-    odieLine: compactText(cozyDisplayText(odieLine), 84),
+    odieLine: compactText(cozyDisplayText(odieLine), 56),
     unlock,
     className,
     balanceItems,
@@ -500,9 +500,9 @@ function renderVillageSourceBeads(sources = []) {
 
 function renderVillageCompass(model) {
   const rings = [
-    { key: 'ready', label: 'Hazir', value: model.readiness, icon: 'sun' },
-    { key: 'armor', label: 'Kalkan', value: model.armor, icon: 'shield' },
-    { key: 'fatigue', label: 'Yuk', value: model.fatigue, icon: 'fog', reverse: true },
+    { key: 'ready', label: 'Isik', value: model.readiness, icon: 'sun' },
+    { key: 'armor', label: 'Akis', value: model.armor, icon: 'spark' },
+    { key: 'fatigue', label: 'Sis', value: model.fatigue, icon: 'fog', reverse: true },
   ]
   return `
     <div class="village-compass" aria-label="Gun pusulasi">
@@ -593,12 +593,12 @@ function buildVillageQuestCards(model) {
       intensity: mainBlock.intensity || 'moderate',
     },
     {
-      tone: injury ? 'risk' : 'guard',
-      label: 'Kalkan',
-      title: injury ? (injury.label || 'Temkin') : 'Onarim',
+      tone: injury ? 'guard' : 'guard',
+      label: 'Akis',
+      title: injury ? (injury.label || 'Yumusak rota') : 'Yumusak rota',
       detail: injury ? `${Math.round(injury.recoveryPct ?? 0)}% temiz / ${Math.round(injury.etaDays ?? 0)}g` : (model.nextSession.warnings?.[0] || 'Uyku, su, adim'),
-      reward: injury ? 'risk -' : 'kalkan +',
-      icon: 'shield',
+      reward: injury ? 'sis -' : 'tempo +',
+      icon: 'spark',
       action: injury ? 'open-body-region' : 'open-health-shortcut',
       regionId: injury?.regionId || model.bodyMapState?.priority?.region?.id || 'core',
       intensity: 'easy',
@@ -632,7 +632,7 @@ function renderVillageQuestSlip(card, index = 0) {
       <span class="quest-slip-body">
         <span class="quest-slip-top">
           <small>${escapeHtml(card.label)}</small>
-          <em>${escapeHtml(card.reward)}</em>
+          <em>${escapeHtml(cozyDisplayText(card.reward))}</em>
         </span>
         <strong>${villageDisplay(card.title, 'Gorev')}</strong>
         <span class="quest-slip-meter"><i></i></span>
@@ -760,21 +760,36 @@ function displayWorkoutType(text = '') {
 
 function cozyDisplayText(text = '') {
   return displayWorkoutType(text)
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .replace(/\btrunk control\b/gi, 'govde kontrolu')
     .replace(/\bbuild['’]?i\b/gi, 'rotasi')
     .replace(/\bbuild\w*\b/gi, 'rota')
     .replace(/\bglobal\b/gi, 'genel')
     .replace(/\bclass\b/gi, 'sinif')
     .replace(/\bcoach\b/gi, 'ODIE')
-    .replace(/\bsource\b/gi, 'defter')
-    .replace(/\bsignal\b/gi, 'iz')
+    .replace(/\bsource\b/gi, 'kaynak')
+    .replace(/\bsignal\b/gi, 'not')
     .replace(/\bblock\b/gi, 'blok')
     .replace(/\bdrill\b/gi, 'teknik parca')
+    .replace(/\bkalkan\w*\s+onar/gi, 'Ritmi Yakala')
+    .replace(/\barmor\b/gi, 'akis')
+    .replace(/\bkalkan\w*/gi, 'akis')
+    .replace(/\brisk\w*/gi, 'sis')
+    .replace(/\btemkin\w*/gi, 'sakin rota')
+    .replace(/\bconfidence\w*/gi, 'okuma')
+    .replace(/\bevidence\w*/gi, 'not')
+    .replace(/\bmissing\w*/gi, 'uyuyan')
+    .replace(/\beksik\w*/gi, 'acik')
+    .replace(/\bkanit\w*/gi, 'not')
+    .replace(/kan\u0131t\w*/gi, 'not')
+    .replace(/\bdefter\w*/gi, 'not')
+    .replace(/\biz netli[gğ]i\b/gi, 'okuma')
+    .replace(/\bbakilan iz\w*/gi, 'notlar')
 }
 
 function cozyConfidenceLabel(confidence = '') {
   const key = String(confidence || 'seed').toUpperCase()
-  return ({ HIGH: 'NET', MEDIUM: 'ORTA', LOW: 'AZ', SEED: 'DEFTER' })[key] || displayWorkoutType(key)
+  return ({ HIGH: 'NET', MEDIUM: 'ORTA', LOW: 'YENI', SEED: 'UYUYOR' })[key] || displayWorkoutType(key)
 }
 
 function buildTodayLead(state, latestWorkout = null) {
@@ -794,7 +809,7 @@ function buildTodayLead(state, latestWorkout = null) {
   const score = Number(state.health?.readiness?.score)
   if (Number.isFinite(score)) {
     if (score >= 80) return 'Bugun ana blok icin iyi gorunuyor. Hevy ve Telegram akisi geldikce kart kendini yeniler.'
-    if (score >= 60) return 'Normal tempo uygun. Son veriler yuk, defter ve ritim panellerine dusuyor.'
+    if (score >= 60) return 'Normal tempo uygun. Son veriler yuk, not ve ritim panellerine dusuyor.'
     if (score >= 40) return 'Kontrollu git. Teknik, core veya daha kisa bir seans mantikli.'
     return 'Yorgunluk yuksek gorunuyor. Bugun hafif teknik veya kisa hareket yeter.'
   }
@@ -960,7 +975,7 @@ function renderOdieLiveCard(presence = {}, { compact = false, action = true } = 
         <div>
           <span>ODIE Live</span>
           <strong>${escapeHtml(presence.headline || 'ODIE izleri okuyor')}</strong>
-          <small>${escapeHtml(presence.moodLabel || 'canli mod')} / ${escapeHtml(presence.dataConfidence ?? '--')}% iz netligi</small>
+          <small>${escapeHtml(presence.moodLabel || 'canli mod')} / ${escapeHtml(presence.dataConfidence ?? '--')}% okuma</small>
         </div>
       </div>
       <p>${escapeHtml(presence.chatLine || presence.hudLine || '')}</p>
@@ -970,7 +985,7 @@ function renderOdieLiveCard(presence = {}, { compact = false, action = true } = 
       ${action ? `
         <div class="odie-live-actions">
           <button type="button" data-tab="odie">ODIE ile konus</button>
-          <button type="button" data-action="open-health-shortcut">Defterleri bagla</button>
+          <button type="button" data-action="open-health-shortcut">Kaynaklari bagla</button>
         </div>
       ` : ''}
     </article>
@@ -1112,13 +1127,13 @@ function renderPrestigeAnatomySheet(bodyMapState, profile, className = '') {
           <small>${escapeHtml(priorityMovement?.label || 'Mobilite')} hatti</small>
         </button>
         <button class="anatomy-rail-card ${injury ? 'tone-injury' : 'tone-ready'}" data-action="open-body-region" data-region-id="${escapeHtml(injury?.regionId || priorityRegion?.id || 'core')}">
-          <span>${injury ? 'Temkin' : 'Kalkan'}</span>
+          <span>${injury ? 'Sakin rota' : 'Akis'}</span>
           <strong>${escapeHtml(injury?.label || 'Stabil yuk')}</strong>
           <small>${escapeHtml(injurySummary)}</small>
         </button>
         <button class="anatomy-rail-card tone-quest" data-action="open-body-region" data-region-id="${escapeHtml(priorityRegion?.id || 'core')}">
           <span>Ara gorev</span>
-          <strong>${escapeHtml(quest?.name || 'Mini hamle')}</strong>
+          <strong>${escapeHtml(cozyDisplayText(quest?.name || 'Mini hamle'))}</strong>
           <small>${escapeHtml(cozyDisplayText(quest?.desc || 'Bugunun temiz ilerleme isi'))}</small>
         </button>
       </div>
@@ -1143,7 +1158,7 @@ function renderXpRoute(bodyMapState) {
     <div class="xp-route" aria-label="Bugun XP nereden gelir">
       <span>XP ROTASI</span>
       <div>
-        ${parts.slice(0, 4).map(part => `<b>+${Math.round(part.value)} ${escapeHtml(part.label)}</b>`).join('')}
+        ${parts.slice(0, 4).map(part => `<b>+${Math.round(part.value)} ${escapeHtml(cozyDisplayText(part.label))}</b>`).join('')}
       </div>
     </div>
   `
@@ -1192,8 +1207,8 @@ function getVitalOsModel(state = {}, bodyMapState = null, nextSession = null) {
   const readinessConfidence = ({ high: 'yuksek', medium: 'orta', low: 'dusuk' })[state.health?.readiness?.confidence] || 'orta'
   const activeCommand = cozyDisplayText(nextSession?.coachCommand || quest?.desc || 'Bugunu temiz veriyle kapat.')
   const risk = injury
-    ? `${injury.label || 'Bilek'} temkinde: %${Math.round(injury.recoveryPct ?? 0)} toparlandi, ${Math.round(injury.etaDays ?? 0)} gun agir grip yok.`
-    : cozyDisplayText(nextSession?.warnings?.[0] || state.health?.warnings?.[0]?.desc || 'Risk sinyali sakin.')
+    ? `${injury.label || 'Bilek'} sakin rotada: %${Math.round(injury.recoveryPct ?? 0)} toparlandi, ${Math.round(injury.etaDays ?? 0)} gun agir grip yok.`
+    : cozyDisplayText(nextSession?.warnings?.[0] || state.health?.warnings?.[0]?.desc || 'Rota sakin.')
 
   return {
     summary,
@@ -1205,7 +1220,7 @@ function getVitalOsModel(state = {}, bodyMapState = null, nextSession = null) {
     risk,
     rings: [
       { key: 'load', label: 'Yuk', value: load, reverse: true, detail: summary?.steps ? `${Math.round(summary.steps).toLocaleString('tr-TR')} adim` : `${Math.round(state.profile?.fatigue || 0)} yorgunluk` },
-      { key: 'recovery', label: 'Onarim', value: recovery, detail: `${readinessConfidence} iz` },
+      { key: 'recovery', label: 'Ritim', value: recovery, detail: `${readinessConfidence} akis` },
       { key: 'sleep', label: 'Uyku', value: sleep, detail: summary?.totalSleepHours ? `${Number(summary.totalSleepHours).toFixed(1)} saat` : 'izin bekliyor' },
       { key: 'heart', label: 'Kalp', value: heart, detail: summary?.hrvSdnn ? `HRV ${Math.round(summary.hrvSdnn)} / RHR ${Math.round(summary.restingHeartRate || 0)}` : 'nabiz bekliyor' },
     ],
@@ -1218,13 +1233,13 @@ function renderVitalPulsePanel(state, bodyMapState, nextSession = null) {
     <div class="vital-pulse-panel">
       <div class="vital-pulse-head">
         <span>Karakter Odasi</span>
-        <strong>${model.dataConfidence}% iz netligi</strong>
+        <strong>${model.dataConfidence}% okuma</strong>
       </div>
       <div class="vital-ring-grid">
         ${model.rings.map(renderVitalRing).join('')}
       </div>
       <div class="vital-pulse-alert ${model.injury ? 'tone-injury' : 'tone-steady'}">
-        <span>${model.injury ? 'Temkin' : 'Durum'}</span>
+        <span>${model.injury ? 'Sakin rota' : 'Durum'}</span>
         <strong>${escapeHtml(model.risk)}</strong>
       </div>
     </div>
@@ -1244,14 +1259,14 @@ function renderHealthBridgeCard(state = {}) {
   ]
   const latestText = appleWorkout
     ? `${formatMonthShort(appleWorkout.date)} / ${appleWorkout.distanceKm ? `${Math.round(appleWorkout.distanceKm * 10) / 10} km` : `${appleWorkout.durationMin || 0} dk`}`
-    : (healthStatus.missing ? 'Kurulum bekliyor' : 'Kestirme bekliyor')
+    : (healthStatus.missing ? 'Uyuyan baglanti' : 'Kestirme uyuyor')
   const lastSync = healthStatus.lastSyncAt ? formatMonthShort(healthStatus.lastSyncAt) : 'iz yok'
   const lastError = healthStatus.lastError?.error || ''
   return `
     <article class="health-bridge-card">
       <div>
-        <span>${renderExplainButton('apple-health', 'Canli Defterler', 'explain-link metric-explain')}</span>
-        <strong>Hevy kuvvet defteri, Apple yasam izi</strong>
+        <span>${renderExplainButton('apple-health', 'Canli Kayitlar', 'explain-link metric-explain')}</span>
+        <strong>Hevy kuvvet kaydi, Apple yasam notu</strong>
         <small>${escapeHtml(latestText)} / son iz ${escapeHtml(lastSync)}${lastError ? ` / hata: ${escapeHtml(lastError).slice(0, 80)}` : ''}</small>
       </div>
       <div class="health-source-grid">
@@ -1274,7 +1289,7 @@ function sourceStateLabel(status = '') {
     linked: 'bagli',
     available: 'hazir',
     waiting: 'bekliyor',
-    missing: 'eksik',
+    missing: 'uyuyor',
     error: 'hata',
   })[key] || String(status || 'bekliyor').replace(/_/g, ' ')
 }
@@ -1307,7 +1322,7 @@ function buildHunterOdieLine({ state = {}, nextSession = {}, bodyMapState = {}, 
   const warning = nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || ''
   if (injury) return `${injury.label || 'Beden'} hala nazli. Bugun ego degil, temiz tekrar kazanir.`
   if (fatigue >= 75) return 'Motor isinmis ama depo bos. Bugun karakteri parlatan sey toparlanma.'
-  if (armor < 55 || (Number.isFinite(readiness) && readiness < 45)) return 'Kalkan ince. Kisa, temiz ve kontrollu hamle bugunun galibiyeti.'
+  if (armor < 55 || (Number.isFinite(readiness) && readiness < 45)) return 'Akis ince. Kisa, temiz ve kontrollu hamle bugunun galibiyeti.'
   if (warning) return `${compactText(cozyDisplayText(warning), 72)}. Puan sabirdan gelir.`
   return cozyDisplayText(decision.command || nextSession.coachCommand || 'Bugun kucuk artis yeter. Karakteri ileri tasiyan sey temiz kayit.')
 }
@@ -1319,7 +1334,7 @@ function buildHunterArc({ state = {}, profile = {}, nextSession = {}, bodyMapSta
   const hevy = nextSession.sourceHealth || buildHevyLiveSummary(state.workouts || [], profile)
   const stats = getFrontStats(state, profile)
   const rank = aggregateRank(stats)
-  const source = hevy.latestHevyDate ? `HEVY ${formatMonthShort(hevy.latestHevyDate)}` : latestWorkout ? sourceLabel(latestWorkout.source) : 'Defter bekliyor'
+  const source = hevy.latestHevyDate ? `HEVY ${formatMonthShort(hevy.latestHevyDate)}` : latestWorkout ? sourceLabel(latestWorkout.source) : 'Kayit uyuyor'
   return {
     decision,
     title,
@@ -1336,7 +1351,7 @@ function renderHunterStatDock(stats = []) {
     agi: 'pulse',
     end: 'flame',
     dex: 'target',
-    con: 'shield',
+    con: 'spark',
     sta: 'heart',
   }
   return `
@@ -1383,7 +1398,7 @@ function renderHunterRewardChips(nextSession, bodyMapState, latestWorkout) {
     <div class="game-loot-row">
       ${buildHunterRewardChips(nextSession, bodyMapState, latestWorkout).map(chip => `
         <span class="game-loot tone-${escapeHtml(chip.tone)}">
-          ${renderHunterIcon(chip.tone === 'guard' ? 'shield' : chip.tone === 'xp' ? 'flame' : 'target')}
+          ${renderHunterIcon(chip.tone === 'guard' ? 'spark' : chip.tone === 'xp' ? 'flame' : 'target')}
           <span>${escapeHtml(chip.label)}</span>
         </span>
       `).join('')}
@@ -1392,7 +1407,7 @@ function renderHunterRewardChips(nextSession, bodyMapState, latestWorkout) {
 }
 
 function renderHunterQuestCard({ title, label, detail, reward, tone = 'main', action = '', tab = '', explain = '', regionId = '' }) {
-  const icon = tone === 'recovery' || tone === 'danger' ? 'shield' : tone === 'side' ? 'pulse' : 'target'
+  const icon = tone === 'recovery' || tone === 'danger' ? 'spark' : tone === 'side' ? 'pulse' : 'target'
   const attrs = [
     'type="button"',
     `class="game-note tone-${escapeHtml(tone)}"`,
@@ -1430,9 +1445,9 @@ function buildHunterQuestCards({ state = {}, profile = {}, nextSession = {}, bod
   const recovery = state.profile?.recovery
   const mainTitle = goalTitle(nextSession.primaryGoal) || decision.title
   const mainDetail = cozyDisplayText(mainBlock.target || nextSession.coachCommand || decision.command)
-  const recoveryTitle = injury ? `${injury.label || 'Bolge'} korumasi` : 'Kalkan Onarimi'
+  const recoveryTitle = injury ? `${injury.label || 'Bolge'} korumasi` : 'Ritmi Yakala'
   const recoveryDetail = injury
-    ? `${Math.round(injury.recoveryPct ?? 0)}% toparlandi / ${Math.round(injury.etaDays ?? 0)} gun temkin`
+    ? `${Math.round(injury.recoveryPct ?? 0)}% toparlandi / ${Math.round(injury.etaDays ?? 0)} gun sakin rota`
     : recovery ? `${recovery.progressPct}% toparlanma isledi` : 'Uyku, su ve adim bugunku yakit'
   const optionalQuest = bodyMapState?.dailyQuest || activeQuest
 
@@ -1446,10 +1461,10 @@ function buildHunterQuestCards({ state = {}, profile = {}, nextSession = {}, bod
       action: 'open-workout',
     },
     {
-      label: 'Kalkan',
+      label: 'Akis',
       title: recoveryTitle,
       detail: compactText(recoveryDetail, 78),
-      reward: injury ? 'risk kilidi' : 'kalkan +',
+      reward: injury ? 'sis -' : 'ritim +',
       tone: injury ? 'danger' : 'recovery',
       action: injury ? 'open-body-region' : 'open-health-shortcut',
       regionId: injury?.regionId || priorityRegion?.id || 'core',
@@ -1517,14 +1532,14 @@ function renderTodayHunterCardScreen(state, profile, semantic, nextSession = {},
         <div class="village-board-top">
           <span class="board-mark">${renderVillageGlyph('board')}</span>
           <strong>${villageDisplay(primary.title, 'Ana gorev')}</strong>
-          <em>${escapeHtml(primary.reward)}</em>
+          <em>${escapeHtml(cozyDisplayText(primary.reward))}</em>
         </div>
         <div class="village-board-graphic">
           ${renderVillageBalanceBridge(model.balanceItems)}
         </div>
         <div class="village-board-actions">
           <button class="village-primary-action" type="button" data-action="open-workout">Kayda yaz</button>
-          ${model.latestWorkout?.id ? `<button class="village-quiet-action village-trace-action" type="button" data-action="open-session-detail" data-workout-id="${escapeHtml(model.latestWorkout.id)}">Son iz</button>` : ''}
+          ${model.latestWorkout?.id ? `<button class="village-quiet-action village-trace-action" type="button" data-action="open-session-detail" data-workout-id="${escapeHtml(model.latestWorkout.id)}">Son seans</button>` : ''}
           <button class="village-quiet-action" type="button" data-tab="quests">Pano</button>
         </div>
       </article>
@@ -2160,7 +2175,8 @@ function explainerFor(key) {
 }
 
 function renderExplainButton(key, label, className = 'explain-link') {
-  return `<button type="button" class="${className}" data-explain="${escapeHtml(key)}" aria-haspopup="dialog" aria-label="${escapeHtml(label)} aciklamasini ac">${escapeHtml(label)}</button>`
+  const safeLabel = cozyDisplayText(label)
+  return `<button type="button" class="${className}" data-explain="${escapeHtml(key)}" aria-haspopup="dialog" aria-label="${escapeHtml(safeLabel)} aciklamasini ac">${escapeHtml(safeLabel)}</button>`
 }
 
 function openExplainModal(key) {
@@ -2168,14 +2184,14 @@ function openExplainModal(key) {
   openModal(`
     <div class="modal-head">
       <span style="font-size:18px">?</span>
-      <div class="modal-head-title">${escapeHtml(item.title)}</div>
+      <div class="modal-head-title">${escapeHtml(cozyDisplayText(item.title))}</div>
       <button class="modal-close" data-close-modal aria-label="Kapat">x</button>
     </div>
     <div class="modal-body explain-modal">
-      <div class="modal-desc">${escapeHtml(item.summary || '')}</div>
+      <div class="modal-desc">${escapeHtml(cozyDisplayText(item.summary || ''))}</div>
       ${Array.isArray(item.bullets) && item.bullets.length ? `
         <div class="explain-list">
-          ${item.bullets.map(line => `<div>${escapeHtml(line)}</div>`).join('')}
+          ${item.bullets.map(line => `<div>${escapeHtml(cozyDisplayText(line))}</div>`).join('')}
         </div>
       ` : ''}
     </div>
@@ -2206,7 +2222,7 @@ function buildTodayDecision(state, activeQuest = null) {
       tone: 'danger',
       title: 'Toparlanma Gunu',
       command: 'Agir push/pull yok; 25-35 dk yuruyus veya mobilite.',
-      reason: `Yorgunluk ${Math.round(fatigue)}. ${recovery ? `${recovery.progressPct}% toparlanma isledi.` : 'Toparlanma verisi sinirli.'}`,
+      reason: `Yuk ${Math.round(fatigue)}. ${recovery ? `${recovery.progressPct}% toparlanma isledi.` : 'Rota sakin baslar.'}`,
       next: balance.lowest?.key === 'core' ? '8 dk core aktivasyon eklenebilir.' : 'Yuk degil, ritim koru.',
     }
   }
@@ -2217,7 +2233,7 @@ function buildTodayDecision(state, activeQuest = null) {
       tone: 'warn',
       title: 'Form Gunu',
       command: 'Kisa form blogu veya destek seti; rekor denemesi yok.',
-      reason: `Kalkan ${Math.round(armor)} ve hazirlik ${Number.isFinite(readiness) ? Math.round(readiness) : '--'}/100.`,
+      reason: `Akis ${Math.round(armor)} ve isik ${Number.isFinite(readiness) ? Math.round(readiness) : '--'}/100.`,
       next: nextQuest || 'Gunluk logu kapat, uyku/su sinyalini tamamla.',
     }
   }
@@ -2240,7 +2256,7 @@ function buildTodayDecision(state, activeQuest = null) {
     tone: 'calm',
     title: 'Kucuk Artis Gunu',
     command: latest ? `${displayWorkoutType(latest.type || 'Ana blok')} temposu acilabilir.` : 'Ilk seansi net logla.',
-    reason: `Yorgunluk ${Math.round(fatigue)}, kalkan ${Math.round(armor)}.`,
+    reason: `Yuk ${Math.round(fatigue)}, akis ${Math.round(armor)}.`,
     next: nextQuest || 'Set, sure ve hareketleri temiz gir.',
   }
 }
@@ -2289,7 +2305,7 @@ function renderNextSessionCard(nextSession = {}) {
       <div class="next-session-foot">
         <span>${renderExplainButton('hevy-live', hevyLabel, 'explain-link metric-explain')}</span>
         <span>${renderExplainButton('progression-cap', cozyDisplayText(caps[0] || 'Artis tavani temiz'), 'explain-link metric-explain')}</span>
-        <span>${escapeHtml(cozyDisplayText(warnings[0] || evidence[0] || 'Risk sinyali yok'))}</span>
+        <span>${escapeHtml(cozyDisplayText(warnings[0] || evidence[0] || 'Rota sakin'))}</span>
       </div>
     </article>
   `
@@ -2467,7 +2483,7 @@ function renderCoachFeedbackDashboard(state) {
         <span><b>${counts.outdated || 0}</b>ESKI</span>
         <span><b>${counts.prefer || 0}</b>TON</span>
       </div>
-      <p>${latest ? `${latest.feedbackType} / ${latest.note || 'son isaret'}` : 'ODIE defterinden isaret geldikce ses daha netlesir.'}</p>
+      <p>${latest ? `${latest.feedbackType} / ${latest.note || 'son isaret'}` : 'ODIE notlarindan isaret geldikce ses daha netlesir.'}</p>
     </article>
   `
 }
@@ -2749,12 +2765,12 @@ function openSessionDetailModal(workout, state) {
   const odieLine = workout.hasPr
     ? 'Bugun tabela degisti; yarin ego degil toparlanma kazanir.'
     : topStat
-      ? `${topStat.key} biraz daha parliyor. Kucuk iz, uzun yolda kalir.`
-      : 'Temiz kayit bile karakteri ileri iter. Bugunun izi duruyor.'
+      ? `${topStat.key} biraz daha parliyor. Kucuk adim, uzun yolda kalir.`
+      : 'Temiz kayit bile karakteri ileri iter. Bugunun notu duruyor.'
   const loot = [
     workout.xpEarned ? `+${workout.xpEarned} XP` : null,
     topStat ? `${topStat.key} +${Math.round(topStat.value)}` : null,
-    workout.hasPr ? 'PR izi' : null,
+    workout.hasPr ? 'PR pariltisi' : null,
     source === 'HEVY' ? 'Hevy canli' : source,
   ].filter(Boolean).slice(0, 4)
   const completionBadge = workout.hasPr ? 'PR' : workout.xpEarned ? 'BITTI' : 'NOT'
@@ -2764,7 +2780,7 @@ function openSessionDetailModal(workout, state) {
     { label: 'Yuk', value: workout.volumeKg ? `${Math.round(workout.volumeKg).toLocaleString('tr-TR')} kg` : '-', explain: 'hacim' },
     { label: 'Set', value: workout.sets || '-', explain: 'session-detail' },
     { label: 'XP', value: workout.xpEarned ? `+${workout.xpEarned}` : '-', explain: 'xp' },
-    { label: 'Defter', value: source, explain: source === 'HEVY' ? 'hevy' : 'kaynak' },
+    { label: 'Kaynak', value: source, explain: source === 'HEVY' ? 'hevy' : 'kaynak' },
     { label: 'PR', value: workout.hasPr ? 'VAR' : 'YOK', explain: 'pr' },
   ]
 
@@ -2778,17 +2794,17 @@ function openSessionDetailModal(workout, state) {
       <div class="quest-complete-hero">
         <div>
           <div class="mini-label">${escapeHtml(title)}</div>
-          <strong>${escapeHtml(workout.highlight || questLine)}</strong>
-          <p>${escapeHtml(odieLine)}</p>
+          <strong>${escapeHtml(cozyDisplayText(workout.highlight || questLine))}</strong>
+          <p>${escapeHtml(cozyDisplayText(odieLine))}</p>
         </div>
         <span class="quest-complete-badge ${completionBadgeClass}">${escapeHtml(completionBadge)}</span>
       </div>
       <div class="quest-loot-row">
-        ${loot.map(item => `<span>${escapeHtml(item)}</span>`).join('')}
+        ${loot.map(item => `<span>${escapeHtml(cozyDisplayText(item))}</span>`).join('')}
       </div>
       <div class="quest-complete-line">
-        <span>${escapeHtml(questLine)}</span>
-        <strong>${escapeHtml(nextUnlock?.name ? `Siradaki kilit: ${nextUnlock.name}` : 'Siradaki kilit takipte')}</strong>
+        <span>${escapeHtml(cozyDisplayText(questLine))}</span>
+        <strong>${escapeHtml(cozyDisplayText(nextUnlock?.name ? `Siradaki kilit: ${nextUnlock.name}` : 'Siradaki kilit takipte'))}</strong>
       </div>
       <div class="modal-grid">
         ${metrics.map(item => `
@@ -2798,16 +2814,16 @@ function openSessionDetailModal(workout, state) {
           </div>
         `).join('')}
       </div>
-      <div class="modal-section-label">${renderExplainButton('stat-delta', 'Stat Izi', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('stat-delta', 'Stat tohumu', 'explain-link metric-explain')}</div>
       ${renderSessionStatDelta(statDelta)}
-      <div class="modal-section-label">${renderExplainButton('bloklar', 'Blok Izleri', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('bloklar', 'Bloklar', 'explain-link metric-explain')}</div>
       ${renderSessionBlocks(blocks)}
-      <div class="modal-section-label">${renderExplainButton('fact', 'Seans Izi', 'explain-link metric-explain')}</div>
+      <div class="modal-section-label">${renderExplainButton('fact', 'Seans notu', 'explain-link metric-explain')}</div>
       ${facts.length ? `
         <div class="session-fact-list">
-          ${facts.map(fact => `<span>${escapeHtml(fact.label || fact.raw || fact.blockKind || 'fact')}</span>`).join('')}
+          ${facts.map(fact => `<span>${escapeHtml(cozyDisplayText(fact.label || fact.raw || fact.blockKind || 'fact'))}</span>`).join('')}
         </div>
-      ` : '<div class="modal-coach">Bu seans icin ayri seans izi yok; bloklar antrenman defterinden okunuyor.</div>'}
+      ` : '<div class="modal-coach">Bu seans icin ayrica not yok; bloklar antrenmandan okunuyor.</div>'}
     </div>
   `)
 }
@@ -2816,7 +2832,7 @@ function renderSessionStatDelta(delta = {}) {
   const items = ['str', 'agi', 'end', 'dex', 'con', 'sta']
     .map(key => ({ key: key.toUpperCase(), value: Number(delta?.[key]) || 0 }))
     .filter(item => item.value > 0)
-  if (!items.length) return '<div class="modal-coach">Bu kayitta stat izi yok.</div>'
+  if (!items.length) return '<div class="modal-coach">Bu kayitta stat tohumu parlamadi.</div>'
   return `
     <div class="session-delta-pills">
       ${items.map(item => `<span>${item.key} +${item.value}</span>`).join('')}
@@ -2888,9 +2904,9 @@ function renderCharacterPage(state, profile, semantic, ui = buildUiRuntime(state
 
         <article class="village-panel village-vitals-panel">
           <div class="village-panel-head">
-            <span>${renderVillageGlyph('shield')}</span>
+            <span>${renderVillageGlyph('spark')}</span>
             <strong>Oda durumu</strong>
-            <em>${vital.dataConfidence}% iz</em>
+            <em>${vital.dataConfidence}% ritim</em>
           </div>
           ${renderVillageCompass(model)}
           ${renderVillageRhythmField(model)}
@@ -2991,7 +3007,7 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
   const quest = model.quest
   const unlock = model.unlock || findNextUnlock(profile.skills || [])
   const unlockDetail = unlock?.progress != null
-    ? `%${Math.round(unlock.progress)} yakin / ${unlock.todayStep || unlock.missing || 'mini adim bekliyor'}`
+    ? cozyDisplayText(`%${Math.round(unlock.progress)} yakin / ${unlock.todayStep || unlock.missing || 'mini adim bekliyor'}`)
     : summarizeUnlockHint(unlock, profile.skills || []) || 'Acilim icin canli veri bekliyor'
   return `
     <article class="character-arena vital-os-arena" style="--xp-pct:${xpPct}%">
@@ -3002,7 +3018,7 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
           <p>L${escapeHtml(profile.level || 1)} / ${escapeHtml(rank)} / ${escapeHtml(className)}</p>
         </div>
         <button class="vital-os-confidence" data-action="open-health-shortcut">
-          <span>Iz Netligi</span>
+          <span>Okuma</span>
           <strong>${model.dataConfidence}%</strong>
         </button>
       </header>
@@ -3010,8 +3026,8 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
       <section class="vital-os-odie">
         <div>
           <span>ODIE notu</span>
-          <strong>${escapeHtml(presence.headline)}</strong>
-          <p>${escapeHtml(presence.chatLine)}</p>
+          <strong>${escapeHtml(cozyDisplayText(presence.headline))}</strong>
+          <p>${escapeHtml(cozyDisplayText(presence.chatLine))}</p>
         </div>
         ${renderOdieSignalPills(presence.signals || [], 'mini')}
       </section>
@@ -3020,22 +3036,22 @@ function renderVitalOsArena(state, profile, semantic, ui = buildUiRuntime(state,
         <div class="vital-os-rings">
           ${model.rings.map(renderVitalRing).join('')}
         </div>
-        <div class="vital-os-summary">
+      <div class="vital-os-summary">
           <span>Bugunku rota</span>
-          <strong>${escapeHtml(goalTitle(nextSession.primaryGoal) || quest?.name || 'Temiz Gun')}</strong>
+          <strong>${escapeHtml(cozyDisplayText(goalTitle(nextSession.primaryGoal) || quest?.name || 'Temiz Gun'))}</strong>
           <p>${escapeHtml(cozyDisplayText(model.activeCommand))}</p>
         </div>
       </div>
 
       <div class="vital-os-risk ${model.injury ? 'tone-injury' : 'tone-steady'}">
-        <span>${model.injury ? 'Sakatlik Temkini' : 'Risk'}</span>
+        <span>${model.injury ? 'Sakin rota' : 'Rota'}</span>
         <strong>${escapeHtml(model.risk)}</strong>
       </div>
 
       <div class="anatomy-command-strip vital-command-strip">
         ${renderMirogluCommandCard({
           label: 'Ara Gorev',
-          title: quest?.name || 'Gunluk halka',
+          title: cozyDisplayText(quest?.name || 'Gunluk halka'),
           detail: cozyDisplayText(quest?.why || quest?.desc || 'Bugunun XP hattini guvenli kapat.'),
           tone: quest?.safeMode ? 'injury' : 'focus',
         })}
@@ -3067,7 +3083,7 @@ function buildCharacterStatusEffect(bodyMapState = {}, state = {}) {
     return {
       label: 'Aktif etki',
       title: injury.label || 'Sakatlik korumasi',
-      detail: `%${Math.round(injury.recoveryPct ?? 0)} toparlandi, %${Math.round(injury.remainingPct ?? 0)} kaldi. ${Math.round(injury.etaDays ?? 0)} gun temkin.`,
+      detail: `%${Math.round(injury.recoveryPct ?? 0)} toparlandi, %${Math.round(injury.remainingPct ?? 0)} kaldi. ${Math.round(injury.etaDays ?? 0)} gun sakin rota.`,
       regionId: injury.regionId,
       tone: 'injury',
     }
@@ -3087,7 +3103,7 @@ function buildCharacterStatusEffect(bodyMapState = {}, state = {}) {
   if (armor < 60) {
     return {
       label: 'Aktif etki',
-      title: 'Kalkan ince',
+      title: 'Akis ince',
       detail: 'Form ve mobilite bugun ana ilerleme hattidir.',
       regionId: bodyMapState.priority?.region?.id || 'shoulder',
       tone: 'guard',
@@ -3492,7 +3508,7 @@ function renderQuestPage(state, profile, semantic, ui = buildUiRuntime(state, pr
         <article class="village-panel village-route-panel">
           <div class="village-panel-head">
             <span>${renderVillageGlyph('spark')}</span>
-            <strong>Rota izi</strong>
+            <strong>Rota yolu</strong>
             <em>${escapeHtml(model.rank)}</em>
           </div>
           ${renderVillageBalanceBridge(model.balanceItems)}
@@ -3586,7 +3602,7 @@ function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state
   const panel = !panelModules ? `
     <article class="village-odie-panel village-loading-note">
       <span>${renderVillageGlyph('book')}</span>
-      <strong>Defter aciliyor</strong>
+      <strong>Not aciliyor</strong>
     </article>
   ` : odieMode === 'coach' ? `
     <div class="coach-shell village-odie-panel">
@@ -3610,7 +3626,7 @@ function renderOdiePage(state, profile, semantic = {}, ui = buildUiRuntime(state
             <span class="notebook-pencil"></span>
           </div>
           <div class="village-note-bubble">
-            <small>ODIE defteri</small>
+            <small>ODIE notu</small>
             <strong>${villageDisplay(model.title, 'Bugunku karar')}</strong>
             <p>${villageDisplay(model.odieLine, 'Temiz tekrar kazanir.')}</p>
           </div>
@@ -3665,7 +3681,7 @@ function renderOdieCommandRoom(state, profile, nextSession = {}, bodyMapState = 
   const latestHevy = hevy.latestHevyDate ? formatMonthShort(hevy.latestHevyDate) : 'sync bekliyor'
   const confidence = Number(nextSession.confidence)
   const confidenceLabel = Number.isFinite(confidence) ? `${Math.round(confidence)}%` : '--'
-  const warning = cozyDisplayText(nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || 'Risk sinyali yok')
+  const warning = cozyDisplayText(nextSession.warnings?.[0] || state.profile?.survivalWarnings?.[0] || 'Rota sakin')
   const command = cozyDisplayText(nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.')
   const presence = buildOdiePresence({ state, profile, nextSession })
   const hunterLine = buildHunterOdieLine({
@@ -3719,7 +3735,7 @@ function renderOdieHallmark(nextSession = {}) {
   return `
     <article class="odie-hallmark tone-${nextSession.tone || 'calm'}">
       <div class="odie-hallmark-main">
-        <span>ODIE Not Defteri</span>
+        <span>ODIE Notu</span>
         <h2>${escapeHtml(cozyDisplayText(goalTitle(goal) || 'Bugunku karar'))}</h2>
         <p>${escapeHtml(cozyDisplayText(nextSession.coachCommand || goal.subtitle || 'Veri geldikce komut netlesir.'))}</p>
       </div>
@@ -3781,7 +3797,7 @@ function renderBodyEventForm(region) {
       </div>
       <label class="body-event-note">
         <span>Not</span>
-        <textarea name="note" rows="3" placeholder="Orn: bilek kas temelli, agir grip ve itis temkinli...">${escapeHtml(cozyDisplayText(region?.injury?.note || ''))}</textarea>
+        <textarea name="note" rows="3" placeholder="Orn: bilek kas temelli, agir grip ve itis sakin rota...">${escapeHtml(cozyDisplayText(region?.injury?.note || ''))}</textarea>
       </label>
       <button class="modal-primary-action" type="submit">Beden kaydini yaz</button>
     </form>
@@ -3962,11 +3978,11 @@ function openHealthShortcutModal() {
         <span>3</span>
         <div>
           <strong>Son kontrol</strong>
-          <p>Kestirme calisinca sitede Karakter > Canli Defterler kartina bak. Apple Uyku, Apple Kalp veya Apple Antrenman "baglandi" olduysa veri sisteme girdi. 401 token yanlis, 503 migration eksik, bos cevap Health izni eksik demek.</p>
+          <p>Kestirme calisinca sitede Karakter > Canli Kayitlar kartina bak. Apple Uyku, Apple Kalp veya Apple Antrenman "baglandi" olduysa kapi acildi. 401 token yanlis, 503 kurulum kapali, bos cevap Health izni kapali demek.</p>
         </div>
       </section>
 
-      <div class="modal-coach">ODIE her ayrintiyi hafizaya doldurmaz. Apple kaydi defterde kalir; hafizaya sadece "az uyku PR'i dusuruyor" gibi anlamli izler girer.</div>
+      <div class="modal-coach">ODIE her ayrintiyi hafizaya doldurmaz. Apple kaydi notlarda kalir; hafizaya sadece "az uyku PR'i dusuruyor" gibi anlamli izler girer.</div>
     </div>
   `)
 }
@@ -4015,7 +4031,7 @@ function openBodyRegionModal(regionId) {
       ${linkedUnlocks.length ? `
         <div class="region-modal-list">
           <strong>Açılıma etkisi</strong>
-          ${linkedUnlocks.map(target => `<span>${escapeHtml(target.name)}: %${Math.round(target.progress)} / ${escapeHtml(target.missing)}</span>`).join('')}
+          ${linkedUnlocks.map(target => `<span>${escapeHtml(cozyDisplayText(target.name))}: %${Math.round(target.progress)} / ${escapeHtml(cozyDisplayText(target.missing))}</span>`).join('')}
         </div>
       ` : ''}
       ${quest ? `
