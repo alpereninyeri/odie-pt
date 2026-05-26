@@ -8,18 +8,18 @@ import { initTelegramMiniApp } from './data/telegram-webapp.js'
 import { getLocalDateString, normalizeDateString } from './data/rules.js'
 
 const TABS = [
-  { key: 'route', label: 'Route', hint: 'Bugun' },
-  { key: 'map', label: 'Map', hint: 'Hat' },
-  { key: 'log', label: 'Log', hint: 'Kayit' },
-  { key: 'signal', label: 'Signal', hint: 'ODIE' },
+  { key: 'route', label: 'Bugun', hint: 'Plan' },
+  { key: 'map', label: 'Harita', hint: 'Vucut' },
+  { key: 'log', label: 'Kayit', hint: 'Aktivite' },
+  { key: 'signal', label: 'Odie', hint: 'Soru' },
 ]
 
 const PRESETS = {
-  Gym: { type: 'Gym', durationMin: 55, distanceKm: 0, label: 'Gym line', note: 'ana blok + destek' },
-  Parkour: { type: 'Parkour', durationMin: 75, distanceKm: 0, label: 'Parkour line', note: 'flow / landing / teknik' },
-  Walk: { type: 'Yuruyus', durationMin: 35, distanceKm: 3, label: 'Walk line', note: 'dusuk nabiz rota' },
-  Recovery: { type: 'Stretching', durationMin: 20, distanceKm: 0, label: 'Recovery line', note: 'mobilite / nefes / bakim' },
-  Acro: { type: 'Akrobasi', durationMin: 45, distanceKm: 0, label: 'Acro line', note: 'kontrollu gecis' },
+  Gym: { type: 'Gym', durationMin: 55, distanceKm: 0, label: 'Gym', note: 'ana blok + destek' },
+  Parkour: { type: 'Parkour', durationMin: 75, distanceKm: 0, label: 'Parkur', note: 'flow, inis, teknik' },
+  Walk: { type: 'Yuruyus', durationMin: 35, distanceKm: 3, label: 'Yuruyus', note: 'dusuk nabiz rota' },
+  Recovery: { type: 'Stretching', durationMin: 20, distanceKm: 0, label: 'Recovery', note: 'mobilite, nefes, bakim' },
+  Acro: { type: 'Akrobasi', durationMin: 45, distanceKm: 0, label: 'Akro', note: 'kontrollu gecis' },
 }
 
 const WORKOUT_TYPES = [
@@ -191,19 +191,19 @@ function buildSources(sourceHealth = {}, workouts = [], dailyLogs = [], healthSu
     },
     {
       key: 'health',
-      label: 'Health',
+      label: 'Saglik',
       lit: Boolean(sourceHealth.appleSleepLinked || sourceHealth.appleHeartLinked || healthSummary),
       detail: healthSummary?.day || sourceHealth.latestAppleHealthDate || 'bekliyor',
     },
     {
       key: 'log',
-      label: 'Log',
+      label: 'Kayit',
       lit: workouts.length > 0 || dailyLogs.length > 0,
       detail: latest?.date || dailyLogs[0]?.date || 'bos',
     },
     {
       key: 'manual',
-      label: 'Manual',
+      label: 'Manuel',
       lit: workouts.some(workout => String(workout.source || '').toLowerCase() === 'manual'),
       detail: `${workouts.length} kayit`,
     },
@@ -219,7 +219,7 @@ function buildZoneCards(workouts = [], bodyMap = {}, nextSession = {}) {
   const zones = [
     {
       key: 'gym',
-      title: 'Iron Grid',
+      title: 'Gym hatti',
       label: 'Gym',
       count: count(isStrengthSession),
       detail: nextSession.questImpact?.balance?.lowest?.label
@@ -229,23 +229,23 @@ function buildZoneCards(workouts = [], bodyMap = {}, nextSession = {}) {
     },
     {
       key: 'parkour',
-      title: 'Rooftop Cut',
-      label: 'Parkour',
+      title: 'Parkur hatti',
+      label: 'Parkur',
       count: count(isParkourSession),
-      detail: priority.movement?.todayStep || 'flow / landing',
+      detail: priority.movement?.todayStep || 'flow / inis',
       tone: 'amber',
     },
     {
       key: 'walk',
-      title: 'Lowline',
-      label: 'Walk',
+      title: 'Yuruyus hatti',
+      label: 'Yuruyus',
       count: count(isWalkSession),
       detail: 'dusuk nabiz rota',
       tone: 'green',
     },
     {
       key: 'recovery',
-      title: 'Repair Bay',
+      title: 'Toparlanma',
       label: 'Recovery',
       count: count(isRecoverySession),
       detail: quest.safeMode ? 'risk kapisi aktif' : 'bakim hatti',
@@ -253,8 +253,8 @@ function buildZoneCards(workouts = [], bodyMap = {}, nextSession = {}) {
     },
     {
       key: 'acro',
-      title: 'Vault Lab',
-      label: 'Acro',
+      title: 'Akro hatti',
+      label: 'Akro',
       count: count(isAcroSession),
       detail: priority.unlock?.name || 'gecis kilidi',
       tone: 'red',
@@ -368,10 +368,10 @@ function renderRouteScreen(model) {
         ${renderRouteNodes(next)}
         <div class="command-dock">
           <div>
-            <span>Signal command</span>
+            <span>Bugunun karari</span>
             <strong>${escapeHtml(cleanText(next.coachCommand || 'Bugun tek temiz adim yeter.'))}</strong>
           </div>
-          <button class="primary-action" type="button" data-tab="log">Kaydi gir</button>
+          <button class="primary-action" type="button" data-tab="log">Kayit gir</button>
         </div>
       </section>
 
@@ -385,7 +385,7 @@ function renderRouteScreen(model) {
       <section class="split-grid">
         <article class="panel latest-panel">
           <div class="panel-head">
-            <span>Last line</span>
+            <span>Son kayit</span>
             <button type="button" class="ghost-btn" data-refresh>${syncBusy ? 'Cekiliyor' : 'Sync'}</button>
           </div>
           ${latest ? `
@@ -404,7 +404,7 @@ function renderRouteScreen(model) {
 
         <article class="panel">
           <div class="panel-head">
-            <span>Stats</span>
+            <span>Statlar</span>
             <span>${escapeHtml(model.profile.class || 'profil')}</span>
           </div>
           <div class="stat-rack">
@@ -452,7 +452,7 @@ function renderMapScreen(model) {
   return `
     <section class="screen map-screen">
       <div class="screen-title">
-        <span>City map</span>
+        <span>Harita</span>
         <h1>${escapeHtml(cleanText(priority.region?.label || 'Hat haritasi'))}</h1>
         <p>${escapeHtml(cleanText(quest.desc || priority.movement?.todayStep || 'Bugunun baski noktasi burada.'))}</p>
       </div>
@@ -465,8 +465,8 @@ function renderMapScreen(model) {
       <section class="split-grid">
         <article class="panel">
           <div class="panel-head">
-            <span>Region risk</span>
-            <span>${escapeHtml(cleanText(priority.region?.trend || 'scan'))}</span>
+            <span>Bolge riski</span>
+            <span>${escapeHtml(cleanText(priority.region?.trend || 'tarama'))}</span>
           </div>
           <div class="region-list">
             ${regions.map(renderRegionRow).join('')}
@@ -475,8 +475,8 @@ function renderMapScreen(model) {
 
         <article class="panel">
           <div class="panel-head">
-            <span>Movement lines</span>
-            <span>${escapeHtml(cleanText(priority.unlock?.name || 'unlock'))}</span>
+            <span>Hareket hatlari</span>
+            <span>${escapeHtml(cleanText(priority.unlock?.name || 'kilit'))}</span>
           </div>
           <div class="movement-list">
             ${movementLines.map(renderMovementLine).join('')}
@@ -495,9 +495,9 @@ function renderLogScreen(model) {
   return `
     <section class="screen log-screen">
       <div class="screen-title compact">
-        <span>Log line</span>
-        <h1>Rotayi kayda gec</h1>
-        <p>Manual kayit ayni store motoruna yazar; Hevy ve Telegram hatti korunur.</p>
+        <span>Kayit</span>
+        <h1>Aktivite kaydi</h1>
+        <p>Seansi, yuruyusu veya parkouru tek formdan kaydet.</p>
       </div>
 
       ${logNotice ? `<div class="notice"><span>${escapeHtml(logNotice)}</span><button type="button" data-clear-notice>OK</button></div>` : ''}
@@ -505,8 +505,8 @@ function renderLogScreen(model) {
       <div class="preset-rail" aria-label="Kayit presetleri">
         ${Object.entries(PRESETS).map(([key, item]) => `
           <button type="button" class="preset-btn ${selectedPreset === key ? 'active' : ''}" data-preset="${escapeAttr(key)}">
-            <b>${escapeHtml(key)}</b>
-            <span>${escapeHtml(item.label)}</span>
+            <b>${escapeHtml(item.label)}</b>
+            <span>${escapeHtml(item.note)}</span>
           </button>
         `).join('')}
       </div>
@@ -544,13 +544,13 @@ function renderLogScreen(model) {
           <span>Detay</span>
           <textarea name="notes" rows="3" placeholder="zemin, yorgunluk, risk, teknik his..."></textarea>
         </label>
-        <button class="primary-action full" type="submit">Route logla</button>
+        <button class="primary-action full" type="submit">Kaydi tamamla</button>
       </form>
 
       <section class="split-grid">
         <article class="panel daily-panel">
           <div class="panel-head">
-            <span>Daily signal</span>
+            <span>Gunluk durum</span>
             <span>${escapeHtml(today)}</span>
           </div>
           ${renderDailyControls(log)}
@@ -558,7 +558,7 @@ function renderLogScreen(model) {
 
         <form class="panel body-form" id="body-event-form">
           <div class="panel-head">
-            <span>Body gate</span>
+            <span>Vucut notu</span>
             <span>risk</span>
           </div>
           <label>
@@ -581,7 +581,7 @@ function renderLogScreen(model) {
             <span>Not</span>
             <input name="note" type="text" maxlength="120" placeholder="or: bilek sert push istemiyor">
           </label>
-          <button class="ghost-action full" type="submit">Body gate ekle</button>
+          <button class="ghost-action full" type="submit">Vucut notu ekle</button>
         </form>
       </section>
     </section>
@@ -596,7 +596,7 @@ function renderSignalScreen(model) {
   return `
     <section class="screen signal-screen">
       <div class="screen-title">
-        <span>Signal room</span>
+        <span>ODIE</span>
         <h1>ODIE hatti</h1>
         <p>${escapeHtml(cleanText(model.nextSession.coachCommand || 'Sinyal netlestikce bugunun rotasi sertlesir.'))}</p>
       </div>
@@ -615,7 +615,7 @@ function renderSignalScreen(model) {
               <b>${escapeHtml(cleanText(section.title || section.heading || 'Signal'))}</b>
               <p>${escapeHtml(cleanText(section.body || section.text || section.note || ''))}</p>
             </div>
-          `).join('') : `<p>${escapeHtml(cleanText(model.nextSession.evidence?.[0] || 'Hevy, Health veya manual log gelince burasi keskinlesir.'))}</p>`}
+          `).join('') : `<p>${escapeHtml(cleanText(model.nextSession.evidence?.[0] || 'Hevy, Saglik veya manuel kayit gelince burasi keskinlesir.'))}</p>`}
           <div class="feedback-row">
             <button type="button" data-feedback="correct">DOGRU</button>
             <button type="button" data-feedback="wrong">YANLIS</button>
@@ -640,7 +640,7 @@ function renderSignalScreen(model) {
 
       <section class="panel evidence-panel">
         <div class="panel-head">
-          <span>Evidence</span>
+          <span>Kanit</span>
           <span>${escapeHtml(String(model.system.confidence))}%</span>
         </div>
         <div class="evidence-list">
@@ -1054,25 +1054,25 @@ function isAcroSession(workout = {}) {
 
 function displayWorkoutType(type = '') {
   const map = {
-    Yuruyus: 'Walk',
-    Yürüyüş: 'Walk',
-    Kosu: 'Run',
-    Bacak: 'Leg',
+    Yuruyus: 'Yuruyus',
+    Yürüyüş: 'Yuruyus',
+    Kosu: 'Kosu',
+    Bacak: 'Bacak',
     Akrobasi: 'Acro',
-    Tirmanis: 'Climb',
+    Tirmanis: 'Tirmanis',
     Stretching: 'Recovery',
   }
-  return map[type] || type || 'Session'
+  return map[type] || type || 'Seans'
 }
 
 function toneLabel(tone = '') {
   return {
-    danger: 'LOCK',
-    warn: 'CAUTION',
-    go: 'GO',
-    calm: 'SCAN',
-    fire: 'PUSH',
-  }[tone] || 'SCAN'
+    danger: 'Riskli',
+    warn: 'Dikkat',
+    go: 'Hazir',
+    calm: 'Plan',
+    fire: 'Tempo',
+  }[tone] || 'Plan'
 }
 
 function rankFromValue(value = 0) {
