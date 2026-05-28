@@ -13,6 +13,15 @@ test('route tab renders Mission HUD instead of legacy route screen', () => {
   assert.match(css, /\.mission-hud/)
 })
 
+test('route tab includes real progress infographics', () => {
+  assert.match(main, /function buildProgressSnapshot/)
+  assert.match(main, /function renderProgressCard/)
+  assert.match(main, /Eski -> Simdi|eski -> simdi/)
+  assert.match(css, /\.progress-card/)
+  assert.match(css, /\.era-compare/)
+  assert.match(css, /\.progress-sparkline/)
+})
+
 test('health status has a public Apple disabled state', () => {
   assert.match(healthStatusApi, /appleStatus/)
   assert.match(healthStatusApi, /apple_disabled/)

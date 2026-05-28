@@ -179,6 +179,7 @@ function buildModel(state = {}, profile = {}) {
   const stats = normalizeStats(profile.stats || [])
   const zones = buildZoneCards(workouts, bodyMap, nextSession)
   const sourceHealth = nextSession.sourceHealth || {}
+  const progressSnapshot = buildProgressSnapshot(workouts, stats)
 
   return {
     state,
@@ -193,6 +194,7 @@ function buildModel(state = {}, profile = {}) {
     nextSession,
     stats,
     zones,
+    progressSnapshot,
     sources: buildSources(sourceHealth, workouts, dailyLogs, healthSummary),
     system: {
       readiness: nextSession.readiness || {},
@@ -224,6 +226,83 @@ function buildSources(sourceHealth = {}, workouts = [], dailyLogs = [], healthSu
     { key: 'recovery', label: 'Can', lit: recoveryLit, detail: healthSummary?.day || dailyLogs[0]?.date || 'bakım bekliyor' },
     { key: 'quest', label: 'Görev', lit: workouts.length > 0 || Number(sourceHealth.totalRecent) > 0, detail: `${workouts.length} kayıt` },
   ]
+}
+
+function buildProgressSnapshot(workouts = [], stats = []) {
+  const sorted = [...(workouts || [])]
+    .filter(workout => normalizeDateString(workout.date))
+    .sort((a, b) => normalizeDateString(a.date).localeCompare(normalizeDateString(b.date)))
+  if (!sorted.length) {
+    return { empty: true, metrics: [], trend: [], statLeaders: [] }
+  }
+
+  const windowSize = Math.min(6, Math.max(1, Math.floor(sorted.length / 2) || 1))
+  const oldWindow = sorted.slice(0, windowSize)
+  const nowWindow = sorted.slice(-windowSize)
+  const oldSummary = summarizeWorkoutWindow(oldWindow)
+  const nowSummary = summarizeWorkoutWindow(nowWindow)
+  const useVolume = oldSummary.volumeKg > 0 || nowSummary.volumeKg > 0
+
+  const metrics = [
+    {
+      key: 'load',
+      label: useVolume ? 'Yuk' : 'Sure',
+      oldValue: useVolume ? oldSummary.volumeKg : oldSummary.durationMin,
+      nowValue: useVolume ? nowSummary.volumeKg : nowSummary.durationMin,
+      unit: useVolume ? 'kg' : 'dk',
+    },
+    {
+      key: 'sets',
+      label: 'Set',
+      oldValue: oldSummary.sets,
+      nowValue: nowSummary.sets,
+      unit: 'set',
+    },
+    {
+      key: 'days',
+      label: 'Aktif gun',
+      oldValue: oldSummary.activeDays,
+      nowValue: nowSummary.activeDays,
+      unit: 'gun',
+    },
+  ].map(metric => ({
+    ...metric,
+    delta: metric.nowValue - metric.oldValue,
+    deltaPct: metric.oldValue > 0 ? ((metric.nowValue - metric.oldValue) / metric.oldValue) * 100 : (metric.nowValue > 0 ? 100 : 0),
+  }))
+
+  return {
+    empty: false,
+    count: sorted.length,
+    windowSize,
+    oldSummary,
+    nowSummary,
+    useVolume,
+    metrics,
+    trend: sorted.slice(-12).map(workout => ({
+      date: normalizeDateString(workout.date),
+      value: useVolume ? (Number(workout.volumeKg) || 0) : (Number(workout.durationMin) || 0),
+    })),
+    statLeaders: [...stats]
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0))
+      .slice(0, 3)
+      .map(stat => ({
+        label: stat.short || stat.label || stat.name || stat.key,
+        rank: stat.rank || rankFromValue(stat.value),
+        value: clamp(Number(stat.value), 0, 100),
+      })),
+  }
+}
+
+function summarizeWorkoutWindow(list = []) {
+  const activeDays = new Set(list.map(workout => normalizeDateString(workout.date)).filter(Boolean)).size
+  return {
+    sessions: list.length,
+    activeDays,
+    volumeKg: Math.round(list.reduce((sum, workout) => sum + (Number(workout.volumeKg) || 0), 0)),
+    durationMin: Math.round(list.reduce((sum, workout) => sum + (Number(workout.durationMin) || 0), 0)),
+    sets: Math.round(list.reduce((sum, workout) => sum + (Number(workout.sets) || 0), 0)),
+  }
 }
 
 function buildZoneCards(workouts = [], bodyMap = {}, nextSession = {}) {
@@ -366,11 +445,13 @@ function renderMissionRouteScreen(model) {
             ${renderStatBelt(model.stats)}
           </div>
 
+          ${renderProgressCard(model.progressSnapshot, 'mobile-progress')}
           ${renderCharCard(model)}
           ${renderQuestBoard(model.profile.quests)}
         </div>
 
         <div class="col-b">
+          ${renderProgressCard(model.progressSnapshot, 'desktop-progress')}
           ${renderHeatmapCard(model.workouts)}
           ${renderVolumeCard(model.workouts)}
           ${renderAchievementShelf(model.profile.achievements)}
@@ -1114,6 +1195,122 @@ function renderWarnings(next = {}) {
 /* ============================================================
    INFOGRAPHICS (pure SVG)
    ============================================================ */
+function renderProgressCard(snapshot = {}, extraClass = '') {
+  const classes = `card progress-card ${extraClass}`.trim()
+  if (snapshot.empty) {
+    return `
+      <article class="${escapeAttr(classes)}">
+        <div class="card-head">
+          <span class="card-title">Gelisim pano</span>
+          <span class="card-tag">eski -> simdi</span>
+        </div>
+        <p class="soft">Ilk seans gelsin, burasi baslangic ve simdi halini yan yana cizecek.</p>
+      </article>
+    `
+  }
+
+  const lead = snapshot.metrics?.[0] || {}
+  const oldLabel = formatMetricValue(lead.oldValue, lead.unit)
+  const nowLabel = formatMetricValue(lead.nowValue, lead.unit)
+  return `
+    <article class="${escapeAttr(classes)}">
+      <div class="card-head">
+        <span class="card-title">Gelisim pano</span>
+        <span class="card-tag">eski -> simdi</span>
+      </div>
+      <div class="era-compare">
+        <button type="button" class="era-tile is-old" ${detailAttrs(`Ilk ${snapshot.windowSize} seans`, `Baslangic penceresi: ${oldLabel}. Toplam ${snapshot.oldSummary.sessions} seans.`)}>
+          <span>Ilk ${escapeHtml(String(snapshot.windowSize))}</span>
+          <b>${escapeHtml(oldLabel)}</b>
+          <small>baslangic</small>
+        </button>
+        <div class="era-arrow" aria-hidden="true">-></div>
+        <button type="button" class="era-tile is-now" ${detailAttrs(`Son ${snapshot.windowSize} seans`, `Simdi penceresi: ${nowLabel}. Toplam ${snapshot.nowSummary.sessions} seans.`)}>
+          <span>Son ${escapeHtml(String(snapshot.windowSize))}</span>
+          <b>${escapeHtml(nowLabel)}</b>
+          <small>simdi</small>
+        </button>
+      </div>
+      ${progressTrendSvg(snapshot.trend, lead.unit)}
+      <div class="progress-lanes">
+        ${(snapshot.metrics || []).map(renderProgressLane).join('')}
+      </div>
+      ${renderStatSparkline(snapshot.statLeaders)}
+    </article>
+  `
+}
+
+function renderProgressLane(metric = {}) {
+  const max = Math.max(1, Number(metric.oldValue) || 0, Number(metric.nowValue) || 0)
+  const oldPct = clamp(((Number(metric.oldValue) || 0) / max) * 100, 0, 100)
+  const nowPct = clamp(((Number(metric.nowValue) || 0) / max) * 100, 0, 100)
+  const deltaClass = metric.delta > 0 ? 'up' : metric.delta < 0 ? 'down' : 'flat'
+  const deltaLabel = formatSignedMetric(metric.delta, metric.unit)
+  return `
+    <button type="button" class="progress-lane is-${escapeAttr(deltaClass)}" ${detailAttrs(metric.label, `Eski ${formatMetricValue(metric.oldValue, metric.unit)}. Simdi ${formatMetricValue(metric.nowValue, metric.unit)}. Fark ${deltaLabel}.`)}>
+      <span class="pl-head"><b>${escapeHtml(metric.label)}</b><i>${escapeHtml(deltaLabel)}</i></span>
+      <span class="pl-bars" aria-hidden="true">
+        <span class="pl-track old"><i style="--v:${oldPct}%"></i></span>
+        <span class="pl-track now"><i style="--v:${nowPct}%"></i></span>
+      </span>
+      <span class="pl-foot"><small>eski</small><small>simdi</small></span>
+    </button>
+  `
+}
+
+function renderStatSparkline(stats = []) {
+  if (!stats.length) return ''
+  return `
+    <div class="stat-sparks" aria-label="En guclu statlar">
+      ${stats.map(stat => `
+        <button type="button" class="stat-spark" ${detailAttrs(`${stat.label} ${stat.rank}`, `Skor ${Math.round(stat.value)}. Simdiki karakter gucu.`)}>
+          <span>${escapeHtml(stat.label)}</span>
+          <b>${escapeHtml(stat.rank)}</b>
+          <i style="--v:${clamp(stat.value, 0, 100)}%"></i>
+        </button>
+      `).join('')}
+    </div>
+  `
+}
+
+function progressTrendSvg(points = [], unit = '') {
+  const values = points.map(point => Number(point.value) || 0)
+  if (!values.length) return ''
+  const W = 320, H = 92, padX = 12, padY = 12
+  const max = Math.max(1, ...values)
+  const step = values.length > 1 ? (W - padX * 2) / (values.length - 1) : 0
+  const coords = values.map((value, index) => {
+    const x = padX + index * step
+    const y = H - padY - (value / max) * (H - padY * 2)
+    return [x, y]
+  })
+  const line = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+  const area = `${padX},${H - padY} ${line} ${W - padX},${H - padY}`
+  const first = coords[0]
+  const last = coords[coords.length - 1]
+  return `
+    <svg class="progress-sparkline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Eski seanslardan simdiye ${unit || 'yuk'} trendi">
+      <polygon points="${area}" fill="var(--leaf)" opacity="0.72"/>
+      <polyline points="${line}" fill="none" stroke="var(--moss)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${first[0].toFixed(1)}" cy="${first[1].toFixed(1)}" r="5" fill="var(--clay)"/>
+      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="6" fill="var(--moss)"/>
+      <text x="${padX}" y="${H - 2}" font-size="10" fill="var(--clay)">eski</text>
+      <text x="${W - padX}" y="${H - 2}" font-size="10" fill="var(--moss)" text-anchor="end">simdi</text>
+    </svg>
+  `
+}
+
+function formatMetricValue(value = 0, unit = '') {
+  const n = Math.round(Number(value) || 0)
+  return `${formatNumber(n)} ${unit}`.trim()
+}
+
+function formatSignedMetric(value = 0, unit = '') {
+  const n = Math.round(Number(value) || 0)
+  const sign = n > 0 ? '+' : ''
+  return `${sign}${formatNumber(n)} ${unit}`.trim()
+}
+
 function renderHeatmapCard(workouts = []) {
   return `
     <article class="card">
