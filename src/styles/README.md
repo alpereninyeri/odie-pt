@@ -1,15 +1,28 @@
 # Styles Map
 
-Current load order:
+## Active load order
 
-1. `odie-ui.css`
-2. `cozy-rpg/mobile.css`
+`src/main.js` tek stylesheet import eder:
 
-Purpose:
+1. `cozy-reforge.css` - aktif Mission HUD arayuzu.
 
-- `odie-ui.css`: shared shell, layout, modal/form primitives, and legacy desktop fallback.
-- `cozy-rpg/mobile.css`: active mobile cozy indie RPG skin. Today, Vital OS, Quest, ODIE, modals, bottom nav, motion, and generated game assets live here.
+## Source of truth
 
-Cleanup note:
+- `src/main.js` - route/map/defter/ODIE render tree ve event binding.
+- `src/styles/cozy-reforge.css` - tum aktif token, Mission HUD, form, bottom sheet, nav ve responsive kurallari.
+- `src/assets/game/cozy-v3/*` - aktif gorsel asset seti.
 
-- Legacy mobile override files were removed from the active style tree. New mobile RPG work should extend `cozy-rpg/mobile.css` instead of adding another root-level override file.
+## Removed
+
+Eski tema katmanlari artik yok:
+
+- `riftline.css`
+- `odie-ui.css`
+- `cozy-rpg/mobile.css`
+
+Yeni gorsel is `cozy-reforge.css` icine eklenmeli. Backend/data dosyalari bu tema resetinin parcasi degil.
+
+## Dormant components
+
+- Silindi: `daily-checklist.js`, `heatmap-calendar.js`; aktif karsiliklari `src/main.js` icinde.
+- Tutuldu: `workout-form.js`, `modal.js`, `toast.js`, `panel-ask.js`, `panel-coach.js`; bunlar tekrar baglama/refactor icin bekliyor.

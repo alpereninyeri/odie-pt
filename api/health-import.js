@@ -49,8 +49,32 @@ function telemetryDbRow(profileId, row = {}) {
     value_num: row.valueNum ?? row.value_num ?? null,
     unit: row.unit || '',
     value_jsonb: row.valueJson || row.value_jsonb || {},
-    raw_jsonb: row.raw || row.raw_jsonb || {},
+    raw_jsonb: {
+      kind: row.kind || 'activity_day',
+      metricType: row.metricType || row.metric_type || '',
+      day: row.day,
+      startAt: row.startAt || row.start_at || null,
+      endAt: row.endAt || row.end_at || null,
+      externalSource: row.externalSource || row.external_source || 'apple_health_shortcut',
+    },
     confidence: Number(row.confidence) || 0.86,
+  }
+}
+
+function importPayloadSummary(body = {}, normalized = null) {
+  const samples = Array.isArray(body.samples)
+    ? body.samples
+    : Array.isArray(body.data)
+      ? body.data
+      : body && Object.keys(body).length
+        ? [body]
+        : []
+  return {
+    externalId: body.externalId || body.external_id || '',
+    kind: body.kind || body.sampleKind || body.sample_kind || '',
+    sampleCount: samples.length,
+    kinds: normalized?.receivedKinds || [],
+    days: normalized?.days || [],
   }
 }
 
@@ -204,7 +228,7 @@ export async function processHealthImportBody(body = {}, { generateCoach = true 
     eventType: 'webhook',
     operation: 'received',
     status: 'received',
-    payload: body,
+    payload: importPayloadSummary(body, normalized),
   })
 
   const workoutResults = []
@@ -315,7 +339,7 @@ export default async function handler(req, res) {
       operation: 'failed',
       status: 'failed',
       error: String(error?.message || error),
-      payload: body || {},
+      payload: importPayloadSummary(body || {}),
     })
     console.error('[health-import] failed:', error?.message || error)
     return res.status(status).json({

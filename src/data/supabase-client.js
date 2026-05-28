@@ -10,6 +10,7 @@ import { normalizeBodyEvent, toSupabaseBodyEvent } from './body-events.js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const APP_ACCESS_TOKEN = import.meta.env.VITE_ODIE_APP_ACCESS_TOKEN || ''
 const PROFILE_ID_KEY = 'odiept-profile-id'
 
 export const supabase = SUPABASE_URL && SUPABASE_KEY
@@ -29,6 +30,12 @@ function _loadProfileId() {
     _profileId = null
   }
   return _profileId
+}
+
+function appHeaders(extra = {}) {
+  return APP_ACCESS_TOKEN
+    ? { ...extra, Authorization: `Bearer ${APP_ACCESS_TOKEN}` }
+    : extra
 }
 
 function _saveProfileId(id) {
@@ -318,7 +325,9 @@ export async function fetchBodyEvents(limit = 30) {
   if (isMockMode) return []
   if (import.meta.env.DEV) return []
   try {
-    const response = await fetch(`/api/body-events?limit=${encodeURIComponent(limit)}`)
+    const response = await fetch(`/api/body-events?limit=${encodeURIComponent(limit)}`, {
+      headers: appHeaders(),
+    })
     if (!response.ok) return []
     const payload = await response.json()
     return (payload.events || []).map(row => normalizeBodyEvent(row))
@@ -332,7 +341,9 @@ export async function fetchHealthStatus() {
   if (isMockMode) return null
   if (import.meta.env.DEV) return null
   try {
-    const response = await fetch('/api/health-status')
+    const response = await fetch('/api/health-status', {
+      headers: appHeaders(),
+    })
     if (!response.ok) return null
     return response.json()
   } catch (error) {
@@ -394,7 +405,8 @@ export async function fetchTodayLog(date) {
 export async function upsertDailyLog(log) {
   if (isMockMode) return
   const profileId = await _resolveProfileId()
-  await supabase.from('daily_logs').upsert({ ...log, profile_id: profileId }, { onConflict: 'date,profile_id' })
+  const { error } = await supabase.from('daily_logs').upsert({ ...log, profile_id: profileId }, { onConflict: 'date,profile_id' })
+  if (error) throw error
 }
 
 export async function insertMemoryFeedback(feedback) {
@@ -420,11 +432,12 @@ export async function insertBodyEvent(event) {
   try {
     const response = await fetch('/api/body-events', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: appHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(toSupabaseBodyEvent(event)),
     })
     if (!response.ok) return null
     const payload = await response.json()
+    if (!payload.ok) return null
     return payload.event ? normalizeBodyEvent(payload.event) : null
   } catch (error) {
     console.warn('[supabase] insertBodyEvent:', error?.message || error)
@@ -445,13 +458,14 @@ export function subscribeToProfile(onUpdate) {
   return () => supabase.removeChannel(channel)
 }
 
-export function subscribeToWorkouts(onInsert) {
+export function subscribeToWorkouts(onChange) {
   if (isMockMode) return () => {}
   const channel = supabase
     .channel('odiept-workouts')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workouts' }, payload => {
-      if (_profileId && payload.new?.profile_id && payload.new.profile_id !== _profileId) return
-      onInsert(payload.new)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'workouts' }, payload => {
+      const row = payload.new || payload.old || {}
+      if (_profileId && row?.profile_id && row.profile_id !== _profileId) return
+      onChange(payload)
     })
     .subscribe()
   return () => supabase.removeChannel(channel)

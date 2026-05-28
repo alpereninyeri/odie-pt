@@ -6,8 +6,8 @@
 // Auth: Authorization: Bearer <HEVY_INTERNAL_SECRET>  (header)
 // veya  ?secret=<HEVY_INTERNAL_SECRET>                (query)
 //
-// Vercel cron'undan otomatik gelirse, request `x-vercel-cron: 1` header'i tasiyor;
-// bu durumda secret atlanir (Vercel sadece kendi cron'larina izin verir).
+// Vercel Cron icin de `CRON_SECRET` veya `HEVY_INTERNAL_SECRET` bearer header
+// olarak gelmeli. `x-vercel-cron` tek basina auth sayilmaz.
 
 import { getWorkout, getWorkoutEvents } from '../lib/hevy/client.js'
 import { recordIngestEvent } from '../lib/hevy/ingest-events.js'
@@ -24,8 +24,7 @@ const SOURCE = 'hevy'
 const DEFAULT_LOOKBACK_DAYS = 14
 
 function authorize(req) {
-  if (req.headers?.['x-vercel-cron']) return true
-  const expected = process.env.HEVY_INTERNAL_SECRET
+  const expected = process.env.HEVY_INTERNAL_SECRET || process.env.CRON_SECRET
   if (!expected) return false
   const header = String(req.headers?.authorization || '')
   if (header.toLowerCase().startsWith('bearer ') && header.slice(7) === expected) return true

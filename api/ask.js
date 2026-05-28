@@ -12,6 +12,7 @@ import {
   normalizeWorkoutBlockRow,
   normalizeWorkoutFactRow,
 } from '../src/data/memory-engine.js'
+import { requireAppAccess } from './app-auth.js'
 
 const ODIE_SYSTEM = `Sen ODIE'sin. Bu sporcunun salondaki kisisel kocu — yaninda durup goruyorsun, asistan veya yorumcu degilsin. Cevaplarin Turkce, gunluk konusma dili.
 
@@ -489,6 +490,8 @@ function buildFallbackAnswer(question, context) {
 
 export default async function handler(req, res) {
   try {
+    if (!requireAppAccess(req, res)) return
+
     if (req.method === 'GET') {
       const profile = await resolveProfile()
       if (!profile) return res.status(200).json({ ok: true, items: [] })

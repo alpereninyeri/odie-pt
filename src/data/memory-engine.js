@@ -332,7 +332,7 @@ export function summarizeBodyMetricsTrend(history = [], current = {}) {
 export function summarizeFeedbackLoop(feedback = []) {
   const normalized = sortByNewest(feedback.map(item => normalizeMemoryFeedbackRow(item)))
   const counts = normalized.reduce((acc, item) => {
-    const key = item.feedbackType || 'correct'
+    const key = item.feedbackType === 'tone_good' ? 'prefer' : (item.feedbackType || 'correct')
     acc[key] = (acc[key] || 0) + 1
     return acc
   }, {})

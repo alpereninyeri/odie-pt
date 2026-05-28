@@ -1697,6 +1697,14 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, status: 'OdiePt bot aktif' })
   }
 
+  const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET
+  if (expectedSecret) {
+    const providedSecret = String(req.headers?.['x-telegram-bot-api-secret-token'] || '')
+    if (providedSecret !== expectedSecret) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' })
+    }
+  }
+
   const update = req.body
   const message = update?.message
   if (!message?.text && !message?.web_app_data?.data) return res.status(200).json({ ok: true })

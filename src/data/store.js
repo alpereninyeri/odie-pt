@@ -282,6 +282,10 @@ function _normalizeWorkoutRow(row = {}) {
   return {
     ...normalized,
     id: row.id || normalized.id || `w-${normalized.date}-${Date.now()}`,
+    profileId: row.profile_id || row.profileId || null,
+    externalSource: row.externalSource || row.external_source || normalized.externalSource || null,
+    externalId: row.externalId || row.external_id || normalized.externalId || null,
+    rawExternal: row.rawExternal || row.raw_external || null,
     xpEarned: Number(row.xpEarned ?? row.xp_earned) || 0,
     xpBreakdown: Array.isArray(row.xpBreakdown) ? row.xpBreakdown : [],
     xpPreview: row.xpPreview || '',
@@ -290,6 +294,30 @@ function _normalizeWorkoutRow(row = {}) {
     survivalStatus: row.survivalStatus ?? row.survival_status ?? 'healthy',
     statDelta: row.statDelta ?? row.stat_delta ?? {},
   }
+}
+
+function _sameWorkoutIdentity(a = {}, b = {}) {
+  if (a.id && b.id && String(a.id) === String(b.id)) return true
+  const aSource = String(a.externalSource || a.external_source || '')
+  const bSource = String(b.externalSource || b.external_source || '')
+  const aExternal = String(a.externalId || a.external_id || '')
+  const bExternal = String(b.externalId || b.external_id || '')
+  return Boolean(aSource && aExternal && aSource === bSource && aExternal === bExternal)
+}
+
+function _upsertRealtimeWorkout(row = {}) {
+  const normalized = _normalizeWorkoutRow(row)
+  const list = Array.isArray(_state.workouts) ? _state.workouts : []
+  const index = list.findIndex(item => _sameWorkoutIdentity(item, normalized))
+  if (index >= 0) list[index] = { ...list[index], ...normalized }
+  else list.unshift(normalized)
+  _state.workouts = list
+    .filter((item, itemIndex, all) => all.findIndex(other => _sameWorkoutIdentity(item, other)) === itemIndex)
+    .sort((a, b) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))
+}
+
+function _deleteRealtimeWorkout(row = {}) {
+  _state.workouts = (_state.workouts || []).filter(item => !_sameWorkoutIdentity(item, row))
 }
 
 function _normalizeDailyLog(row = {}) {
@@ -871,11 +899,11 @@ export const store = {
         _notify('*')
       }))
 
-      _unsubSupabase.push(subscribeToWorkouts(async workoutRow => {
-        const workoutId = String(workoutRow.id)
-        if (_state.workouts.some(workout => String(workout.id) === workoutId)) return
+      _unsubSupabase.push(subscribeToWorkouts(async payload => {
+        const eventType = payload.eventType || ''
+        if (eventType === 'DELETE') _deleteRealtimeWorkout(payload.old || {})
+        else _upsertRealtimeWorkout(payload.new || {})
 
-        _state.workouts.unshift(_normalizeWorkoutRow(workoutRow))
         try { await _syncMemoryLayer() } catch {}
         _refreshDerivedState(_state)
         _unlockEarnedBadges(false)
@@ -1063,8 +1091,15 @@ export const store = {
 
     if (!isMockMode) {
       const inserted = await insertWorkout(_toSupabaseWorkout(workout))
-      if (inserted?.id) workout.id = inserted.id
+      if (inserted?.id) {
+        workout.id = inserted.id
+        workout.syncStatus = 'synced'
+      } else {
+        workout.syncStatus = 'local'
+      }
       await updateProfile(_toSupabaseProfile(_state.profile, _state.bodyMetrics))
+    } else {
+      workout.syncStatus = 'local'
     }
 
     _saveToLS()

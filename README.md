@@ -53,19 +53,18 @@ Kisa hali:
 src/
   main.js
   styles/
-    odie-ui.css
-    cozy-rpg/mobile.css
-  assets/game/cozy/
-    cozy-today-village.jpg
-    cozy-vital-room.jpg
-    cozy-quest-board.jpg
-    cozy-odie-room.jpg
-    cozy-icon-sheet.jpg
+    cozy-reforge.css
+  assets/game/cozy-v3/
+    map-layer.jpg
+    cabin-room.jpg
+    avatar-athlete.png
+    stat-*.jpg
   components/
+    workout-form.js      # dormant, P1/P5 rebind adayi
+    modal.js             # dormant, bottom sheet/modal refactor adayi
+    toast.js             # dormant, notification refactor adayi
     panel-coach.js
     panel-ask.js
-    workout-form.js
-    daily-checklist.js
   data/
     store.js
     profile.js
@@ -76,12 +75,21 @@ src/
 api/
   telegram.js
   ask.js
+  body-events.js
+  health-import.js
+  health-status.js
 
 infra/
   supabase-schema.sql
   supabase-schema-v2.sql
   supabase-memory-v3.sql
   supabase-odie-ask-v4.sql
+  supabase-rls-fix-v5.sql
+  supabase-hevy-v6.sql
+  supabase-ingest-events-v7.sql
+  supabase-health-v7.sql
+  supabase-health-rpg-v8.sql
+  supabase-stat-scale-v6.sql
 ```
 
 ## Data Update Modes
@@ -99,18 +107,23 @@ Bu dosyada degisiklik yapman gereken durumlar:
 - default copy / empty state / seed examples
 
 ## Database
-Yeni `Ask ODIE` ledger icin su migration eklendi:
-- `infra/supabase-odie-ask-v4.sql`
+Migration zinciri sira ile uygulanmali. `supabase-hevy-v6.sql` Hevy idempotency, `supabase-ingest-events-v7.sql` ingest audit, `supabase-health-v7.sql` body events, `supabase-health-rpg-v8.sql` Apple/health summary tablolarini ekler.
 
-Bu migration uygulanmadan ask route cevap verebilir, ama soru gecmisi kalici yazilmaz.
+## Private API gates
+Opsiyonel single-user token:
+- server: `ODIE_APP_ACCESS_TOKEN`
+- browser: `VITE_ODIE_APP_ACCESS_TOKEN`
+
+Token set edilirse `/api/ask` ve `/api/body-events` private olur; `/api/health-status` publicte sadece redacted summary verir, token ile detay acar. Telegram icin `TELEGRAM_WEBHOOK_SECRET`, Hevy cron icin `HEVY_INTERNAL_SECRET` veya `CRON_SECRET` kullan.
 
 ## Deploy
 `main` branch push -> Vercel auto deploy.
 
 ## Current Debt
 - full rerender yaklasimi var
-- bazi schema/migration dosyalari version zinciri halinde duruyor
-- UI tests yok, logic tests var
+- bazi dormant componentler yeniden baglama/refactor bekliyor
+- UI smoke testleri var, genis e2e Playwright kapsami hala P5
+- RLS / anon public modeli daraltma bekliyor
 
 ## Goal
 Kisa vadede hedef:

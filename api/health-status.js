@@ -1,4 +1,5 @@
 import { isMissingColumnError, resolveProfile, sbGet } from '../lib/hevy/persist.js'
+import { appAuthConfigured, authorizeAppRequest } from './app-auth.js'
 
 function isMissingRelation(error) {
   const message = String(error?.message || error || '')
@@ -63,8 +64,7 @@ function normalizeEvent(row = {}) {
     externalId: row.external_id,
     operation: row.operation,
     status: row.status,
-    error: row.error || '',
-    payload: row.payload || {},
+    error: row.error ? 'redacted' : '',
     createdAt: row.created_at,
     processedAt: row.processed_at,
   }
@@ -97,6 +97,7 @@ export default async function handler(req, res) {
     ])
 
     const schemaReady = Array.isArray(summaryRows) && Array.isArray(telemetryRows) && Array.isArray(bodyRows)
+    const auth = authorizeAppRequest(req)
     const recentEvents = (eventRows || []).map(row => normalizeEvent(row))
     const dailySummary = normalizeSummary(summaryRows?.[0] || {})
     const lastAppleWorkout = normalizeWorkout(workoutRows?.[0] || {})
@@ -107,10 +108,11 @@ export default async function handler(req, res) {
       recentEvents[0]?.processedAt || recentEvents[0]?.createdAt,
     ].filter(Boolean).sort().pop() || null
 
-    return res.status(200).json({
+    const publicStatus = {
       ok: true,
       schemaReady,
       authConfigured: Boolean(process.env.HEALTH_IMPORT_TOKEN),
+      privateConfigured: appAuthConfigured(),
       sources: {
         hevy: 'configured',
         appleWorkout: lastAppleWorkout ? 'linked' : 'waiting',
@@ -121,10 +123,23 @@ export default async function handler(req, res) {
       dailySummary,
       lastAppleWorkout,
       lastSyncAt,
-      lastError,
-      recentEvents,
-      telemetryPreview: Array.isArray(telemetryRows) ? telemetryRows : [],
       missing: !schemaReady,
+    }
+
+    if (!auth.configured || !auth.ok) return res.status(200).json(publicStatus)
+
+    return res.status(200).json({
+      ...publicStatus,
+      lastError: lastError ? normalizeEvent(lastError) : null,
+      recentEvents,
+      telemetryPreview: Array.isArray(telemetryRows)
+        ? telemetryRows.map(row => ({
+          kind: row.kind,
+          metricType: row.metric_type,
+          day: row.day,
+          createdAt: row.created_at,
+        }))
+        : [],
     })
   } catch (error) {
     console.error('[health-status] failed:', error?.message || error)

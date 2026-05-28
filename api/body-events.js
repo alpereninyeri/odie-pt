@@ -1,4 +1,5 @@
 import { normalizeBodyEventRow, toSupabaseBodyEvent } from '../src/data/body-events.js'
+import { requireAppAccess } from './app-auth.js'
 
 function sbHeaders() {
   const key = process.env.VITE_SUPABASE_ANON_KEY
@@ -55,6 +56,8 @@ function parseBody(body) {
 }
 
 export default async function handler(req, res) {
+  if (!requireAppAccess(req, res)) return
+
   if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY) {
     return res.status(500).json({ ok: false, error: 'Supabase env eksik' })
   }

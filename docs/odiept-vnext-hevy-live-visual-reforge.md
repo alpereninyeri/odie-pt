@@ -15,6 +15,9 @@ Apply migrations in this order for a fresh Supabase project:
 5. `infra/supabase-rls-fix-v5.sql`
 6. `infra/supabase-hevy-v6.sql`
 7. `infra/supabase-ingest-events-v7.sql`
+8. `infra/supabase-health-v7.sql`
+9. `infra/supabase-health-rpg-v8.sql`
+10. `infra/supabase-stat-scale-v6.sql`
 
 ## Hevy reliability
 
@@ -27,10 +30,11 @@ Apply migrations in this order for a fresh Supabase project:
 ## Visual reforge scope
 
 - Keep the current RPG identity.
-- Improve Today first: Hevy live status, next session command, readiness, source mix and last sync.
-- ODIE panel gets a tactical header so it feels like the coach is driving the next action, not just a chat terminal.
-- Legacy CSS files that are not imported should stay out of active styling until a later cleanup pass.
+- Improve the first screen into Mission HUD: next move, readiness, XP/reward preview, stat belt and single logging CTA.
+- ODIE panel uses Gozlem / Sebep / Komut first; longer notes stay behind detail UI.
+- Legacy CSS files that are not imported stay deleted.
+- `daily-checklist.js` and `heatmap-calendar.js` were removed; their active UI lives in `src/main.js`.
 
 ## Security follow-up
 
-RLS is still intentionally loose in the current single-user setup. The next hardening pass should move browser write paths behind server routes and validate Telegram Mini App `initData` server-side before enabling profile-scoped RLS.
+RLS is still intentionally loose in the current single-user setup. Browser write paths now have optional `ODIE_APP_ACCESS_TOKEN` gates where server routes are used; the next hardening pass should move the remaining browser writes behind server routes and validate Telegram Mini App `initData` server-side before enabling profile-scoped RLS.
