@@ -107,10 +107,17 @@ export default async function handler(req, res) {
       lastAppleWorkout?.createdAt,
       recentEvents[0]?.processedAt || recentEvents[0]?.createdAt,
     ].filter(Boolean).sort().pop() || null
+    const appleStatus = schemaReady
+      ? (lastSyncAt ? 'apple_ready' : 'apple_waiting')
+      : 'apple_disabled'
 
     const publicStatus = {
       ok: true,
       schemaReady,
+      appleStatus,
+      appleMessage: schemaReady
+        ? 'Apple akisi hazir; Shortcut verisi bekleniyor.'
+        : 'Apple kapali: health tablolari henuz aktif degil.',
       authConfigured: Boolean(process.env.HEALTH_IMPORT_TOKEN),
       privateConfigured: appAuthConfigured(),
       sources: {
