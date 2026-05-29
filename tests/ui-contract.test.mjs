@@ -12,10 +12,13 @@ const gameAssets = readFileSync(new URL('../src/data/game-assets.js', import.met
 test('route tab renders Komuta mission surface instead of legacy route screen', () => {
   assert.match(main, /default: return renderMissionRouteScreen\(model\)/)
   assert.match(main, /function renderMissionRouteScreen/)
+  assert.doesNotMatch(main, /case 'log'/)
   assert.match(css, /\.mission-hud/)
   assert.doesNotMatch(main, /label: 'Defter'/)
   assert.match(main, /label: 'Komuta'/)
   assert.match(main, /data-tab="signal"/)
+  assert.match(main, /function updateDocumentTitle/)
+  assert.match(main, /OdiePt - \$\{label\}/)
 })
 
 test('route tab includes real progress infographics', () => {
@@ -63,6 +66,10 @@ test('active visual layers use cozy-v4 raster assets instead of legacy emoji/v3 
   assert.doesNotMatch(main, /\\u\{1F3AF\}|\\u\{1F9ED\}|\\u\{1F436\}/)
   assert.doesNotMatch(main, /zone\.icon/)
   assert.match(main, /ASSETS\.zone\[zone\.key\]/)
+  assert.match(main, /world-board-layer/)
+  assert.match(main, /ASSETS\.ui\.boardLayer/)
+  assert.match(main, /ASSETS\.odie\.portrait/)
+  assert.doesNotMatch(main, /\\u\{1F525\}|\\u\{1F33F\}|\\u\{1F6E1\}|\\u\{1F4A6\}|\\u\{1F512\}/)
 })
 
 test('asset-backed interactive surfaces expose detail affordances', () => {
@@ -83,11 +90,12 @@ test('health status has a public Apple disabled state', () => {
   assert.match(healthStatusApi, /apple_disabled/)
 })
 
-test('manual workout form preserves exercise payload contract', () => {
-  assert.match(main, /name="exerciseName"/)
-  assert.match(main, /function parseExerciseRows/)
-  assert.match(main, /volumeKg/)
-  assert.match(main, /Gym kaydi icin en az bir egzersiz/)
+test('ODIE intake is the production write surface instead of Defter form', () => {
+  assert.match(main, /id="ask-form"/)
+  assert.match(main, /data-intake-confirm/)
+  assert.match(main, /confirmOdieIntake/)
+  assert.match(main, /ODIE’ye söyle|ODIEâ€™ye sÃ¶yle/)
+  assert.doesNotMatch(main, /data-tab="log"/)
 })
 
 test('tap-to-detail and zoom access are enabled', () => {

@@ -30,7 +30,7 @@ Apply migrations in this order for a fresh Supabase project:
 ## Visual reforge scope
 
 - Keep the current RPG identity.
-- Improve the first screen into Mission HUD: next move, readiness, XP/reward preview, stat belt and single logging CTA.
+- Improve the first screen into Komuta: next move, readiness, XP/reward preview, stat belt and single ODIE intake CTA.
 - ODIE panel uses Gozlem / Sebep / Komut first; longer notes stay behind detail UI.
 - Legacy CSS files that are not imported stay deleted.
 - `daily-checklist.js` and `heatmap-calendar.js` were removed; their active UI lives in `src/main.js`.

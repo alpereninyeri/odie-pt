@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -104,4 +104,10 @@ test('cozy-v4 generated assets meet dimension and size budgets', () => {
       assert.ok(bytes <= 220_000, `${name} icon too heavy`)
     }
   }
+})
+
+test('cozy-v4 active folder has no orphan visual files', () => {
+  const imported = new Set(importedAssetPaths().map(file => file.split(/[\\/]/).at(-1)))
+  const files = readdirSync(resolve(root, 'src/assets/game/cozy-v4')).filter(name => /\.(png|jpe?g)$/i.test(name))
+  assert.deepEqual(files.filter(name => !imported.has(name)).sort(), [])
 })

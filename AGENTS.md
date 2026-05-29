@@ -18,15 +18,15 @@
 - `api/telegram.js` — Telegram webhook + Gemini parse + coach
 - `api/ask.js` — soru/cevap
 
-Yeni workout, mood, daily log, coach note, ask history → her zaman **canli mod** uzerinden gider.
+Yeni workout, mood, recovery, body event, coach note, ask history → her zaman **canli mod** uzerinden gider.
 `profile.js`'i sadece seed/varsayilan icin guncelle.
 
 ## Deploy
 `main` branch'e push -> Vercel ~30sn icinde deploy.
 
 ## Veri Akislari
-- **Workout logging**: Telegram mesaji veya site icindeki workout-form modali.
-- **Recovery logging**: Daily checklist (su/uyku/adim/mood).
+- **Workout logging**: Hevy, Telegram veya ODIE intake preview/confirm.
+- **Recovery logging**: ODIE dogal dil kaydi veya Apple Health read-only import ozeti.
 - **Coaching**: Coach feed (seans-sonu) + Ask terminal (soru-cevap).
 - **Memory feedback**: Coach panel'inden "DOGRU/YANLIS/ESKI/TONU IYI" butonlariyla.
 
@@ -46,7 +46,7 @@ npm run build
 ```
 
 ## Mevcut Tech Debt (oncelik sirali)
-1. CSS katmanlarini sadelestir (5 ayri override katmani var).
-2. Full re-render maliyeti (panel-bazli diff cache).
-3. Dormant component varsa bagla ya da sil.
+1. Full re-render maliyeti (panel-bazli diff cache).
+2. Dormant component varsa dev-only tut ya da sil.
+3. Apple Health schema/env dogrulamasi.
 4. RLS off + anon key public — guvenlik daraltmasi.

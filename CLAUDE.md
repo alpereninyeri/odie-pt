@@ -21,8 +21,9 @@ Yani yeni workout, memory, coach note, ask history gibi seyler her zaman `profil
 ### UI
 - `src/main.js`
 - `src/styles/cozy-reforge.css`
-- `src/assets/game/cozy-v3/*`
-- `src/components/workout-form.js`, `modal.js`, `toast.js`, `panel-ask.js`, `panel-coach.js` dormant/rebind adaylari
+- `src/assets/game/cozy-v4/*`
+- `src/data/game-assets.js` aktif asset manifesti
+- `src/components/workout-form.js`, `modal.js`, `toast.js`, `panel-ask.js`, `panel-coach.js` dormant/dev-only adaylari
 
 ### Data / derived logic
 - `src/data/rules.js`
@@ -44,10 +45,10 @@ Yani yeni workout, memory, coach note, ask history gibi seyler her zaman `profil
 ### Workout logging
 - Telegram message
 - Hevy app (webhook + cron delta)
-- site icinde manual workout form
+- ODIE intake preview/confirm
 
 ### Recovery logging
-- daily checklist
+- ODIE dogal dil kaydi veya Apple Health read-only import ozeti
 
 ### Coaching
 - coach feed
@@ -89,7 +90,7 @@ npm run build
 ```
 
 ## Current Debt To Prefer
-1. Componentleri tekrar baglama ya da silme
-2. full rerender maliyeti
-3. docs drift
+1. full rerender maliyeti
+2. dormant componentleri dev-only tutma ya da silme
+3. Apple Health schema/env dogrulamasi
 4. RLS / anon public guvenlik daraltmasi

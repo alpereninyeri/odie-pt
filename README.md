@@ -3,11 +3,11 @@
 Live: https://odie-pt.vercel.app
 
 OdiePt artik sadece statik bir RPG karti degil. Proje su anda:
-- web UI
+- Komuta / Harita / ODIE tabli cozy-v4 oyun UI
 - Supabase store
-- Telegram workout ingest
+- Telegram + Hevy workout ingest
 - ODIE coach/memory pipeline
-- site ici `Ask ODIE` question terminal
+- ODIE intake preview/confirm kayit akisi
 
 uzerinden calisan hafif bir athlete OS haline gelmis durumda.
 
@@ -54,13 +54,17 @@ src/
   main.js
   styles/
     cozy-reforge.css
-  assets/game/cozy-v3/
-    map-layer.jpg
-    cabin-room.jpg
-    avatar-athlete.png
-    stat-*.jpg
+  assets/game/cozy-v4/
+    command-bg-*.jpg
+    world-map-*.jpg
+    odie-room-*.jpg
+    nav-*.png
+    zone-*.png
+    reward-*.png
+    badge-*.png
+    info-*.png
   components/
-    workout-form.js      # dormant, P1/P5 rebind adayi
+    workout-form.js      # dormant/dev-only; production write ODIE intake
     modal.js             # dormant, bottom sheet/modal refactor adayi
     toast.js             # dormant, notification refactor adayi
     panel-coach.js
@@ -94,9 +98,10 @@ infra/
 
 ## Data Update Modes
 ### 1. Fast path
+- Hevy app uzerinden seans kaydet
 - Telegram bot uzerinden workout yaz
-- veya site icinde manual workout form kullan
-- veya site icinde Ask ODIE sorusu gonder
+- veya ODIE tabinda dogal dille soyle; preview kartini onaylayinca yazar
+- Ask-only sorular ODIE soru/cevap akisi olarak kalir
 
 ### 2. Seed/fallback update
 `src/data/profile.js` sadece default/fallback copy veya initial seed guncellemesi icin kullan.
@@ -122,11 +127,11 @@ Token set edilirse `/api/ask` ve `/api/body-events` private olur; `/api/health-s
 ## Current Debt
 - full rerender yaklasimi var
 - bazi dormant componentler yeniden baglama/refactor bekliyor
-- UI smoke testleri var, genis e2e Playwright kapsami hala P5
+- UI smoke testleri ve Playwright e2e kapsami aktif tutulur
 - RLS / anon public modeli daraltma bekliyor
 
 ## Goal
 Kisa vadede hedef:
-- ODIE daha akilli olsun
-- mobile HUD daha iyi hissettirsin
-- veri girisi commit ritueline daha az bagimli olsun
+- ODIE dogal dille kayit alsin
+- mobile ilk ekran oynanabilir kalsin
+- veri girisi her gun manuel guncelleme zorunluluguna bagli olmasin
