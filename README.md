@@ -71,6 +71,7 @@ src/
     panel-ask.js
   data/
     store.js
+    data-truth-engine.js
     profile.js
     rules.js
     engine.js
@@ -113,6 +114,9 @@ Bu dosyada degisiklik yapman gereken durumlar:
 
 ## Database
 Migration zinciri sira ile uygulanmali. `supabase-hevy-v6.sql` Hevy idempotency, `supabase-ingest-events-v7.sql` ingest audit, `supabase-health-v7.sql` body events, `supabase-health-rpg-v8.sql` Apple/health summary tablolarini ekler.
+
+## Truth Engine
+`src/data/data-truth-engine.js` Hevy, Telegram, Apple ve ODIE intake durumunu tek modele indirir. Apple health semasi kapaliysa stale health summary kullanilmaz; Komuta/ODIE Apple'i "kapali" okuyup uyku/kalp/hareket varmis gibi davranmaz.
 
 ## Private API gates
 Opsiyonel single-user token:

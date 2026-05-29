@@ -8,6 +8,7 @@ const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 const healthStatusApi = readFileSync(new URL('../api/health-status.js', import.meta.url), 'utf8')
 const missionLoop = readFileSync(new URL('../src/data/mission-loop.js', import.meta.url), 'utf8')
 const gameAssets = readFileSync(new URL('../src/data/game-assets.js', import.meta.url), 'utf8')
+const dataTruthEngine = readFileSync(new URL('../src/data/data-truth-engine.js', import.meta.url), 'utf8')
 
 test('route tab renders Komuta mission surface instead of legacy route screen', () => {
   assert.match(main, /default: return renderMissionRouteScreen\(model\)/)
@@ -88,6 +89,10 @@ test('asset-backed interactive surfaces expose detail affordances', () => {
 test('health status has a public Apple disabled state', () => {
   assert.match(healthStatusApi, /appleStatus/)
   assert.match(healthStatusApi, /apple_disabled/)
+  assert.match(healthStatusApi, /truthMap/)
+  assert.match(dataTruthEngine, /selectTrustedHealthSummary/)
+  assert.match(dataTruthEngine, /appleDisabled/)
+  assert.match(dataTruthEngine, /odieIntake/)
 })
 
 test('ODIE intake is the production write surface instead of Defter form', () => {

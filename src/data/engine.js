@@ -12,6 +12,7 @@ import {
   normalizeSession,
 } from './rules.js'
 import { attachStatScales } from './stat-scale.js'
+import { selectTrustedHealthSummary } from './data-truth-engine.js'
 
 const EXERCISE_MUSCLES = {
   'Bench Press': ['Göğüs', 'Triceps', 'Omuz'],
@@ -243,7 +244,7 @@ function _updateHealthAndGlobalStats(state) {
     .sort((a, b) => normalizeDateString(b.date).localeCompare(normalizeDateString(a.date)))
     .slice(0, 7)
   const workouts = state.workouts || []
-  const dailySummary = state.healthStatus?.dailySummary || state.healthDailySummary || null
+  const dailySummary = selectTrustedHealthSummary(state)
 
   const avg = (values, fallback = 0) => {
     if (!values.length) return fallback

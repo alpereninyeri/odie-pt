@@ -11,6 +11,7 @@ import { GAME_ASSETS, STAT_AXES } from './data/game-assets.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
 import { getLocalDateString, normalizeDateString } from './data/rules.js'
 import { plainCopyText } from './data/ui-copy.js'
+import { buildDataTruthMap, selectTrustedHealthSummary } from './data/data-truth-engine.js'
 
 const TABS = [
   { key: 'route', label: 'Komuta', icon: GAME_ASSETS.nav.command },
@@ -153,7 +154,7 @@ function buildModel(state = {}, profile = {}) {
   const dailyLogs = state.dailyLogs || []
   const semantic = buildSemanticProfile(workouts, dailyLogs)
   const bodyMap = state.bodyMapState || buildBodyMapState({ state, profile, semantic })
-  const healthSummary = state.healthDailySummary || state.healthStatus?.dailySummary || state.health?.vitalScores?.summary || null
+  const healthSummary = selectTrustedHealthSummary(state)
   const nextSession = buildNextSessionRecommendation({
     profile: { ...(state.profile || {}), ...profile },
     workouts,
@@ -168,6 +169,11 @@ function buildModel(state = {}, profile = {}) {
   const stats = normalizeStats(profile.stats || [])
   const zones = buildZoneCards(workouts, bodyMap, nextSession)
   const sourceHealth = nextSession.sourceHealth || {}
+  const truthMap = buildDataTruthMap({
+    state,
+    workouts,
+    dailyLogs,
+  })
   const progressSnapshot = buildProgressSnapshot(workouts, stats)
   const missionLoop = buildMissionLoop({
     profile,
@@ -199,7 +205,8 @@ function buildModel(state = {}, profile = {}) {
     progressSnapshot,
     missionLoop,
     worldMap,
-    sources: buildSources(sourceHealth, workouts, dailyLogs, healthSummary),
+    truthMap,
+    sources: buildSources(truthMap, sourceHealth, workouts, dailyLogs, healthSummary),
     system: {
       readiness: nextSession.readiness || {},
       tone: nextSession.tone || 'calm',
@@ -219,7 +226,16 @@ function normalizeStats(stats = []) {
   }))
 }
 
-function buildSources(sourceHealth = {}, workouts = [], dailyLogs = [], healthSummary = null) {
+function buildSources(truthMap = {}, sourceHealth = {}, workouts = [], dailyLogs = [], healthSummary = null) {
+  if (Array.isArray(truthMap.items) && truthMap.items.length) {
+    return truthMap.items.slice(0, 4).map(item => ({
+      key: item.key,
+      label: item.label,
+      lit: item.lit,
+      detail: item.detail,
+    }))
+  }
+
   const latest = workouts[0]
   const recent = workouts.slice(0, 14)
   const movementDays = new Set(recent.map(workout => normalizeDateString(workout.date)).filter(Boolean)).size
@@ -790,7 +806,7 @@ function renderMapScreen(model) {
         ${renderXpBreakdown(model.bodyMap.xpPreview)}
         ${renderBodyPressure(model.bodyMap)}
         ${renderUnlockLadder(model.bodyMap)}
-        ${renderRecoveryGate(model.system.readiness, model.healthSummary)}
+        ${renderRecoveryGate(model.system.readiness, model.healthSummary, model.truthMap)}
         ${renderPrGate(model.profile.performance, model.nextSession)}
       </div>
 
@@ -960,12 +976,17 @@ function renderUnlockLadder(bodyMap = {}) {
   `
 }
 
-function renderRecoveryGate(readiness = {}, healthSummary = null) {
+function renderRecoveryGate(readiness = {}, healthSummary = null, truthMap = {}) {
   const score = Math.round(clamp(readiness.score ?? readiness.armor ?? 0))
   const fatigue = Math.round(clamp(readiness.fatigue ?? 0))
-  const label = healthSummary?.day ? 'Apple izi' : 'can kapisi'
+  const label = healthSummary?.day ? 'Apple izi' : truthMap.appleDisabled ? 'Apple kapali' : 'can kapisi'
+  const detail = healthSummary?.day
+    ? `Enerji ${score}/100. Yorgunluk ${fatigue}/100. Saglik ozeti ritme katiliyor.`
+    : truthMap.appleDisabled
+      ? `Enerji ${score}/100. Yorgunluk ${fatigue}/100. Apple kapali; ODIE uyku ve kalbi yok diye okur.`
+      : `Enerji ${score}/100. Yorgunluk ${fatigue}/100. Apple bekliyorsa ODIE son seanslardan tahmin eder.`
   return `
-    <article class="card info-card recovery-gate" ${detailAttrs('Toparlanma kapisi', `Enerji ${score}/100. Yorgunluk ${fatigue}/100. ${healthSummary?.day ? 'Health ozeti ritme katiliyor.' : 'Apple kapaliysa ODIE son seanslardan tahmin eder.'}`)}>
+    <article class="card info-card recovery-gate" ${detailAttrs('Toparlanma kapisi', detail)}>
       <div class="card-head">
         <span class="card-title with-icon"><img src="${ASSETS.info.recoveryGate}" alt="" aria-hidden="true">Toparlanma kapisi</span>
         <span class="card-tag">${escapeHtml(cleanText(label))}</span>

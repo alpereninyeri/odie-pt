@@ -1,5 +1,6 @@
 import { isMissingColumnError, resolveProfile, sbGet } from '../lib/hevy/persist.js'
 import { appAuthConfigured, authorizeAppRequest } from './app-auth.js'
+import { buildDataTruthMap } from '../src/data/data-truth-engine.js'
 
 function isMissingRelation(error) {
   const message = String(error?.message || error || '')
@@ -121,10 +122,13 @@ export default async function handler(req, res) {
       authConfigured: Boolean(process.env.HEALTH_IMPORT_TOKEN),
       privateConfigured: appAuthConfigured(),
       sources: {
-        hevy: 'configured',
+        hevy: process.env.HEVY_API_KEY ? 'configured' : 'waiting',
+        telegram: process.env.TELEGRAM_WEBHOOK_SECRET ? 'configured' : 'waiting',
         appleWorkout: lastAppleWorkout ? 'linked' : 'waiting',
         appleSleep: dailySummary?.totalSleepHours ? 'linked' : 'waiting',
         appleHeart: dailySummary?.hrvSdnn || dailySummary?.restingHeartRate ? 'linked' : 'waiting',
+        appleImport: process.env.HEALTH_IMPORT_TOKEN ? 'configured' : 'missing',
+        odieIntake: appAuthConfigured() ? 'protected' : 'blocked',
         manual: 'available',
       },
       dailySummary,
@@ -132,6 +136,11 @@ export default async function handler(req, res) {
       lastSyncAt,
       missing: !schemaReady,
     }
+    publicStatus.truthMap = buildDataTruthMap({
+      healthStatus: publicStatus,
+      workouts: lastAppleWorkout ? [lastAppleWorkout] : [],
+      dailyLogs: [],
+    })
 
     if (!auth.configured || !auth.ok) return res.status(200).json(publicStatus)
 

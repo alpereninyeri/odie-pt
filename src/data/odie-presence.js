@@ -1,5 +1,6 @@
 import { formatMonthShort, getLocalDateString, normalizeDateString } from './rules.js'
 import { plainCopyText } from './ui-copy.js'
+import { buildDataTruthMap } from './data-truth-engine.js'
 
 function clamp(value, min = 0, max = 100) {
   const numeric = Number(value)
@@ -73,21 +74,20 @@ function sourceReady(sources = {}, key) {
 }
 
 function sourceStatus(state = {}) {
-  const sources = state.healthStatus?.sources || {}
+  const truthMap = buildDataTruthMap({ state })
+  const byKey = truthMap.byKey || {}
   return {
-    hevy: sources.hevy || ((state.workouts || []).some(item => String(item.source || '').toLowerCase() === 'hevy') ? 'active' : 'waiting'),
-    appleWorkout: sources.appleWorkout || 'waiting',
-    appleSleep: sources.appleSleep || 'waiting',
-    appleHeart: sources.appleHeart || 'waiting',
-    manual: sources.manual || 'available',
-    schemaReady: state.healthStatus?.schemaReady !== false && !state.healthStatus?.missing,
-    readyCount: [
-      sourceReady(sources, 'hevy'),
-      sourceReady(sources, 'appleWorkout'),
-      sourceReady(sources, 'appleSleep'),
-      sourceReady(sources, 'appleHeart'),
-      sources.manual === 'available',
-    ].filter(Boolean).length,
+    hevy: byKey.hevy?.state || 'waiting',
+    telegram: byKey.telegram?.state || 'waiting',
+    appleWorkout: byKey.apple?.state === 'active' ? 'active' : byKey.apple?.state || 'waiting',
+    appleSleep: byKey.apple?.state === 'active' ? 'active' : byKey.apple?.state || 'waiting',
+    appleHeart: byKey.apple?.state === 'active' ? 'active' : byKey.apple?.state || 'waiting',
+    odie: byKey.odie?.state || 'waiting',
+    manual: byKey.manual?.state || 'available',
+    schemaReady: truthMap.schemaReady,
+    appleDisabled: truthMap.appleDisabled,
+    readyCount: truthMap.readyCount,
+    items: truthMap.items || [],
   }
 }
 
@@ -132,8 +132,9 @@ function buildSignals({ state, summary, readiness, latestWorkout, injury }) {
       tone: Number(summary.strainScore) > 72 ? 'warn' : 'calm',
     })
   } else {
-    signals.push({ key: 'sleep', label: 'Uyku', value: '--', detail: 'Apple bekliyor', tone: 'muted' })
-    signals.push({ key: 'heart', label: 'Kalp', value: '--', detail: 'HRV bekliyor', tone: 'muted' })
+    const appleOff = state.healthStatus?.schemaReady === false || state.healthStatus?.missing || state.healthStatus?.appleStatus === 'apple_disabled'
+    signals.push({ key: 'sleep', label: 'Uyku', value: '--', detail: appleOff ? 'Apple kapali' : 'Apple bekliyor', tone: 'muted' })
+    signals.push({ key: 'heart', label: 'Kalp', value: '--', detail: appleOff ? 'Apple kapali' : 'HRV bekliyor', tone: 'muted' })
   }
 
   signals.push({
@@ -171,7 +172,7 @@ function routineLine({ latestWorkout, summary, today, sources }) {
   if (summary?.steps || summary?.totalSleepHours) {
     return `Bugun ${Math.round(Number(summary.steps) || 0).toLocaleString('tr-TR')} adim ve ${Math.round((Number(summary.totalSleepHours) || Number(summary.sleepHours) || 0) * 10) / 10}s uyku var.`
   }
-  if (!sources.schemaReady) return 'Health kurulumu hazir degil; acilinca uyku, kalp ve hareket karta dusecek.'
+  if (!sources.schemaReady) return 'Saglik kapisi kapali; ODIE uyku, kalp ve hareket yok diye okuyor.'
   return 'Hevy, Apple veya manuel kayit bekleniyor.'
 }
 
@@ -268,12 +269,13 @@ export function buildOdiePresence({
     state.health?.vitalScores?.dataConfidence,
     sources.readyCount * 18,
   )))
-  const sourceLine = [
-    sources.hevy === 'configured' || sources.hevy === 'active' ? 'Hevy aktif' : 'Hevy bekliyor',
-    sources.appleWorkout === 'ready' || sources.appleWorkout === 'active' ? 'Antrenman geldi' : 'Antrenman bekliyor',
-    sources.appleSleep === 'ready' || sources.appleSleep === 'active' ? 'Uyku geldi' : 'Uyku bekliyor',
-    sources.appleHeart === 'ready' || sources.appleHeart === 'active' ? 'Kalp geldi' : 'Kalp bekliyor',
-  ].join(' / ')
+  const sourceLine = (sources.items || []).slice(0, 4).map(item => (
+    item.lit
+      ? `${item.label} aktif`
+      : ['blocked', 'disabled'].includes(String(item.state || '').toLowerCase())
+        ? `${item.label} kapali`
+        : `${item.label} bekliyor`
+  )).join(' / ')
 
   return {
     mood: mood.key,
