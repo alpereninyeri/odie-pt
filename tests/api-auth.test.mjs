@@ -68,6 +68,18 @@ test('private app endpoints reject missing app token when configured', async () 
   else process.env.ODIE_APP_ACCESS_TOKEN = previous
 })
 
+test('intake endpoint fails closed without app token', async () => {
+  const previous = process.env.ODIE_APP_ACCESS_TOKEN
+  delete process.env.ODIE_APP_ACCESS_TOKEN
+  const { default: intakeHandler } = await import('../api/intake.js')
+  const res = createMockRes()
+  await intakeHandler({ method: 'POST', headers: {}, query: {}, body: { mode: 'preview', text: 'bench 65kg 3x5' } }, res)
+  assert.equal(res.statusCode, 401)
+  assert.equal(res.body.error, 'intake token is required')
+  if (previous == null) delete process.env.ODIE_APP_ACCESS_TOKEN
+  else process.env.ODIE_APP_ACCESS_TOKEN = previous
+})
+
 test('hevy sync rejects unauthenticated cron calls', async () => {
   const previousHevy = process.env.HEVY_INTERNAL_SECRET
   const previousCron = process.env.CRON_SECRET

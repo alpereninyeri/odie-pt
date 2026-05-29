@@ -25,10 +25,10 @@ test('mission loop turns quest and xp preview into game reward chips', () => {
       },
       xpPreview: {
         total: 155,
-        text: '+80 Ana Hamle / +35 Gorev',
+        text: '+80 Ana Hamle / +35 Görev',
         parts: [
           { key: 'base', label: 'Ana Hamle', value: 80 },
-          { key: 'quest', label: 'Ara Gorev', value: 35 },
+          { key: 'quest', label: 'Ara Görev', value: 35 },
         ],
       },
       priority: {
@@ -40,8 +40,8 @@ test('mission loop turns quest and xp preview into game reward chips', () => {
     },
   })
 
-  assert.equal(loop.title, 'Mission Loop')
-  assert.equal(loop.levelLine, 'LVL 7 / 840 XP')
+  assert.equal(loop.title, 'Görev Döngüsü')
+  assert.equal(loop.levelLine, 'Seviye 7 / 840 XP')
   assert.ok(loop.rewardChips.some(chip => chip.label === '+155 XP'))
   assert.ok(loop.rewardChips.some(chip => chip.label === 'GOV etkisi'))
   assert.ok(loop.rewardChips.some(chip => chip.label === 'Seri x5'))
@@ -67,8 +67,8 @@ test('reward recap summarizes xp, quest, level and streak changes', () => {
     },
   })
 
-  assert.equal(recap.title, 'Seviye Atladi')
+  assert.equal(recap.title, 'Seviye Atladı')
   assert.equal(recap.questClosed, true)
-  assert.deepEqual(recap.chips.slice(0, 5), ['+180 XP', 'LVL 3', 'Gorev kapandi', 'Seri 4', '1 rozet'])
+  assert.deepEqual(recap.chips.slice(0, 5), ['+180 XP', 'Seviye 3', 'Görev kapandı', 'Seri 4', '1 rozet'])
   assert.ok(recap.chips.includes('STR +3'))
 })

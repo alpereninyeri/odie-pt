@@ -1,19 +1,21 @@
+import { cleanGameText, deterministicFlavor } from './game-copy.js'
+
 const REGION_LABELS = {
-  chest: 'Gogus',
+  chest: 'Göğüs',
   shoulder: 'Omuz',
   triceps: 'Triceps',
   biceps: 'Biceps',
   forearm: 'Grip',
   wrist: 'Bilek',
   lat: 'Kanat',
-  'upper-back': 'Ust Sirt',
+  'upper-back': 'Üst Sırt',
   core: 'Core',
-  hips: 'Kalca',
-  quads: 'On Bacak',
+  hips: 'Kalça',
+  quads: 'Ön Bacak',
   hamstrings: 'Arka Zincir',
   calves: 'Kalf',
   knees: 'Diz',
-  ankles: 'Ayak Bilegi',
+  ankles: 'Ayak Bileği',
   'lower-back': 'Bel',
 }
 
@@ -39,13 +41,13 @@ const REGION_STAT = {
 const XP_LABELS = {
   base: 'Ana XP',
   movement: 'Hareket',
-  gap: 'Hat kapandi',
+  gap: 'Hat kapandı',
   unlock: 'Kilit izi',
-  quest: 'Gorev',
+  quest: 'Görev',
   guard: 'Kalkan',
-  sleep: 'Onarim',
+  sleep: 'Onarım',
   heart: 'Stabil',
-  safe: 'Guvenli secim',
+  safe: 'Temiz seçim',
   recovery: 'Toparlanma',
   form: 'Form',
 }
@@ -115,7 +117,7 @@ function buildRewardChips({ quest = {}, xpPreview = {}, profile = {}, bodyMap = 
       key: 'xp',
       label: `+${formatNumber(totalXp)} XP`,
       tone: 'xp',
-      detail: xpDetail || quest.reward || 'Bu hamle bugunun odul havuzunu acar.',
+      detail: xpDetail || quest.reward || 'Bu hamle bugünün ödül havuzunu açar.',
     })
   }
 
@@ -123,7 +125,7 @@ function buildRewardChips({ quest = {}, xpPreview = {}, profile = {}, bodyMap = 
     key: 'stat',
     label: `${statForRegion(linkedRegion)} etkisi`,
     tone: 'stat',
-    detail: `${regionLabel(linkedRegion)} hattina dokunur; karakter statlari yeni kayitla guncellenir.`,
+    detail: `${regionLabel(linkedRegion)} hattına dokunur; karakter statları yeni kayıtla güncellenir.`,
   })
 
   chips.push({
@@ -131,8 +133,8 @@ function buildRewardChips({ quest = {}, xpPreview = {}, profile = {}, bodyMap = 
     label: streakCount >= 3 ? `Seri x${streakCount}` : 'Seri koru',
     tone: 'streak',
     detail: streakCount >= 3
-      ? `${streakCount} gunluk seri korunuyor. Bugunku kayit ritmi dusurmez.`
-      : 'Bugunku kayit seri ritmini baslatir veya korur.',
+      ? `${streakCount} günlük seri korunuyor. Bugünkü kayıt ritmi düşürmez.`
+      : 'Bugünkü kayıt seri ritmini başlatır veya korur.',
   })
 
   if (unlock) {
@@ -140,14 +142,14 @@ function buildRewardChips({ quest = {}, xpPreview = {}, profile = {}, bodyMap = 
       key: 'unlock',
       label: `${Math.round(clamp(unlock.progress))}% kilit`,
       tone: 'unlock',
-      detail: `${safeLabel(unlock.name, 'Kilit')} yaklasiyor. ${safeLabel(unlock.todayStep || unlock.missing, 'Kisa teknik blok yeterli.')}`,
+      detail: `${safeLabel(unlock.name, 'Kilit')} yaklaşıyor. ${safeLabel(unlock.todayStep || unlock.missing, 'Kısa teknik blok yeterli.')}`,
     })
   } else if (number(readiness.score) >= 65) {
     chips.push({
       key: 'ready',
       label: 'Tempo acik',
       tone: 'ready',
-      detail: `Enerji ${Math.round(clamp(readiness.score))}. Ana hamle icin pencere temiz.`,
+    detail: `Enerji ${Math.round(clamp(readiness.score))}. Ana hamle için pencere temiz.`,
     })
   }
 
@@ -173,7 +175,7 @@ function normalizeMapProgress(bodyMap = {}) {
       key: `unlock-${unlock.name}`,
       label: safeLabel(unlock.name, 'Kilit'),
       progress: clamp(unlock.progress),
-      detail: safeLabel(unlock.todayStep || unlock.missing, 'Kilit yaklasiyor.'),
+      detail: safeLabel(unlock.todayStep || unlock.missing, 'Kilit yaklaşıyor.'),
       tone: 'unlock',
     })
   }
@@ -207,14 +209,14 @@ export function buildMissionLoop({
   const xp = profile.xp || {}
 
   return {
-    title: 'Mission Loop',
-    eyebrow: 'Gorev -> odul -> kayit',
-    levelLine: `LVL ${profile.level || 1} / ${formatNumber(xp.current || 0)} XP`,
+    title: 'Görev Döngüsü',
+    eyebrow: 'Görev -> ödül -> kayıt',
+    levelLine: `Seviye ${profile.level || 1} / ${formatNumber(xp.current || 0)} XP`,
     xpPct: clamp((number(xp.current) / Math.max(1, number(xp.max, 1))) * 100),
-    questTitle: safeLabel(quest.name || quest.title || goal.title, 'Bugunun ana hamlesi'),
-    questBody: safeLabel(quest.desc || goal.subtitle || nextSession.coachCommand, 'Tek temiz adim bugunu kazandirir.'),
-    questWhy: safeLabel(quest.why || goal.reason || nextSession.coachCommand, 'Bugunku rota son kayit ritmine gore secildi.'),
-    ctaLabel: 'Deftere yaz',
+    questTitle: cleanGameText(safeLabel(quest.name || quest.title || goal.title, 'Bugünün ana hamlesi')),
+    questBody: cleanGameText(`${safeLabel(quest.desc || goal.subtitle || nextSession.coachCommand, 'Tek temiz adım bugünü kazandırır.')} ${deterministicFlavor(quest.id || quest.name || goal.title, nextSession.date || '')}`),
+    questWhy: cleanGameText(safeLabel(quest.why || goal.reason || nextSession.coachCommand, 'Bugünkü rota son kayıt ritmine göre seçildi.')),
+    ctaLabel: 'ODIE’ye söyle',
     regionLabel: regionLabel(linkedRegion),
     statImpact: statForRegion(linkedRegion),
     rewardChips: buildRewardChips({ quest, xpPreview, profile, bodyMap, readiness }),
@@ -281,18 +283,18 @@ export function buildRewardRecap({ workout = {}, beforeState = {}, afterState = 
   const chips = []
 
   if (xpEarned > 0) chips.push(`+${formatNumber(xpEarned)} XP`)
-  if (afterLevel > beforeLevel) chips.push(`LVL ${afterLevel}`)
-  if (questClosed) chips.push('Gorev kapandi')
+  if (afterLevel > beforeLevel) chips.push(`Seviye ${afterLevel}`)
+  if (questClosed) chips.push('Görev kapandı')
   if (afterStreak > beforeStreak) chips.push(`Seri ${afterStreak}`)
   if (newUnlocks.length) chips.push(`${newUnlocks.length} rozet`)
   chips.push(...statChips)
 
   return {
     id: `recap-${Date.now()}`,
-    title: afterLevel > beforeLevel ? 'Seviye Atladi' : 'Odul Alindi',
+    title: afterLevel > beforeLevel ? 'Seviye Atladı' : 'Ödül Alındı',
     body: questClosed
-      ? 'Kayit gorev dongusunu kapatti. XP, seri ve statlar yeni hale gecti.'
-      : 'Kayit deftere girdi. XP ve karakter ritmi guncellendi.',
+      ? 'Kayıt görev döngüsünü kapattı. XP, seri ve statlar yeni hale geçti.'
+      : 'Kayıt sisteme girdi. XP ve karakter ritmi güncellendi.',
     chips: chips.slice(0, 6),
     levelUp: afterLevel > beforeLevel,
     questClosed,

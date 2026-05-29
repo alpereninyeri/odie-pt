@@ -8,10 +8,13 @@ const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 const healthStatusApi = readFileSync(new URL('../api/health-status.js', import.meta.url), 'utf8')
 const missionLoop = readFileSync(new URL('../src/data/mission-loop.js', import.meta.url), 'utf8')
 
-test('route tab renders Mission HUD instead of legacy route screen', () => {
+test('route tab renders Komuta mission surface instead of legacy route screen', () => {
   assert.match(main, /default: return renderMissionRouteScreen\(model\)/)
   assert.match(main, /function renderMissionRouteScreen/)
   assert.match(css, /\.mission-hud/)
+  assert.doesNotMatch(main, /label: 'Defter'/)
+  assert.match(main, /label: 'Komuta'/)
+  assert.match(main, /data-tab="signal"/)
 })
 
 test('route tab includes real progress infographics', () => {
@@ -33,6 +36,19 @@ test('mission loop helper feeds reward chips and recap without data contract cha
   assert.match(missionLoop, /export function buildMissionLoop/)
   assert.match(missionLoop, /export function buildRewardRecap/)
   assert.match(missionLoop, /rewardChips/)
+})
+
+test('world map and infographic selectors are present', () => {
+  assert.match(main, /buildWorldMapModel/)
+  assert.match(main, /world-map-board/)
+  assert.match(main, /world-node/)
+  assert.match(main, /active-quest-node/)
+  assert.match(main, /function renderXpBreakdown/)
+  assert.match(main, /function renderBodyPressure/)
+  assert.match(main, /function renderUnlockLadder/)
+  assert.match(css, /\.world-map-board/)
+  assert.match(css, /\.world-node/)
+  assert.match(css, /\.xp-breakdown/)
 })
 
 test('health status has a public Apple disabled state', () => {
@@ -61,4 +77,6 @@ test('legacy theme layers stay out of the active app', () => {
 test('visible technical trust language is filtered from HUD warnings', () => {
   assert.match(main, /confidence\|evidence\|source/)
   assert.match(main, /kanit\|kanıt\|guven\|güven/)
+  assert.match(main, /api/)
+  assert.match(main, /payload/)
 })
