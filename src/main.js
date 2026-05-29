@@ -2,6 +2,7 @@ import './styles/cozy-reforge.css'
 import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
 import { BODY_REGION_OPTIONS } from './data/body-events.js'
+import { buildMissionLoop, buildRewardRecap, snapshotMissionState } from './data/mission-loop.js'
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
@@ -74,6 +75,7 @@ let syncBusy = false
 let routeSubmitBusy = false
 let bodySubmitBusy = false
 let detailSheet = null
+let rewardRecap = null
 let askState = {
   items: null,
   loading: false,
@@ -180,6 +182,12 @@ function buildModel(state = {}, profile = {}) {
   const zones = buildZoneCards(workouts, bodyMap, nextSession)
   const sourceHealth = nextSession.sourceHealth || {}
   const progressSnapshot = buildProgressSnapshot(workouts, stats)
+  const missionLoop = buildMissionLoop({
+    profile,
+    bodyMap,
+    nextSession,
+    stats,
+  })
 
   return {
     state,
@@ -195,6 +203,7 @@ function buildModel(state = {}, profile = {}) {
     stats,
     zones,
     progressSnapshot,
+    missionLoop,
     sources: buildSources(sourceHealth, workouts, dailyLogs, healthSummary),
     system: {
       readiness: nextSession.readiness || {},
@@ -352,6 +361,7 @@ function renderShell(model) {
         ${TABS.map(renderNavItem).join('')}
       </nav>
       ${renderDetailSheet()}
+      ${renderRewardRecap()}
     </div>
   `
 }
@@ -407,51 +417,66 @@ function renderDetailSheet() {
   `
 }
 
+function renderRewardRecap() {
+  if (!rewardRecap) return ''
+  return `
+    <div class="reward-recap-backdrop" data-recap-backdrop>
+      <section class="reward-recap ${rewardRecap.levelUp ? 'is-level-up' : ''}" role="dialog" aria-modal="true" aria-label="${escapeAttr(rewardRecap.title)}">
+        <div class="recap-head">
+          <span class="recap-kick">${rewardRecap.questClosed ? 'Gorev kapandi' : 'Kayit tamam'}</span>
+          <button type="button" class="icon-close" data-close-recap aria-label="Kapat">x</button>
+        </div>
+        <b>${escapeHtml(cleanText(rewardRecap.title))}</b>
+        <p>${escapeHtml(cleanText(rewardRecap.body))}</p>
+        <div class="recap-chips">
+          ${(rewardRecap.chips || []).map(chip => `<span>${escapeHtml(cleanText(chip))}</span>`).join('')}
+        </div>
+        <button type="button" class="btn-primary full" data-close-recap>HUD'a don</button>
+      </section>
+    </div>
+  `
+}
+
 /* ============================================================
    ROUTE / KOY
    ============================================================ */
 function renderMissionRouteScreen(model) {
   const next = model.nextSession
-  const goal = next.primaryGoal || {}
-  const quest = model.bodyMap.dailyQuest || {}
-  const xpPreview = model.bodyMap.xpPreview || {}
+  const loop = model.missionLoop || {}
   const profile = model.profile || {}
-  const questTitle = cleanText(quest.name || quest.title || goal.title || 'Bugunun ana hamlesi')
-  const questBody = cleanText(quest.desc || goal.subtitle || next.coachCommand || 'Tek temiz adim bugunu kazandirir.')
-  const command = shortCommand(next.coachCommand || questBody, 112)
-  const levelLine = `LVL ${profile.level || 1} - ${formatNumber(profile.xp?.current || 0)} XP`
+  const command = shortCommand(next.coachCommand || loop.questBody, 112)
 
   return `
     <section class="screen route-screen">
       <div class="route-grid">
         <div class="col-a">
-          <div class="mission-hud">
+          <div class="mission-hud mission-loop-hud">
             <img class="hero-bg" src="${ASSETS.mapLayer}" alt="" aria-hidden="true">
             <div class="mission-top">
               <span class="kick">${escapeHtml(timeGreeting())} · ${escapeHtml(next.date || getLocalDateString())}</span>
-              <span class="mission-tone">${escapeHtml(levelLine)}</span>
+              <span class="mission-tone">${escapeHtml(loop.levelLine || `LVL ${profile.level || 1}`)}</span>
             </div>
             <div class="mission-body">
               <div class="mission-copy">
-                <h1>Mission HUD</h1>
+                <h1>${escapeHtml(loop.title || 'Mission Loop')}</h1>
                 <p>${escapeHtml(command)}</p>
               </div>
               <button type="button" class="mission-avatar" ${detailAttrs(model.profile.nick || 'Profil', `LVL ${model.profile.level || 1}. Seri ${model.profile.streak?.current || 0} gun. XP ${formatNumber(model.profile.xp?.current || 0)} / ${formatNumber(model.profile.xp?.max || 0)}.`)}>
                 <img src="${ASSETS.avatarAthlete}" alt="" aria-hidden="true">
               </button>
             </div>
-            ${renderMissionQuest(questTitle, questBody, quest, xpPreview, model)}
+            ${renderMissionQuest(loop, model)}
             ${renderEnergyStrip(model.system.readiness)}
             ${renderStatBelt(model.stats)}
           </div>
 
-          ${renderProgressCard(model.progressSnapshot, 'mobile-progress')}
+          ${renderProgressCard(model.progressSnapshot, 'mobile-progress', loop)}
           ${renderCharCard(model)}
           ${renderQuestBoard(model.profile.quests)}
         </div>
 
         <div class="col-b">
-          ${renderProgressCard(model.progressSnapshot, 'desktop-progress')}
+          ${renderProgressCard(model.progressSnapshot, 'desktop-progress', loop)}
           ${renderHeatmapCard(model.workouts)}
           ${renderVolumeCard(model.workouts)}
           ${renderAchievementShelf(model.profile.achievements)}
@@ -463,33 +488,40 @@ function renderMissionRouteScreen(model) {
   `
 }
 
-function renderMissionQuest(title, body, quest = {}, xpPreview = {}, model = {}) {
-  const rewardParts = [
-    quest.reward || (quest.xpReward ? `+${quest.xpReward} XP` : ''),
-    xpPreview.total ? `+${xpPreview.total} XP potansiyel` : '',
-    quest.linkedUnlock ? `${quest.linkedUnlock} yaklasir` : '',
-  ].filter(Boolean).slice(0, 3)
-  const statImpact = quest.linkedRegion || model.bodyMap?.priority?.region?.label || 'ana hat'
+function renderMissionQuest(loop = {}, model = {}) {
+  const title = loop.questTitle || 'Bugunun ana hamlesi'
+  const body = loop.questBody || 'Tek temiz adim bugunu kazandirir.'
+  const detail = `${body} ${loop.questWhy || ''}`.trim()
   return `
     <article class="mission-quest">
       <div class="quest-top">
         <span class="quest-scroll" aria-hidden="true"><img src="${ASSETS.routeMarker}" alt=""></span>
         <div>
-          <div class="q-kick">Siradaki hamle</div>
+          <div class="q-kick">${escapeHtml(loop.eyebrow || 'Siradaki hamle')}</div>
           <h2>${escapeHtml(title)}</h2>
         </div>
       </div>
       <p class="q-body">${escapeHtml(shortCommand(body, 118))}</p>
       <div class="reward-strip">
-        ${rewardParts.length ? rewardParts.map(part => `<span>${escapeHtml(cleanText(part))}</span>`).join('') : '<span>XP ritmi acilir</span>'}
-        <span>${escapeHtml(cleanText(statImpact))}</span>
+        ${renderRewardChips(loop.rewardChips)}
       </div>
       <div class="quest-row">
-        <button class="btn-primary" type="button" data-tab="log">Deftere yaz</button>
-        <button class="btn-ghost" type="button" ${detailAttrs(title, `${body} ${xpPreview.text || ''}`)}>Detay</button>
+        <button class="btn-primary" type="button" data-tab="log">${escapeHtml(loop.ctaLabel || 'Deftere yaz')}</button>
+        <button class="btn-ghost" type="button" ${detailAttrs(title, detail)}>Detay</button>
       </div>
     </article>
   `
+}
+
+function renderRewardChips(chips = []) {
+  const list = Array.isArray(chips) && chips.length
+    ? chips
+    : [{ key: 'xp', label: 'XP ritmi', detail: 'Kayit geldikce odul dongusu acilir.', tone: 'xp' }]
+  return list.map(chip => `
+    <button type="button" class="reward-chip tone-${escapeAttr(chip.tone || chip.key || 'xp')}" ${detailAttrs(chip.label || 'Odul', chip.detail || 'Bu parca kayitla netlesir.')}>
+      ${escapeHtml(cleanText(chip.label || 'Odul'))}
+    </button>
+  `).join('')
 }
 
 function renderRouteScreen(model) {
@@ -1186,8 +1218,8 @@ function renderWarnings(next = {}) {
   if (!warnings.length && !caps.length) return ''
   return `
     <section class="warn-stack">
-      ${warnings.slice(0, 3).map(item => `<p class="warn-line">${escapeHtml(item)}</p>`).join('')}
-      ${caps.slice(0, 2).map(item => `<p class="cap-line">${escapeHtml(item)}</p>`).join('')}
+      ${warnings.slice(0, 3).map(item => `<button type="button" class="warn-line" ${detailAttrs('Dikkat', item)}>${escapeHtml(item)}</button>`).join('')}
+      ${caps.slice(0, 2).map(item => `<button type="button" class="cap-line" ${detailAttrs('Sinir', item)}>${escapeHtml(item)}</button>`).join('')}
     </section>
   `
 }
@@ -1195,7 +1227,7 @@ function renderWarnings(next = {}) {
 /* ============================================================
    INFOGRAPHICS (pure SVG)
    ============================================================ */
-function renderProgressCard(snapshot = {}, extraClass = '') {
+function renderProgressCard(snapshot = {}, extraClass = '', loop = {}) {
   const classes = `card progress-card ${extraClass}`.trim()
   if (snapshot.empty) {
     return `
@@ -1205,6 +1237,7 @@ function renderProgressCard(snapshot = {}, extraClass = '') {
           <span class="card-tag">eski -> simdi</span>
         </div>
         <p class="soft">Ilk seans gelsin, burasi baslangic ve simdi halini yan yana cizecek.</p>
+        ${renderMapProgress(loop.mapProgress)}
       </article>
     `
   }
@@ -1236,7 +1269,23 @@ function renderProgressCard(snapshot = {}, extraClass = '') {
         ${(snapshot.metrics || []).map(renderProgressLane).join('')}
       </div>
       ${renderStatSparkline(snapshot.statLeaders)}
+      ${renderMapProgress(loop.mapProgress)}
     </article>
+  `
+}
+
+function renderMapProgress(items = []) {
+  const list = Array.isArray(items) ? items.slice(0, 4) : []
+  if (!list.length) return ''
+  return `
+    <div class="map-progress" aria-label="Haftalik harita ilerlemesi">
+      ${list.map(item => `
+        <button type="button" class="map-progress-node tone-${escapeAttr(item.tone || 'build')}" ${detailAttrs(item.label || 'Hat', item.detail || 'Bir temiz blok ilerletir.')}>
+          <span><b>${escapeHtml(cleanText(item.label || 'Hat'))}</b><i>${Math.round(clamp(item.progress, 0, 100))}%</i></span>
+          <em style="--v:${clamp(item.progress, 0, 100)}%"></em>
+        </button>
+      `).join('')}
+    </div>
   `
 }
 
@@ -1454,6 +1503,16 @@ function statRadar(axes = []) {
 async function handleClick(event) {
   const target = event.target
 
+  if (rewardRecap && target.closest('.reward-recap') && !target.closest('[data-close-recap]')) {
+    return
+  }
+
+  if (target.closest('[data-close-recap]') || target.dataset?.recapBackdrop !== undefined) {
+    rewardRecap = null
+    scheduleRender()
+    return
+  }
+
   if (detailSheet && target.closest('.detail-sheet') && !target.closest('[data-close-detail]')) {
     return
   }
@@ -1553,9 +1612,19 @@ async function saveRouteLog(form) {
   try {
     routeSubmitBusy = true
     if (submit) submit.disabled = true
+    const beforeState = snapshotMissionState(store.getState() || {})
     const workout = await store.addWorkout(session)
+    const afterState = snapshotMissionState(store.getState() || {})
+    const recap = buildRewardRecap({ workout, beforeState, afterState })
+    rewardRecap = recap
     logNotice = `${displayWorkoutType(session.type)} deftere girdi. +${workout?.xpEarned || 0} XP${workout?.syncStatus === 'local' ? ' · cihazda tutuldu' : ''}`
     setActiveTab('route')
+    window.setTimeout(() => {
+      if (rewardRecap?.id === recap.id) {
+        rewardRecap = null
+        scheduleRender()
+      }
+    }, 7200)
   } catch (error) {
     console.error('[odiept] route log failed:', error)
     logNotice = `Kayit takildi: ${error?.message || error}`
