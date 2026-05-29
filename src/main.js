@@ -6,28 +6,16 @@ import { buildMissionLoop, buildRewardRecap, snapshotMissionState } from './data
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
 import { buildWorldMapModel } from './data/world-map-engine.js'
-import { cleanGameText, deterministicFlavor, displayWorkoutType } from './data/game-copy.js'
+import { cleanGameText, displayWorkoutType } from './data/game-copy.js'
+import { GAME_ASSETS, STAT_AXES } from './data/game-assets.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
 import { getLocalDateString, normalizeDateString } from './data/rules.js'
 import { plainCopyText } from './data/ui-copy.js'
-import mapLayer from './assets/game/cozy-v4/world-map.jpg'
-import cabinRoom from './assets/game/cozy-v3/cabin-room.jpg'
-import avatarAthlete from './assets/game/cozy-v4/avatar-athlete.png'
-import odieStamp from './assets/game/cozy-v4/odie-portrait.jpg'
-import rewardXp from './assets/game/cozy-v4/reward-xp.png'
-import rewardGift from './assets/game/cozy-v4/reward-gift.png'
-import routeMarker from './assets/game/cozy-v4/route-marker.png'
-import statStr from './assets/game/cozy-v4/stat-str.png'
-import statAgi from './assets/game/cozy-v4/stat-agi.png'
-import statEnd from './assets/game/cozy-v4/stat-end.png'
-import statDex from './assets/game/cozy-v4/stat-dex.png'
-import statCon from './assets/game/cozy-v4/stat-con.png'
-import statSta from './assets/game/cozy-v4/stat-sta.png'
 
 const TABS = [
-  { key: 'route', label: 'Komuta', icon: '\u{1F3AF}' },
-  { key: 'map', label: 'Harita', icon: '\u{1F9ED}' },
-  { key: 'signal', label: 'ODIE', icon: '\u{1F436}' },
+  { key: 'route', label: 'Komuta', icon: GAME_ASSETS.nav.command },
+  { key: 'map', label: 'Harita', icon: GAME_ASSETS.nav.map },
+  { key: 'signal', label: 'ODIE', icon: GAME_ASSETS.nav.odie },
 ]
 
 const APP_ACCESS_TOKEN = import.meta.env.VITE_ODIE_APP_ACCESS_TOKEN || ''
@@ -45,24 +33,7 @@ const WORKOUT_TYPES = [
   'Calisthenics', 'Yuruyus', 'Kosu', 'Bisiklet', 'Tirmanis', 'Stretching', 'Custom',
 ]
 
-const STAT_AXES = [
-  { key: 'str', short: 'KUV', icon: statStr },
-  { key: 'agi', short: 'CEV', icon: statAgi },
-  { key: 'end', short: 'DAY', icon: statEnd },
-  { key: 'dex', short: 'BEC', icon: statDex },
-  { key: 'con', short: 'GÖV', icon: statCon },
-  { key: 'sta', short: 'STM', icon: statSta },
-]
-
-const ASSETS = {
-  mapLayer,
-  cabinRoom,
-  avatarAthlete,
-  odieStamp,
-  rewardXp,
-  rewardGift,
-  routeMarker,
-}
+const ASSETS = GAME_ASSETS
 
 const HEAT_COLORS = ['#efdcbb', '#d8e2c6', '#aecb9a', '#84ad73', '#5b8a4f']
 
@@ -407,10 +378,16 @@ function renderNavItem(tab) {
   const active = activeTab === tab.key
   return `
     <button type="button" class="nav-item ${active ? 'active' : ''}" data-tab="${escapeAttr(tab.key)}" aria-current="${active ? 'page' : 'false'}">
-      <span class="n-ico" aria-hidden="true">${tab.icon}</span>
+      <span class="n-ico" aria-hidden="true"><img src="${tab.icon}" alt=""></span>
       <span class="n-label">${escapeHtml(tab.label)}</span>
     </button>
   `
+}
+
+function responsiveAsset(className, sources = {}, alt = '') {
+  const desktop = sources.desktop || sources.mobile || ''
+  const mobile = sources.mobile || sources.desktop || ''
+  return `<img class="${escapeAttr(className)}" src="${desktop}" srcset="${mobile} 720w, ${desktop} 1280w" sizes="(max-width: 559px) 100vw, 1280px" alt="${escapeAttr(alt)}" aria-hidden="${alt ? 'false' : 'true'}">`
 }
 
 function renderPip(source = {}) {
@@ -474,7 +451,7 @@ function renderMissionRouteScreen(model) {
       <div class="route-grid">
         <div class="col-a">
           <div class="mission-hud mission-loop-hud">
-            <img class="hero-bg" src="${ASSETS.mapLayer}" alt="" aria-hidden="true">
+            ${responsiveAsset('hero-bg', ASSETS.backgrounds.command)}
             <div class="mission-top">
               <span class="kick">${escapeHtml(timeGreeting())} · ${escapeHtml(next.date || getLocalDateString())}</span>
               <span class="mission-tone">${escapeHtml(loop.levelLine || `Seviye ${profile.level || 1}`)}</span>
@@ -542,9 +519,21 @@ function renderRewardChips(chips = []) {
     : [{ key: 'xp', label: 'XP ritmi', detail: 'Kayıt geldikçe ödül döngüsü açılır.', tone: 'xp' }]
   return list.map(chip => `
     <button type="button" class="reward-chip tone-${escapeAttr(chip.tone || chip.key || 'xp')}" ${detailAttrs(chip.label || 'Ödül', chip.detail || 'Bu parça kayıtla netleşir.')}>
+      <img src="${rewardIcon(chip)}" alt="" aria-hidden="true">
       ${escapeHtml(cleanText(chip.label || 'Ödül'))}
     </button>
   `).join('')
+}
+
+function rewardIcon(chip = {}) {
+  const key = `${chip.key || ''} ${chip.tone || ''} ${chip.label || ''}`.toLowerCase()
+  if (/streak|seri/.test(key)) return ASSETS.reward.streak
+  if (/unlock|kilit/.test(key)) return ASSETS.reward.unlock
+  if (/ready|shield|kalkan/.test(key)) return ASSETS.reward.shield
+  if (/recovery|toparlan|onar/.test(key)) return ASSETS.reward.recovery
+  if (/pr|rekor/.test(key)) return ASSETS.reward.pr
+  if (/xp/.test(key)) return ASSETS.reward.xp
+  return ASSETS.reward.gift
 }
 
 function renderRouteScreen(model) {
@@ -561,7 +550,7 @@ function renderRouteScreen(model) {
       <div class="route-grid">
         <div class="col-a">
           <div class="village-hero">
-            <img class="hero-bg" src="${ASSETS.mapLayer}" alt="" aria-hidden="true">
+            ${responsiveAsset('hero-bg', ASSETS.backgrounds.command)}
             <img class="hero-runner" src="${ASSETS.avatarAthlete}" alt="" aria-hidden="true">
             <div class="hero-overlay">
               <span class="kick">${escapeHtml(greeting)} · ${escapeHtml(next.date || getLocalDateString())}</span>
@@ -652,7 +641,7 @@ function renderQuestRow(quest = {}) {
   const progress = clamp((Number(quest.progress) || 0) / total * 100, 0, 100)
   return `
     <button type="button" class="quest-item ${quest.done ? 'is-done' : ''}" ${detailAttrs(quest.name || 'Görev', `${quest.desc || ''} ${quest.reward || ''}`)}>
-      <span class="qi-icon" aria-hidden="true">${quest.icon || '\u{1F3AF}'}</span>
+      <span class="qi-icon asset-icon" aria-hidden="true"><img src="${ASSETS.badge.quest}" alt=""></span>
       <div class="qi-body">
         <div class="qi-top">
           <b>${escapeHtml(cleanText(quest.name || 'Görev'))}</b>
@@ -682,7 +671,7 @@ function renderAchievementShelf(achievements = []) {
       <div class="badge-grid">
         ${ordered.map(a => `
           <button type="button" class="badge ${a.unlocked ? 'lit' : 'locked'}" ${detailAttrs(a.name || 'Basarim', a.desc || a.req || '')}>
-            <span class="b-icon" aria-hidden="true"><img src="${a.unlocked ? ASSETS.rewardXp : ASSETS.rewardGift}" alt=""></span>
+            <span class="b-icon" aria-hidden="true"><img src="${achievementIcon(a)}" alt=""></span>
             <span class="b-name">${escapeHtml(cleanText(a.name || ''))}</span>
             <span class="b-sub">${escapeHtml(cleanText(a.unlocked ? (a.date || 'açık') : (a.req || 'kilitli')))}</span>
           </button>
@@ -690,6 +679,15 @@ function renderAchievementShelf(achievements = []) {
       </div>
     </article>
   `
+}
+
+function achievementIcon(achievement = {}) {
+  if (!achievement.unlocked) return ASSETS.badge.locked
+  const text = `${achievement.name || ''} ${achievement.desc || ''} ${achievement.req || ''}`.toLowerCase()
+  if (/pr|rekor/.test(text)) return ASSETS.badge.pr
+  if (/seri|streak/.test(text)) return ASSETS.badge.streak
+  if (/seviye|level/.test(text)) return ASSETS.badge.level
+  return ASSETS.badge.quest
 }
 
 function renderCharCard(model) {
@@ -705,7 +703,7 @@ function renderCharCard(model) {
         <div class="char-line">
           <span class="char-name">${escapeHtml(cleanText(p.nick || 'Gezgin'))}</span>
           <span class="char-class">${escapeHtml(cleanText(p.class || 'profil'))}</span>
-          <span class="lvl-badge">Seviye ${escapeHtml(String(p.level || 1))}</span>
+          <span class="lvl-badge"><img src="${ASSETS.badge.level}" alt="" aria-hidden="true">Seviye ${escapeHtml(String(p.level || 1))}</span>
         </div>
         <button type="button" class="xp-track" ${detailAttrs('XP yolu', `${formatNumber(xp.current || 0)} / ${formatNumber(xp.max || 0)} XP. Kayıt ve görevler bu çubuğu doldurur.`)}><span class="xp-fill" style="--xp:${xpPct}%"></span></button>
         <div class="xp-label">
@@ -835,17 +833,18 @@ function renderWorldMapBoard(worldMap = {}) {
   })
   return `
     <article class="world-map-board">
-      <img class="world-map-bg" src="${ASSETS.mapLayer}" alt="" aria-hidden="true">
+      ${responsiveAsset('world-map-bg', ASSETS.backgrounds.worldMap)}
       <div class="world-route" aria-hidden="true"></div>
       ${zones.map(zone => {
         const zoneNodes = nodeByZone.get(zone.key) || []
         const active = zone.state === 'active' || zone.key === worldMap.activeZoneKey
         const detail = [zone.detail, zoneNodes.map(node => `${node.title}: ${node.body}`).join(' ')].filter(Boolean).join(' ')
+        const zoneIcon = ASSETS.zone[zone.key] || ASSETS.routeMarker
         return `
           <button type="button" class="world-node is-${escapeAttr(zone.state || 'idle')} ${active ? 'active-quest-node' : ''}"
             style="--x:${clamp(zone.x, 0, 100)}%;--y:${clamp(zone.y, 0, 100)}%;--p:${clamp(zone.progress, 0, 100)}%"
             ${detailAttrs(zone.name, detail || 'Bu bölge yeni kayıtlarla ilerler.')}>
-            <span class="wn-icon" aria-hidden="true">${escapeHtml(zone.icon || '◆')}</span>
+            <span class="wn-icon" aria-hidden="true"><img src="${zoneIcon}" alt=""></span>
             <span class="wn-name">${escapeHtml(cleanText(zone.short || zone.name))}</span>
             <i aria-hidden="true"></i>
           </button>
@@ -865,7 +864,7 @@ function renderXpBreakdown(xpPreview = {}) {
   return `
     <article class="card info-card xp-breakdown" ${detailAttrs('XP kırılımı', cleanText(xpPreview.text || 'Bugünkü hamle XP havuzunu açar.'))}>
       <div class="card-head">
-        <span class="card-title">XP kırılımı</span>
+        <span class="card-title with-icon"><img src="${ASSETS.info.xp}" alt="" aria-hidden="true">XP kırılımı</span>
         <span class="card-tag">+${escapeHtml(formatNumber(total))}</span>
       </div>
       <div class="xp-stack">
@@ -881,7 +880,7 @@ function renderBodyPressure(bodyMap = {}) {
   return `
     <article class="card info-card body-pressure" ${detailAttrs('Vücut baskısı', region.label ? `${region.label} hattı bugün öncelikte.` : 'Bölge baskısı yeni kayıtlarla netleşir.')}>
       <div class="card-head">
-        <span class="card-title">Vücut baskısı</span>
+        <span class="card-title with-icon"><img src="${ASSETS.info.bodyPressure}" alt="" aria-hidden="true">Vücut baskısı</span>
         <span class="card-tag">${escapeHtml(cleanText(region.label || 'tarama'))}</span>
       </div>
       <div class="pressure-list">
@@ -905,7 +904,7 @@ function renderUnlockLadder(bodyMap = {}) {
   return `
     <article class="card info-card unlock-ladder" ${detailAttrs('Kilit merdiveni', 'Yakın açılımlar ve hareket hatları burada izlenir.')}>
       <div class="card-head">
-        <span class="card-title">Kilit merdiveni</span>
+        <span class="card-title with-icon"><img src="${ASSETS.info.unlock}" alt="" aria-hidden="true">Kilit merdiveni</span>
         <span class="card-tag">${list.length ? 'yolda' : 'bekliyor'}</span>
       </div>
       <div class="ladder-list">
@@ -977,7 +976,7 @@ function renderSkillBranch(branch = {}) {
       <div class="sb-items">
         ${items.map(item => `
           <button type="button" class="skill-node st-${escapeAttr(item.status || 'lock')}" ${detailAttrs(item.name || 'Kilit', item.desc || item.req || '')}>
-            <span class="sn-dot" aria-hidden="true">${item.status === 'done' ? '✓' : item.status === 'prog' ? '◐' : '\u{1F512}'}</span>
+            <span class="sn-dot" aria-hidden="true">${item.status === 'done' ? '✓' : item.status === 'prog' ? '●' : '\u{1F512}'}</span>
             <span class="sn-name">${escapeHtml(cleanText(item.name || ''))}</span>
             <span class="sn-req">${escapeHtml(cleanText(item.status === 'lock' ? (item.req || 'kilitli') : item.status === 'prog' ? 'çalışılıyor' : 'açık'))}</span>
           </button>
@@ -1236,8 +1235,8 @@ function renderSignalScreen(model) {
   return `
     <section class="screen signal-screen">
       <div class="odie-hero">
-        <img class="odie-room-bg" src="${ASSETS.cabinRoom}" alt="" aria-hidden="true">
-        <div class="odie-face" aria-hidden="true"><img src="${ASSETS.odieStamp}" alt=""></div>
+        ${responsiveAsset('odie-room-bg', ASSETS.backgrounds.odieRoom)}
+        <div class="odie-face" aria-hidden="true"><img src="${odieStateAsset()}" alt=""></div>
         <div>
           <div class="o-kick">ODIE komut odasi</div>
           <p>${escapeHtml(command)}</p>
@@ -1270,7 +1269,7 @@ function renderSignalScreen(model) {
             <textarea id="ask-textarea" name="question" rows="4" placeholder="Örn: dün bench 65kg 3x5 yaptım. / 7 saat uyudum 9000 adım. / omuz ağrıyor. / Bugün ne yapayım?"></textarea>
             <button class="btn-primary full" type="submit" ${askState.submitting ? 'disabled' : ''}>${askState.submitting ? 'ODIE okuyor' : 'ODIE’ye söyle'}</button>
           </form>
-          ${askState.error ? `<p class="warn-line">${escapeHtml(askState.error)}</p>` : ''}
+          ${askState.error ? `<p class="warn-line">${escapeHtml(shortCommand(askState.error, 96))}</p>` : ''}
           ${askState.intakePreview ? renderIntakePreview(askState.intakePreview) : ''}
           ${askState.intakeResult ? renderIntakeResult(askState.intakeResult) : ''}
           ${result ? renderAskResult(result) : renderAskHistory()}
@@ -1278,6 +1277,13 @@ function renderSignalScreen(model) {
       </div>
     </section>
   `
+}
+
+function odieStateAsset() {
+  if (askState.error) return ASSETS.odie.warning
+  if (askState.intakePreview || askState.intakeResult) return ASSETS.odie.confirm
+  if (askState.submitting || askState.loading || askState.confirming) return ASSETS.odie.listening
+  return ASSETS.odie.idle
 }
 
 function renderCoachSection(section = {}) {
@@ -1935,12 +1941,12 @@ async function loadAskHistory() {
     const response = await fetch('/api/ask', {
       headers: appHeaders(),
     })
-    const data = await response.json()
+    const data = await readJsonResponse(response, 'Sohbet geçmişi alınamadı')
     if (!response.ok || !data.ok) throw new Error(data.error || 'Sohbet gecmisi alinamadi')
     askState.items = data.items || []
   } catch (error) {
     askState.items = []
-    askState.error = error?.message || 'Sohbet gecmisi alinamadi'
+    askState.error = error?.message || 'Sohbet geçmişi alınamadı'
   } finally {
     askState.loading = false
     scheduleRender()
@@ -1968,7 +1974,7 @@ async function askOdie(form) {
       headers: appHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ mode: 'preview', text: question }),
     })
-    const data = await response.json()
+      const data = await readJsonResponse(response, 'ODIE kartı dönmedi')
     if (!response.ok || !data.ok) throw new Error(data.error || 'ODIE kartı dönmedi')
     if (data.preview?.kind === 'question') {
       await askQuestion(question)
@@ -1991,7 +1997,7 @@ async function askQuestion(question) {
     headers: appHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ question }),
   })
-  const data = await response.json()
+  const data = await readJsonResponse(response, 'ODIE cevabı dönmedi')
   if (!response.ok || !data.ok) throw new Error(data.error || 'ODIE cevabı dönmedi')
   askState.result = data.item
   askState.items = [data.item, ...(askState.items || [])]
@@ -2008,7 +2014,7 @@ async function confirmOdieIntake() {
       headers: appHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ mode: 'confirm', preview: askState.intakePreview }),
     })
-    const data = await response.json()
+    const data = await readJsonResponse(response, 'Kayıt yazılamadı')
     if (!response.ok || !data.ok) throw new Error(data.error || 'Kayıt yazılamadı')
     askState.intakeResult = data
     askState.intakePreview = null
@@ -2036,6 +2042,14 @@ async function confirmOdieIntake() {
 /* ============================================================
    HELPERS
    ============================================================ */
+async function readJsonResponse(response, fallbackMessage = 'İşlem takıldı') {
+  try {
+    return await response.json()
+  } catch {
+    throw new Error(fallbackMessage)
+  }
+}
+
 function isStrengthSession(workout = {}) {
   const type = String(workout.type || '').toLowerCase()
   return /gym|push|pull|bacak|shoulder|bench|strength/.test(type)

@@ -7,6 +7,7 @@ const css = readFileSync(new URL('../src/styles/cozy-reforge.css', import.meta.u
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 const healthStatusApi = readFileSync(new URL('../api/health-status.js', import.meta.url), 'utf8')
 const missionLoop = readFileSync(new URL('../src/data/mission-loop.js', import.meta.url), 'utf8')
+const gameAssets = readFileSync(new URL('../src/data/game-assets.js', import.meta.url), 'utf8')
 
 test('route tab renders Komuta mission surface instead of legacy route screen', () => {
   assert.match(main, /default: return renderMissionRouteScreen\(model\)/)
@@ -51,6 +52,32 @@ test('world map and infographic selectors are present', () => {
   assert.match(css, /\.xp-breakdown/)
 })
 
+test('active visual layers use cozy-v4 raster assets instead of legacy emoji/v3 layers', () => {
+  assert.doesNotMatch(main, /cozy-v3/)
+  assert.doesNotMatch(css, /cozy-v3/)
+  assert.match(main, /GAME_ASSETS/)
+  assert.match(gameAssets, /command-bg-desktop\.jpg/)
+  assert.match(gameAssets, /odie-room-desktop\.jpg/)
+  assert.match(gameAssets, /nav-command\.png/)
+  assert.match(main, /<span class="n-ico" aria-hidden="true"><img/)
+  assert.doesNotMatch(main, /\\u\{1F3AF\}|\\u\{1F9ED\}|\\u\{1F436\}/)
+  assert.doesNotMatch(main, /zone\.icon/)
+  assert.match(main, /ASSETS\.zone\[zone\.key\]/)
+})
+
+test('asset-backed interactive surfaces expose detail affordances', () => {
+  assert.match(main, /class="reward-chip/)
+  assert.match(main, /detailAttrs\(chip\.label/)
+  assert.match(main, /class="world-node/)
+  assert.match(main, /detailAttrs\(zone\.name/)
+  assert.match(main, /class="stat-stone/)
+  assert.match(main, /detailAttrs\(`\$\{axis\.short\}/)
+  assert.match(main, /class="badge/)
+  assert.match(main, /detailAttrs\(a\.name/)
+  assert.match(main, /class="xp-track"/)
+  assert.match(main, /detailAttrs\('XP yolu'/)
+})
+
 test('health status has a public Apple disabled state', () => {
   assert.match(healthStatusApi, /appleStatus/)
   assert.match(healthStatusApi, /apple_disabled/)
@@ -72,11 +99,14 @@ test('tap-to-detail and zoom access are enabled', () => {
 test('legacy theme layers stay out of the active app', () => {
   assert.doesNotMatch(main, /riftline\.css|odie-ui\.css|cozy-rpg\/mobile\.css/)
   assert.doesNotMatch(css, /riftline|odie-ui|cozy-rpg/)
+  assert.doesNotMatch(gameAssets, /cozy-v3/)
 })
 
 test('visible technical trust language is filtered from HUD warnings', () => {
   assert.match(main, /confidence\|evidence\|source/)
-  assert.match(main, /kanit\|kanıt\|guven\|güven/)
+  assert.match(main, /kanit\\w\*/)
+  assert.match(main, /guven\\w\*/)
+  assert.match(main, /kaynak\\w\*/)
   assert.match(main, /api/)
   assert.match(main, /payload/)
 })

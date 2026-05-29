@@ -4,13 +4,14 @@
 
 `src/main.js` tek stylesheet import eder:
 
-1. `cozy-reforge.css` - aktif Mission HUD arayuzu.
+1. `cozy-reforge.css` - aktif Komuta / Harita / ODIE oyun arayuzu.
 
 ## Source of truth
 
-- `src/main.js` - route/map/defter/ODIE render tree ve event binding.
-- `src/styles/cozy-reforge.css` - tum aktif token, Mission HUD, form, bottom sheet, nav ve responsive kurallari.
-- `src/assets/game/cozy-v3/*` - aktif gorsel asset seti.
+- `src/main.js` - Komuta/Harita/ODIE render tree ve event binding.
+- `src/styles/cozy-reforge.css` - tum aktif token, oyun UI, form, bottom sheet, nav ve responsive kurallari.
+- `src/data/game-assets.js` - aktif cozy-v4 asset manifesti.
+- `src/assets/game/cozy-v4/*` - aktif gorsel asset seti.
 
 ## Removed
 
