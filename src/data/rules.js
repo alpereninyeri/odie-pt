@@ -1259,6 +1259,7 @@ export function computeSessionXp(session = {}, context = {}) {
   const questCompleted = Boolean(context.questCompleted)
   const injuryConflict = Boolean(context.injuryConflict)
   const activeQuest = context.activeQuest || null
+  const bountyRewards = Array.isArray(context.bountyRewards) ? context.bountyRewards : []
   const baseXp = TYPE_BASE_XP[normalized.type] || CATEGORY_BASE_XP[normalized.primaryCategory] || TYPE_BASE_XP.Custom
   const base = Math.round(baseXp * streakMultiplier(streakDays) * classMultiplier * survivalMultiplier)
   const breakdown = [
@@ -1298,6 +1299,22 @@ export function computeSessionXp(session = {}, context = {}) {
     if (questCompleted) {
       const questXp = Number(activeQuest?.xpReward) || Number(String(activeQuest?.reward || '').match(/\d+/)?.[0]) || 30
       addPart('quest', 'Ara Gorev XP', questXp)
+    }
+    let bountyRemaining = 120
+    const paidBountyIds = new Set()
+    for (const bounty of bountyRewards) {
+      if (bountyRemaining <= 0) break
+      const rawId = String(bounty.bountyId || bounty.id || 'bounty')
+      const normalizedBountyId = rawId.split(':')[0]
+      if (normalizedBountyId === 'daily_active' || paidBountyIds.has(normalizedBountyId)) continue
+      paidBountyIds.add(normalizedBountyId)
+      const raw = Math.max(0, Math.round(Number(bounty.xp) || 0))
+      const value = Math.min(bountyRemaining, raw)
+      if (value > 0) {
+        const safeId = normalizedBountyId.replace(/[^a-z0-9_-]+/gi, '_')
+        addPart(`bounty:${safeId}`, `${bounty.label || 'Av Görevi'} XP`, value)
+        bountyRemaining -= value
+      }
     }
     if (doubleSession) addPart('double', 'Cift Seans Bonusu', 30)
   }

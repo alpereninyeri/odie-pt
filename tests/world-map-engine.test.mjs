@@ -17,12 +17,24 @@ test('world map model exposes six game zones and active quest node', () => {
       regions: [{ id: 'core', label: 'Core', risk: 64, trend: 'ihmal' }],
     },
     missionLoop: { rewardChips: [{ label: '+155 XP' }], mapProgress: [{ progress: 66 }] },
+    bountyBoard: {
+      mapNodes: [{
+        key: 'bounty-combo_chain',
+        zone: 'parkour',
+        title: 'Zincir Kombo',
+        body: 'Iki sinyal bagla.',
+        reward: '+40 XP',
+        progress: 50,
+        tone: 'combo',
+      }],
+    },
     nextSession: { readiness: { score: 72 } },
     zones: [],
   })
 
   assert.equal(model.zones.length, 6)
   assert.ok(model.nodes.some(node => node.type === 'activeQuestNode'))
+  assert.ok(model.nodes.some(node => node.type === 'bountyNode' && node.title === 'Zincir Kombo'))
   assert.ok(model.nodes.some(node => node.type === 'unlockGateNode'))
   assert.ok(model.zones.some(zone => zone.key === 'skill' && zone.progress === 66))
 })

@@ -29,6 +29,7 @@ export function buildWorldMapModel({
   nextSession = {},
   zones = [],
   profile = {},
+  bountyBoard = {},
 } = {}) {
   const priority = bodyMap.priority || {}
   const quest = bodyMap.dailyQuest || {}
@@ -41,6 +42,7 @@ export function buildWorldMapModel({
   const readiness = nextSession.readiness || {}
   const safeMode = Boolean(quest.safeMode || nextSession.tone === 'warn' || nextSession.tone === 'danger')
   const mapProgress = Array.isArray(missionLoop.mapProgress) ? missionLoop.mapProgress : []
+  const bountyNodes = Array.isArray(bountyBoard.mapNodes) ? bountyBoard.mapNodes : []
   const activeZoneKey = quest.safeMode
     ? 'recovery'
     : quest.linkedUnlock
@@ -161,6 +163,17 @@ export function buildWorldMapModel({
       body: cleanGameText((missionLoop.rewardChips || []).map(item => item.label).join(' / ') || 'Kayıt gelince ödül açılır.'),
       progress: clamp(mapProgress[0]?.progress || profile.xp?.current || 0),
     },
+    ...bountyNodes.map(node => ({
+      key: node.key,
+      type: node.type || 'bountyNode',
+      kind: node.kind || '',
+      zone: node.zone || activeZoneKey,
+      title: cleanGameText(node.title || 'Av Görevi'),
+      body: cleanGameText(node.body || 'Kısa görev ödül verir.'),
+      reward: node.reward || '+XP',
+      progress: clamp(node.progress),
+      tone: node.tone || 'bounty',
+    })),
   ].filter(Boolean)
 
   return {

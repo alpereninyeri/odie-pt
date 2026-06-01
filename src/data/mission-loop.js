@@ -101,13 +101,14 @@ function nearUnlockTarget(bodyMap = {}) {
     .sort((left, right) => number(right.progress) - number(left.progress))[0] || null
 }
 
-function buildRewardChips({ quest = {}, xpPreview = {}, profile = {}, bodyMap = {}, readiness = {} }) {
+function buildRewardChips({ quest = {}, xpPreview = {}, profile = {}, bodyMap = {}, readiness = {}, bountyBoard = {} }) {
   const unlock = nearUnlockTarget(bodyMap)
   const linkedRegion = quest.linkedRegion || bodyMap.priority?.region?.id || ''
   const totalXp = number(xpPreview.total) || number(quest.xpReward) || xpFromReward(quest.reward)
   const streak = profile.streak || {}
   const streakCount = number(streak.current)
   const chips = []
+  const bountyChips = Array.isArray(bountyBoard.rewardChips) ? bountyBoard.rewardChips : []
 
   if (totalXp > 0) {
     const xpDetail = normalizeXpParts(xpPreview)
@@ -153,7 +154,8 @@ function buildRewardChips({ quest = {}, xpPreview = {}, profile = {}, bodyMap = 
     })
   }
 
-  return chips.slice(0, 4)
+  if (!bountyChips.length) return chips.slice(0, 4)
+  return [...chips.slice(0, Math.max(1, 4 - bountyChips.length)), ...bountyChips].slice(0, 4)
 }
 
 function normalizeMapProgress(bodyMap = {}) {
@@ -199,6 +201,7 @@ export function buildMissionLoop({
   bodyMap = {},
   nextSession = {},
   stats = [],
+  bountyBoard = {},
 } = {}) {
   const quest = bodyMap.dailyQuest || {}
   const goal = nextSession.primaryGoal || {}
@@ -219,7 +222,7 @@ export function buildMissionLoop({
     ctaLabel: 'ODIE’ye söyle',
     regionLabel: regionLabel(linkedRegion),
     statImpact: statForRegion(linkedRegion),
-    rewardChips: buildRewardChips({ quest, xpPreview, profile, bodyMap, readiness }),
+    rewardChips: buildRewardChips({ quest, xpPreview, profile, bodyMap, readiness, bountyBoard }),
     xpParts: normalizeXpParts(xpPreview),
     mapProgress: normalizeMapProgress(bodyMap),
     unlock: unlock
@@ -276,6 +279,9 @@ export function buildRewardRecap({ workout = {}, beforeState = {}, afterState = 
   const beforeStreak = number(beforeProfile.streak?.current)
   const afterStreak = number(afterProfile.streak?.current, beforeStreak)
   const questClosed = (workout.xpBreakdown || []).some(part => part.key === 'quest' && number(part.value) > 0)
+  const bountyXp = (workout.xpBreakdown || [])
+    .filter(part => String(part.key || '').startsWith('bounty:'))
+    .reduce((sum, part) => sum + number(part.value), 0)
   const beforeUnlocked = unlockedIds(beforeState)
   const afterUnlocked = unlockedIds(afterState)
   const newUnlocks = [...afterUnlocked].filter(id => !beforeUnlocked.has(id))
@@ -285,6 +291,7 @@ export function buildRewardRecap({ workout = {}, beforeState = {}, afterState = 
   if (xpEarned > 0) chips.push(`+${formatNumber(xpEarned)} XP`)
   if (afterLevel > beforeLevel) chips.push(`Seviye ${afterLevel}`)
   if (questClosed) chips.push('Görev kapandı')
+  if (bountyXp > 0) chips.push(`Av +${formatNumber(bountyXp)}`)
   if (afterStreak > beforeStreak) chips.push(`Seri ${afterStreak}`)
   if (newUnlocks.length) chips.push(`${newUnlocks.length} rozet`)
   chips.push(...statChips)

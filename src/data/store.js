@@ -36,6 +36,7 @@ import { checkBadges } from './badge-engine.js'
 import { sessionClosesBodyMapPriority, sessionClosesGameQuest, sessionTouchesBodyRegion } from './body-map-engine.js'
 import { bodyEventFromInjury, getActiveBodyEvents, normalizeBodyEvent } from './body-events.js'
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from './class-engine.js'
+import { evaluateBountyCompletions } from './bounty-board.js'
 import { computeGeographyTier, computeVolumeTier } from './epic-volume-engine.js'
 import { detectPRs } from './pr-detector.js'
 import {
@@ -1033,6 +1034,16 @@ export const store = {
     })
     const activeBodyEvents = getActiveBodyEvents(_state.bodyEvents || [])
     const injuryConflict = activeBodyEvents.some(event => sessionTouchesBodyRegion(normalized, event.region))
+    const beforeBountyState = _clone(_state)
+    const afterBountyState = _clone(_state)
+    afterBountyState.workouts = [normalized, ...(afterBountyState.workouts || [])]
+    recalculate(afterBountyState)
+    const bountyRewards = evaluateBountyCompletions({
+      beforeState: beforeBountyState,
+      afterState: afterBountyState,
+      session: normalized,
+      today: normalized.date,
+    })
 
     const xpContext = {
       streakDays: streak.current,
@@ -1046,6 +1057,7 @@ export const store = {
       questCompleted: sessionClosesGameQuest(normalized, _state.bodyMapState?.dailyQuest),
       activeQuest: _state.bodyMapState?.dailyQuest || null,
       injuryConflict,
+      bountyRewards,
       vitalScores: _state.health?.vitalScores || null,
       healthSummary: _state.healthDailySummary || _state.healthStatus?.dailySummary || _state.health?.vitalScores?.summary || null,
     }

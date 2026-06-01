@@ -38,17 +38,20 @@ import rewardUnlock from '../assets/game/cozy-v4/reward-unlock.png'
 import rewardRecovery from '../assets/game/cozy-v4/reward-recovery.png'
 import rewardPr from '../assets/game/cozy-v4/reward-pr.png'
 import rewardShield from '../assets/game/cozy-v4/reward-shield.png'
+import rewardBounty from '../assets/game/cozy-v4/reward-bounty.png'
 import badgeLevel from '../assets/game/cozy-v4/badge-level.png'
 import badgePr from '../assets/game/cozy-v4/badge-pr.png'
 import badgeStreak from '../assets/game/cozy-v4/badge-streak.png'
 import badgeLocked from '../assets/game/cozy-v4/badge-locked.png'
 import badgeQuest from '../assets/game/cozy-v4/badge-quest.png'
+import badgeBounty from '../assets/game/cozy-v4/badge-bounty.png'
 import infoXp from '../assets/game/cozy-v4/info-xp.png'
 import infoBodyPressure from '../assets/game/cozy-v4/info-body-pressure.png'
 import infoUnlock from '../assets/game/cozy-v4/info-unlock.png'
 import infoStatRank from '../assets/game/cozy-v4/info-stat-rank.png'
 import infoRecoveryGate from '../assets/game/cozy-v4/info-recovery-gate.png'
 import infoPrGate from '../assets/game/cozy-v4/info-pr-gate.png'
+import infoComboChain from '../assets/game/cozy-v4/info-combo-chain.png'
 
 export const GAME_ASSETS = {
   backgrounds: {
@@ -101,6 +104,7 @@ export const GAME_ASSETS = {
     recovery: rewardRecovery,
     pr: rewardPr,
     shield: rewardShield,
+    bounty: rewardBounty,
   },
   badge: {
     level: badgeLevel,
@@ -108,6 +112,7 @@ export const GAME_ASSETS = {
     streak: badgeStreak,
     locked: badgeLocked,
     quest: badgeQuest,
+    bounty: badgeBounty,
   },
   info: {
     xp: infoXp,
@@ -116,6 +121,7 @@ export const GAME_ASSETS = {
     statRank: infoStatRank,
     recoveryGate: infoRecoveryGate,
     prGate: infoPrGate,
+    comboChain: infoComboChain,
   },
 }
 

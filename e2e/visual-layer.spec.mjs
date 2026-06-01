@@ -111,7 +111,9 @@ for (const viewport of viewports) {
     await expect(page.locator('.world-node')).toHaveCount(6)
     await expect(page.locator('.active-quest-node')).toHaveCount(1)
     await expect(page.locator('.world-mini-node').first()).toBeVisible()
+    await expect(page.locator('.world-mini-node.type-bountyNode').first()).toBeVisible()
     await openDetailAndClose(page, '.world-node')
+    await openDetailAndClose(page, '.world-mini-node.type-bountyNode')
     await auditSurface(page)
 
     await page.locator('.cozy-nav [data-tab="signal"]').click()

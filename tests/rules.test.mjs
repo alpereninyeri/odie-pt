@@ -141,6 +141,29 @@ test('session XP exposes a user-facing breakdown', () => {
   assert.ok(xp.xpEarned > 100)
 })
 
+test('session XP caps bounty rewards and skips active quest duplicates', () => {
+  const session = normalizeSession({ type: 'Push', durationMin: 45 })
+  const xp = computeSessionXp(session, {
+    streakDays: 2,
+    classMultiplier: 1,
+    survivalMultiplier: 1,
+    questCompleted: true,
+    activeQuest: { xpReward: 35 },
+    bountyRewards: [
+      { id: 'daily_active:day:2026-06-01', bountyId: 'daily_active', label: 'Active quest', xp: 35 },
+      { id: 'combo_chain:day:2026-06-01', bountyId: 'combo_chain', label: 'Combo chain', xp: 40 },
+      { id: 'combo_chain:day:2026-06-01', bountyId: 'combo_chain', label: 'Combo chain duplicate', xp: 40 },
+      { id: 'weak_line:week:2026-06-01', bountyId: 'weak_line', label: 'Weak line', xp: 200 },
+    ],
+  })
+
+  const bountyParts = xp.breakdown.filter(part => part.key.startsWith('bounty:'))
+  assert.equal(xp.breakdown.some(part => part.key === 'quest' && part.value === 35), true)
+  assert.equal(bountyParts.reduce((sum, part) => sum + part.value, 0), 120)
+  assert.equal(bountyParts.filter(part => part.key === 'bounty:combo_chain').length, 1)
+  assert.equal(bountyParts.some(part => part.key === 'bounty:daily_active'), false)
+})
+
 test('PR bonus is limited when fatigue is high and locked when armor is low', () => {
   const prSession = normalizeSession({ type: 'Push', hasPr: true, durationMin: 70 })
   const fresh = computeSessionXp(prSession, { survivalMultiplier: 1, fatigue: 40, armor: 90 })

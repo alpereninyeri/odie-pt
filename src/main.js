@@ -6,6 +6,7 @@ import { buildMissionLoop, buildRewardRecap, snapshotMissionState } from './data
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
 import { buildWorldMapModel } from './data/world-map-engine.js'
+import { buildBountyBoard } from './data/bounty-board.js'
 import { cleanGameText, displayWorkoutType } from './data/game-copy.js'
 import { GAME_ASSETS, STAT_AXES } from './data/game-assets.js'
 import { initTelegramMiniApp } from './data/telegram-webapp.js'
@@ -54,6 +55,7 @@ let askState = {
   loading: false,
   submitting: false,
   confirming: false,
+  draft: '',
   error: '',
   result: null,
   intakePreview: null,
@@ -96,8 +98,13 @@ function readInitialTab() {
 
 function bindGlobalEvents() {
   document.addEventListener('click', handleClick)
+  document.addEventListener('input', handleInput)
   document.addEventListener('submit', handleSubmit)
   document.addEventListener('keydown', handleKeydown)
+}
+
+function handleInput(event) {
+  if (event.target?.id === 'ask-textarea') askState.draft = String(event.target.value || '')
 }
 
 function handleKeydown(event) {
@@ -175,11 +182,19 @@ function buildModel(state = {}, profile = {}) {
     dailyLogs,
   })
   const progressSnapshot = buildProgressSnapshot(workouts, stats)
+  const bountyBoard = buildBountyBoard({
+    state,
+    profile,
+    bodyMap,
+    nextSession,
+    semantic,
+  })
   const missionLoop = buildMissionLoop({
     profile,
     bodyMap,
     nextSession,
     stats,
+    bountyBoard,
   })
   const worldMap = buildWorldMapModel({
     bodyMap,
@@ -187,6 +202,7 @@ function buildModel(state = {}, profile = {}) {
     nextSession,
     zones,
     profile,
+    bountyBoard,
   })
 
   return {
@@ -204,6 +220,7 @@ function buildModel(state = {}, profile = {}) {
     zones,
     progressSnapshot,
     missionLoop,
+    bountyBoard,
     worldMap,
     truthMap,
     sources: buildSources(truthMap, sourceHealth, workouts, dailyLogs, healthSummary),
@@ -494,7 +511,7 @@ function renderMissionRouteScreen(model) {
 
           ${renderProgressCard(model.progressSnapshot, 'mobile-progress', loop)}
           ${renderCharCard(model)}
-          ${renderQuestBoard(model.profile.quests)}
+          ${renderBountyBoard(model.bountyBoard, model.profile.quests)}
         </div>
 
         <div class="col-b">
@@ -599,7 +616,7 @@ function renderRouteScreen(model) {
             </div>
           </div>
 
-          ${renderQuestBoard(model.profile.quests)}
+          ${renderBountyBoard(model.bountyBoard, model.profile.quests)}
           ${renderEnergyStrip(model.system.readiness)}
         </div>
 
@@ -634,6 +651,71 @@ function renderStatBelt(stats = []) {
       `).join('')}
     </article>
   `
+}
+
+function renderBountyBoard(bountyBoard = {}, quests = {}) {
+  const featured = bountyBoard?.featured || null
+  const bounties = [...(bountyBoard?.daily || []), ...(bountyBoard?.weekly || [])]
+  if (!featured && !bounties.length) return renderQuestBoard(quests)
+  const open = bounties.filter(item => !item.done)
+  const sideList = (open.length ? open : bounties).slice(0, 4)
+  const doneCount = [featured, ...bounties].filter(item => item?.done).length
+  const totalCount = [featured, ...bounties].filter(Boolean).length
+
+  return `
+    <article class="card bounty-board">
+      <div class="card-head">
+        <span class="card-title with-icon"><img src="${ASSETS.badge.bounty || ASSETS.badge.quest}" alt="" aria-hidden="true">Av Panosu</span>
+        <span class="card-tag">${doneCount}/${totalCount} kapı</span>
+      </div>
+      ${featured ? renderFeaturedBounty(featured) : ''}
+      <div class="bounty-list">
+        ${sideList.map(renderBountyRow).join('')}
+      </div>
+    </article>
+  `
+}
+
+function renderFeaturedBounty(bounty = {}) {
+  const progress = clamp((Number(bounty.progress) || 0) / Math.max(1, Number(bounty.total) || 1) * 100, 0, 100)
+  return `
+    <button type="button" class="bounty-feature ${bounty.done ? 'is-done' : ''}" ${detailAttrs(bounty.title || 'Av görevi', `${bounty.body || ''} ${bounty.detail || ''} +${bounty.xp || 0} XP`)}>
+      <span class="bf-icon asset-icon" aria-hidden="true"><img src="${bountyIcon(bounty)}" alt=""></span>
+      <span class="bf-copy">
+        <i>${escapeHtml(cleanText(bounty.done ? 'kapandı' : 'öne çıkan'))}</i>
+        <b>${escapeHtml(cleanText(bounty.title || 'Bugünün avı'))}</b>
+        <em>${escapeHtml(cleanText(bounty.requirement || bounty.body || '1 temiz hamle'))}</em>
+      </span>
+      <span class="bf-xp">+${Math.round(Number(bounty.xp) || 0)} XP</span>
+      <span class="bf-track" aria-hidden="true"><i style="--v:${progress}%"></i></span>
+    </button>
+  `
+}
+
+function renderBountyRow(bounty = {}) {
+  const total = Math.max(1, Number(bounty.total) || 1)
+  const progress = clamp((Number(bounty.progress) || 0) / total * 100, 0, 100)
+  return `
+    <button type="button" class="bounty-item tone-${escapeAttr(bounty.tone || 'bounty')} ${bounty.done ? 'is-done' : ''}" ${detailAttrs(bounty.title || 'Av görevi', `${bounty.body || ''} ${bounty.detail || ''} +${bounty.xp || 0} XP`)}>
+      <span class="bi-icon asset-icon" aria-hidden="true"><img src="${bountyIcon(bounty)}" alt=""></span>
+      <span class="bi-body">
+        <span><b>${escapeHtml(cleanText(bounty.title || 'Av görevi'))}</b><i>+${Math.round(Number(bounty.xp) || 0)} XP</i></span>
+        <em>${escapeHtml(cleanText(bounty.requirement || bounty.body || '1/1'))}</em>
+        <span class="bi-track"><i style="--v:${progress}%"></i></span>
+      </span>
+      <strong>${bounty.done ? '✓' : `${Math.min(total, Math.round(Number(bounty.progress) || 0))}/${total}`}</strong>
+    </button>
+  `
+}
+
+function bountyIcon(bounty = {}) {
+  const key = String(bounty.iconKey || bounty.tone || '').toLowerCase()
+  if (key.includes('combo')) return ASSETS.info.comboChain || ASSETS.info.unlock
+  if (key.includes('unlock')) return ASSETS.reward.unlock
+  if (key.includes('streak')) return ASSETS.reward.streak
+  if (key.includes('shield') || key.includes('recovery')) return ASSETS.reward.shield
+  if (key.includes('gift')) return ASSETS.reward.bounty || ASSETS.reward.gift
+  return ASSETS.badge.bounty || ASSETS.badge.quest
 }
 
 function renderQuestBoard(quests = {}) {
@@ -850,6 +932,18 @@ function renderWorldMapBoard(worldMap = {}) {
   const zones = Array.isArray(worldMap.zones) ? worldMap.zones : []
   const nodes = Array.isArray(worldMap.nodes) ? worldMap.nodes : []
   if (!zones.length) return ''
+  const nodeType = node => String(node?.type || '').toLowerCase()
+  const preferredNodes = [
+    nodes.find(node => nodeType(node) === 'activequestnode'),
+    nodes.find(node => nodeType(node) === 'unlockgatenode'),
+    nodes.find(node => nodeType(node) === 'bountynode' && node.kind === 'weak_line'),
+    nodes.find(node => nodeType(node) === 'rewardnode'),
+  ].filter(Boolean)
+  const preferredKeys = new Set(preferredNodes.map(node => node.key))
+  const deckNodes = [
+    ...preferredNodes,
+    ...nodes.filter(node => !preferredKeys.has(node.key)),
+  ]
   const nodeByZone = new Map()
   nodes.forEach(node => {
     if (!nodeByZone.has(node.zone)) nodeByZone.set(node.zone, [])
@@ -880,7 +974,7 @@ function renderWorldMapBoard(worldMap = {}) {
         <b>${escapeHtml(cleanText(nodes[0]?.reward || '+XP'))}</b>
       </div>
       <div class="world-node-deck">
-        ${nodes.slice(0, 4).map(node => `
+        ${deckNodes.map(node => `
           <button type="button" class="world-mini-node type-${escapeAttr(node.type || 'node')}" ${detailAttrs(node.title || 'Harita notu', `${node.body || ''} ${node.reward ? `Ödül: ${node.reward}` : ''}`)}>
             <span aria-hidden="true"><img src="${worldNodeIcon(node)}" alt=""></span>
             <b>${escapeHtml(cleanText(node.title || 'Not'))}</b>
@@ -904,6 +998,7 @@ function worldZoneDetail(zone = {}, nodes = []) {
 
 function worldNodeIcon(node = {}) {
   const type = String(node.type || '').toLowerCase()
+  if (type.includes('bounty')) return ASSETS.reward.bounty || ASSETS.badge.bounty || ASSETS.badge.quest
   if (type.includes('unlock')) return ASSETS.reward.unlock
   if (type.includes('risk')) return ASSETS.info.bodyPressure
   if (type.includes('movement')) return ASSETS.zone.parkour
@@ -1357,7 +1452,7 @@ function renderSignalScreen(model) {
             <span class="card-tag">${askState.loading ? 'yükleniyor' : 'giriş'}</span>
           </div>
           <form id="ask-form" class="ask-form">
-            <textarea id="ask-textarea" name="question" rows="4" placeholder="Örn: dün bench 65kg 3x5 yaptım. / 7 saat uyudum 9000 adım. / omuz ağrıyor. / Bugün ne yapayım?"></textarea>
+            <textarea id="ask-textarea" name="question" rows="4" placeholder="Örn: dün bench 65kg 3x5 yaptım. / 7 saat uyudum 9000 adım. / omuz ağrıyor. / Bugün ne yapayım?">${escapeHtml(askState.draft || '')}</textarea>
             <button class="btn-primary full" type="submit" ${askState.submitting ? 'disabled' : ''}>${askState.submitting ? 'ODIE okuyor' : 'ODIE’ye söyle'}</button>
           </form>
           ${askState.error ? `<p class="warn-line">${escapeHtml(shortCommand(askState.error, 96))}</p>` : ''}
@@ -1843,6 +1938,7 @@ async function handleClick(event) {
     askState.intakePreview = null
     askState.intakeResult = null
     askState.error = ''
+    askState.draft = ''
     scheduleRender()
     return
   }
@@ -2064,7 +2160,7 @@ async function loadAskHistory() {
 }
 
 async function askOdie(form) {
-  const question = String(new FormData(form).get('question') || '').trim()
+  const question = String(new FormData(form).get('question') || askState.draft || '').trim()
   if (!question) {
     askState.error = 'Boş giriş olmaz.'
     scheduleRender()
@@ -2089,10 +2185,12 @@ async function askOdie(form) {
     if (data.preview?.kind === 'question') {
       await askQuestion(question)
       form.reset()
+      askState.draft = ''
       return
     }
     askState.intakePreview = data.preview
     form.reset()
+    askState.draft = ''
   } catch (error) {
     askState.error = error?.message || 'ODIE girişi takıldı'
   } finally {

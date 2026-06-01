@@ -38,6 +38,9 @@ test('mission loop turns quest and xp preview into game reward chips', () => {
         { id: 'landing', label: 'Inis', progress: 52, todayStep: '3 dusuk inis' },
       ],
     },
+    bountyBoard: {
+      rewardChips: [{ key: 'bounty-combo', label: '+40 XP', tone: 'combo', detail: 'Kombo zinciri' }],
+    },
   })
 
   assert.equal(loop.title, 'Görev Döngüsü')
@@ -45,6 +48,7 @@ test('mission loop turns quest and xp preview into game reward chips', () => {
   assert.ok(loop.rewardChips.some(chip => chip.label === '+155 XP'))
   assert.ok(loop.rewardChips.some(chip => chip.label === 'GOV etkisi'))
   assert.ok(loop.rewardChips.some(chip => chip.label === 'Seri x5'))
+  assert.ok(loop.rewardChips.some(chip => chip.key === 'bounty-combo'))
   assert.ok(loop.mapProgress.some(item => item.label === 'Hollow 45' && item.progress === 66))
 })
 
@@ -71,4 +75,18 @@ test('reward recap summarizes xp, quest, level and streak changes', () => {
   assert.equal(recap.questClosed, true)
   assert.deepEqual(recap.chips.slice(0, 5), ['+180 XP', 'Seviye 3', 'Görev kapandı', 'Seri 4', '1 rozet'])
   assert.ok(recap.chips.includes('STR +3'))
+})
+
+test('reward recap surfaces bounty XP chips from session breakdown', () => {
+  const recap = buildRewardRecap({
+    beforeState: snapshotMissionState({ profile: { level: 2, streak: { current: 3 } } }),
+    afterState: snapshotMissionState({ profile: { level: 2, streak: { current: 3 } } }),
+    workout: {
+      xpEarned: 140,
+      xpBreakdown: [{ key: 'bounty:combo_chain', value: 40 }],
+      statDelta: {},
+    },
+  })
+
+  assert.ok(recap.chips.includes('Av +40'))
 })
