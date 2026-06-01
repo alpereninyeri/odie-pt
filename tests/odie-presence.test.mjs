@@ -26,9 +26,9 @@ test('odie presence reads Apple sleep and heart as conversational context', () =
   })
 
   assert.equal(presence.dataConfidence, 82)
-  assert.match(presence.chatLine, /Uyku|Kalp|Gunluk hareket|Apple|agir PR|hafif hareket|teknik tekrar/i)
+  assert.match(presence.chatLine, /Uyku|Kalp|Günlük hareket|Apple|ağır PR|hafif hareket|teknik tekrar/i)
   assert.ok(presence.signals.some(item => item.key === 'sleep'))
-  assert.ok(presence.quickPrompts.some(item => /uyku|HRV|yuruyus/i.test(item)))
+  assert.ok(presence.quickPrompts.some(item => /uyku|HRV|yürüyüş/i.test(item)))
 })
 
 test('odie presence surfaces memory corrections and injury guard', () => {
@@ -50,7 +50,7 @@ test('odie presence surfaces memory corrections and injury guard', () => {
   })
 
   assert.equal(presence.mood, 'guard')
-  assert.match(presence.chatLine, /agir grip|kilitliyorum|guvenli/i)
-  assert.ok(presence.memoryCards.some(item => item.label === 'duzeltme'))
+  assert.match(presence.chatLine, /ağır grip|kilitliyorum|güvenli/i)
+  assert.ok(presence.memoryCards.some(item => item.label === 'düzeltme'))
   assert.ok(presence.signals.some(item => item.key === 'injury'))
 })

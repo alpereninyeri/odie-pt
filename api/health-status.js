@@ -87,7 +87,7 @@ export default async function handler(req, res) {
 
   try {
     const profile = await resolveProfile()
-    if (!profile?.id) return res.status(404).json({ ok: false, error: 'Profil bulunamadi' })
+    if (!profile?.id) return res.status(404).json({ ok: false, error: 'Profil bulunamadı' })
 
     const [summaryRows, telemetryRows, eventRows, workoutRows, bodyRows] = await Promise.all([
       sbGetSafe(`health_daily_summary?select=*&profile_id=eq.${profile.id}&order=day.desc&limit=7`, null),
@@ -117,8 +117,8 @@ export default async function handler(req, res) {
       schemaReady,
       appleStatus,
       appleMessage: schemaReady
-        ? 'Apple akisi hazir; Shortcut verisi bekleniyor.'
-        : 'Apple kapali: health tablolari henuz aktif degil.',
+        ? 'Apple akışı hazır; Shortcut verisi bekleniyor.'
+        : 'Apple kapalı: health tabloları henüz aktif değil.',
       authConfigured: Boolean(process.env.HEALTH_IMPORT_TOKEN),
       privateConfigured: appAuthConfigured(),
       sources: {

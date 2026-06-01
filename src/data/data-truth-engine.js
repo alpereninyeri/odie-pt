@@ -31,7 +31,7 @@ function appleMode(healthStatus = {}, summary = null, workouts = []) {
       state: 'disabled',
       label: 'Apple',
       lit: false,
-      detail: 'Apple kapali. Uyku, kalp ve hareket yok diye okunuyor.',
+      detail: 'Apple kapalı. Uyku, kalp ve hareket yok diye okunuyor.',
     }
   }
 
@@ -40,7 +40,7 @@ function appleMode(healthStatus = {}, summary = null, workouts = []) {
       state: 'active',
       label: 'Apple',
       lit: true,
-      detail: `${summary.day}: uyku/kalp/hareket ritme katildi.`,
+      detail: `${summary.day}: uyku/kalp/hareket ritme katıldı.`,
     }
   }
 
@@ -50,7 +50,7 @@ function appleMode(healthStatus = {}, summary = null, workouts = []) {
       state: 'active',
       label: 'Apple',
       lit: true,
-      detail: `${appleWorkoutDate}: Apple antrenmani gunluk yuke katildi.`,
+      detail: `${appleWorkoutDate}: Apple antrenmanı günlük yüke katıldı.`,
     }
   }
 
@@ -59,7 +59,7 @@ function appleMode(healthStatus = {}, summary = null, workouts = []) {
       state: 'blocked',
       label: 'Apple',
       lit: false,
-      detail: 'Apple kapisi hazir degil. ODIE bunu bos okuyor.',
+      detail: 'Apple kapısı hazır değil. ODIE bunu boş okuyor.',
     }
   }
 
@@ -67,7 +67,7 @@ function appleMode(healthStatus = {}, summary = null, workouts = []) {
     state: 'waiting',
     label: 'Apple',
     lit: false,
-    detail: 'Apple kapisi acik, ilk uyku/kalp/hareket kaydi bekleniyor.',
+    detail: 'Apple kapısı açık, ilk uyku/kalp/hareket kaydı bekleniyor.',
   }
 }
 
@@ -108,10 +108,10 @@ export function buildDataTruthMap({
       state: hevyCount ? 'active' : statusValue(hevyState || 'waiting'),
       lit: hevyCount > 0,
       detail: hevyCount
-        ? `${hevyCount} kuvvet kaydi ritme bagli.`
+        ? `${hevyCount} kuvvet kaydı ritme bağlı.`
         : sourceReady(hevyState)
-          ? 'Hevy kapisi hazir; yeni seans bekleniyor.'
-          : 'Hevy kapisi bekliyor.',
+          ? 'Hevy kapısı hazır; yeni seans bekleniyor.'
+          : 'Hevy kapısı bekliyor.',
       count: hevyCount,
       latestAt: latestDateFrom(workouts, 'hevy'),
     },
@@ -121,10 +121,10 @@ export function buildDataTruthMap({
       state: telegramCount ? 'active' : statusValue(telegramState || 'waiting'),
       lit: telegramCount > 0 || sourceReady(telegramState),
       detail: telegramCount
-        ? `${telegramCount} Telegram kaydi ritme bagli.`
+        ? `${telegramCount} Telegram kaydı ritme bağlı.`
         : sourceReady(telegramState)
-          ? 'Telegram komutu hazir; mesaj bekleniyor.'
-          : 'Telegram kapisi bekliyor.',
+          ? 'Telegram komutu hazır; mesaj bekleniyor.'
+          : 'Telegram kapısı bekliyor.',
       count: telegramCount,
       latestAt: latestDateFrom(workouts, 'telegram'),
     },
@@ -140,8 +140,8 @@ export function buildDataTruthMap({
       state: sourceBlocked(odieState) ? 'blocked' : statusValue(odieState || 'waiting'),
       lit: sourceReady(odieState),
       detail: sourceReady(odieState)
-        ? `${webOdieCount || 0} ODIE kaydi; onayli kartlar yazilabilir.`
-        : 'ODIE kayit kapisi kapali. Netlestirir ama yazmaz.',
+        ? `${webOdieCount || 0} ODIE kaydı; onaylı kartlar yazılabilir.`
+        : 'ODIE kayıt kapısı kapalı. Netleştirir ama yazmaz.',
       count: webOdieCount,
       latestAt: latestDateFrom(workouts, 'web_odie'),
     },
@@ -151,8 +151,8 @@ export function buildDataTruthMap({
       state: statusValue(manualState || 'available'),
       lit: manualCount > 0 || dailyLogCount > 0,
       detail: manualCount || dailyLogCount
-        ? `${manualCount + dailyLogCount} yerel bakim izi var.`
-        : 'Yerel kayit yedek hat olarak duruyor.',
+        ? `${manualCount + dailyLogCount} yerel bakım izi var.`
+        : 'Yerel kayıt yedek hat olarak duruyor.',
       count: manualCount + dailyLogCount,
       latestAt: latestDateFrom(workouts, 'manual') || dailyLogs?.[0]?.date || null,
     },

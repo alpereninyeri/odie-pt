@@ -48,7 +48,7 @@ test('next session locks heavy work when fatigue is high', () => {
   assert.equal(rec.primaryGoal.key, 'recovery')
   assert.equal(rec.tone, 'danger')
   assert.ok(rec.progressionCaps.some(item => /PR|Ana lift/i.test(item)))
-  assert.match(rec.coachCommand, /30 dk yuruyus/i)
+  assert.match(rec.coachCommand, /30 dk yürüyüş/i)
 })
 
 test('next session holds load after a recent PR', () => {
@@ -72,5 +72,5 @@ test('next session holds load after a recent PR', () => {
   })
 
   assert.equal(rec.primaryGoal.key, 'pr-hold')
-  assert.match(rec.coachCommand, /\+0kg|ayni kiloda/i)
+  assert.match(rec.coachCommand, /\+0kg|aynı kiloda/i)
 })

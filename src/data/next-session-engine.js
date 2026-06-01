@@ -53,8 +53,8 @@ function hasTag(workout = {}, tag) {
 
 function buildBalance(workouts = []) {
   const totals = {
-    push: { key: 'push', label: 'Gogus', sets: 0 },
-    pull: { key: 'pull', label: 'Sirt', sets: 0 },
+    push: { key: 'push', label: 'Göğüs', sets: 0 },
+    pull: { key: 'pull', label: 'Sırt', sets: 0 },
     legs: { key: 'legs', label: 'Bacak', sets: 0 },
     core: { key: 'core', label: 'Core', sets: 0 },
   }
@@ -121,7 +121,7 @@ function buildSourceHealth(workouts = [], profile = {}, health = {}) {
     lastSync,
     label: hevy.length || appleHealth.length || appleSleepLinked || appleHeartLinked
       ? `Hevy ${hevy.length} / Apple workout ${appleHealth.length} / uyku ${appleSleepLinked ? 'var' : 'yok'} / kalp ${appleHeartLinked ? 'var' : 'yok'}`
-      : 'Kayit bekliyor',
+      : 'Kayıt bekliyor',
   }
 }
 
@@ -139,8 +139,8 @@ function appleHealthLine(latest = null) {
 
 function injuryPrefix(injury = null) {
   if (!injury) return ''
-  const eta = Number(injury.etaDays) ? `${Math.round(injury.etaDays)} gun ` : ''
-  const command = injury.odieInterpretation?.command || injury.note || `${injury.label || 'Sakatlik'} temkinde.`
+  const eta = Number(injury.etaDays) ? `${Math.round(injury.etaDays)} gün ` : ''
+  const command = injury.odieInterpretation?.command || injury.note || `${injury.label || 'Sakatlık'} temkinde.`
   return `${eta}${command}`
 }
 
@@ -150,29 +150,29 @@ function commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hours
   const injuryLine = injuryPrefix(injury)
   const prefix = [appleLine, injuryLine].filter(Boolean).join(' ')
   if (goalKey === 'recovery') {
-    return `${prefix ? `${prefix} ` : ''}Bugun agir yuk yok. 30 dk yuruyus + 10 dk mobilite yap; can ${Math.round(armor)} ustune cikana kadar sakin git.`
+    return `${prefix ? `${prefix} ` : ''}Bugün ağır yük yok. 30 dk yürüyüş + 10 dk mobilite yap; can ${Math.round(armor)} üstüne çıkana kadar sakin git.`
   }
   if (goalKey === 'sleep-recovery') {
-    return `${prefix ? `${prefix} ` : ''}Uyku zayif. Bugun rekor yok; 25 dk rahat yuruyus, 10 dk mobilite ve erken kapanis.`
+    return `${prefix ? `${prefix} ` : ''}Uyku zayıf. Bugün rekor yok; 25 dk rahat yürüyüş, 10 dk mobilite ve erken kapanış.`
   }
   if (goalKey === 'heart-calm') {
-    return `${prefix ? `${prefix} ` : ''}Kalp/HRV dusuk. Nabzi yormadan hareket et: 20-30 dk kolay tempo, 8 dk nefes ve mobilite.`
+    return `${prefix ? `${prefix} ` : ''}Kalp/HRV düşük. Nabzı yormadan hareket et: 20-30 dk kolay tempo, 8 dk nefes ve mobilite.`
   }
   if (goalKey === 'strain-drain') {
-    return `${prefix ? `${prefix} ` : ''}Gun ici yuk zaten dolu. Bacakta agir PR yok; ayak bilegi, kalf ve kalca bakimini temiz kapat.`
+    return `${prefix ? `${prefix} ` : ''}Gün içi yük zaten dolu. Bacakta ağır PR yok; ayak bileği, kalf ve kalça bakımını temiz kapat.`
   }
   if (goalKey === 'technical') {
-    return `${prefix ? `${prefix} ` : ''}Bugun rekor kovalamiyoruz. ${latestType} icin 3 kontrollu set, 2 destek seti ve 8 dk core ile kapat.`
+    return `${prefix ? `${prefix} ` : ''}Bugün rekor kovalamıyoruz. ${latestType} için 3 kontrollü set, 2 destek seti ve 8 dk core ile kapat.`
   }
   if (goalKey === 'pr-hold') {
-    return `${prefix ? `${prefix} ` : ''}Rekor yeni; ${hoursSinceLatest ?? '--'} saat gecmis. ${latestType} ayni kiloda kalsin, sadece 1 temiz tekrar veya guvenli destek seti ekle.`
+    return `${prefix ? `${prefix} ` : ''}Rekor yeni; ${hoursSinceLatest ?? '--'} saat geçmiş. ${latestType} aynı kiloda kalsın, sadece 1 temiz tekrar veya güvenli destek seti ekle.`
   }
   if (goalKey === 'balance') {
     const low = balance.lowest?.label || 'Core'
     const target = balance.lowest?.key === 'core' ? '8-12 dk' : '3 net set'
-    return `${prefix ? `${prefix} ` : ''}${low} geride kalmis. Ana isten once ${target} ${low.toLowerCase()} koy; sonra normale don.`
+    return `${prefix ? `${prefix} ` : ''}${low} geride kalmış. Ana işten önce ${target} ${low.toLocaleLowerCase('tr-TR')} koy; sonra normale dön.`
   }
-  return `${prefix ? `${prefix} ` : ''}${latestType} acik. Tek kucuk artis yeter: +1 tekrar veya +2.5kg. Sonuna 8 dk core ekle.`
+  return `${prefix ? `${prefix} ` : ''}${latestType} açık. Tek küçük artış yeter: +1 tekrar veya +2.5kg. Sonuna 8 dk core ekle.`
 }
 
 export function buildNextSessionRecommendation({
@@ -213,11 +213,11 @@ export function buildNextSessionRecommendation({
   const evidence = []
 
   if (latest) evidence.push(`Son seans: ${String(latest.source || '').toLowerCase() === 'hevy' ? 'Hevy' : latest.source || 'Manual'} / ${latest.type || 'seans'} / ${latest.durationMin || latest.duration_min || 0} dk`)
-  evidence.push(`Ritim: 14 gunde ${recent14.length} seans, 30 gunde ${recent30.length} seans`)
-  evidence.push(`Hazir ${Math.round(readiness)}, can ${Math.round(armor)}, kas yorgunlugu ${Math.round(fatigue)}${systemFatigue != null ? `, genel yorgunluk ${Math.round(systemFatigue)}` : ''}`)
+  evidence.push(`Ritim: 14 günde ${recent14.length} seans, 30 günde ${recent30.length} seans`)
+  evidence.push(`Hazır ${Math.round(readiness)}, can ${Math.round(armor)}, kas yorgunluğu ${Math.round(fatigue)}${systemFatigue != null ? `, genel yorgunluk ${Math.round(systemFatigue)}` : ''}`)
   if (sleepScore != null) evidence.push(`Uyku: skor ${Math.round(sleepScore)} / ${Number(dailySummary?.totalSleepHours || 0).toFixed(1)}s`)
   if (heartScore != null) evidence.push(`Kalp: skor ${Math.round(heartScore)} / HRV ${Math.round(Number(dailySummary?.hrvSdnn) || 0)} / RHR ${Math.round(Number(dailySummary?.restingHeartRate) || 0)}`)
-  if (strainScore != null) evidence.push(`Gun yuku: ${Math.round(strainScore)} / adim ${Math.round(Number(dailySummary?.steps) || 0)}`)
+  if (strainScore != null) evidence.push(`Gün yükü: ${Math.round(strainScore)} / adım ${Math.round(Number(dailySummary?.steps) || 0)}`)
   if (balance.lowest) evidence.push(`Geride kalan hat: ${balance.lowest.label} (${Math.round(balance.lowest.sets)} set)`)
   if (sourceHealth.latestHevyDate) evidence.push(`Son Hevy: ${sourceHealth.latestHevyDate}`)
   if (sourceHealth.latestAppleHealthDate) evidence.push(`Son Apple Health: ${sourceHealth.latestAppleHealthDate}`)
@@ -225,11 +225,11 @@ export function buildNextSessionRecommendation({
 
   let goalKey = 'progress'
   let tone = 'go'
-  let title = 'Kucuk Artis Gunu'
-  let subtitle = 'Ana hareketi koru, sadece ufak bir artis yap.'
+  let title = 'Küçük Artış Günü'
+  let subtitle = 'Ana hareketi koru, sadece ufak bir artış yap.'
   let blocks = [
-    buildBlock('strength', latest?.type || 'Ana hamle', '+1 rep veya +2.5kg tavan', 'Son veri bugun kucuk artisa izin veriyor.', 'moderate'),
-    buildBlock('core', 'Core kilidi', '8 dk', 'Karakter dengesi core olmadan eksik kaliyor.', 'easy'),
+    buildBlock('strength', latest?.type || 'Ana hamle', '+1 rep veya +2.5kg tavan', 'Son veri bugün küçük artışa izin veriyor.', 'moderate'),
+    buildBlock('core', 'Core kilidi', '8 dk', 'Karakter dengesi core olmadan eksik kalıyor.', 'easy'),
   ]
   const progressionCaps = []
   const warnings = []
@@ -237,97 +237,97 @@ export function buildNextSessionRecommendation({
   if (!latest) {
     goalKey = 'onboarding'
     tone = 'calm'
-    title = 'Ilk Temiz Kayit'
-    subtitle = 'Hevy veya Telegram kaydi ile karakteri canlandir.'
+    title = 'İlk Temiz Kayıt'
+    subtitle = 'Hevy veya Telegram kaydı ile karakteri canlandır.'
     blocks = [
-      buildBlock('strength', 'Ana hamle', '3 set', 'Ilk guclu kayit icin net hareket yeter.', 'moderate'),
-      buildBlock('mobility', 'Kapanis', '8 dk', 'Ilk gunu temiz veriyle kapat.', 'easy'),
+      buildBlock('strength', 'Ana hamle', '3 set', 'İlk güçlü kayıt için net hareket yeter.', 'moderate'),
+      buildBlock('mobility', 'Kapanış', '8 dk', 'İlk günü temiz veriyle kapat.', 'easy'),
     ]
-    progressionCaps.push('Ilk kayitta rekor kovalamiyoruz.')
+    progressionCaps.push('İlk kayıtta rekor kovalamıyoruz.')
   } else if (sleepScore != null && sleepScore < 45) {
     goalKey = 'sleep-recovery'
     tone = 'warn'
     title = 'Can topla'
-    subtitle = 'Uyku az; bugun tavan dusuk.'
+    subtitle = 'Uyku az; bugün tavan düşük.'
     blocks = [
-      buildBlock('locomotion', 'Kolay hareket', '20-30 dk', 'Uyku dusukken hafif hareket yeter.', 'easy'),
-      buildBlock('mobility', 'Erken kapanis', '10 dk', 'Bugun sistemi yormuyoruz.', 'easy'),
+      buildBlock('locomotion', 'Kolay hareket', '20-30 dk', 'Uyku düşükken hafif hareket yeter.', 'easy'),
+      buildBlock('mobility', 'Erken kapanış', '10 dk', 'Bugün sistemi yormuyoruz.', 'easy'),
     ]
     progressionCaps.push('Uyku toparlanmadan PR yok.')
-    warnings.push(`Uyku skoru ${Math.round(sleepScore)}; agir yuk bugun dikkat.`)
+    warnings.push(`Uyku skoru ${Math.round(sleepScore)}; ağır yük bugün dikkat.`)
   } else if (heartScore != null && heartScore < 45) {
     goalKey = 'heart-calm'
     tone = 'warn'
-    title = 'Sakin Gun'
-    subtitle = 'Kalp/HRV bugun tempoyu kisiyor.'
+    title = 'Sakin Gün'
+    subtitle = 'Kalp/HRV bugün tempoyu kısıyor.'
     blocks = [
-      buildBlock('locomotion', 'Dusuk nabiz hareket', '20-30 dk', 'HRV/RHR temkinli; nabiz kovalamiyoruz.', 'easy'),
-      buildBlock('breath', 'Nefes + mobilite', '8-10 dk', 'Yorgunlugu azaltan en temiz yol.', 'easy'),
+      buildBlock('locomotion', 'Düşük nabız hareket', '20-30 dk', 'HRV/RHR temkinli; nabız kovalamıyoruz.', 'easy'),
+      buildBlock('breath', 'Nefes + mobilite', '8-10 dk', 'Yorgunluğu azaltan en temiz yol.', 'easy'),
     ]
-    progressionCaps.push('Nabiz toparlanana kadar agir interval ve PR yok.')
+    progressionCaps.push('Nabız toparlanana kadar ağır interval ve PR yok.')
     warnings.push(`Kalp skoru ${Math.round(heartScore)}; sinir sistemi temkinli okunuyor.`)
   } else if (strainScore != null && strainScore >= 72) {
     goalKey = 'strain-drain'
     tone = 'warn'
-    title = 'Gun Yukunu Bosalt'
-    subtitle = 'Apple hareket yuku zaten dolmus; seansi bakima cevir.'
+    title = 'Gün Yükünü Boşalt'
+    subtitle = 'Apple hareket yükü zaten dolmuş; seansı bakıma çevir.'
     blocks = [
-      buildBlock('mobility', 'Ayak bilegi + kalf', '10 dk', 'Yuruyus/hiking sonrasi alt hat bakimi XP getirir.', 'easy'),
-      buildBlock('core', 'Core kilidi', '6-8 dk', 'Yuksek gun yukunde en temiz ilerleme dusuk riskli kontroldur.', 'easy'),
+      buildBlock('mobility', 'Ayak bileği + kalf', '10 dk', 'Yürüyüş/hiking sonrası alt hat bakımı XP getirir.', 'easy'),
+      buildBlock('core', 'Core kilidi', '6-8 dk', 'Yüksek gün yükünde en temiz ilerleme düşük riskli kontroldür.', 'easy'),
     ]
-    progressionCaps.push('Bacakta agir PR yok; toparlanma XP sayiliyor.')
-    warnings.push(`Gun yuku ${Math.round(strainScore)}; ekstra agir bacak bugun risk.`)
+    progressionCaps.push('Bacakta ağır PR yok; toparlanma XP sayılıyor.')
+    warnings.push(`Gün yükü ${Math.round(strainScore)}; ekstra ağır bacak bugün risk.`)
   } else if (effectiveFatigue >= 75 || profile.survivalStatus === 'cns_overloaded' || profile.survival_status === 'cns_overloaded') {
     goalKey = 'recovery'
     tone = 'danger'
-    title = 'Toparlanma Gunu'
-    subtitle = 'Bugun agir yuk degil, toparlanma.'
+    title = 'Toparlanma Günü'
+    subtitle = 'Bugün ağır yük değil, toparlanma.'
     blocks = [
-      buildBlock('locomotion', 'Hafif yuruyus', '25-35 dk', 'Yorgunluk yuksek; kan dolasimi yeter.', 'easy'),
-      buildBlock('mobility', 'Mobilite + nefes', '10 dk', 'Can dusukken agir yuk riskli.', 'easy'),
+      buildBlock('locomotion', 'Hafif yürüyüş', '25-35 dk', 'Yorgunluk yüksek; kan dolaşımı yeter.', 'easy'),
+      buildBlock('mobility', 'Mobilite + nefes', '10 dk', 'Can düşükken ağır yük riskli.', 'easy'),
     ]
-    progressionCaps.push('Agirlik artisi yok, PR denemesi yok.')
-    warnings.push(`Yorgunluk ${Math.round(effectiveFatigue)}; agir seans bugun kilitli.`)
+    progressionCaps.push('Ağırlık artışı yok, PR denemesi yok.')
+    warnings.push(`Yorgunluk ${Math.round(effectiveFatigue)}; ağır seans bugün kilitli.`)
   } else if (armor < 55 || readiness < 45) {
     goalKey = 'technical'
     tone = 'warn'
-    title = 'Form Gunu'
+    title = 'Form Günü'
     subtitle = 'Form kilidi var, ego seti yok.'
     blocks = [
-      buildBlock('skill', latest.type || 'Form blogu', '3 kontrollu set', 'Hazirlik dusuk; hareket temizligi once.', 'easy'),
-      buildBlock('core', 'Core aktivasyon', '8 dk', 'Dusuk hazirlik gununde en guvenli ilerleme.', 'easy'),
+      buildBlock('skill', latest.type || 'Form bloğu', '3 kontrollü set', 'Hazırlık düşük; hareket temizliği önce.', 'easy'),
+      buildBlock('core', 'Core aktivasyon', '8 dk', 'Düşük hazırlık gününde en güvenli ilerleme.', 'easy'),
     ]
-    progressionCaps.push('Yuk artisi yok; form notu gir.')
+    progressionCaps.push('Yük artışı yok; form notu gir.')
   } else if (hasRecentPr) {
     goalKey = 'pr-hold'
     tone = 'warn'
-    title = 'Rekor Sonrasi Temkin'
-    subtitle = 'Yeni rekoru sindir, ayni hatta kontrollu tekrar ekle.'
+    title = 'Rekor Sonrası Temkin'
+    subtitle = 'Yeni rekoru sindir, aynı hatta kontrollü tekrar ekle.'
     blocks = [
-      buildBlock('strength', latest.type || 'Rekor hatti', 'Ayni kg / +1 rep tavan', 'Rekor sonrasi agresif artis riski buyutur.', 'moderate'),
-      buildBlock('accessory', 'Destek blogu', '2 set', 'Ana yuku artirmadan hareketi koru.', 'easy'),
+      buildBlock('strength', latest.type || 'Rekor hattı', 'Aynı kg / +1 rep tavan', 'Rekor sonrası agresif artış riski büyütür.', 'moderate'),
+      buildBlock('accessory', 'Destek bloğu', '2 set', 'Ana yükü artırmadan hareketi koru.', 'easy'),
     ]
-    progressionCaps.push('Rekor sonrasi 96 saat icinde +kg yok.')
+    progressionCaps.push('Rekor sonrası 96 saat içinde +kg yok.')
   } else if (balance.lowest && ['push', 'pull', 'legs', 'core'].includes(balance.lowest.key)) {
     goalKey = 'balance'
     tone = 'warn'
-    title = `${balance.lowest.label} Hattini Kapat`
-    subtitle = 'Karakterde en geri kalan hat bugun once gelir.'
+    title = `${balance.lowest.label} Hattını Kapat`
+    subtitle = 'Karakterde en geri kalan hat bugün önce gelir.'
     const isLegs = balance.lowest.key === 'legs'
     const isCore = balance.lowest.key === 'core'
     const blockKind = isCore ? 'core' : 'strength'
     const blockLabel = isLegs ? 'Arka zincir' : isCore ? 'Core kilidi' : `${balance.lowest.label} destek`
     const blockTarget = isCore ? '8-12 dk' : '3-4 set'
     blocks = [
-      buildBlock(blockKind, blockLabel, blockTarget, `${balance.lowest.label} son 30 gunde geride.`, 'moderate'),
-      buildBlock('mobility', isLegs ? 'Kalca/hamstring' : isCore ? 'Govde kontrolu' : 'Eklem hazirligi', '6-8 dk', 'Denge blogunu temiz kapat.', 'easy'),
+      buildBlock(blockKind, blockLabel, blockTarget, `${balance.lowest.label} son 30 günde geride.`, 'moderate'),
+      buildBlock('mobility', isLegs ? 'Kalça/hamstring' : isCore ? 'Gövde kontrolü' : 'Eklem hazırlığı', '6-8 dk', 'Denge bloğunu temiz kapat.', 'easy'),
     ]
-    progressionCaps.push(`${balance.lowest.label} kapanmadan ana yuke ekstra set yok.`)
+    progressionCaps.push(`${balance.lowest.label} kapanmadan ana yüke ekstra set yok.`)
   }
 
-  if (activeFeedbackRisk) warnings.push('Bazi eski ODIE yorumlari isaretlenmis; bugun daha temkinli okuyorum.')
-  if (activeInjury) warnings.unshift(activeInjury.odieInterpretation?.command || activeInjury.note || `${activeInjury.label || 'Sakatlik'} temkinde.`)
-  if (!sourceHealth.hevyCount) warnings.push('Son kayitlarda Hevy yok; eslemeyi kontrol etmek iyi olur.')
+  if (activeFeedbackRisk) warnings.push('Bazı eski ODIE yorumları işaretlenmiş; bugün daha temkinli okuyorum.')
+  if (activeInjury) warnings.unshift(activeInjury.odieInterpretation?.command || activeInjury.note || `${activeInjury.label || 'Sakatlık'} temkinde.`)
+  if (!sourceHealth.hevyCount) warnings.push('Son kayıtlarda Hevy yok; eşlemeyi kontrol etmek iyi olur.')
 
   const confidence = clamp(
     42
@@ -357,7 +357,7 @@ export function buildNextSessionRecommendation({
     progressionCaps,
     warnings,
     questImpact: {
-      pressure: balance.lowest ? `${balance.lowest.label} hattini one almak mantikli.` : 'Gorev baskisi dengeli.',
+      pressure: balance.lowest ? `${balance.lowest.label} hattını öne almak mantıklı.` : 'Görev baskısı dengeli.',
       balance,
     },
     coachCommand: commandFor(goalKey, { fatigue, armor, latest, balance, readiness, hoursSinceLatest: hours, injury: activeInjury }),
