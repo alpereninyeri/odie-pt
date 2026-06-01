@@ -29,3 +29,24 @@ test('Hevy normalization preserves cardio set distance', () => {
   assert.ok(normalized.facts.some(item => item.label === 'Treadmill Run'))
   assert.equal(normalized.confidence.level, 'high')
 })
+
+test('Hevy normalization uses Istanbul local day for UTC boundary starts', () => {
+  const workout = {
+    id: 'hevy-boundary-1',
+    title: 'Night calisthenics',
+    start_time: '2026-05-30T21:30:00.000Z',
+    end_time: '2026-05-30T22:10:00.000Z',
+    created_at: '2026-05-30T22:12:00.000Z',
+    exercises: [
+      {
+        title: 'Push Up',
+        sets: [{ reps: 20 }],
+      },
+    ],
+  }
+
+  const normalized = normalizeHevyWorkout(workout)
+
+  assert.equal(normalized.date, '2026-05-31')
+  assert.equal(normalized.durationMin, 40)
+})

@@ -354,11 +354,16 @@ export function getLocalDateString(date = new Date(), timeZone = ISTANBUL_TIME_Z
 
 export function normalizeDateString(value, fallback = getLocalDateString()) {
   if (!value) return fallback
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? fallback : getLocalDateString(value)
+  }
   const asText = String(value).trim()
-  const match = asText.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (match) return `${match[1]}-${match[2]}-${match[3]}`
+  const dateOnly = asText.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dateOnly) return `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}`
   const parsed = new Date(asText)
-  return Number.isNaN(parsed.getTime()) ? fallback : getLocalDateString(parsed)
+  if (!Number.isNaN(parsed.getTime())) return getLocalDateString(parsed)
+  const datePrefix = asText.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return datePrefix ? `${datePrefix[1]}-${datePrefix[2]}-${datePrefix[3]}` : fallback
 }
 
 export function formatMonthShort(dateStr) {
@@ -895,8 +900,9 @@ export function estimateDistanceKm(input = {}) {
 export function normalizeSession(session = {}, { source = 'manual', now = new Date() } = {}) {
   const exercises = normalizeExercises(session.exercises || [])
   const type = normalizeType(session.type)
-  const date = normalizeDateString(session.date, getLocalDateString(now))
   const startedAt = session.startedAt || session.started_at || session.createdAt || session.created_at || now.toISOString()
+  const dateFallback = normalizeDateString(startedAt, getLocalDateString(now))
+  const date = normalizeDateString(session.date, dateFallback)
   const normalized = {
     ...session,
     type,

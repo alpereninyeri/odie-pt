@@ -9,6 +9,7 @@ import {
   computeStreakInfo,
   getLocalDateString,
   hasLegFocus,
+  normalizeDateString,
   normalizeSession,
 } from '../src/data/rules.js'
 
@@ -201,6 +202,21 @@ test('normalizeSession keeps startedAt when present', () => {
   })
 
   assert.equal(session.startedAt, '2026-04-18T10:30:00.000Z')
+})
+
+test('normalizeDateString keeps plain dates but resolves timestamps in Istanbul day', () => {
+  assert.equal(normalizeDateString('2026-05-31'), '2026-05-31')
+  assert.equal(normalizeDateString('2026-05-30T20:30:00.000Z'), '2026-05-30')
+  assert.equal(normalizeDateString('2026-05-30T21:30:00.000Z'), '2026-05-31')
+})
+
+test('normalizeSession derives missing date from startedAt local day', () => {
+  const session = normalizeSession({
+    type: 'Yuruyus',
+    startedAt: '2026-05-30T21:30:00.000Z',
+  }, { now: new Date('2026-06-01T08:00:00.000Z') })
+
+  assert.equal(session.date, '2026-05-31')
 })
 
 test('istanbul local date helper respects local boundary', () => {
