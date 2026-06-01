@@ -241,7 +241,7 @@ function buildSources(truthMap = {}, sourceHealth = {}, workouts = [], dailyLogs
   const movementDays = new Set(recent.map(workout => normalizeDateString(workout.date)).filter(Boolean)).size
   const recoveryLit = Boolean(healthSummary || dailyLogs.some(log => Number(log.sleepHours) || Number(log.waterMl) || Number(log.steps)))
   return [
-    { key: 'trail', label: 'Rota', lit: workouts.length > 0, detail: latest?.date || 'ilk kayit' },
+    { key: 'trail', label: 'Rota', lit: workouts.length > 0, detail: latest?.date || 'ilk kayıt' },
     { key: 'rhythm', label: 'Ritim', lit: movementDays >= 3, detail: `${movementDays} aktif gün` },
     { key: 'recovery', label: 'Can', lit: recoveryLit, detail: healthSummary?.day || dailyLogs[0]?.date || 'bakım bekliyor' },
     { key: 'quest', label: 'Görev', lit: workouts.length > 0 || Number(sourceHealth.totalRecent) > 0, detail: `${workouts.length} kayıt` },
@@ -266,7 +266,7 @@ function buildProgressSnapshot(workouts = [], stats = []) {
   const metrics = [
     {
       key: 'load',
-      label: useVolume ? 'Yuk' : 'Sure',
+      label: useVolume ? 'Yük' : 'Süre',
       oldValue: useVolume ? oldSummary.volumeKg : oldSummary.durationMin,
       nowValue: useVolume ? nowSummary.volumeKg : nowSummary.durationMin,
       unit: useVolume ? 'kg' : 'dk',
@@ -334,7 +334,7 @@ function buildZoneCards(workouts = [], bodyMap = {}, nextSession = {}) {
   const zones = [
     { key: 'gym', name: 'Gym evi', emoji: '\u{1F3CB}️', count: count(isStrengthSession), detail: nextSession.questImpact?.balance?.lowest?.label ? `${nextSession.questImpact.balance.lowest.label} one al` : 'kuvvet hatti', tone: 'steel' },
     { key: 'parkour', name: 'Parkur alani', emoji: '\u{1F9D7}', count: count(isParkourSession), detail: priority.movement?.todayStep || 'flow / inis', tone: 'amber' },
-    { key: 'walk', name: 'Yuruyus yolu', emoji: '\u{1F6B6}', count: count(isWalkSession), detail: 'dusuk nabiz rota', tone: 'green' },
+    { key: 'walk', name: 'Yürüyüş yolu', emoji: '\u{1F6B6}', count: count(isWalkSession), detail: 'düşük nabız rota', tone: 'green' },
     { key: 'recovery', name: 'Dinlenme evi', emoji: '\u{1F9D8}', count: count(isRecoverySession), detail: quest.safeMode ? 'dikkat kapısı açık' : 'bakım hattı', tone: 'blue' },
     { key: 'acro', name: 'Akro sahasi', emoji: '\u{1F938}', count: count(isAcroSession), detail: priority.unlock?.name || 'gecis kilidi', tone: 'red' },
   ]
@@ -414,7 +414,7 @@ function responsiveAsset(className, sources = {}, alt = '') {
 
 function renderPip(source = {}) {
   return `
-    <button type="button" class="pip ${source.lit ? 'lit' : ''}" ${detailAttrs(source.label, source.detail || 'Yeni kayit bekliyor.')}>
+    <button type="button" class="pip ${source.lit ? 'lit' : ''}" ${detailAttrs(source.label, source.detail || 'Yeni kayıt bekliyor.')}>
       <i aria-hidden="true"></i><b>${escapeHtml(source.label)}</b>
     </button>
   `
@@ -433,7 +433,7 @@ function renderDetailSheet() {
           <b>${escapeHtml(cleanText(detailSheet.title))}</b>
           <button type="button" class="icon-close" data-close-detail aria-label="Kapat">×</button>
         </div>
-        <p>${escapeHtml(cleanText(detailSheet.body || 'Bu parca yeni kayitlarla netlesir.'))}</p>
+        <p>${escapeHtml(cleanText(detailSheet.body || 'Bu parça yeni kayıtlarla netleşir.'))}</p>
       </section>
     </div>
   `
@@ -511,15 +511,15 @@ function renderMissionRouteScreen(model) {
 }
 
 function renderMissionQuest(loop = {}, model = {}) {
-  const title = loop.questTitle || 'Bugünün ana hamlesi'
-  const body = loop.questBody || 'Tek temiz adim bugunu kazandirir.'
+  const title = cleanText(loop.questTitle || 'Bugünün ana hamlesi')
+  const body = cleanText(loop.questBody || 'Tek temiz adım bugünü kazandırır.')
   const detail = `${body} ${loop.questWhy || ''}`.trim()
   return `
     <article class="mission-quest">
       <div class="quest-top">
         <span class="quest-scroll" aria-hidden="true"><img src="${ASSETS.routeMarker}" alt=""></span>
         <div>
-          <div class="q-kick">${escapeHtml(loop.eyebrow || 'Siradaki hamle')}</div>
+          <div class="q-kick">${escapeHtml(cleanText(loop.eyebrow || 'Sıradaki hamle'))}</div>
           <h2>${escapeHtml(title)}</h2>
         </div>
       </div>
@@ -626,7 +626,7 @@ function renderStatBelt(stats = []) {
   return `
     <article class="stat-belt" aria-label="Karakter stat kemeri">
       ${axes.map(axis => `
-        <button type="button" class="stat-stone" ${detailAttrs(`${axis.short} ${axis.rank}`, `Skor ${Math.round(axis.value)}. Bu stat son kayitlara gore hareket eder.`)}>
+        <button type="button" class="stat-stone" ${detailAttrs(`${axis.short} ${axis.rank}`, `Skor ${Math.round(axis.value)}. Bu stat son kayıtlara göre hareket eder.`)}>
           <img src="${axis.icon}" alt="" aria-hidden="true">
           <span>${escapeHtml(axis.short)}</span>
           <b>${escapeHtml(axis.rank)}</b>
@@ -763,12 +763,12 @@ function renderLastCard(latest) {
   return `
     <article class="card last-card">
       <div class="card-head">
-        <span class="card-title">Son kayit</span>
+        <span class="card-title">Son kayıt</span>
         <button type="button" class="card-tag" data-refresh>${syncBusy ? 'Çekiliyor' : 'Yenile'}</button>
       </div>
       ${latest ? `
         <div class="l-type">${escapeHtml(displayWorkoutType(latest.type || 'Seans'))}</div>
-        <p class="soft">${escapeHtml(cleanText(latest.highlight || latest.notes || 'Son kayit defterde.'))}</p>
+        <p class="soft">${escapeHtml(cleanText(latest.highlight || latest.notes || 'Son kayıt işlendi.'))}</p>
         <div class="meta-row">
           <span>${escapeHtml(latest.date || '-')}</span>
           <span>${latest.durationMin ? `${Math.round(latest.durationMin)} dk` : 'süre yok'}</span>
@@ -881,7 +881,7 @@ function renderWorldMapBoard(worldMap = {}) {
       </div>
       <div class="world-node-deck">
         ${nodes.slice(0, 4).map(node => `
-          <button type="button" class="world-mini-node type-${escapeAttr(node.type || 'node')}" ${detailAttrs(node.title || 'Harita notu', `${node.body || ''} ${node.reward ? `Odul: ${node.reward}` : ''}`)}>
+          <button type="button" class="world-mini-node type-${escapeAttr(node.type || 'node')}" ${detailAttrs(node.title || 'Harita notu', `${node.body || ''} ${node.reward ? `Ödül: ${node.reward}` : ''}`)}>
             <span aria-hidden="true"><img src="${worldNodeIcon(node)}" alt=""></span>
             <b>${escapeHtml(cleanText(node.title || 'Not'))}</b>
           </button>
@@ -893,12 +893,12 @@ function renderWorldMapBoard(worldMap = {}) {
 
 function worldZoneDetail(zone = {}, nodes = []) {
   const stateLabel = {
-    active: 'Aktif gorev bolgesi.',
-    ready: 'Hazir bolge.',
-    blocked: 'Dikkat kapisi.',
-    idle: 'Bekleyen bolge.',
-  }[zone.state || 'idle'] || 'Harita bolgesi.'
-  const nodeText = nodes.map(node => `${node.title}: ${node.body}${node.reward ? ` Odul ${node.reward}.` : ''}`).join(' ')
+    active: 'Aktif görev bölgesi.',
+    ready: 'Hazır bölge.',
+    blocked: 'Dikkat kapısı.',
+    idle: 'Bekleyen bölge.',
+  }[zone.state || 'idle'] || 'Harita bölgesi.'
+  const nodeText = nodes.map(node => `${node.title}: ${node.body}${node.reward ? ` Ödül ${node.reward}.` : ''}`).join(' ')
   return [stateLabel, zone.detail, nodeText].filter(Boolean).join(' ')
 }
 
@@ -979,16 +979,16 @@ function renderUnlockLadder(bodyMap = {}) {
 function renderRecoveryGate(readiness = {}, healthSummary = null, truthMap = {}) {
   const score = Math.round(clamp(readiness.score ?? readiness.armor ?? 0))
   const fatigue = Math.round(clamp(readiness.fatigue ?? 0))
-  const label = healthSummary?.day ? 'Apple izi' : truthMap.appleDisabled ? 'Apple kapali' : 'can kapisi'
+  const label = healthSummary?.day ? 'Apple izi' : truthMap.appleDisabled ? 'Apple kapalı' : 'can kapısı'
   const detail = healthSummary?.day
-    ? `Enerji ${score}/100. Yorgunluk ${fatigue}/100. Saglik ozeti ritme katiliyor.`
+    ? `Enerji ${score}/100. Yorgunluk ${fatigue}/100. Sağlık özeti ritme katılıyor.`
     : truthMap.appleDisabled
-      ? `Enerji ${score}/100. Yorgunluk ${fatigue}/100. Apple kapali; ODIE uyku ve kalbi yok diye okur.`
+      ? `Enerji ${score}/100. Yorgunluk ${fatigue}/100. Apple kapalı; ODIE uyku ve kalbi yok diye okur.`
       : `Enerji ${score}/100. Yorgunluk ${fatigue}/100. Apple bekliyorsa ODIE son seanslardan tahmin eder.`
   return `
-    <article class="card info-card recovery-gate" ${detailAttrs('Toparlanma kapisi', detail)}>
+    <article class="card info-card recovery-gate" ${detailAttrs('Toparlanma kapısı', detail)}>
       <div class="card-head">
-        <span class="card-title with-icon"><img src="${ASSETS.info.recoveryGate}" alt="" aria-hidden="true">Toparlanma kapisi</span>
+        <span class="card-title with-icon"><img src="${ASSETS.info.recoveryGate}" alt="" aria-hidden="true">Toparlanma kapısı</span>
         <span class="card-tag">${escapeHtml(cleanText(label))}</span>
       </div>
       <div class="gate-meter">
@@ -1005,9 +1005,9 @@ function renderPrGate(performance = [], nextSession = {}) {
   const latest = list[0] || {}
   const ready = !['danger', 'warn'].includes(nextSession.tone)
   return `
-    <article class="card info-card pr-gate" ${detailAttrs('PR kapisi', latest.name ? `${latest.name}: ${latest.val || latest.trend || ''}. ${ready ? 'Temiz form varsa denenebilir.' : 'Bugun once kontrol.'}` : 'Rekor kapisi yeni seanslarla acilir.')}>
+    <article class="card info-card pr-gate" ${detailAttrs('PR kapısı', latest.name ? `${latest.name}: ${latest.val || latest.trend || ''}. ${ready ? 'Temiz form varsa denenebilir.' : 'Bugün önce kontrol.'}` : 'Rekor kapısı yeni seanslarla açılır.')}>
       <div class="card-head">
-        <span class="card-title with-icon"><img src="${ASSETS.info.prGate}" alt="" aria-hidden="true">PR kapisi</span>
+        <span class="card-title with-icon"><img src="${ASSETS.info.prGate}" alt="" aria-hidden="true">PR kapısı</span>
         <span class="card-tag">${ready ? 'hazir' : 'kontrol'}</span>
       </div>
       <div class="gate-meter is-pr">
@@ -1101,7 +1101,7 @@ function renderMuscleMap(muscles = []) {
 function renderMuscleCard(muscle = {}) {
   const rank = String(muscle.rank || 'F').trim()
   return `
-    <button type="button" class="muscle-card" ${detailAttrs(muscle.name || 'Bolge', muscle.tip || muscle.detail || '')}>
+    <button type="button" class="muscle-card" ${detailAttrs(muscle.name || 'Bölge', muscle.tip || muscle.detail || '')}>
       <div class="mc-top">
         <span class="mc-icon asset-icon" aria-hidden="true"><img src="${ASSETS.info.statRank}" alt=""></span>
         <span class="mc-name">${escapeHtml(cleanText(muscle.name || 'Kas'))}</span>
@@ -1246,9 +1246,9 @@ function renderLogScreen(model) {
               ${WORKOUT_TYPES.map(type => `<option value="${escapeAttr(type)}" ${type === preset.type ? 'selected' : ''}>${escapeHtml(displayWorkoutType(type))}</option>`).join('')}
             </select>
           </label>
-          <label class="field"><span>Sure dk</span><input name="durationMin" type="number" min="1" max="720" value="${escapeAttr(preset.durationMin)}" required></label>
+          <label class="field"><span>Süre dk</span><input name="durationMin" type="number" min="1" max="720" value="${escapeAttr(preset.durationMin)}" required></label>
           <label class="field"><span>Mesafe km</span><input name="distanceKm" type="number" min="0" step="0.1" value="${escapeAttr(preset.distanceKm)}"></label>
-          <label class="field"><span>Yukselti m</span><input name="elevationM" type="number" min="0" step="1" value="0"></label>
+          <label class="field"><span>Yükselti m</span><input name="elevationM" type="number" min="0" step="1" value="0"></label>
         </div>
         <div class="exercise-editor" aria-label="Egzersiz satirlari">
           <div class="exercise-head">
@@ -1335,7 +1335,7 @@ function renderSignalScreen(model) {
   const note = model.state.coachNote || {}
   const sections = Array.isArray(note.sections) ? note.sections : []
   const result = askState.result
-  const command = cleanText(model.nextSession.coachCommand || 'Yeni kayit geldikce bugunun rotasi netlesir.')
+  const command = cleanText(model.nextSession.coachCommand || 'Yeni kayıt geldikçe bugünün rotası netleşir.')
 
   return `
     <section class="screen signal-screen">
@@ -1422,8 +1422,8 @@ function renderOdieBrief(note = {}, command = '', model = {}) {
       : [section.body, section.text, section.note, section.summary]
     return raw.map(line => cleanText(String(line || '').replace(/^>\s*/, '').replace(/\*\*/g, ''))).filter(Boolean)
   })
-  const observation = cleanText(note.xpNote || lines[0] || model.latestWorkout?.highlight || 'Yeni kayit bekleniyor.')
-  const reason = cleanText(lines[1] || model.nextSession.primaryGoal?.subtitle || 'Bugunku secim son ritme gore ayarlanir.')
+  const observation = cleanText(note.xpNote || lines[0] || model.latestWorkout?.highlight || 'Yeni kayıt bekleniyor.')
+  const reason = cleanText(lines[1] || model.nextSession.primaryGoal?.subtitle || 'Bugünkü seçim son ritme göre ayarlanır.')
   const action = cleanText(command || lines[2] || 'Tek temiz hamle yeter.')
   return `
     <div class="odie-brief">
@@ -1487,7 +1487,7 @@ function renderAskResult(item = {}) {
 }
 
 function renderAskHistory() {
-  if (askState.loading) return '<p class="loading-line">Gecmis sohbetler cekiliyor.</p>'
+  if (askState.loading) return '<p class="loading-line">Geçmiş sohbetler çekiliyor.</p>'
   const items = askState.items || []
   if (!items.length) return '<p class="loading-line">Henüz soru yok. İlk sohbeti burada başlat.</p>'
   return `
@@ -1523,8 +1523,8 @@ function renderProgressCard(snapshot = {}, extraClass = '', loop = {}) {
     return `
       <article class="${escapeAttr(classes)}">
         <div class="card-head">
-          <span class="card-title">Gelisim pano</span>
-          <span class="card-tag">eski -> simdi</span>
+          <span class="card-title">Gelişim pano</span>
+          <span class="card-tag">eski → şimdi</span>
         </div>
         <p class="soft">İlk seans gelsin, burası başlangıç ve şimdi halini yan yana çizecek.</p>
         ${renderMapProgress(loop.mapProgress)}
@@ -1538,8 +1538,8 @@ function renderProgressCard(snapshot = {}, extraClass = '', loop = {}) {
   return `
     <article class="${escapeAttr(classes)}">
       <div class="card-head">
-        <span class="card-title">Gelisim pano</span>
-        <span class="card-tag">eski -> simdi</span>
+        <span class="card-title">Gelişim pano</span>
+        <span class="card-tag">eski → şimdi</span>
       </div>
       <div class="era-compare">
         <button type="button" class="era-tile is-old" ${detailAttrs(`İlk ${snapshot.windowSize} seans`, `Başlangıç penceresi: ${oldLabel}. Toplam ${snapshot.oldSummary.sessions} seans.`)}>
@@ -1551,7 +1551,7 @@ function renderProgressCard(snapshot = {}, extraClass = '', loop = {}) {
         <button type="button" class="era-tile is-now" ${detailAttrs(`Son ${snapshot.windowSize} seans`, `Simdi penceresi: ${nowLabel}. Toplam ${snapshot.nowSummary.sessions} seans.`)}>
           <span>Son ${escapeHtml(String(snapshot.windowSize))}</span>
           <b>${escapeHtml(nowLabel)}</b>
-          <small>simdi</small>
+          <small>şimdi</small>
         </button>
       </div>
       ${progressTrendSvg(snapshot.trend, lead.unit)}
@@ -1592,7 +1592,7 @@ function renderProgressLane(metric = {}) {
         <span class="pl-track old"><i style="--v:${oldPct}%"></i></span>
         <span class="pl-track now"><i style="--v:${nowPct}%"></i></span>
       </span>
-      <span class="pl-foot"><small>eski</small><small>simdi</small></span>
+      <span class="pl-foot"><small>eski</small><small>şimdi</small></span>
     </button>
   `
 }
@@ -1628,13 +1628,13 @@ function progressTrendSvg(points = [], unit = '') {
   const first = coords[0]
   const last = coords[coords.length - 1]
   return `
-    <svg class="progress-sparkline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Eski seanslardan simdiye ${unit || 'yuk'} trendi">
+    <svg class="progress-sparkline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Eski seanslardan şimdiye ${unit || 'yük'} trendi">
       <polygon points="${area}" fill="var(--leaf)" opacity="0.72"/>
       <polyline points="${line}" fill="none" stroke="var(--moss)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="${first[0].toFixed(1)}" cy="${first[1].toFixed(1)}" r="5" fill="var(--clay)"/>
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="6" fill="var(--moss)"/>
       <text x="${padX}" y="${H - 2}" font-size="10" fill="var(--clay)">eski</text>
-      <text x="${W - padX}" y="${H - 2}" font-size="10" fill="var(--moss)" text-anchor="end">simdi</text>
+      <text x="${W - padX}" y="${H - 2}" font-size="10" fill="var(--moss)" text-anchor="end">şimdi</text>
     </svg>
   `
 }
@@ -1878,7 +1878,6 @@ async function handleSubmit(event) {
 function setActiveTab(tab) {
   if (!TABS.some(item => item.key === tab)) return
   detailSheet = null
-  rewardRecap = null
   activeTab = tab
   try { localStorage.setItem('odiept-tab', tab) } catch {}
   scheduleRender()
@@ -1908,13 +1907,13 @@ async function saveRouteLog(form) {
   }
 
   if (!session.durationMin) {
-    logNotice = 'Sure olmadan kayit kapanmaz.'
+    logNotice = 'Süre olmadan kayıt kapanmaz.'
     scheduleRender()
     return
   }
 
   if (isStrengthSession(session) && (!session.exercises.length || !session.sets || !session.volumeKg)) {
-    logNotice = 'Gym kaydi icin en az bir egzersiz, set, tekrar ve kg gir.'
+    logNotice = 'Gym kaydı için en az bir egzersiz, set, tekrar ve kg gir.'
     scheduleRender()
     return
   }
@@ -1978,9 +1977,9 @@ async function saveDailySignal(action, button) {
 
   try {
     await store.saveDailyLog(next)
-    logNotice = 'Gunluk durum guncellendi.'
+    logNotice = 'Günlük durum güncellendi.'
   } catch (error) {
-    logNotice = `Gunluk cihazda kaldi: ${error?.message || error}`
+    logNotice = `Günlük cihazda kaldı: ${error?.message || error}`
   }
   scheduleRender()
 }
@@ -1992,7 +1991,7 @@ async function saveBodyGate(form) {
   const activeSameRegion = (store.getState()?.bodyEvents || [])
     .some(event => String(event.region || event.regionId || '') === region && ['active', 'watch', 'rehab'].includes(String(event.status || 'active')))
   if (activeSameRegion) {
-    logNotice = 'Bu bolge zaten haritada aktif. Once eskisini kapat.'
+    logNotice = 'Bu bölge zaten haritada aktif. Önce eskisini kapat.'
     scheduleRender()
     return
   }
@@ -2022,7 +2021,7 @@ async function saveFeedback(type) {
   const feedbackType = type === 'tone_good' ? 'prefer' : type
   try {
     await store.addMemoryFeedback({ feedbackType, note: `ODIE feedback: ${feedbackType}` })
-    signalNotice = 'Geri bildirim hafizaya gitti.'
+    signalNotice = 'Geri bildirim hafızaya gitti.'
   } catch (error) {
     signalNotice = `Geri bildirim takıldı: ${error?.message || error}`
   }
@@ -2053,7 +2052,7 @@ async function loadAskHistory() {
       headers: appHeaders(),
     })
     const data = await readJsonResponse(response, 'Sohbet geçmişi alınamadı')
-    if (!response.ok || !data.ok) throw new Error(data.error || 'Sohbet gecmisi alinamadi')
+    if (!response.ok || !data.ok) throw new Error(data.error || 'Sohbet geçmişi alınamadı')
     askState.items = data.items || []
   } catch (error) {
     askState.items = []
@@ -2222,7 +2221,7 @@ function cleanText(value = '') {
     .replace(/\bveri\b/gi, 'kayıt')
     .replace(/\bevidence\b/gi, 'not')
     .replace(/\bconfidence\b/gi, 'netlik')
-    .replace(/\bsource\b/gi, 'kayit')
+    .replace(/\bsource\b/gi, 'kayıt')
     .replace(/\bendpoint\b/gi, 'not')
     .replace(/\bschema\b/gi, 'not')
     .replace(/\bmigration\b/gi, 'not')
@@ -2236,7 +2235,34 @@ function cleanText(value = '') {
     .replace(/\bkanit\w*/gi, 'not')
     .replace(/\bgüven\w*/gi, 'netlik')
     .replace(/\bguven\w*/gi, 'netlik')
-    .replace(/\bkaynak\w*/gi, 'kayit')
+    .replace(/\bkaynak\w*/gi, 'kayıt')
+    .replace(/\bIlk\b/g, 'İlk')
+    .replace(/\bkayitta\b/gi, 'kayıtta')
+    .replace(/\bkayit\b/gi, 'kayıt')
+    .replace(/\bkayitlar\b/gi, 'kayıtlar')
+    .replace(/\bkaydi\b/gi, 'kaydı')
+    .replace(/\bbugun\b/gi, 'bugün')
+    .replace(/\bbugunu\b/gi, 'bugünü')
+    .replace(/\bgore\b/gi, 'göre')
+    .replace(/\bgorev\b/gi, 'görev')
+    .replace(/\bbolge\b/gi, 'bölge')
+    .replace(/\bsaglik\b/gi, 'sağlık')
+    .replace(/\bdusuk\b/gi, 'düşük')
+    .replace(/\bagir\b/gi, 'ağır')
+    .replace(/\bkalkanini\b/gi, 'kalkanını')
+    .replace(/\bkovalamiyoruz\b/gi, 'kovalamıyoruz')
+    .replace(/\bnabiz\b/gi, 'nabız')
+    .replace(/\byuk\b/gi, 'yük')
+    .replace(/\bsure\b/gi, 'süre')
+    .replace(/\bsimdi\b/gi, 'şimdi')
+    .replace(/\bgelisim\b/gi, 'gelişim')
+    .replace(/\bgun\b/gi, 'gün')
+    .replace(/\bhafiza\b/gi, 'hafıza')
+    .replace(/\bkapali\b/gi, 'kapalı')
+    .replace(/\bkapisi\b/gi, 'kapısı')
+    .replace(/\bnetlesir\b/gi, 'netleşir')
+    .replace(/\bparca\b/gi, 'parça')
+    .replace(/\bodul\b/gi, 'ödül')
     .replace(/\s+/g, ' ')
     .trim()
 }

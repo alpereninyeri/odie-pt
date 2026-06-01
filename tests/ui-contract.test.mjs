@@ -25,7 +25,7 @@ test('route tab renders Komuta mission surface instead of legacy route screen', 
 test('route tab includes real progress infographics', () => {
   assert.match(main, /function buildProgressSnapshot/)
   assert.match(main, /function renderProgressCard/)
-  assert.match(main, /Eski -> Simdi|eski -> simdi/)
+  assert.match(main, /eski → şimdi/)
   assert.match(main, /function renderMapProgress/)
   assert.match(css, /\.progress-card/)
   assert.match(css, /\.era-compare/)

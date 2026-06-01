@@ -1,64 +1,64 @@
 const UI_LABELS = {
-  readiness: 'Hazir',
+  readiness: 'Hazır',
   armor: 'Can',
   fatigue: 'Yorgun',
   risk: 'Dikkat',
-  source: 'Kayit',
+  source: 'Kayıt',
   pulse: 'Son seans',
   confidence: 'Durum',
-  command: 'Bugun',
+  command: 'Bugün',
   class: 'Tip',
   focus: 'Odak',
   archetype: 'Tip',
   unlock: 'Yeni hareket',
-  mainMove: 'Ana is',
-  supportMove: 'Ek is',
+  mainMove: 'Ana iş',
+  supportMove: 'Ek iş',
 }
 
 const GOAL_TITLES = {
-  onboarding: 'Ilk kayit',
+  onboarding: 'İlk kayıt',
   recovery: 'Dinlenme',
   technical: 'Form',
-  'pr-hold': 'Rekor sonrasi',
-  balance: 'Eksigi kapat',
-  progress: 'Kucuk artis',
+  'pr-hold': 'Rekor sonrası',
+  balance: 'Eksiği kapat',
+  progress: 'Küçük artış',
 }
 
 const SIMPLE_COPY_REPLACEMENTS = [
-  [/\breadiness\b/gi, 'hazirlik'],
+  [/\breadiness\b/gi, 'hazırlık'],
   [/\bconfidence\b/gi, 'durum'],
   [/\bevidence\b/gi, 'not'],
   [/\bsignal\w*\b/gi, 'not'],
   [/\bsinyal\w*\b/gi, 'not'],
   [/\bkanit\w*/gi, 'not'],
   [/kan\u0131t\w*/gi, 'not'],
-  [/\bdefter\w*/gi, 'kayit'],
+  [/\bdefter\w*/gi, 'kayıt'],
   [/\bpanel\w*/gi, 'kart'],
   [/\bkarar motoru\b/gi, 'sistem'],
   [/\bmotoru\b/gi, 'sistem'],
   [/\brecete\b/gi, 'plan'],
   [/\bprotokol\b/gi, 'plan'],
   [/\btelemetri\b/gi, 'veri'],
-  [/\bledger\b/gi, 'kayit'],
+  [/\bledger\b/gi, 'kayıt'],
   [/\bmigration\b/gi, 'kurulum'],
-  [/\bsync\b/gi, 'esleme'],
+  [/\bsync\b/gi, 'eşleme'],
   [/\bendpoint\b/gi, 'adres'],
   [/\bkalkan\w*\s+onar/gi, 'can topla'],
   [/\bkalkan\w*/gi, 'can'],
   [/\bAkis\b/g, 'Can'],
   [/\bakis\b/g, 'can'],
   [/\barmor\b/gi, 'can'],
-  [/\bIsik\b/g, 'Hazir'],
-  [/\bisik\b/g, 'hazir'],
+  [/\bIsik\b/g, 'Hazır'],
+  [/\bisik\b/g, 'hazır'],
   [/\bsis\b/gi, 'yorgunluk'],
   [/\btemkin\w*/gi, 'dikkat'],
   [/\brisk\w*/gi, 'dikkat'],
   [/\bbaglam\b/gi, 'durum'],
   [/\bmodu\b/gi, 'hali'],
-  [/\bcanli veri\b/gi, 'guncel kayit'],
-  [/\bcanli kaynak\b/gi, 'kayit'],
-  [/\bcanli kayit\b/gi, 'guncel kayit'],
-  [/\bveri geldikce\b/gi, 'kayit geldikce'],
+  [/\bcanli veri\b/gi, 'güncel kayıt'],
+  [/\bcanli kaynak\b/gi, 'kayıt'],
+  [/\bcanli kayit\b/gi, 'güncel kayıt'],
+  [/\bveri geldikce\b/gi, 'kayıt geldikçe'],
 ]
 
 export function plainCopyText(value = '') {
@@ -79,8 +79,8 @@ export function goalTitle(goal = {}) {
 
 export function riskToneLabel({ fatigue = 0, armor = 100, readiness = null } = {}) {
   if (Number(fatigue) >= 70) return 'Dikkat'
-  if (Number(armor) < 60) return 'Can dusuk'
-  if (Number.isFinite(Number(readiness)) && Number(readiness) < 55) return 'Kontrollu'
+  if (Number(armor) < 60) return 'Can düşük'
+  if (Number.isFinite(Number(readiness)) && Number(readiness) < 55) return 'Kontrollü'
   return 'Stabil'
 }
 

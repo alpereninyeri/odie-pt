@@ -24,3 +24,24 @@ test('intake parser asks for clarification on vague text', () => {
   assert.equal(preview.kind, 'needs_clarification')
   assert.ok(preview.question)
 })
+
+test('intake parser handles natural Turkish shorthand examples from QA brief', () => {
+  const workout = parseIntakeText('d\u00fcn g\u00f6\u011f\u00fcs \u00e7al\u0131\u015ft\u0131m 4 set bench 60 kilo', { today: '2026-06-01' })
+  assert.equal(workout.kind, 'workout')
+  assert.equal(workout.record.date, '2026-05-31')
+  assert.equal(workout.record.sets, 4)
+  assert.equal(workout.record.volumeKg, 240)
+  assert.equal(workout.record.exercises[0].sets.length, 4)
+
+  const bodyEvent = parseIntakeText('omuz a\u011fr\u0131yor sa\u011f taraf', { today: '2026-06-01' })
+  assert.equal(bodyEvent.kind, 'body_event')
+  assert.equal(bodyEvent.record.region, 'shoulder')
+  assert.equal(bodyEvent.record.side, 'sa\u011f')
+
+  const bodyMetric = parseIntakeText('kilom 78', { today: '2026-06-01' })
+  assert.equal(bodyMetric.kind, 'body_metric')
+  assert.equal(bodyMetric.record.metrics.weightKg, 78)
+
+  const vague = parseIntakeText('bi \u015feyler yapt\u0131m', { today: '2026-06-01' })
+  assert.equal(vague.kind, 'needs_clarification')
+})

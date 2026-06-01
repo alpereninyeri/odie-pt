@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { parseIntakeText } from '../lib/odie-intake/parser.js'
+
 const viewports = [
   { width: 320, height: 568 },
   { width: 390, height: 844 },
@@ -25,12 +27,21 @@ const bannedVisible = [
   'cache',
   'fallback',
   'defter',
+  'kayit',
+  'simdi',
+  'gelisim',
+  'gorev',
+  'bolge',
+  'kapisi',
+  'gecmis',
+  'gunluk',
+  'hafiza',
 ]
 
 async function auditSurface(page) {
   const result = await page.evaluate((banned) => {
     const body = document.body
-    const text = body.innerText.toLowerCase()
+    const text = body.innerText.toLocaleLowerCase('tr-TR')
     const images = [...document.images].map(img => ({
       src: img.currentSrc || img.src,
       complete: img.complete,
@@ -49,11 +60,15 @@ async function auditSurface(page) {
         width: Math.round(el.getBoundingClientRect().width),
         height: Math.round(el.getBoundingClientRect().height),
       }))
+    const hasBanned = (word) => {
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return new RegExp(`(^|[^\\p{L}\\p{N}_])${escaped}([^\\p{L}\\p{N}_]|$)`, 'iu').test(text)
+    }
     return {
       title: document.title,
       badImages: images.filter(img => !img.complete || img.naturalWidth <= 0),
       overflow,
-      banned: banned.find(word => text.includes(word)) || null,
+      banned: banned.find(word => hasBanned(word)) || null,
       smallTargets,
     }
   }, bannedVisible)
@@ -91,7 +106,7 @@ for (const viewport of viewports) {
     await expect(page).toHaveTitle('OdiePt - Komuta')
     await openDetailAndClose(page, '.xp-track')
 
-    await page.locator('[data-tab="map"]').click()
+    await page.locator('.cozy-nav [data-tab="map"]').click()
     await expect(page).toHaveTitle('OdiePt - Harita')
     await expect(page.locator('.world-node')).toHaveCount(6)
     await expect(page.locator('.active-quest-node')).toHaveCount(1)
@@ -99,7 +114,7 @@ for (const viewport of viewports) {
     await openDetailAndClose(page, '.world-node')
     await auditSurface(page)
 
-    await page.locator('[data-tab="signal"]').click()
+    await page.locator('.cozy-nav [data-tab="signal"]').click()
     await expect(page).toHaveTitle('OdiePt - ODIE')
     await expect(page.locator('#ask-form')).toBeVisible()
     if (viewport.width <= 390) {
@@ -121,3 +136,61 @@ for (const viewport of viewports) {
     expect(errors, 'console/page errors').toEqual([])
   })
 }
+
+test('ODIE intake preview, confirm and reward flow works on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/ask', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, items: [] }),
+    })
+  })
+  await page.route('**/api/intake', async route => {
+    const body = route.request().postDataJSON()
+    if (body.mode === 'confirm') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          kind: body.preview.kind,
+          preview: body.preview,
+          result: { reward: { chips: ['+12 XP', 'Seviye 4', 'Seri 2'] } },
+        }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        preview: parseIntakeText(body.text, { today: '2026-06-01' }),
+      }),
+    })
+  })
+
+  await page.goto('/?audit=e2e')
+  await page.locator('.cozy-app').waitFor()
+  await page.locator('.cozy-nav [data-tab="signal"]').click()
+  await expect(page).toHaveTitle('OdiePt - ODIE')
+
+  await page.locator('#ask-textarea').fill('d\u00fcn g\u00f6\u011f\u00fcs \u00e7al\u0131\u015ft\u0131m 4 set bench 60 kilo')
+  await page.locator('#ask-form button[type="submit"]').click()
+  await expect(page.locator('.intake-preview')).toBeVisible()
+  await expect(page.locator('.intake-preview')).toContainText('Seans kaydı')
+  await expect(page.locator('[data-intake-confirm]')).toBeVisible()
+  await expect(page.locator('.odie-face img')).toHaveAttribute('src', /odie-confirm/)
+
+  await page.locator('[data-intake-confirm]').click()
+  await expect(page.locator('.reward-recap')).toBeVisible()
+  await expect(page).toHaveTitle('OdiePt - Komuta')
+  await expect(page.locator('.recap-chips')).toContainText('+12 XP')
+  await page.locator('[data-close-recap]').first().click()
+
+  await page.locator('.cozy-nav [data-tab="signal"]').click()
+  await expect(page.locator('.intake-result')).toContainText('Seans kaydı yazıldı')
+  await expect(page.locator('.intake-result')).toContainText('+12 XP')
+  await auditSurface(page)
+})
