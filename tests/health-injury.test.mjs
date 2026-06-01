@@ -94,6 +94,24 @@ test('manual body event persists as an active injury signal for body map', () =>
   assert.match(injury.odieInterpretation.command, /Bilek temkinde/)
 })
 
+test('body event recovery advances by calendar day without rewriting the row', () => {
+  const bodyEvent = normalizeBodyEvent({
+    kind: 'injury',
+    region: 'wrist',
+    severity: 3,
+    recoveryPercent: 70,
+    expectedClearAt: '2026-05-27',
+    createdAt: '2026-05-21T09:00:00.000Z',
+  }, { today: '2026-05-24' })
+  const injury = bodyEventToInjury(bodyEvent, { today: '2026-05-24' })
+
+  assert.equal(bodyEvent.recoveryPercent, 85)
+  assert.equal(bodyEvent.remainingPct, 15)
+  assert.equal(bodyEvent.etaDays, 3)
+  assert.equal(injury.recoveryPct, 85)
+  assert.equal(injury.remainingPct, 15)
+})
+
 test('body events feed body map priority and injury quest', () => {
   const state = {
     profile: {
@@ -122,6 +140,89 @@ test('body events feed body map priority and injury quest', () => {
   assert.equal(wrist.injury.remainingPct, 30)
   assert.equal(bodyMapState.priority.region.id, 'wrist')
   assert.equal(bodyMapState.dailyQuest.kind, 'injury')
+})
+
+test('body map uses timed body event instead of stale seed injury', () => {
+  const state = {
+    profile: {
+      fatigue: 22,
+      armor: 90,
+      classObj: { id: 'duvar_orucu' },
+      injuries: [
+        {
+          id: 'seed-wrist',
+          regionId: 'wrist',
+          label: 'Seed bilek',
+          recoveryPct: 70,
+          remainingPct: 30,
+          etaDays: 6,
+          active: true,
+        },
+      ],
+    },
+    bodyEvents: [
+      normalizeBodyEvent({
+        kind: 'injury',
+        region: 'wrist',
+        recoveryPercent: 70,
+        expectedClearAt: '2026-05-27',
+        createdAt: '2026-05-21T09:00:00.000Z',
+      }, { today: '2026-05-21' }),
+    ],
+    health: { readiness: { score: 74 } },
+    workouts: [],
+    dailyLogs: [],
+    muscleBalance: [],
+    skills: clone(seedProfile.skills),
+  }
+
+  const bodyMapState = buildBodyMapState({ state, today: '2026-05-24' })
+  const wrist = bodyMapState.regions.find(region => region.id === 'wrist')
+
+  assert.equal(wrist.injury.label, 'Bilek sakatligi')
+  assert.equal(wrist.recovery, 85)
+  assert.equal(wrist.injury.remainingPct, 15)
+  assert.equal(wrist.injury.etaDays, 3)
+})
+
+test('expired body event suppresses stale seed wrist warning', () => {
+  const state = {
+    profile: {
+      fatigue: 22,
+      armor: 90,
+      classObj: { id: 'duvar_orucu' },
+      injuries: [
+        {
+          id: 'seed-wrist',
+          regionId: 'wrist',
+          label: 'Seed bilek',
+          recoveryPct: 70,
+          remainingPct: 30,
+          etaDays: 6,
+          active: true,
+        },
+      ],
+    },
+    bodyEvents: [
+      normalizeBodyEvent({
+        kind: 'injury',
+        region: 'wrist',
+        recoveryPercent: 70,
+        expectedClearAt: '2026-05-27',
+        createdAt: '2026-05-21T09:00:00.000Z',
+      }, { today: '2026-05-21' }),
+    ],
+    health: { readiness: { score: 74 } },
+    workouts: [],
+    dailyLogs: [],
+    muscleBalance: [],
+    skills: clone(seedProfile.skills),
+  }
+
+  const bodyMapState = buildBodyMapState({ state, today: '2026-06-01' })
+  const wrist = bodyMapState.regions.find(region => region.id === 'wrist')
+
+  assert.equal(wrist.injury, undefined)
 })
 
 test('injured-region PR locks PR bonus', () => {

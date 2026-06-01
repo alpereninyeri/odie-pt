@@ -32,11 +32,48 @@ function addDays(dateStr, days = 0) {
   return getLocalDateString(base)
 }
 
+function subtractDays(dateStr, days = 0) {
+  const base = new Date(`${normalizeDateString(dateStr)}T00:00:00`)
+  base.setDate(base.getDate() - Math.max(0, Math.round(Number(days) || 0)))
+  return getLocalDateString(base)
+}
+
 function dayDiff(fromDate, toDate) {
   const from = new Date(`${normalizeDateString(fromDate)}T00:00:00`).getTime()
   const to = new Date(`${normalizeDateString(toDate)}T00:00:00`).getTime()
   if (!Number.isFinite(from) || !Number.isFinite(to)) return 0
   return Math.max(0, Math.ceil((to - from) / 86400000))
+}
+
+function resolveRecoveryStart(input = {}, expectedClearAt = '', today = getLocalDateString()) {
+  const explicit = normalizeDateString(
+    input.recoveryStartAt
+      || input.recovery_start_at
+      || input.startedAt
+      || input.started_at
+      || input.createdAt
+      || input.created_at
+      || input.loggedAt
+      || input.logged_at
+      || input.date
+      || input.day
+      || '',
+    '',
+  )
+  if (explicit) return explicit
+  const originalEta = Number(input.initialEtaDays ?? input.initial_eta_days ?? input.etaDays ?? input.eta_days ?? input.daysRemaining ?? input.days_remaining)
+  if (expectedClearAt && Number.isFinite(originalEta) && originalEta > 0) return subtractDays(expectedClearAt, originalEta)
+  return normalizeDateString(today)
+}
+
+function timedRecoveryPercent(baseRecovery = 0, recoveryStartAt = '', expectedClearAt = '', today = getLocalDateString()) {
+  if (!expectedClearAt) return clamp(baseRecovery)
+  const totalDays = dayDiff(recoveryStartAt, expectedClearAt)
+  const elapsedDays = dayDiff(recoveryStartAt, today)
+  if (totalDays <= 0) return clamp(baseRecovery)
+  const ratio = clamp(elapsedDays / totalDays, 0, 1)
+  const projected = baseRecovery + ((100 - baseRecovery) * ratio)
+  return clamp(Math.round(Math.max(baseRecovery, projected)))
 }
 
 export function regionLabel(regionId = '') {
@@ -125,8 +162,18 @@ export function interpretBodyEvent(input = {}) {
 export function normalizeBodyEvent(input = {}, { today = getLocalDateString() } = {}) {
   const region = normalizeRegionId(input.region || input.regionId || input.region_id || input.linkedRegion)
   const kind = normalizeText(input.kind || 'injury') || 'injury'
-  const recoveryPercent = clamp(
-    input.recoveryPercent ?? input.recovery_percent ?? input.recoveryPct ?? input.recovery_pct ?? input.recovery,
+  const baseRecoveryPercent = clamp(
+    input.baseRecoveryPercent
+      ?? input.base_recovery_percent
+      ?? input.initialRecoveryPercent
+      ?? input.initial_recovery_percent
+      ?? input.storedRecoveryPercent
+      ?? input.stored_recovery_percent
+      ?? input.recovery_percent
+      ?? input.recoveryPct
+      ?? input.recovery_pct
+      ?? input.recoveryPercent
+      ?? input.recovery,
     0,
     100,
   )
@@ -134,9 +181,12 @@ export function normalizeBodyEvent(input = {}, { today = getLocalDateString() } 
     input.expectedClearAt || input.expected_clear_at || input.clearAt || input.clear_at || '',
     '',
   ) || addDays(today, input.etaDays ?? input.eta_days ?? input.daysRemaining ?? input.days_remaining ?? 0)
+  const recoveryStartAt = resolveRecoveryStart(input, expectedClearAt, today)
+  const recoveryPercent = timedRecoveryPercent(baseRecoveryPercent, recoveryStartAt, expectedClearAt, today)
   const etaDays = dayDiff(today, expectedClearAt)
   const status = String(input.status || (etaDays > 0 ? 'active' : 'watch')).toLowerCase()
   const severity = clamp(input.severity ?? (100 - recoveryPercent) / 20, 1, 5)
+  const recoveredByTime = recoveryPercent >= 100 && etaDays <= 0
   const base = {
     id: input.id || null,
     kind,
@@ -144,10 +194,13 @@ export function normalizeBodyEvent(input = {}, { today = getLocalDateString() } 
     regionId: region,
     side: String(input.side || 'unknown').toLowerCase(),
     severity: Math.round(severity),
+    baseRecoveryPercent,
+    baseRecoveryPct: baseRecoveryPercent,
     recoveryPercent,
     recoveryPct: recoveryPercent,
     remainingPct: clamp(100 - recoveryPercent),
     expectedClearAt,
+    recoveryStartAt,
     etaDays,
     status,
     note: String(input.note || '').trim(),
@@ -160,7 +213,7 @@ export function normalizeBodyEvent(input = {}, { today = getLocalDateString() } 
     ...base,
     label: input.label || `${regionLabel(region)} ${kind === 'pain' ? 'agri sinyali' : 'sakatligi'}`,
     odieInterpretation: interpretation,
-    active: ACTIVE_STATUSES.has(status),
+    active: ACTIVE_STATUSES.has(status) && !recoveredByTime,
   }
 }
 
@@ -189,7 +242,7 @@ export function toSupabaseBodyEvent(event = {}) {
     region: normalized.region,
     side: normalized.side,
     severity: normalized.severity,
-    recovery_percent: normalized.recoveryPercent,
+    recovery_percent: normalized.baseRecoveryPercent ?? normalized.recoveryPercent,
     expected_clear_at: normalized.expectedClearAt,
     status: normalized.status,
     note: normalized.note,
@@ -231,10 +284,13 @@ export function bodyEventFromInjury(injury = {}) {
     region: injury.regionId || injury.region_id,
     severity: injury.severity || 3,
     recoveryPercent: injury.recoveryPct ?? injury.recovery_pct ?? injury.recoveryPercent,
+    expectedClearAt: injury.expectedClearAt ?? injury.expected_clear_at,
     etaDays: injury.etaDays ?? injury.eta_days,
     status: injury.active === false ? 'resolved' : 'active',
     note: injury.note || '',
     source: injury.source || 'seed',
     label: injury.label,
+    createdAt: injury.createdAt ?? injury.created_at,
+    updatedAt: injury.updatedAt ?? injury.updated_at,
   })
 }

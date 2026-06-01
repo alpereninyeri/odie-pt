@@ -7,7 +7,7 @@ import {
   normalizeText,
 } from './rules.js'
 import { buildSemanticProfile } from './semantic-profile.js'
-import { bodyEventToInjury, getActiveBodyEvents } from './body-events.js'
+import { bodyEventToInjury, getActiveBodyEvents, normalizeBodyEvent, normalizeRegionId } from './body-events.js'
 
 const DAY_MS = 86400000
 
@@ -257,14 +257,30 @@ function hasAnyText(text, patterns = []) {
   })
 }
 
-function normalizeInjury(injury = {}) {
+function normalizeInjury(injury = {}, today = getLocalDateString()) {
   const regionId = String(injury.regionId || injury.region_id || '').trim()
   if (!regionId || injury.active === false) return null
-  const remainingRaw = Number(injury.remainingPct ?? injury.remaining_pct ?? injury.remainingPercent ?? injury.remaining)
-  const recoveryRaw = Number(injury.recoveryPct ?? injury.recovery_pct ?? injury.recoveryPercent ?? injury.recovery)
+  const eventProjection = normalizeBodyEvent({
+    id: injury.id,
+    kind: injury.kind || 'injury',
+    region: regionId,
+    severity: injury.severity,
+    recoveryPercent: injury.recoveryPct ?? injury.recovery_pct ?? injury.recoveryPercent ?? injury.recovery,
+    expectedClearAt: injury.expectedClearAt ?? injury.expected_clear_at,
+    etaDays: injury.etaDays ?? injury.eta_days ?? injury.daysRemaining ?? injury.days_remaining,
+    status: injury.active === false ? 'resolved' : (injury.status || 'active'),
+    note: injury.note || '',
+    source: injury.source,
+    label: injury.label || injury.name,
+    createdAt: injury.createdAt ?? injury.created_at,
+    updatedAt: injury.updatedAt ?? injury.updated_at,
+  }, { today })
+  if (!eventProjection.active) return null
+  const remainingRaw = Number(eventProjection.remainingPct ?? injury.remainingPct ?? injury.remaining_pct ?? injury.remainingPercent ?? injury.remaining)
+  const recoveryRaw = Number(eventProjection.recoveryPct ?? injury.recoveryPct ?? injury.recovery_pct ?? injury.recoveryPercent ?? injury.recovery)
   const remainingPct = clamp(Number.isFinite(remainingRaw) ? remainingRaw : (Number.isFinite(recoveryRaw) ? 100 - recoveryRaw : 0))
   const recoveryPct = clamp(Number.isFinite(recoveryRaw) ? recoveryRaw : 100 - remainingPct)
-  const etaDays = Math.max(0, Math.round(Number(injury.etaDays ?? injury.eta_days ?? injury.daysRemaining ?? injury.days_remaining) || 0))
+  const etaDays = Math.max(0, Math.round(Number(eventProjection.etaDays ?? injury.etaDays ?? injury.eta_days ?? injury.daysRemaining ?? injury.days_remaining) || 0))
 
   return {
     id: injury.id || `${regionId}_injury`,
@@ -281,13 +297,21 @@ function normalizeInjury(injury = {}) {
 }
 
 function getActiveInjuries(state = {}, profile = {}, today = getLocalDateString()) {
-  return [
-    ...getActiveBodyEvents(state?.bodyEvents || [], today).map(event => bodyEventToInjury(event, { today })).filter(Boolean),
-    ...getActiveBodyEvents(profile?.bodyEvents || [], today).map(event => bodyEventToInjury(event, { today })).filter(Boolean),
+  const bodyEvents = [
+    ...(state?.bodyEvents || []),
+    ...(profile?.bodyEvents || []),
+  ]
+  const bodyEventRegions = new Set(bodyEvents.map(event => normalizeBodyEvent(event, { today }).regionId).filter(Boolean))
+  const profileInjuries = [
     ...(Array.isArray(profile?.injuries) ? profile.injuries : []),
     ...(Array.isArray(state?.profile?.injuries) ? state.profile.injuries : []),
+  ].filter(injury => !bodyEventRegions.has(normalizeRegionId(injury.regionId || injury.region_id)))
+
+  return [
+    ...getActiveBodyEvents(bodyEvents, today).map(event => bodyEventToInjury(event, { today })).filter(Boolean),
+    ...profileInjuries,
   ]
-    .map(injury => normalizeInjury(injury))
+    .map(injury => normalizeInjury(injury, today))
     .filter(Boolean)
     .filter((injury, index, list) => list.findIndex(item => item.id === injury.id || item.regionId === injury.regionId) === index)
 }
