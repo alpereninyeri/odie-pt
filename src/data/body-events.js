@@ -86,6 +86,7 @@ export function normalizeRegionId(value = '') {
   if (direct) return direct.id
   const alias = {
     bilek: 'wrist',
+    bilegi: 'wrist',
     wrist: 'wrist',
     omuz: 'shoulder',
     shoulder: 'shoulder',
@@ -93,6 +94,7 @@ export function normalizeRegionId(value = '') {
     knee: 'knees',
     knees: 'knees',
     ayak: 'ankles',
+    ayakbilegi: 'ankles',
     ankle: 'ankles',
     ankles: 'ankles',
     bel: 'lower-back',
@@ -233,6 +235,56 @@ export function normalizeBodyEventRow(row = {}) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   })
+}
+
+export function applyBodyEventAction(event = {}, patch = {}, { today = getLocalDateString() } = {}) {
+  const current = normalizeBodyEvent(event, { today })
+  const action = String(patch.action || patch.type || 'set_recovery').trim()
+  const amount = Number(patch.amount ?? patch.delta ?? 10)
+  const explicitRecovery = Number(patch.recoveryPercent ?? patch.recovery_percent ?? patch.value)
+  let recoveryPercent = current.recoveryPercent
+  let status = current.status || 'active'
+  let expectedClearAt = current.expectedClearAt || addDays(today, current.etaDays || 0)
+
+  if (action === 'increase_recovery') {
+    recoveryPercent = clamp(current.recoveryPercent + (Number.isFinite(amount) ? amount : 10), 0, 100)
+  } else if (action === 'resolve') {
+    recoveryPercent = 100
+    status = 'resolved'
+    expectedClearAt = today
+  } else if (action === 'archive') {
+    status = 'archived'
+  } else {
+    recoveryPercent = clamp(Number.isFinite(explicitRecovery) ? explicitRecovery : current.recoveryPercent, 0, 100)
+  }
+
+  if (action !== 'archive' && recoveryPercent >= 100) {
+    recoveryPercent = 100
+    status = 'resolved'
+    expectedClearAt = today
+  }
+
+  if (action !== 'archive' && recoveryPercent < 100 && !ACTIVE_STATUSES.has(status)) {
+    status = 'active'
+  }
+
+  if (patch.etaDays != null || patch.eta_days != null) {
+    expectedClearAt = addDays(today, patch.etaDays ?? patch.eta_days)
+  }
+  if (patch.expectedClearAt || patch.expected_clear_at) {
+    expectedClearAt = normalizeDateString(patch.expectedClearAt || patch.expected_clear_at, expectedClearAt)
+  }
+
+  return normalizeBodyEvent({
+    ...current,
+    recoveryPercent,
+    baseRecoveryPercent: recoveryPercent,
+    expectedClearAt,
+    recoveryStartAt: today,
+    status,
+    note: patch.note != null ? String(patch.note || '').trim() : current.note,
+    updatedAt: new Date().toISOString(),
+  }, { today })
 }
 
 export function toSupabaseBodyEvent(event = {}) {

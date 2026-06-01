@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { normalizeAppleHealthPayload } from '../src/data/apple-health.js'
-import { bodyEventToInjury, normalizeBodyEvent } from '../src/data/body-events.js'
+import { applyBodyEventAction, bodyEventToInjury, normalizeBodyEvent } from '../src/data/body-events.js'
 import { buildBodyMapState, sessionTouchesBodyRegion } from '../src/data/body-map-engine.js'
 import { normalizeHealthImportPayload } from '../src/data/health-telemetry.js'
 import { computeSessionXp, normalizeSession } from '../src/data/rules.js'
@@ -223,6 +223,35 @@ test('expired body event suppresses stale seed wrist warning', () => {
   const wrist = bodyMapState.regions.find(region => region.id === 'wrist')
 
   assert.equal(wrist.injury, undefined)
+})
+
+test('body event manual recovery actions set resolve and archive state', () => {
+  const active = normalizeBodyEvent({
+    id: 'body-1',
+    kind: 'injury',
+    region: 'wrist',
+    recoveryPercent: 70,
+    expectedClearAt: '2026-06-05',
+    status: 'active',
+  }, { today: '2026-06-01' })
+
+  const increased = applyBodyEventAction(active, { action: 'increase_recovery', amount: 10 }, { today: '2026-06-01' })
+  assert.equal(increased.recoveryPercent, 80)
+  assert.equal(increased.status, 'active')
+  assert.equal(increased.active, true)
+
+  const set = applyBodyEventAction(increased, { action: 'set_recovery', recoveryPercent: 92 }, { today: '2026-06-01' })
+  assert.equal(set.recoveryPercent, 92)
+  assert.equal(set.active, true)
+
+  const resolved = applyBodyEventAction(set, { action: 'resolve' }, { today: '2026-06-01' })
+  assert.equal(resolved.recoveryPercent, 100)
+  assert.equal(resolved.status, 'resolved')
+  assert.equal(resolved.active, false)
+
+  const archived = applyBodyEventAction(active, { action: 'archive' }, { today: '2026-06-01' })
+  assert.equal(archived.status, 'archived')
+  assert.equal(archived.active, false)
 })
 
 test('injured-region PR locks PR bonus', () => {

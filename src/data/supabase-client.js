@@ -322,18 +322,28 @@ export async function fetchBodyMetricsHistory(limit = 30) {
 }
 
 export async function fetchBodyEvents(limit = 30) {
-  if (isMockMode) return []
-  if (import.meta.env.DEV) return []
+  if (isMockMode) return { events: [], schemaReady: true, error: '' }
+  if (import.meta.env.DEV) return { events: [], schemaReady: true, error: '' }
   try {
     const response = await fetch(`/api/body-events?limit=${encodeURIComponent(limit)}`, {
       headers: appHeaders(),
     })
-    if (!response.ok) return []
     const payload = await response.json()
-    return (payload.events || []).map(row => normalizeBodyEvent(row))
+    if (!response.ok || payload.ok === false) {
+      return {
+        events: [],
+        schemaReady: payload.schemaReady !== false ? false : payload.schemaReady,
+        error: payload.error || `body_events_http_${response.status}`,
+      }
+    }
+    return {
+      events: (payload.events || []).map(row => normalizeBodyEvent(row)),
+      schemaReady: payload.schemaReady !== false,
+      error: '',
+    }
   } catch (error) {
     console.warn('[supabase] fetchBodyEvents:', error?.message || error)
-    return []
+    return { events: [], schemaReady: false, error: String(error?.message || error || 'body_events_fetch_failed') }
   }
 }
 
@@ -428,7 +438,10 @@ export async function insertMemoryFeedback(feedback) {
 
 export async function insertBodyEvent(event) {
   if (isMockMode) return null
-  if (import.meta.env.DEV) return null
+  if (import.meta.env.DEV) {
+    const normalized = normalizeBodyEvent(event)
+    return { ...normalized, id: normalized.id || `local-body-${Date.now()}` }
+  }
   try {
     const response = await fetch('/api/body-events', {
       method: 'POST',
@@ -442,6 +455,24 @@ export async function insertBodyEvent(event) {
   } catch (error) {
     console.warn('[supabase] insertBodyEvent:', error?.message || error)
     return null
+  }
+}
+
+export async function updateBodyEvent(id, patch = {}) {
+  if (isMockMode) return null
+  if (import.meta.env.DEV) return null
+  try {
+    const response = await fetch('/api/body-events', {
+      method: 'PATCH',
+      headers: appHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ ...patch, id }),
+    })
+    const payload = await response.json()
+    if (!response.ok || !payload.ok) throw new Error(payload.error || `body_events_http_${response.status}`)
+    return payload.event ? normalizeBodyEvent(payload.event) : null
+  } catch (error) {
+    console.warn('[supabase] updateBodyEvent:', error?.message || error)
+    throw error
   }
 }
 

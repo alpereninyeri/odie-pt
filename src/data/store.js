@@ -21,6 +21,7 @@ import {
   subscribeToCoachNotes,
   subscribeToProfile,
   subscribeToWorkouts,
+  updateBodyEvent as patchBodyEvent,
   updateProfile,
   upsertDailyLog,
 } from './supabase-client.js'
@@ -34,7 +35,7 @@ import {
 import { recalculate } from './engine.js'
 import { checkBadges } from './badge-engine.js'
 import { sessionClosesBodyMapPriority, sessionClosesGameQuest, sessionTouchesBodyRegion } from './body-map-engine.js'
-import { bodyEventFromInjury, getActiveBodyEvents, normalizeBodyEvent } from './body-events.js'
+import { applyBodyEventAction, bodyEventFromInjury, getActiveBodyEvents, normalizeBodyEvent } from './body-events.js'
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from './class-engine.js'
 import { evaluateBountyCompletions } from './bounty-board.js'
 import { computeGeographyTier, computeVolumeTier } from './epic-volume-engine.js'
@@ -58,6 +59,7 @@ const XP_PER_LEVEL = 2000
 
 let _state = null
 let _unsubSupabase = []
+let _bodyEventMutationSeq = 0
 const _subscribers = new Map()
 
 function _clone(value) {
@@ -168,7 +170,7 @@ function _normalizeProfileSeed() {
     fatigue: 0,
     consecutiveHeavy: 0,
     injuryUntil: null,
-    injuries: _clone(seedProfile.injuries || []),
+    injuries: isMockMode ? _clone(seedProfile.injuries || []) : [],
     survivalStatus: 'healthy',
     survivalWarnings: [],
     recoveryBase: null,
@@ -378,7 +380,7 @@ function _normalizeProfileRow(row = {}) {
     fatigue: Number(row.fatigue_current ?? row.fatigue) || 0,
     consecutiveHeavy: Number(row.consecutive_heavy ?? row.consecutiveHeavy) || 0,
     injuryUntil: row.injury_until ?? row.injuryUntil ?? null,
-    injuries: Array.isArray(row.injuries) ? _clone(row.injuries) : _clone(seedProfile.injuries || []),
+    injuries: isMockMode && Array.isArray(row.injuries) ? _clone(row.injuries) : [],
     survivalStatus: row.survival_status ?? row.survivalStatus ?? 'healthy',
     survivalWarnings: Array.isArray(row.survival_warnings) ? row.survival_warnings : [],
     recoveryBase: null,
@@ -415,7 +417,9 @@ function _buildSeed() {
     coachNote: _buildSeedCoachNote(),
     coachQuestHints: [],
     coachSkillProgress: [],
-    bodyEvents: (seedProfile.injuries || []).map(injury => bodyEventFromInjury(injury)),
+    bodyEvents: isMockMode ? (seedProfile.injuries || []).map(injury => bodyEventFromInjury(injury)) : [],
+    bodyEventsSchemaReady: isMockMode ? true : null,
+    bodyEventsError: '',
     healthStatus: null,
     healthDailySummary: null,
     bodyMetrics: _normalizeBodyMetrics(seedProfile.bodyMetrics || {}),
@@ -605,6 +609,19 @@ function _refreshDerivedState(state) {
   state.profile.currentFocus = _deriveCurrentFocus(state)
 }
 
+function _applyBodyEventsFetch(result = {}, { mutationSeq = _bodyEventMutationSeq } = {}) {
+  if (mutationSeq < _bodyEventMutationSeq) return
+  const payload = Array.isArray(result)
+    ? { events: result, schemaReady: true, error: '' }
+    : result
+  const schemaReady = payload?.schemaReady !== false
+  _state.bodyEventsSchemaReady = schemaReady
+  _state.bodyEventsError = schemaReady ? '' : (payload?.error || 'body_events_missing')
+  _state.bodyEvents = schemaReady
+    ? (payload?.events || []).map(row => normalizeBodyEvent(row))
+    : []
+}
+
 function _applyCoachNote(row) {
   if (!_state || !row) return
   _state.coachNote = {
@@ -691,7 +708,10 @@ function _hydrateState(state) {
     coachNote: _clone(state?.coachNote || seed.coachNote),
     coachQuestHints: _clone(state?.coachQuestHints || []),
     coachSkillProgress: _clone(state?.coachSkillProgress || []),
-    bodyEvents: (state?.bodyEvents || seed.bodyEvents || []).map(item => normalizeBodyEvent(item)),
+    bodyEvents: (isMockMode ? (state?.bodyEvents || seed.bodyEvents || []) : [])
+      .map(item => normalizeBodyEvent(item)),
+    bodyEventsSchemaReady: state?.bodyEventsSchemaReady ?? seed.bodyEventsSchemaReady ?? null,
+    bodyEventsError: state?.bodyEventsError || seed.bodyEventsError || '',
     healthStatus: _clone(state?.healthStatus || null),
     healthDailySummary: _clone(state?.healthDailySummary || state?.healthStatus?.dailySummary || null),
     bodyMetrics: _clone(state?.bodyMetrics || seed.bodyMetrics || {}),
@@ -702,6 +722,7 @@ function _hydrateState(state) {
     workoutFacts: (state?.workoutFacts || []).map(item => normalizeWorkoutFactRow(item)),
   }
 
+  if (!isMockMode && merged.profile) merged.profile.injuries = []
   merged.bodyMetrics = _normalizeBodyMetrics(merged.bodyMetrics)
 
   const xp = _normalizeXpModel(merged.profile.xp, merged.profile.level)
@@ -851,7 +872,9 @@ function _mergeToProfile(state) {
     healthDailySummary: state.healthDailySummary || null,
     recovery: profile.recovery || null,
     bodyEvents: _clone(state.bodyEvents || []),
-    injuries: _clone(profile.injuries || seedProfile.injuries || []),
+    injuries: _clone(isMockMode ? (profile.injuries || seedProfile.injuries || []) : (profile.injuries || [])),
+    bodyEventsSchemaReady: state.bodyEventsSchemaReady,
+    bodyEventsError: state.bodyEventsError || '',
     calibration: normalizeStatCalibration(profile.calibration || {}),
   }
 }
@@ -935,7 +958,7 @@ export const store = {
 
       _unsubSupabase.push(subscribeToBodyEvents(async () => {
         try {
-          _state.bodyEvents = await fetchBodyEvents(40)
+          _applyBodyEventsFetch(await fetchBodyEvents(40))
         } catch {}
         _refreshDerivedState(_state)
         _saveToLS()
@@ -1173,7 +1196,10 @@ export const store = {
   },
 
   async addBodyEvent(event) {
-    const normalized = normalizeBodyEvent(event)
+    _bodyEventMutationSeq += 1
+    const baseEvent = normalizeBodyEvent(event)
+    const normalized = baseEvent.id ? baseEvent : { ...baseEvent, id: `pending-body-${Date.now()}` }
+    const before = _clone(_state.bodyEvents || [])
     _state.bodyEvents = [
       normalized,
       ...(_state.bodyEvents || []).filter(item => String(item.id || '') !== String(normalized.id || '') || !normalized.id),
@@ -1186,21 +1212,79 @@ export const store = {
     if (!isMockMode) {
       const inserted = await insertBodyEvent(normalized)
       if (inserted?.id) {
+        _state.bodyEventsSchemaReady = true
+        _state.bodyEventsError = ''
         _state.bodyEvents = [
           inserted,
-          ...(_state.bodyEvents || []).filter(item => String(item.id || '') !== String(inserted.id)),
+          ...(_state.bodyEvents || []).filter(item => (
+            String(item.id || '') !== String(inserted.id)
+            && String(item.id || '') !== String(normalized.id)
+          )),
         ]
         _refreshDerivedState(_state)
         _saveToLS()
         _notify('*')
+      } else {
+        _state.bodyEvents = before
+        _state.bodyEventsSchemaReady = false
+        _state.bodyEventsError = 'body_events_missing'
+        _refreshDerivedState(_state)
+        _saveToLS()
+        _notify('*')
+        throw new Error('body_events_missing')
       }
     }
 
     return normalized
   },
 
+  async updateBodyEvent(id, patch = {}) {
+    _bodyEventMutationSeq += 1
+    const targetId = String(id || '').trim()
+    if (!targetId) throw new Error('body_event_id_required')
+    const before = _clone(_state.bodyEvents || [])
+    const existing = (_state.bodyEvents || []).find(item => String(item.id || '') === targetId)
+    if (!existing) throw new Error('body_event_not_found')
+
+    const optimistic = applyBodyEventAction(existing, patch)
+    _state.bodyEvents = [
+      optimistic,
+      ...(_state.bodyEvents || []).filter(item => String(item.id || '') !== targetId),
+    ]
+    _refreshDerivedState(_state)
+    _saveToLS()
+    _notify('*')
+
+    if (!isMockMode) {
+      try {
+        const updated = await patchBodyEvent(targetId, patch)
+        if (updated?.id) {
+          _state.bodyEventsSchemaReady = true
+          _state.bodyEventsError = ''
+          _state.bodyEvents = [
+            updated,
+            ...(_state.bodyEvents || []).filter(item => String(item.id || '') !== String(updated.id)),
+          ]
+          _refreshDerivedState(_state)
+          _saveToLS()
+          _notify('*')
+        }
+      } catch (error) {
+        _state.bodyEvents = before
+        _state.bodyEventsError = error?.message || 'body_event_update_failed'
+        _refreshDerivedState(_state)
+        _saveToLS()
+        _notify('*')
+        throw error
+      }
+    }
+
+    return optimistic
+  },
+
   async syncFromSupabase() {
-    const [profileRow, workoutRows, dailyLogRows, coachNoteRow, bodyEventRows, healthStatus] = await Promise.all([
+    const bodyEventMutationSeq = _bodyEventMutationSeq
+    const [profileRow, workoutRows, dailyLogRows, coachNoteRow, bodyEventResult, healthStatus] = await Promise.all([
       fetchProfile(),
       fetchWorkouts(200),
       fetchDailyLogs(45),
@@ -1212,7 +1296,7 @@ export const store = {
     if (profileRow) _applySupabaseProfile(profileRow)
     if (Array.isArray(workoutRows) && workoutRows.length) _state.workouts = workoutRows.map(row => _normalizeWorkoutRow(row))
     if (Array.isArray(dailyLogRows) && dailyLogRows.length) _state.dailyLogs = dailyLogRows.map(row => _normalizeDailyLog(row))
-    if (Array.isArray(bodyEventRows) && bodyEventRows.length) _state.bodyEvents = bodyEventRows.map(row => normalizeBodyEvent(row))
+    _applyBodyEventsFetch(bodyEventResult, { mutationSeq: bodyEventMutationSeq })
     if (healthStatus) {
       _state.healthStatus = healthStatus
       _state.healthDailySummary = healthStatus.dailySummary || null

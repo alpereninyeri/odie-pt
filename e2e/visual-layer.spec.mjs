@@ -196,3 +196,32 @@ test('ODIE intake preview, confirm and reward flow works on mobile', async ({ pa
   await expect(page.locator('.intake-result')).toContainText('+12 XP')
   await auditSurface(page)
 })
+
+test('manual injury manager creates updates and resolves a body event', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/?audit=e2e')
+  await page.locator('.cozy-app').waitFor()
+  await page.locator('.cozy-nav [data-tab="map"]').click()
+
+  await expect(page.locator('.body-status-manager')).toBeVisible()
+  await page.locator('#body-event-form select[name="region"]').selectOption('wrist')
+  await page.locator('#body-event-form input[name="severity"]').fill('3')
+  await page.locator('#body-event-form input[name="recoveryPercent"]').fill('70')
+  await page.locator('#body-event-form input[name="etaDays"]').fill('3')
+  await page.locator('#body-event-form input[name="note"]').fill('bilek sert push istemiyor')
+  await page.locator('#body-event-form button[type="submit"]').click()
+
+  await expect(page.locator('.injury-card')).toBeVisible()
+  await expect(page.locator('.injury-main strong')).toContainText('%70')
+
+  await page.locator('[data-body-event-action="increase_recovery"]').click()
+  await expect(page.locator('.injury-main strong')).toContainText('%80')
+
+  await page.locator('[data-body-recovery-input]').fill('95')
+  await page.locator('[data-body-event-action="set_recovery"]').click()
+  await expect(page.locator('.injury-main strong')).toContainText('%95')
+
+  await page.locator('[data-body-event-action="resolve"]').click()
+  await expect(page.locator('.body-empty')).toBeVisible()
+  await auditSurface(page)
+})

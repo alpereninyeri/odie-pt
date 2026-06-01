@@ -25,6 +25,25 @@ test('intake parser asks for clarification on vague text', () => {
   assert.ok(preview.question)
 })
 
+test('intake parser previews body event recovery updates', () => {
+  const set = parseIntakeText('bilek %80 oldu', { today: '2026-06-01' })
+  assert.equal(set.kind, 'body_event_update')
+  assert.equal(set.record.region, 'wrist')
+  assert.equal(set.record.action, 'set_recovery')
+  assert.equal(set.record.recoveryPercent, 80)
+
+  const resolved = parseIntakeText('bileği kapat iyileşti', { today: '2026-06-01' })
+  assert.equal(resolved.kind, 'body_event_update')
+  assert.equal(resolved.record.region, 'wrist')
+  assert.equal(resolved.record.action, 'resolve')
+})
+
+test('intake parser asks region for vague body event update', () => {
+  const preview = parseIntakeText('iyileşti kapat', { today: '2026-06-01' })
+  assert.equal(preview.kind, 'needs_clarification')
+  assert.match(preview.question, /Hangi bölge/)
+})
+
 test('intake parser handles natural Turkish shorthand examples from QA brief', () => {
   const workout = parseIntakeText('d\u00fcn g\u00f6\u011f\u00fcs \u00e7al\u0131\u015ft\u0131m 4 set bench 60 kilo', { today: '2026-06-01' })
   assert.equal(workout.kind, 'workout')

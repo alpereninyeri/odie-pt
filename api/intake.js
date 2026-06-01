@@ -1,7 +1,7 @@
 import { appAuthConfigured, authorizeAppRequest } from './app-auth.js'
 import { parseIntakeText } from '../lib/odie-intake/parser.js'
 import { classArmorRegen, classFatigueDecay, classXpMult, computeClass } from '../src/data/class-engine.js'
-import { normalizeBodyEventRow, toSupabaseBodyEvent } from '../src/data/body-events.js'
+import { applyBodyEventAction, normalizeBodyEventRow, normalizeRegionId, toSupabaseBodyEvent } from '../src/data/body-events.js'
 import { buildBodyMapState, sessionClosesBodyMapPriority, sessionClosesGameQuest, sessionTouchesBodyRegion } from '../src/data/body-map-engine.js'
 import { buildBodyMetricsHistoryEntry } from '../src/data/memory-engine.js'
 import {
@@ -51,6 +51,16 @@ async function sbPatch(table, filter, body) {
   if (!response.ok) throw new Error(await response.text())
 }
 
+async function sbPatchReturning(table, filter, body) {
+  const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+    method: 'PATCH',
+    headers: { ...sbHeaders(), Prefer: 'return=representation' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) throw new Error(await response.text())
+  return response.status === 204 ? [] : response.json()
+}
+
 async function sbUpsert(table, body, onConflict) {
   const query = onConflict ? `?on_conflict=${encodeURIComponent(onConflict)}` : ''
   const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/${table}${query}`, {
@@ -70,6 +80,31 @@ async function sbGetSafe(path, fallback = []) {
     return await sbGet(path)
   } catch {
     return fallback
+  }
+}
+
+function isMissingRelation(error) {
+  const message = String(error?.message || error || '')
+  return /relation .* does not exist/i.test(message) || /table .* does not exist/i.test(message) || /schema cache/i.test(message) || /PGRST204/i.test(message)
+}
+
+function activeBodyEventFilter(profileId, region) {
+  return `profile_id=eq.${profileId}&region=eq.${encodeURIComponent(region)}&status=in.(active,watch,rehab)&order=created_at.desc&limit=1`
+}
+
+function toBodyEventPatchPayload(event = {}) {
+  return {
+    kind: event.kind,
+    region: event.region,
+    side: event.side,
+    severity: event.severity,
+    recovery_percent: event.baseRecoveryPercent ?? event.recoveryPercent,
+    expected_clear_at: event.expectedClearAt || null,
+    status: event.status,
+    note: event.note || '',
+    source: event.source || 'web_odie',
+    odie_interpretation: event.odieInterpretation || null,
+    updated_at: new Date().toISOString(),
   }
 }
 
@@ -300,8 +335,41 @@ async function confirmDailyLog(profile, preview) {
 
 async function confirmBodyEvent(profile, preview) {
   const event = toSupabaseBodyEvent(preview.record || {})
+  const activeRows = await sbGet(`body_events?select=*&${activeBodyEventFilter(profile.id, event.region)}`)
+  if (activeRows?.[0]) {
+    const error = new Error('Bu bölgede aktif sakatlık kaydı var. Karttan güncelle.')
+    error.status = 409
+    error.code = 'active_body_event_exists'
+    throw error
+  }
   const rows = await sbPost('body_events', [{ ...event, profile_id: profile.id }])
   return { event: rows?.[0] || event }
+}
+
+async function confirmBodyEventUpdate(profile, preview) {
+  const record = preview.record || {}
+  const region = normalizeRegionId(record.region || record.regionId || '')
+  if (!region) {
+    const error = new Error('Hangi bölgeyi güncelleyeceğim net değil.')
+    error.status = 400
+    error.code = 'body_event_region_required'
+    throw error
+  }
+  const activeRows = await sbGet(`body_events?select=*&${activeBodyEventFilter(profile.id, region)}`)
+  const existing = activeRows?.[0]
+  if (!existing) {
+    const error = new Error('Bu bölgede aktif sakatlık kaydı yok.')
+    error.status = 404
+    error.code = 'body_event_not_found'
+    throw error
+  }
+  const patched = applyBodyEventAction(normalizeBodyEventRow(existing), record)
+  const rows = await sbPatchReturning(
+    'body_events',
+    `profile_id=eq.${profile.id}&id=eq.${encodeURIComponent(existing.id)}`,
+    toBodyEventPatchPayload(patched),
+  )
+  return { event: rows?.[0] || patched }
 }
 
 async function confirmBodyMetric(profile, preview) {
@@ -352,11 +420,13 @@ export default async function handler(req, res) {
     if (preview.kind === 'workout') result = await confirmWorkout(profile, preview)
     if (preview.kind === 'daily_log') result = await confirmDailyLog(profile, preview)
     if (preview.kind === 'body_event') result = await confirmBodyEvent(profile, preview)
+    if (preview.kind === 'body_event_update') result = await confirmBodyEventUpdate(profile, preview)
     if (preview.kind === 'body_metric') result = await confirmBodyMetric(profile, preview)
 
     return res.status(200).json({ ok: true, kind: preview.kind, preview, result })
   } catch (error) {
     console.error('[intake] failed:', error?.message || error)
-    return res.status(500).json({ ok: false, error: error?.message || 'ODIE intake failed' })
+    if (isMissingRelation(error)) return res.status(503).json({ ok: false, error: 'body_events_missing', schemaReady: false })
+    return res.status(error?.status || 500).json({ ok: false, error: error?.message || 'ODIE intake failed', code: error?.code || undefined })
   }
 }

@@ -1,7 +1,7 @@
 import './styles/cozy-reforge.css'
 import { store } from './data/store.js'
 import { buildBodyMapState } from './data/body-map-engine.js'
-import { BODY_REGION_OPTIONS } from './data/body-events.js'
+import { BODY_REGION_OPTIONS, getActiveBodyEvents, normalizeBodyEvent, regionLabel } from './data/body-events.js'
 import { buildMissionLoop, buildRewardRecap, snapshotMissionState } from './data/mission-loop.js'
 import { buildNextSessionRecommendation } from './data/next-session-engine.js'
 import { buildSemanticProfile } from './data/semantic-profile.js'
@@ -575,63 +575,6 @@ function rewardIcon(chip = {}) {
   return ASSETS.reward.gift
 }
 
-function renderRouteScreen(model) {
-  const next = model.nextSession
-  const goal = next.primaryGoal || {}
-  const quest = model.bodyMap.dailyQuest || {}
-  const greeting = timeGreeting()
-
-  const questTitle = cleanText(quest.title || goal.title || 'Bugünün görevi')
-  const questBody = cleanText(quest.desc || goal.subtitle || next.coachCommand || 'Tek temiz adım bugünü kazandırır.')
-
-  return `
-    <section class="screen route-screen">
-      <div class="route-grid">
-        <div class="col-a">
-          <div class="village-hero">
-            ${responsiveAsset('hero-bg', ASSETS.backgrounds.command)}
-            <img class="hero-runner" src="${ASSETS.avatarAthlete}" alt="" aria-hidden="true">
-            <div class="hero-overlay">
-              <span class="kick">${escapeHtml(greeting)} · ${escapeHtml(next.date || getLocalDateString())}</span>
-              <h1>Bugünün rotası</h1>
-              <p>${escapeHtml(shortCommand(next.coachCommand || goal.subtitle || 'Tek temiz hamle bugünü kazandırır.'))}</p>
-            </div>
-          </div>
-
-          ${renderCharCard(model)}
-          ${renderStatBelt(model.stats)}
-
-          <div class="quest-card">
-            <div class="quest-top">
-              <span class="quest-scroll" aria-hidden="true"><img src="${ASSETS.routeMarker}" alt=""></span>
-              <div>
-                <div class="q-kick">Sıradaki hamle</div>
-                <h3>${escapeHtml(questTitle)}</h3>
-              </div>
-            </div>
-            <p class="q-body">${escapeHtml(questBody)}</p>
-            <div class="quest-row">
-              <span class="card-tag">${escapeHtml(toneLabel(next.tone))}</span>
-              <button class="btn-primary" type="button" data-tab="signal">ODIE’ye söyle</button>
-            </div>
-          </div>
-
-          ${renderBountyBoard(model.bountyBoard, model.profile.quests)}
-          ${renderEnergyStrip(model.system.readiness)}
-        </div>
-
-        <div class="col-b">
-          ${renderHeatmapCard(model.workouts)}
-          ${renderVolumeCard(model.workouts)}
-          ${renderAchievementShelf(model.profile.achievements)}
-          ${renderLastCard(model.latestWorkout)}
-          ${renderWarnings(next)}
-        </div>
-      </div>
-    </section>
-  `
-}
-
 function renderStatBelt(stats = []) {
   const byKey = {}
   stats.forEach(s => { byKey[s.key] = s })
@@ -883,25 +826,16 @@ function renderMapScreen(model) {
         <p>${escapeHtml(cleanText(model.worldMap?.subtitle || quest.desc || priority.movement?.todayStep || 'Bugünün baskı noktası burada.'))}</p>
       </div>
 
+      ${logNotice ? `<div class="notice"><span>${escapeHtml(logNotice)}</span><button type="button" data-clear-notice>Tamam</button></div>` : ''}
+
       ${renderWorldMapBoard(model.worldMap)}
       <div class="split-3 info-row">
         ${renderXpBreakdown(model.bodyMap.xpPreview)}
         ${renderBodyPressure(model.bodyMap)}
         ${renderUnlockLadder(model.bodyMap)}
-        ${renderRecoveryGate(model.system.readiness, model.healthSummary, model.truthMap)}
-        ${renderPrGate(model.profile.performance, model.nextSession)}
       </div>
 
-      ${renderStatCard(model.stats)}
-      ${renderPrShowcase(model.profile.performance)}
-
-      <section class="zone-grid">
-        ${model.zones.map(renderZoneTile).join('')}
-      </section>
-
-      ${renderSkillTrees(model.profile.skills)}
-      ${renderMuscleMap(model.profile.muscles)}
-      ${renderDebuffs(model.profile.debuffs)}
+      ${renderBodyStatusManager(model)}
 
       <div class="split-2">
         <article class="card">
@@ -1068,6 +1002,90 @@ function renderUnlockLadder(bodyMap = {}) {
         }).join('') || '<p class="soft">İlk kilit yeni seanslarla görünür.</p>'}
       </div>
     </article>
+  `
+}
+
+function renderBodyStatusManager(model = {}) {
+  const state = model.state || {}
+  const schemaReady = state.bodyEventsSchemaReady !== false
+  const activeEvents = getActiveBodyEvents(state.bodyEvents || [])
+  const tag = schemaReady ? (activeEvents.length ? `${activeEvents.length} aktif` : 'temiz') : 'DB gerekli'
+
+  return `
+    <article class="card body-status-manager ${schemaReady ? '' : 'is-schema-error'}">
+      <div class="card-head">
+        <span class="card-title with-icon"><img src="${ASSETS.zone.body || ASSETS.info.bodyPressure}" alt="" aria-hidden="true">Beden Durumu</span>
+        <span class="card-tag">${escapeHtml(tag)}</span>
+      </div>
+      ${schemaReady ? `
+        <div class="injury-stack">
+          ${activeEvents.length ? activeEvents.map(renderInjuryCard).join('') : `
+            <div class="body-empty">
+              <b>Aktif sakatlık yok</b>
+              <span>Yeni sinyal gelirse buradan veya ODIE’den ekle.</span>
+            </div>
+          `}
+        </div>
+        ${renderBodyEventForm()}
+      ` : `
+        <div class="body-schema-warning">
+          <b>body_events tablosu hazır değil</b>
+          <p>Canlı sakatlık verisi DB’den gelmeden seed/local kayıt truth sayılmayacak.</p>
+        </div>
+      `}
+    </article>
+  `
+}
+
+function renderInjuryCard(event = {}) {
+  const normalized = normalizeBodyEvent(event)
+  const recovery = Math.round(clamp(normalized.recoveryPercent, 0, 100))
+  const command = normalized.odieInterpretation?.command || `${regionLabel(normalized.region)} temkinde.`
+  return `
+    <section class="injury-card" data-body-event-card="${escapeAttr(normalized.id || '')}">
+      <div class="injury-main">
+        <span class="injury-icon asset-icon" aria-hidden="true"><img src="${ASSETS.info.bodyPressure}" alt=""></span>
+        <div>
+          <b>${escapeHtml(regionLabel(normalized.region))}</b>
+          <p>${escapeHtml(shortCommand(command, 92))}</p>
+        </div>
+        <strong>%${recovery}</strong>
+      </div>
+      <div class="injury-meter"><i style="--v:${recovery}%"></i></div>
+      <div class="injury-meta">
+        <span>ETA ${escapeHtml(normalized.etaDays > 0 ? `${normalized.etaDays} gün` : 'bugün')}</span>
+        <span>Risk ${escapeHtml(String(normalized.severity || 3))}/5</span>
+      </div>
+      <div class="injury-actions">
+        <button type="button" class="btn-ghost" data-body-event-action="increase_recovery" data-body-event-id="${escapeAttr(normalized.id || '')}" data-amount="10">+10%</button>
+        <label class="mini-set">
+          <span>Yüzde</span>
+          <input type="number" min="0" max="100" value="${escapeAttr(recovery)}" data-body-recovery-input>
+        </label>
+        <button type="button" class="btn-ghost" data-body-event-action="set_recovery" data-body-event-id="${escapeAttr(normalized.id || '')}">Yüzde ayarla</button>
+        <button type="button" class="btn-primary" data-body-event-action="resolve" data-body-event-id="${escapeAttr(normalized.id || '')}">İyileşti</button>
+        <button type="button" class="btn-ghost" data-body-event-action="archive" data-body-event-id="${escapeAttr(normalized.id || '')}">Arşivle</button>
+      </div>
+    </section>
+  `
+}
+
+function renderBodyEventForm() {
+  return `
+    <form class="body-event-compact" id="body-event-form">
+      <div class="field-grid body-event-grid">
+        <label class="field"><span>Bölge</span>
+          <select name="region">
+            ${BODY_REGION_OPTIONS.map(item => `<option value="${escapeAttr(item.id)}">${escapeHtml(item.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field"><span>Şiddet</span><input name="severity" type="number" min="1" max="5" value="3"></label>
+        <label class="field"><span>Toparlanma %</span><input name="recoveryPercent" type="number" min="0" max="100" value="70"></label>
+        <label class="field"><span>Tahmini gün</span><input name="etaDays" type="number" min="0" max="60" value="3"></label>
+      </div>
+      <label class="field"><span>Not</span><input name="note" type="text" maxlength="120" placeholder="örn: bilek sert push istemiyor"></label>
+      <button class="btn-ghost full" type="submit" ${bodySubmitBusy ? 'disabled' : ''}>${bodySubmitBusy ? 'Ekleniyor' : 'Sakatlık ekle'}</button>
+    </form>
   `
 }
 
@@ -1535,6 +1553,7 @@ function intakeKindLabel(kind = '') {
     workout: 'Seans kaydı',
     daily_log: 'Can kaydı',
     body_event: 'Vücut notu',
+    body_event_update: 'Vücut güncelleme',
     body_metric: 'Ölçüm',
     question: 'Soru',
     needs_clarification: 'Netleştirme',
@@ -1957,6 +1976,9 @@ async function handleClick(event) {
   const moodButton = event.target.closest('[data-mood]')
   if (moodButton) { await saveDailySignal('mood', moodButton); return }
 
+  const bodyEventButton = event.target.closest('[data-body-event-action]')
+  if (bodyEventButton) { await updateBodyGate(bodyEventButton); return }
+
   const feedbackButton = event.target.closest('[data-feedback]')
   if (feedbackButton) { await saveFeedback(feedbackButton.dataset.feedback); return }
 
@@ -2084,10 +2106,15 @@ async function saveBodyGate(form) {
   if (bodySubmitBusy) return
   const data = new FormData(form)
   const region = String(data.get('region') || 'core')
+  if (store.getState()?.bodyEventsSchemaReady === false) {
+    logNotice = 'body_events tablosu hazır değil; canlı sakatlık kaydı yazılamaz.'
+    scheduleRender()
+    return
+  }
   const activeSameRegion = (store.getState()?.bodyEvents || [])
-    .some(event => String(event.region || event.regionId || '') === region && ['active', 'watch', 'rehab'].includes(String(event.status || 'active')))
+    .some(event => String(event.region || event.regionId || '') === region && normalizeBodyEvent(event).active)
   if (activeSameRegion) {
-    logNotice = 'Bu bölge zaten haritada aktif. Önce eskisini kapat.'
+    logNotice = 'Bu bölge zaten aktif. Karttan yüzdeyi güncelle veya kapat.'
     scheduleRender()
     return
   }
@@ -2098,19 +2125,47 @@ async function saveBodyGate(form) {
       region,
       severity: Number(data.get('severity')) || 3,
       recoveryPercent: Number(data.get('recoveryPercent')) || 70,
-      etaDays: 3,
+      etaDays: Number(data.get('etaDays')) || 3,
       status: 'active',
       note: String(data.get('note') || '').trim(),
       source: 'manual',
     })
-    logNotice = 'Vücut notu haritaya eklendi.'
+    logNotice = 'Sakatlık Beden Durumu’na eklendi.'
     setActiveTab('map')
   } catch (error) {
     console.error('[odiept] body gate failed:', error)
-    logNotice = `Vücut notu takıldı: ${error?.message || error}`
+    logNotice = `Sakatlık kaydı takıldı: ${error?.message || error}`
+  } finally {
+    bodySubmitBusy = false
+    scheduleRender()
   }
-  bodySubmitBusy = false
-  scheduleRender()
+}
+
+async function updateBodyGate(button) {
+  const id = String(button.dataset.bodyEventId || '').trim()
+  const action = String(button.dataset.bodyEventAction || '').trim()
+  if (!id || !action) return
+  const card = button.closest('[data-body-event-card]')
+  const inputValue = Number(card?.querySelector('[data-body-recovery-input]')?.value)
+  const patch = { action }
+  if (action === 'increase_recovery') patch.amount = Number(button.dataset.amount) || 10
+  if (action === 'set_recovery') patch.recoveryPercent = Math.max(0, Math.min(100, Number.isFinite(inputValue) ? inputValue : 0))
+
+  try {
+    button.disabled = true
+    await store.updateBodyEvent(id, patch)
+    logNotice = action === 'resolve'
+      ? 'Sakatlık iyileşti olarak kapandı.'
+      : action === 'archive'
+        ? 'Sakatlık arşivlendi.'
+        : 'Toparlanma yüzdesi güncellendi.'
+  } catch (error) {
+    console.error('[odiept] body update failed:', error)
+    logNotice = `Güncelleme takıldı: ${error?.message || error}`
+  } finally {
+    button.disabled = false
+    scheduleRender()
+  }
 }
 
 async function saveFeedback(type) {
@@ -2237,7 +2292,7 @@ async function confirmOdieIntake() {
       }
     }
     await store.syncFromSupabase()
-    if (data.kind === 'body_event') setActiveTab('map')
+    if (data.kind === 'body_event' || data.kind === 'body_event_update') setActiveTab('map')
     else if (data.kind === 'workout') setActiveTab('route')
   } catch (error) {
     askState.error = error?.message || 'Kayıt takıldı'
