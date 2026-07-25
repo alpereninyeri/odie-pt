@@ -1,5 +1,5 @@
-# The production product is Hevy-only. These legacy experiments remain in the
-# repository for parser/history tests, but they are not uploaded as functions.
+# The production product is Hevy-only. Legacy experiments stay available in the
+# local checkout, but they are not uploaded or bundled into the live dashboard.
 api/ask.js
 api/coach.js
 api/intake.js
@@ -20,6 +20,9 @@ scripts/backfill-memory.mjs
 lib/hevy/ingest-events.js
 lib/hevy/persist.js
 lib/odie-intake/
+src/data/store.js
+src/data/supabase-client.js
+src/data/telegram-webapp.js
 
 # Release payload: keep runtime source, drop QA/docs and old visual experiments.
 docs/

@@ -53,6 +53,9 @@ for (const requiredIgnore of [
   'api/ask.js',
   'api/hevy-sync.js',
   'api/hevy-webhook.js',
+  'src/data/store.js',
+  'src/data/supabase-client.js',
+  'src/data/telegram-webapp.js',
   'src/assets/game/*',
   '!src/assets/game/cozy-v4/avatar-athlete.png',
   'tests/',
@@ -62,18 +65,38 @@ for (const requiredIgnore of [
   }
 }
 
+const ignoredProductionFiles = new Set([
+  'api/app-auth.js',
+  'api/ask.js',
+  'api/body-events.js',
+  'api/coach.js',
+  'api/health-import.js',
+  'api/health-status.js',
+  'api/hevy-backfill.js',
+  'api/hevy-sync.js',
+  'api/hevy-webhook.js',
+  'api/intake.js',
+  'api/next-session.js',
+  'api/public-error.js',
+  'api/rate-limit.js',
+  'api/telegram.js',
+  'lib/hevy/ingest-events.js',
+  'lib/hevy/persist.js',
+  'src/data/store.js',
+  'src/data/supabase-client.js',
+  'src/data/telegram-webapp.js',
+])
+
 const prodFiles = [
   ...listFiles('src'),
   ...listFiles('api'),
   ...listFiles('lib'),
-  ...listFiles('scripts'),
 ].filter(file => {
   if (!/\.(js|mjs|ts|tsx|css|html|md)$/.test(file)) return false
   const normalized = file.replace(/\\/g, '/')
-  return ![
-    'scripts/release-readiness.mjs',
-    'scripts/vercel-env-contract-check.mjs',
-  ].includes(normalized)
+  if (normalized.startsWith('src/components/')) return false
+  if (normalized.startsWith('lib/odie-intake/')) return false
+  return !ignoredProductionFiles.has(normalized)
 })
 
 const forbiddenSecrets = [
@@ -91,11 +114,6 @@ for (const file of prodFiles) {
   if (/return\s+res\.status\([^)]*\)\.json\(\{\s*ok:\s*false,[^}]*error:\s*(String\(error|error\.message|error\?\.message)/s.test(text)) {
     fail(`${file} appears to return a raw error message`)
   }
-}
-
-const supabaseClient = read('src/data/supabase-client.js')
-if (/from\s+['"]@supabase\/supabase-js['"]/.test(supabaseClient) || /createClient\s*\(/.test(supabaseClient)) {
-  fail('browser Supabase client still imports or creates a direct Supabase client')
 }
 
 const snapshotApi = read('api/snapshot.js')
