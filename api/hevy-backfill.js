@@ -3,7 +3,6 @@
 // Hevy /v1/workouts list endpoint pageSize=10 tavanli oldugu icin biz de sayfa sayfa cekiyoruz.
 //
 // Auth: Authorization: Bearer <HEVY_INTERNAL_SECRET>  (header)
-// veya  ?secret=<HEVY_INTERNAL_SECRET>                (query)
 //
 // Parametreler (query string):
 //   ?pages=N         (varsayilan 5) — bu cagrida en fazla kac sayfa cekelim
@@ -18,19 +17,23 @@ import { listWorkouts } from '../lib/hevy/client.js'
 import { recordIngestEvent } from '../lib/hevy/ingest-events.js'
 import { normalizeHevyWorkout } from '../lib/hevy/normalize.js'
 import { ingestNormalizedExternalWorkout, resolveProfile, updateSyncState } from '../lib/hevy/persist.js'
+import { publicErrorCode, sendPublicError } from './public-error.js'
 
 function authorize(req) {
   const expected = process.env.HEVY_INTERNAL_SECRET
   if (!expected) return false
   const header = String(req.headers?.authorization || '')
   if (header.toLowerCase().startsWith('bearer ') && header.slice(7) === expected) return true
-  if (req.query?.secret === expected) return true
+  if (process.env.NODE_ENV !== 'production' && req.query?.secret === expected) return true
   return false
 }
 
 export default async function handler(req, res) {
   if (!authorize(req)) {
     return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+  if (!process.env.VITE_SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)) {
+    return res.status(500).json({ ok: false, error: 'Supabase service env eksik' })
   }
 
   const startPage = Math.max(1, Number(req.query?.startPage) || 1)
@@ -76,7 +79,7 @@ export default async function handler(req, res) {
             payload: { id: workout?.id, page },
           })
           const normalized = normalizeHevyWorkout(workout)
-          const result = await ingestNormalizedExternalWorkout(normalized, { onUpdate, generateCoach: false })
+          const result = await ingestNormalizedExternalWorkout(normalized, { onUpdate })
           if (result.status === 'inserted') summary.inserted += 1
           else if (result.status === 'updated') summary.updated += 1
           else summary.skipped += 1
@@ -89,7 +92,7 @@ export default async function handler(req, res) {
             payload: { workoutId: result.workoutId || null, page },
           })
         } catch (error) {
-          summary.errors.push({ id: workout?.id, message: String(error?.message || error) })
+          summary.errors.push({ id: workout?.id, message: publicErrorCode(error, 'hevy_backfill_item_failed') })
           await recordIngestEvent({
             profileId: profile?.id,
             externalId: workout?.id,
@@ -125,6 +128,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, summary })
   } catch (error) {
     console.error('[hevy-backfill] failed:', error?.message || error)
-    return res.status(500).json({ ok: false, error: String(error?.message || error), summary })
+    return sendPublicError(res, error, { fallback: 'hevy_backfill_failed', extra: { summary } })
   }
 }

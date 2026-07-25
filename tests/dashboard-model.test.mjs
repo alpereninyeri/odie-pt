@@ -1,0 +1,110 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+
+import { createDashboardModel, dashboardInternals } from '../src/data/dashboard-model.js'
+
+const today = '2026-07-25'
+
+function workout(overrides = {}) {
+  return {
+    id: overrides.id || Math.random().toString(36),
+    date: '2026-07-24',
+    type: 'Push',
+    primaryCategory: 'strength',
+    durationMin: 60,
+    volumeKg: 3000,
+    sets: 12,
+    exercises: [
+      { name: 'Bench Press', sets: [{ reps: 8, weightKg: 50 }, { reps: 8, weightKg: 50 }] },
+    ],
+    ...overrides,
+  }
+}
+
+test('dashboard model calculates current and previous 28 day momentum', () => {
+  const model = createDashboardModel({
+    profile: { stats: { str: 74 }, xp: { current: 500, max: 1000 } },
+    workouts: [
+      workout({ id: 'new-1', date: '2026-07-24', volumeKg: 4000 }),
+      workout({ id: 'new-2', date: '2026-07-18', volumeKg: 4000 }),
+      workout({ id: 'old-1', date: '2026-06-20', volumeKg: 2000 }),
+    ],
+  }, { today })
+
+  assert.equal(model.current28.sessions, 2)
+  assert.equal(model.current28.volumeKg, 8000)
+  assert.equal(model.previous28.sessions, 1)
+  assert.equal(model.momentum.volume, 300)
+  assert.equal(model.xp.percent, 50)
+})
+
+test('dashboard model finds neglected muscle regions from Hevy exercise history', () => {
+  const model = createDashboardModel({
+    profile: { stats: {} },
+    workouts: [
+      workout({ id: 'push-1' }),
+      workout({ id: 'push-2', date: '2026-07-20' }),
+    ],
+  }, { today })
+
+  assert.ok(model.regions.length >= 12)
+  assert.equal(model.gaps.length, 4)
+  assert.ok(model.gaps.some(region => region.id === 'hamstring' || region.id === 'core' || region.id === 'lat'))
+  assert.equal(model.quest.region.id, model.gaps[0].id)
+  assert.ok(model.quest.action.length > 0)
+})
+
+test('dashboard always ranks four weakest regions even without a hard neglect signal', () => {
+  const model = createDashboardModel({
+    profile: { stats: {} },
+    workouts: [
+      workout({ id: 'push', type: 'Push' }),
+      workout({
+        id: 'pull',
+        type: 'Pull',
+        date: '2026-07-23',
+        exercises: [{ name: 'Pull Up', sets: [{ reps: 8 }, { reps: 7 }] }],
+      }),
+      workout({
+        id: 'legs',
+        type: 'Bacak',
+        date: '2026-07-22',
+        exercises: [{ name: 'Squat', sets: [{ reps: 8, weightKg: 80 }] }],
+      }),
+      workout({
+        id: 'core',
+        type: 'Core',
+        date: '2026-07-21',
+        exercises: [{ name: 'Hanging Leg Raise', sets: [{ reps: 10 }] }],
+      }),
+    ],
+  }, { today })
+
+  assert.equal(model.gaps.length, 4)
+  assert.deepEqual(
+    model.gaps.map(region => region.load),
+    [...model.gaps.map(region => region.load)].sort((left, right) => left - right),
+  )
+})
+
+test('rank display stays rank-first while preserving an internal score', () => {
+  assert.equal(dashboardInternals.rankFromScore(95), 'S')
+  assert.equal(dashboardInternals.rankFromScore(83), 'A')
+  assert.equal(dashboardInternals.rankFromScore(70), 'B')
+  assert.equal(dashboardInternals.rankFromScore(20), 'E')
+
+  const model = createDashboardModel({
+    profile: { stats: { str: 83, agi: 70 } },
+    workouts: [],
+  }, { today })
+  assert.deepEqual(model.stats.map(stat => [stat.key, stat.rank]), [['str', 'A'], ['agi', 'B']])
+})
+
+test('heatmap always returns a stable 28-day window', () => {
+  const cells = dashboardInternals.heatmap([
+    workout({ id: 'today', date: today, sets: 20 }),
+  ], today)
+  assert.equal(cells.length, 28)
+  assert.equal(cells.at(-1).date, today)
+  assert.equal(cells.at(-1).level, 4)
+})

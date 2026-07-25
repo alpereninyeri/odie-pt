@@ -1,0 +1,12 @@
+# The production product is Hevy-only. These legacy experiments remain in the
+# repository for parser/history tests, but they are not uploaded as functions.
+api/ask.js
+api/coach.js
+api/intake.js
+api/telegram.js
+api/body-events.js
+api/health-import.js
+api/health-status.js
+api/next-session.js
+scripts/setup-webhook.js
+scripts/backfill-memory.mjs

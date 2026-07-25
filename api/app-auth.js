@@ -14,13 +14,12 @@ function bearerToken(req = {}) {
 
 export function providedAppToken(req = {}) {
   return bearerToken(req) ||
-    String(req.headers?.['x-odie-token'] || req.headers?.['X-Odie-Token'] || '') ||
-    String(req.query?.token || req.query?.secret || '')
+    String(req.headers?.['x-odie-token'] || req.headers?.['X-Odie-Token'] || '')
 }
 
 export function authorizeAppRequest(req = {}) {
   const expected = configuredAppToken()
-  if (!expected) return { ok: true, configured: false }
+  if (!expected) return { ok: false, configured: false }
   return {
     ok: providedAppToken(req) === expected,
     configured: true,
@@ -30,6 +29,9 @@ export function authorizeAppRequest(req = {}) {
 export function requireAppAccess(req, res) {
   const auth = authorizeAppRequest(req)
   if (auth.ok) return true
-  res.status(401).json({ ok: false, error: 'unauthorized' })
+  res.status(401).json({
+    ok: false,
+    error: auth.configured ? 'unauthorized' : 'app token is required',
+  })
   return false
 }

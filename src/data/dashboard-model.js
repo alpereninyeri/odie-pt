@@ -1,0 +1,316 @@
+import { buildBodyMapState } from './body-map-engine.js'
+import { getLocalDateString, normalizeDateString } from './rules.js'
+
+const DAY_MS = 86_400_000
+const STAT_LABELS = {
+  str: ['KUV', 'Kuvvet'],
+  agi: ['ÇEV', 'Çeviklik'],
+  end: ['DAY', 'Dayanıklılık'],
+  dex: ['BEC', 'Beceri'],
+  con: ['GÖV', 'Gövde'],
+  sta: ['STAM', 'Kondisyon'],
+}
+
+const REGION_ACTIONS = {
+  chest: 'Incline press veya kontrollü şınav',
+  shoulder: 'Arka omuz + kontrollü press',
+  triceps: 'Close grip press veya dip',
+  biceps: 'Chin-up veya curl',
+  forearm: 'Farmer carry veya dead hang',
+  wrist: 'Hafif bilek hazırlığı',
+  lat: 'Pull-up veya pulldown',
+  upper_back: 'Row + face pull',
+  core: 'Hollow hold + hanging raise',
+  glute: 'Hip thrust veya split squat',
+  quads: 'Squat veya lunge',
+  hamstring: 'RDL veya leg curl',
+  calf: 'Calf raise',
+  knee: 'Kontrollü step-up',
+  ankle: 'Ayak bileği mobilitesi',
+  lower_back: 'Back extension veya kontrollü hinge',
+}
+
+function number(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function clamp(value, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, number(value)))
+}
+
+function dayStamp(value) {
+  const normalized = normalizeDateString(value)
+  if (!normalized) return null
+  const date = new Date(`${normalized}T12:00:00Z`)
+  return Number.isNaN(date.getTime()) ? null : date.getTime()
+}
+
+function daysBetween(left, right) {
+  const leftStamp = dayStamp(left)
+  const rightStamp = dayStamp(right)
+  if (leftStamp == null || rightStamp == null) return 99
+  return Math.max(0, Math.floor((rightStamp - leftStamp) / DAY_MS))
+}
+
+function sum(list, selector) {
+  return list.reduce((total, item) => total + number(selector(item)), 0)
+}
+
+function uniqueDays(workouts) {
+  return new Set(workouts.map(workout => normalizeDateString(workout.date)).filter(Boolean)).size
+}
+
+function inWindow(workouts, today, from, to = 0) {
+  return workouts.filter(workout => {
+    const age = daysBetween(workout.date, today)
+    return age >= to && age < from
+  })
+}
+
+function summarize(workouts) {
+  return {
+    sessions: workouts.length,
+    activeDays: uniqueDays(workouts),
+    sets: Math.round(sum(workouts, workout => workout.sets)),
+    volumeKg: Math.round(sum(workouts, workout => workout.volumeKg)),
+    minutes: Math.round(sum(workouts, workout => workout.durationMin)),
+    prs: workouts.filter(workout => workout.hasPr).length,
+  }
+}
+
+function delta(current, previous) {
+  if (!previous) return current ? 100 : 0
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+function mondayOf(date) {
+  const copy = new Date(date)
+  const day = copy.getUTCDay() || 7
+  copy.setUTCDate(copy.getUTCDate() - day + 1)
+  copy.setUTCHours(12, 0, 0, 0)
+  return copy
+}
+
+function weeklySeries(workouts, today, count = 8) {
+  const todayDate = new Date(`${today}T12:00:00Z`)
+  const thisMonday = mondayOf(todayDate)
+  const weeks = []
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const start = new Date(thisMonday.getTime() - (index * 7 * DAY_MS))
+    const end = new Date(start.getTime() + (7 * DAY_MS))
+    const rows = workouts.filter(workout => {
+      const stamp = dayStamp(workout.date)
+      return stamp != null && stamp >= start.getTime() && stamp < end.getTime()
+    })
+    weeks.push({
+      key: start.toISOString().slice(0, 10),
+      label: start.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', timeZone: 'UTC' }),
+      ...summarize(rows),
+    })
+  }
+  const max = Math.max(...weeks.map(week => week.volumeKg || week.minutes || week.sessions), 1)
+  return weeks.map(week => ({
+    ...week,
+    chartValue: week.volumeKg || week.minutes || week.sessions,
+    height: Math.max(5, Math.round(((week.volumeKg || week.minutes || week.sessions) / max) * 100)),
+  }))
+}
+
+function heatmap(workouts, today, count = 28) {
+  const byDay = new Map()
+  for (const workout of workouts) {
+    const day = normalizeDateString(workout.date)
+    if (!day) continue
+    byDay.set(day, (byDay.get(day) || 0) + Math.max(1, number(workout.sets) || Math.round(number(workout.durationMin) / 20)))
+  }
+  const todayStamp = dayStamp(today)
+  const values = []
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const date = new Date(todayStamp - (index * DAY_MS)).toISOString().slice(0, 10)
+    values.push({ date, value: byDay.get(date) || 0 })
+  }
+  const max = Math.max(...values.map(item => item.value), 1)
+  return values.map(item => ({
+    ...item,
+    level: item.value === 0 ? 0 : Math.max(1, Math.ceil((item.value / max) * 4)),
+  }))
+}
+
+function statRows(profile = {}) {
+  const input = profile.stats || {}
+  const rows = Array.isArray(input)
+    ? input.map(stat => [String(stat.key || stat.label || '').toLowerCase(), stat.scaleScore ?? stat.val ?? stat.rawVal])
+    : Object.entries(input)
+  return rows
+    .map(([key, value]) => {
+      const normalizedKey = String(key).toLowerCase()
+      const labels = STAT_LABELS[normalizedKey]
+      if (!labels) return null
+      const score = clamp(value)
+      return {
+        key: normalizedKey,
+        short: labels[0],
+        name: labels[1],
+        score,
+        rank: rankFromScore(score),
+      }
+    })
+    .filter(Boolean)
+}
+
+function rankFromScore(value) {
+  const score = number(value)
+  if (score >= 92) return 'S'
+  if (score >= 82) return 'A'
+  if (score >= 68) return 'B'
+  if (score >= 52) return 'C'
+  if (score >= 34) return 'D'
+  return 'E'
+}
+
+function categoryRows(workouts) {
+  const groups = new Map()
+  for (const workout of workouts) {
+    const key = workout.primaryCategory || workout.type || 'Diğer'
+    const item = groups.get(key) || { key, label: categoryLabel(key), sessions: 0, minutes: 0 }
+    item.sessions += 1
+    item.minutes += number(workout.durationMin)
+    groups.set(key, item)
+  }
+  const rows = [...groups.values()].sort((left, right) => right.sessions - left.sessions)
+  const total = Math.max(1, sum(rows, row => row.sessions))
+  return rows.map(row => ({ ...row, share: Math.round((row.sessions / total) * 100) }))
+}
+
+function categoryLabel(value = '') {
+  const key = String(value).toLowerCase()
+  if (/strength|push|pull|gym|bacak|shoulder/.test(key)) return 'Kuvvet'
+  if (/movement|parkour|akro/.test(key)) return 'Hareket'
+  if (/endurance|koş|kos|yür|yur|bisiklet/.test(key)) return 'Kondisyon'
+  if (/recovery|stretch|mobil/.test(key)) return 'Toparlanma'
+  return String(value || 'Diğer')
+}
+
+function sessionRows(workouts) {
+  return workouts.slice(0, 40).map(workout => {
+    const exercises = (workout.exercises || []).filter(exercise => exercise?.name)
+    const topExercises = exercises.slice(0, 4).map(exercise => {
+      const sets = Array.isArray(exercise.sets) ? exercise.sets.length : 0
+      return `${exercise.name}${sets ? ` ×${sets}` : ''}`
+    })
+    return {
+      ...workout,
+      typeLabel: categoryLabel(workout.type || workout.primaryCategory),
+      topExercises,
+      dateLabel: new Date(`${normalizeDateString(workout.date)}T12:00:00Z`).toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }),
+    }
+  })
+}
+
+export function createDashboardModel(sourceState = {}, { today = getLocalDateString() } = {}) {
+  const profile = sourceState.profile || {}
+  const workouts = [...(sourceState.workouts || [])]
+    .filter(workout => normalizeDateString(workout.date))
+    .sort((left, right) => String(right.startedAt || right.date).localeCompare(String(left.startedAt || left.date)))
+  const current28Rows = inWindow(workouts, today, 28)
+  const previous28Rows = inWindow(workouts, today, 56, 28)
+  const current7Rows = inWindow(workouts, today, 7)
+  const current28 = summarize(current28Rows)
+  const previous28 = summarize(previous28Rows)
+  const bodyMap = buildBodyMapState({
+    state: { profile, workouts, dailyLogs: [], bodyEvents: [] },
+    profile,
+    today,
+  })
+  const regions = (bodyMap.regions || []).map(region => ({
+    ...region,
+    load: Math.round(clamp(region.load)),
+    recovery: Math.round(clamp(region.recovery)),
+    risk: Math.round(clamp(region.risk)),
+    action: REGION_ACTIONS[region.id] || 'Kontrollü temel çalışma',
+  }))
+  const muscleRegions = regions.filter(region => region.group === 'muscle')
+  const weakestFirst = [...muscleRegions]
+    .sort((left, right) => left.load - right.load || right.daysSince - left.daysSince)
+  const neglected = weakestFirst
+    .filter(region => region.trend === 'ihmal' || region.load < 38)
+  const gaps = [
+    ...neglected,
+    ...weakestFirst.filter(region => !neglected.some(item => item.id === region.id)),
+  ].slice(0, 4)
+  const covered = [...muscleRegions].sort((left, right) => right.load - left.load).slice(0, 3)
+  const latestWorkout = workouts[0] || null
+  const latestAge = latestWorkout ? daysBetween(latestWorkout.date, today) : 99
+  const stats = statRows(profile)
+  const weakest = gaps[0] || null
+  const xp = profile.xp || { current: 0, max: 2000 }
+
+  return {
+    today,
+    profile,
+    workouts,
+    latestWorkout,
+    latestAge,
+    mode: sourceState.mode || 'demo',
+    status: sourceState.status || 'ready',
+    error: sourceState.error || '',
+    lastSyncedAt: sourceState.lastSyncedAt || null,
+    syncSummary: sourceState.syncSummary || null,
+    recent7: summarize(current7Rows),
+    current28,
+    previous28,
+    momentum: {
+      sessions: delta(current28.sessions, previous28.sessions),
+      volume: delta(current28.volumeKg, previous28.volumeKg),
+      sets: delta(current28.sets, previous28.sets),
+      minutes: delta(current28.minutes, previous28.minutes),
+    },
+    weekly: weeklySeries(workouts, today),
+    heatmap: heatmap(workouts, today),
+    categories: categoryRows(current28Rows),
+    stats,
+    regions,
+    gaps,
+    covered,
+    sessions: sessionRows(workouts),
+    xp: {
+      current: number(xp.current),
+      max: Math.max(1, number(xp.max) || 2000),
+      percent: clamp((number(xp.current) / Math.max(1, number(xp.max) || 2000)) * 100),
+    },
+    streak: profile.streak || { current: 0, max: 0 },
+    statusLine:
+      latestAge <= 3 ? 'Ritim aktif'
+        : latestAge <= 7 ? 'Ritim soğuyor'
+          : latestAge <= 20 ? 'Geri dönüş zamanı'
+            : 'Uzun ara',
+    quest: weakest ? {
+      region: weakest,
+      eyebrow: 'ANA GÖREV',
+      title: `${weakest.label} açığını kapat`,
+      action: weakest.action,
+      reward: `+${Math.max(20, Math.round((100 - weakest.load) * 0.8))} XP`,
+    } : {
+      region: null,
+      eyebrow: 'ANA GÖREV',
+      title: 'Dengeyi koru',
+      action: 'Normal programına devam et',
+      reward: '+20 XP',
+    },
+  }
+}
+
+export const dashboardInternals = {
+  categoryLabel,
+  daysBetween,
+  heatmap,
+  rankFromScore,
+  summarize,
+  weeklySeries,
+}

@@ -4,7 +4,6 @@
 // tetikten cagrilir.
 //
 // Auth: Authorization: Bearer <HEVY_INTERNAL_SECRET>  (header)
-// veya  ?secret=<HEVY_INTERNAL_SECRET>                (query)
 //
 // Vercel Cron icin de `CRON_SECRET` veya `HEVY_INTERNAL_SECRET` bearer header
 // olarak gelmeli. `x-vercel-cron` tek basina auth sayilmaz.
@@ -19,22 +18,27 @@ import {
   resolveProfile,
   updateSyncState,
 } from '../lib/hevy/persist.js'
+import { authorizeAppRequest } from './app-auth.js'
+import { publicErrorCode, sendPublicError } from './public-error.js'
 
 const SOURCE = 'hevy'
 const DEFAULT_LOOKBACK_DAYS = 14
 
 function authorize(req) {
   const expected = process.env.HEVY_INTERNAL_SECRET || process.env.CRON_SECRET
-  if (!expected) return false
   const header = String(req.headers?.authorization || '')
-  if (header.toLowerCase().startsWith('bearer ') && header.slice(7) === expected) return true
-  if (req.query?.secret === expected) return true
+  if (expected && header.toLowerCase().startsWith('bearer ') && header.slice(7) === expected) return true
+  if (expected && process.env.NODE_ENV !== 'production' && req.query?.secret === expected) return true
+  if (authorizeAppRequest(req).ok) return true
   return false
 }
 
 export default async function handler(req, res) {
   if (!authorize(req)) {
     return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+  if (!process.env.VITE_SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)) {
+    return res.status(500).json({ ok: false, error: 'Supabase service env eksik' })
   }
 
   try {
@@ -118,7 +122,7 @@ export default async function handler(req, res) {
             payload: { workoutId: result.workoutId || null, type: result.type, date: result.date },
           })
         } catch (error) {
-          summary.errors.push({ id: event?.id, message: String(error?.message || error) })
+          summary.errors.push({ id: event?.id, message: publicErrorCode(error, 'hevy_event_failed') })
           await recordIngestEvent({
             profileId: profile.id,
             externalId: event?.id,
@@ -145,6 +149,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, since, summary })
   } catch (error) {
     console.error('[hevy-sync] failed:', error?.message || error)
-    return res.status(500).json({ ok: false, error: String(error?.message || error) })
+    return sendPublicError(res, error, { fallback: 'hevy_sync_failed' })
   }
 }

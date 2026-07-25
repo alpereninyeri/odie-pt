@@ -8,7 +8,10 @@
     "preview": "vite preview",
     "test": "node --test",
     "test:e2e": "playwright test",
-    "backfill:memory": "node scripts/backfill-memory.mjs"
+    "release:check": "node scripts/release-readiness.mjs",
+    "db:contract:check": "node scripts/db-contract-check.mjs",
+    "vercel:env:check": "node scripts/vercel-env-contract-check.mjs",
+    "live:smoke": "node scripts/live-smoke.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

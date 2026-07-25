@@ -1,88 +1,50 @@
 import { expect, test } from '@playwright/test'
 
-import { parseIntakeText } from '../lib/odie-intake/parser.js'
-
 const viewports = [
   { width: 320, height: 568 },
   { width: 390, height: 844 },
-  { width: 414, height: 896 },
   { width: 768, height: 1024 },
   { width: 1440, height: 900 },
 ]
 
-const bannedVisible = [
-  'mission loop',
-  'hud',
-  'lvl',
-  'locked',
-  'unlocked',
-  'confidence',
-  'evidence',
-  'source',
-  'schema',
-  'migration',
-  'endpoint',
-  'json',
-  'payload',
-  'cache',
-  'fallback',
-  'defter',
-  'kayit',
-  'simdi',
-  'gelisim',
-  'gorev',
-  'bolge',
-  'kapisi',
-  'gecmis',
-  'gunluk',
-  'hafiza',
-]
-
 async function auditSurface(page) {
-  const result = await page.evaluate((banned) => {
-    const body = document.body
-    const text = body.innerText.toLocaleLowerCase('tr-TR')
-    const images = [...document.images].map(img => ({
-      src: img.currentSrc || img.src,
-      complete: img.complete,
-      naturalWidth: img.naturalWidth,
-    }))
+  const result = await page.evaluate(() => {
     const doc = document.documentElement
-    const overflow = Math.max(0, doc.scrollWidth - doc.clientWidth)
+    const badImages = [...document.images]
+      .filter(image => !image.complete || image.naturalWidth <= 0)
+      .map(image => image.currentSrc || image.src)
     const smallTargets = [...document.querySelectorAll('button, a, input, textarea, select')]
-      .filter(el => {
-        const rect = el.getBoundingClientRect()
+      .filter(element => {
+        if (element.matches('.activity-cell')) return false
+        const rect = element.getBoundingClientRect()
         return rect.width > 0 && rect.height > 0 && (rect.width < 44 || rect.height < 44)
       })
-      .map(el => ({
-        tag: el.tagName.toLowerCase(),
-        text: (el.innerText || el.getAttribute('aria-label') || el.id || el.className || '').toString().slice(0, 60),
-        width: Math.round(el.getBoundingClientRect().width),
-        height: Math.round(el.getBoundingClientRect().height),
+      .map(element => ({
+        label: (element.innerText || element.getAttribute('aria-label') || element.className || '').toString().slice(0, 60),
+        width: Math.round(element.getBoundingClientRect().width),
+        height: Math.round(element.getBoundingClientRect().height),
       }))
-    const hasBanned = (word) => {
-      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      return new RegExp(`(^|[^\\p{L}\\p{N}_])${escaped}([^\\p{L}\\p{N}_]|$)`, 'iu').test(text)
-    }
-    return {
-      title: document.title,
-      badImages: images.filter(img => !img.complete || img.naturalWidth <= 0),
-      overflow,
-      banned: banned.find(word => hasBanned(word)) || null,
-      smallTargets,
-    }
-  }, bannedVisible)
 
-  expect(result.badImages, 'broken image assets').toEqual([])
+    return {
+      overflow: Math.max(0, doc.scrollWidth - doc.clientWidth),
+      badImages,
+      smallTargets,
+      bodyText: document.body.innerText.toLocaleLowerCase('tr-TR'),
+    }
+  })
+
   expect(result.overflow, 'horizontal overflow').toBe(0)
-  expect(result.banned, 'banned visible word').toBeNull()
+  expect(result.badImages, 'broken image assets').toEqual([])
   expect(result.smallTargets, 'tap targets under 44px').toEqual([])
+  expect(result.bodyText).not.toContain('gemini')
+  expect(result.bodyText).not.toContain('chatbot')
+  expect(result.bodyText).not.toContain('soru sor')
 }
 
 async function openDetailAndClose(page, selector) {
   await page.locator(selector).first().click()
   await expect(page.locator('.detail-sheet')).toBeVisible()
-  await page.locator('[data-close-detail]').click()
+  await page.locator('.detail-sheet .icon-button').click()
   await expect(page.locator('.detail-sheet')).toHaveCount(0)
 
   await page.locator(selector).first().click()
@@ -91,137 +53,124 @@ async function openDetailAndClose(page, selector) {
 }
 
 for (const viewport of viewports) {
-  test(`visual layer QA ${viewport.width}x${viewport.height}`, async ({ page }) => {
+  test(`Hevy dashboard QA ${viewport.width}x${viewport.height}`, async ({ page }) => {
     const errors = []
-    page.on('console', msg => {
-      if (msg.type() === 'error') errors.push(msg.text())
+    page.on('console', message => {
+      if (message.type() === 'error') errors.push(message.text())
     })
     page.on('pageerror', error => errors.push(error.message))
 
     await page.setViewportSize(viewport)
-    await page.goto('/?audit=e2e')
-    await page.locator('.cozy-app').waitFor()
-    await auditSurface(page)
-    await expect(page.locator('.nav-item')).toHaveText(['Komuta', 'Harita', 'ODIE'])
-    await expect(page).toHaveTitle('OdiePt - Komuta')
-    await openDetailAndClose(page, '.xp-track')
+    await page.goto('/?tab=overview')
+    await page.locator('.app-shell').waitFor()
 
-    await page.locator('.cozy-nav [data-tab="map"]').click()
-    await expect(page).toHaveTitle('OdiePt - Harita')
-    await expect(page.locator('.world-node')).toHaveCount(6)
-    await expect(page.locator('.active-quest-node')).toHaveCount(1)
-    await expect(page.locator('.world-mini-node').first()).toBeVisible()
-    await expect(page.locator('.world-mini-node.type-bountyNode').first()).toBeVisible()
-    await openDetailAndClose(page, '.world-node')
-    await openDetailAndClose(page, '.world-mini-node.type-bountyNode')
+    await expect(page).toHaveTitle('OdiePt · Durum')
+    await expect(page.locator('.overview-screen')).toBeVisible()
+    await expect(page.locator('.page-head')).toContainText('Son seans dün')
+    await expect(page.locator('.player-card')).toBeVisible()
+    await expect(page.locator('.quest-card')).toBeVisible()
+    await expect(page.locator('.metric-card')).toHaveCount(4)
+    await expect(page.locator('.weekly-chart')).toBeVisible()
+    await expect(page.locator('.activity-cell')).toHaveCount(28)
+    await expect(page.locator('.gap-row')).toHaveCount(4)
+    await expect(page.locator('.stat-tile')).toHaveCount(6)
+    await openDetailAndClose(page, '.gap-row')
     await auditSurface(page)
-
-    await page.locator('.cozy-nav [data-tab="signal"]').click()
-    await expect(page).toHaveTitle('OdiePt - ODIE')
-    await expect(page.locator('#ask-form')).toBeVisible()
-    if (viewport.width <= 390) {
-      const fit = await page.evaluate(() => {
-        const navTop = document.querySelector('.cozy-nav')?.getBoundingClientRect().top || window.innerHeight
-        const textarea = document.querySelector('#ask-textarea')?.getBoundingClientRect()
-        const submit = document.querySelector('#ask-form button[type="submit"]')?.getBoundingClientRect()
-        return {
-          textareaTop: textarea?.top || 0,
-          submitBottom: submit?.bottom || 9999,
-          navTop,
-        }
-      })
-      expect(fit.textareaTop, 'ODIE textarea first viewport').toBeLessThan(fit.navTop)
-      expect(fit.submitBottom, 'ODIE CTA above bottom nav').toBeLessThanOrEqual(fit.navTop - 4)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    if (viewport.width === 390) {
+      await page.screenshot({ path: 'test-results/odiept-mobile-overview.png' })
     }
+    if (viewport.width === 1440) {
+      await page.screenshot({ path: 'test-results/odiept-desktop-overview.png' })
+    }
+
+    const navSelector = viewport.width <= 840 ? '.mobile-nav-button' : '.rail-nav-button'
+    await expect(page.locator(navSelector)).toHaveText(['Durum', 'Bölgeler', 'Seanslar'])
+
+    await page.locator(`${navSelector}[data-tab="body"]`).click()
+    await expect(page).toHaveTitle('OdiePt · Bölgeler')
+    await expect(page.locator('.body-screen')).toBeVisible()
+    expect(await page.locator('.region-tile').count()).toBeGreaterThanOrEqual(8)
+    await openDetailAndClose(page, '.region-tile')
+    await auditSurface(page)
+
+    await page.locator(`${navSelector}[data-tab="sessions"]`).click()
+    await expect(page).toHaveTitle('OdiePt · Seanslar')
+    await expect(page.locator('.sessions-screen')).toBeVisible()
+    expect(await page.locator('.session-row').count()).toBeGreaterThan(0)
+    await openDetailAndClose(page, '.session-row')
     await auditSurface(page)
 
     expect(errors, 'console/page errors').toEqual([])
   })
 }
 
-test('ODIE intake preview, confirm and reward flow works on mobile', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.route('**/api/ask', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ ok: true, items: [] }),
-    })
+test('app token loads the live snapshot and manual Hevy sync refreshes it', async ({ page }) => {
+  const snapshotRequests = []
+  let syncRequests = 0
+  const today = new Date().toISOString().slice(0, 10)
+
+  await page.addInitScript(() => {
+    localStorage.setItem('odiept-app-access-token', 'e2e-token')
   })
-  await page.route('**/api/intake', async route => {
-    const body = route.request().postDataJSON()
-    if (body.mode === 'confirm') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          ok: true,
-          kind: body.preview.kind,
-          preview: body.preview,
-          result: { reward: { chips: ['+12 XP', 'Seviye 4', 'Seri 2'] } },
-        }),
-      })
-      return
-    }
+  await page.route('**/api/snapshot?**', async route => {
+    snapshotRequests.push(route.request().headers())
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         ok: true,
-        preview: parseIntakeText(body.text, { today: '2026-06-01' }),
+        profile: {
+          id: 'e2e-profile',
+          nick: 'Alperen',
+          level: 8,
+          xp_current: 640,
+          xp_max: 2000,
+          class: 'Hybrid Athlete',
+          streak_current: 4,
+          streak_max: 9,
+          stats: { strength: 62, endurance: 48, core: 37, mobility: 44, explosive: 41, grip: 56 },
+        },
+        workouts: [
+          {
+            id: 'e2e-workout',
+            date: today,
+            type: 'Pull',
+            duration_min: 52,
+            volume_kg: 4800,
+            sets: 16,
+            has_pr: true,
+            source: 'hevy',
+            exercises: [
+              { name: 'Weighted Pull Up', sets: [{ reps: 5, weight_kg: 20 }, { reps: 5, weight_kg: 20 }] },
+              { name: 'Barbell Row', sets: [{ reps: 8, weight_kg: 70 }] },
+            ],
+          },
+        ],
+        syncState: { last_synced_at: new Date().toISOString() },
+        source: { hevy: 'configured' },
       }),
     })
   })
+  await page.route('**/api/hevy-sync', async route => {
+    syncRequests += 1
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, summary: { ingested: 1, updated: 0 } }),
+    })
+  })
 
-  await page.goto('/?audit=e2e')
-  await page.locator('.cozy-app').waitFor()
-  await page.locator('.cozy-nav [data-tab="signal"]').click()
-  await expect(page).toHaveTitle('OdiePt - ODIE')
-
-  await page.locator('#ask-textarea').fill('d\u00fcn g\u00f6\u011f\u00fcs \u00e7al\u0131\u015ft\u0131m 4 set bench 60 kilo')
-  await page.locator('#ask-form button[type="submit"]').click()
-  await expect(page.locator('.intake-preview')).toBeVisible()
-  await expect(page.locator('.intake-preview')).toContainText('Seans kaydı')
-  await expect(page.locator('[data-intake-confirm]')).toBeVisible()
-  await expect(page.locator('.odie-face img')).toHaveAttribute('src', /odie-confirm/)
-
-  await page.locator('[data-intake-confirm]').click()
-  await expect(page.locator('.reward-recap')).toBeVisible()
-  await expect(page).toHaveTitle('OdiePt - Komuta')
-  await expect(page.locator('.recap-chips')).toContainText('+12 XP')
-  await page.locator('[data-close-recap]').first().click()
-
-  await page.locator('.cozy-nav [data-tab="signal"]').click()
-  await expect(page.locator('.intake-result')).toContainText('Seans kaydı yazıldı')
-  await expect(page.locator('.intake-result')).toContainText('+12 XP')
-  await auditSurface(page)
-})
-
-test('manual injury manager creates updates and resolves a body event', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/?audit=e2e')
-  await page.locator('.cozy-app').waitFor()
-  await page.locator('.cozy-nav [data-tab="map"]').click()
+  await page.goto('/?tab=overview')
+  await page.locator('.app-shell.mode-live').waitFor()
+  await expect(page.locator('.mobile-source')).toContainText('HEVY')
+  await expect(page.locator('.page-head h1')).toContainText('Alperen')
+  await page.locator('.sync-button').click()
+  await expect(page.locator('.status-banner.is-success')).toContainText('1 seans güncellendi')
 
-  await expect(page.locator('.body-status-manager')).toBeVisible()
-  await page.locator('#body-event-form select[name="region"]').selectOption('wrist')
-  await page.locator('#body-event-form input[name="severity"]').fill('3')
-  await page.locator('#body-event-form input[name="recoveryPercent"]').fill('70')
-  await page.locator('#body-event-form input[name="etaDays"]').fill('3')
-  await page.locator('#body-event-form input[name="note"]').fill('bilek sert push istemiyor')
-  await page.locator('#body-event-form button[type="submit"]').click()
-
-  await expect(page.locator('.injury-card')).toBeVisible()
-  await expect(page.locator('.injury-main strong')).toContainText('%70')
-
-  await page.locator('[data-body-event-action="increase_recovery"]').click()
-  await expect(page.locator('.injury-main strong')).toContainText('%80')
-
-  await page.locator('[data-body-recovery-input]').fill('95')
-  await page.locator('[data-body-event-action="set_recovery"]').click()
-  await expect(page.locator('.injury-main strong')).toContainText('%95')
-
-  await page.locator('[data-body-event-action="resolve"]').click()
-  await expect(page.locator('.body-empty')).toBeVisible()
+  expect(syncRequests).toBe(1)
+  expect(snapshotRequests.length).toBeGreaterThanOrEqual(2)
+  expect(snapshotRequests.every(headers => headers.authorization === 'Bearer e2e-token')).toBe(true)
   await auditSurface(page)
 })
