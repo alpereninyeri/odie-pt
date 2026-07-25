@@ -26,10 +26,8 @@ function listFiles(dir) {
 const requiredFiles = [
   '.vercelignore',
   'api/snapshot.js',
-  'api/hevy-sync.js',
-  'api/hevy-webhook.js',
-  'api/rate-limit.js',
-  'api/public-error.js',
+  'lib/app-auth.js',
+  'lib/hevy/dashboard-snapshot.js',
   'src/data/app-access.js',
   'src/data/dashboard-model.js',
   'src/data/dashboard-store.js',
@@ -53,6 +51,8 @@ if (!readme.includes('Durum')) fail('README must document the three-screen dashb
 for (const requiredIgnore of [
   'api/coach.js',
   'api/ask.js',
+  'api/hevy-sync.js',
+  'api/hevy-webhook.js',
   'src/assets/game/*',
   '!src/assets/game/cozy-v4/avatar-athlete.png',
   'tests/',
@@ -96,6 +96,19 @@ for (const file of prodFiles) {
 const supabaseClient = read('src/data/supabase-client.js')
 if (/from\s+['"]@supabase\/supabase-js['"]/.test(supabaseClient) || /createClient\s*\(/.test(supabaseClient)) {
   fail('browser Supabase client still imports or creates a direct Supabase client')
+}
+
+const snapshotApi = read('api/snapshot.js')
+if (/SUPABASE|sbGet|hevy_sync_state/.test(snapshotApi)) {
+  fail('api/snapshot.js must read directly from Hevy without Supabase')
+}
+if (!snapshotApi.includes('buildDirectHevySnapshot')) {
+  fail('api/snapshot.js must use the direct Hevy snapshot builder')
+}
+
+const vercelConfig = read('vercel.json')
+if (/hevy-sync|crons/.test(vercelConfig)) {
+  fail('vercel.json must not deploy the retired Supabase Hevy cron')
 }
 
 const main = read('src/main.js')

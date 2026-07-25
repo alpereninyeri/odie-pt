@@ -6,7 +6,7 @@ const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8')
 const css = readFileSync(new URL('../src/styles/cozy-reforge.css', import.meta.url), 'utf8')
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 const snapshotApi = readFileSync(new URL('../api/snapshot.js', import.meta.url), 'utf8')
-const hevySyncApi = readFileSync(new URL('../api/hevy-sync.js', import.meta.url), 'utf8')
+const dashboardStore = readFileSync(new URL('../src/data/dashboard-store.js', import.meta.url), 'utf8')
 const hevyPersist = readFileSync(new URL('../lib/hevy/persist.js', import.meta.url), 'utf8')
 
 test('dashboard has only the three product surfaces requested', () => {
@@ -45,13 +45,14 @@ test('body and session screens expose compact tappable detail surfaces', () => {
   assert.match(css, /\.detail-sheet/)
 })
 
-test('browser data path is snapshot-only and manual sync can use the app token', () => {
+test('browser data path is a direct Hevy snapshot with optional app-token headers', () => {
   assert.match(main, /dashboardStore/)
   assert.doesNotMatch(main, /supabase-client|from ['"].*\/store\.js['"]|\/api\/ask|\/api\/intake/)
-  assert.match(snapshotApi, /workouts\?select=\*/)
-  assert.match(snapshotApi, /hevy_sync_state/)
-  assert.doesNotMatch(snapshotApi, /coach_notes|athlete_memory|memory_feedback|odie_questions/)
-  assert.match(hevySyncApi, /authorizeAppRequest\(req\)\.ok/)
+  assert.match(snapshotApi, /buildDirectHevySnapshot/)
+  assert.doesNotMatch(snapshotApi, /SUPABASE|hevy_sync_state|coach_notes|athlete_memory|memory_feedback|odie_questions/)
+  assert.match(dashboardStore, /params\.set\('refresh', '1'\)/)
+  assert.match(dashboardStore, /headers: appHeaders\(\)/)
+  assert.doesNotMatch(dashboardStore, /\/api\/hevy-sync/)
 })
 
 test('Hevy persistence does not trigger coach or model generation', () => {

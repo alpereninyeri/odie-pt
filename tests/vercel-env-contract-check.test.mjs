@@ -27,35 +27,18 @@ test('vercel env parser extracts env names without values', () => {
   assert.equal(names.has('Encrypted'), false)
 })
 
-test('vercel env contract flags current live missing service key and app token', () => {
+test('vercel env contract accepts the current live Hevy API key', () => {
   const result = evaluateVercelEnvContract(parseVercelEnvList(CURRENT_LIVE_SHAPE))
-  assert.equal(result.ok, false)
-  assert.deepEqual(
-    result.missing.map(item => item.label),
-    ['Supabase service key', 'App access token'],
-  )
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.missing, [])
+  assert.equal(result.warnings.some(item => item.includes('legacy Supabase URL')), true)
   assert.equal(result.warnings.some(item => item.includes('legacy browser anon key')), true)
+  assert.equal(result.warnings.some(item => item.includes('legacy Hevy sync secret')), true)
 })
 
-test('vercel env contract passes when secure server keys are present', () => {
-  const names = parseVercelEnvList(`${CURRENT_LIVE_SHAPE}
- SUPABASE_SERVICE_ROLE_KEY   Encrypted           Production                          1m ago
- ODIE_APP_ACCESS_TOKEN       Encrypted           Production                          1m ago
-`)
+test('vercel env contract fails only when the Hevy API key is absent', () => {
+  const names = new Set(['VITE_SUPABASE_URL', 'GEMINI_API_KEY'])
   const result = evaluateVercelEnvContract(names)
-  assert.equal(result.ok, true)
-  assert.equal(result.missing.length, 0)
-})
-
-test('vercel env contract accepts service-key and cron-secret aliases', () => {
-  const names = new Set([
-    'VITE_SUPABASE_URL',
-    'SUPABASE_SERVICE_KEY',
-    'ODIE_APP_ACCESS_TOKEN',
-    'HEVY_API_KEY',
-    'HEVY_WEBHOOK_SECRET',
-    'CRON_SECRET',
-  ])
-  const result = evaluateVercelEnvContract(names)
-  assert.equal(result.ok, true)
+  assert.equal(result.ok, false)
+  assert.deepEqual(result.missing.map(item => item.label), ['Hevy API key'])
 })

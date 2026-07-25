@@ -18,17 +18,17 @@ const REGION_CONFIG = [
     group: 'muscle',
     muscleLabels: ['Gogus', 'Gogus', 'GÃ¶ÄŸÃ¼s', 'Göğüs'],
     tags: ['push'],
-    patterns: ['bench', 'press', 'fly', 'dip', 'push up', 'push-up', 'pec', 'chest'],
-    saturation: 34,
+    patterns: ['bench', 'chest press', 'fly', 'dip', 'push up', 'push-up', 'pec', 'chest', 'incline press', 'decline press'],
+    saturation: 136,
   },
   {
     id: 'shoulder',
     label: 'Omuz',
-    group: 'joint',
+    group: 'muscle',
     muscleLabels: ['Omuz', 'Omuz Kompleksi'],
     tags: ['push', 'shoulders', 'mobility'],
-    patterns: ['shoulder', 'omuz', 'ohp', 'lateral raise', 'handstand', 'wall slide', 'dislocate'],
-    saturation: 32,
+    patterns: ['shoulder', 'omuz', 'ohp', 'lateral raise', 'front raise', 'rear delt', 'military press', 'handstand', 'wall slide', 'dislocate'],
+    saturation: 128,
   },
   {
     id: 'triceps',
@@ -36,8 +36,8 @@ const REGION_CONFIG = [
     group: 'muscle',
     muscleLabels: ['Triceps'],
     tags: ['push'],
-    patterns: ['tricep', 'triceps', 'pushdown', 'extension', 'dip', 'press'],
-    saturation: 30,
+    patterns: ['tricep', 'triceps', 'pushdown', 'skull crusher', 'close grip', 'dip'],
+    saturation: 90,
   },
   {
     id: 'biceps',
@@ -46,16 +46,16 @@ const REGION_CONFIG = [
     muscleLabels: ['Biseps', 'Biceps'],
     tags: ['pull'],
     patterns: ['bicep', 'biceps', 'biseps', 'curl', 'chin up', 'chin-up'],
-    saturation: 28,
+    saturation: 84,
   },
   {
     id: 'forearm',
     label: 'Grip',
-    group: 'joint',
+    group: 'muscle',
     muscleLabels: ['On Kol', 'Forearm'],
     tags: ['grip', 'climbing'],
     patterns: ['dead hang', 'hang', 'grip', 'farmer', 'carry', 'fingerboard', 'towel'],
-    saturation: 22,
+    saturation: 66,
   },
   {
     id: 'wrist',
@@ -64,7 +64,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Bilek', 'El Bilegi', 'Wrist'],
     tags: ['grip', 'push', 'mobility', 'parkour'],
     patterns: ['bilek', 'wrist', 'el bilegi', 'handstand', 'dead hang', 'hang', 'grip', 'push up', 'push-up', 'vault'],
-    saturation: 18,
+    saturation: 72,
   },
   {
     id: 'lat',
@@ -73,7 +73,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Lat', 'Kanat'],
     tags: ['pull'],
     patterns: ['lat', 'pull up', 'pull-up', 'pulldown', 'muscle up', 'muscle-up'],
-    saturation: 30,
+    saturation: 120,
   },
   {
     id: 'upper-back',
@@ -82,7 +82,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Ust Sirt', 'Ãœst SÄ±rt', 'Üst Sırt'],
     tags: ['pull'],
     patterns: ['row', 'face pull', 'rear delt', 'upper back', 'scapula', 'kurek'],
-    saturation: 32,
+    saturation: 128,
   },
   {
     id: 'core',
@@ -91,7 +91,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Core', 'Core (GÃ¶vde)', 'Core (Gövde)'],
     tags: ['core'],
     patterns: ['hollow', 'plank', 'l-sit', 'lsit', 'dragon', 'leg raise', 'ab wheel', 'core', 'pallof'],
-    saturation: 20,
+    saturation: 70,
   },
   {
     id: 'hips',
@@ -100,7 +100,16 @@ const REGION_CONFIG = [
     muscleLabels: ['Kalca', 'Glute'],
     tags: ['legs', 'mobility', 'parkour'],
     patterns: ['hip', 'kalca', 'glute', 'split squat', 'lunge', 'hip flexor', 'bridge'],
-    saturation: 24,
+    saturation: 96,
+  },
+  {
+    id: 'glute',
+    label: 'Kalca Kası',
+    group: 'muscle',
+    muscleLabels: ['Kalca', 'Glute', 'Glutes'],
+    tags: ['legs', 'posterior'],
+    patterns: ['hip thrust', 'glute', 'bridge', 'bulgarian split squat', 'cable kickback'],
+    saturation: 104,
   },
   {
     id: 'quads',
@@ -109,7 +118,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Bacak (Parkour)', 'Quad', 'Quads'],
     tags: ['legs', 'parkour'],
     patterns: ['squat', 'leg press', 'quad', 'jump', 'precision', 'landing', 'drop'],
-    saturation: 30,
+    saturation: 120,
   },
   {
     id: 'hamstrings',
@@ -117,8 +126,8 @@ const REGION_CONFIG = [
     group: 'muscle',
     muscleLabels: ['Hamstring', 'Arka Bacak'],
     tags: ['legs', 'posterior'],
-    patterns: ['hamstring', 'deadlift', 'hinge', 'bridge', 'posterior', 'back chain'],
-    saturation: 24,
+    patterns: ['hamstring', 'deadlift', 'rdl', 'romanian deadlift', 'leg curl', 'nordic', 'good morning', 'hinge', 'bridge', 'posterior', 'back chain'],
+    saturation: 96,
   },
   {
     id: 'calves',
@@ -127,7 +136,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Kalf', 'Calf'],
     tags: ['legs', 'walking', 'parkour'],
     patterns: ['calf', 'kalf', 'baldir', 'jump', 'sprint', 'walk', 'run', 'precision'],
-    saturation: 22,
+    saturation: 66,
   },
   {
     id: 'knees',
@@ -136,7 +145,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Diz'],
     tags: ['legs', 'parkour'],
     patterns: ['knee', 'diz', 'landing', 'jump', 'drop', 'squat', 'lunge'],
-    saturation: 20,
+    saturation: 80,
   },
   {
     id: 'ankles',
@@ -145,7 +154,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Ayak Bilegi', 'Ankle'],
     tags: ['legs', 'parkour', 'balance'],
     patterns: ['ankle', 'ayak bilegi', 'landing', 'precision', 'jump', 'vault', 'terrain', 'calf'],
-    saturation: 20,
+    saturation: 80,
   },
   {
     id: 'lower-back',
@@ -154,7 +163,7 @@ const REGION_CONFIG = [
     muscleLabels: ['Bel', 'Lower Back'],
     tags: ['core', 'carry', 'posterior'],
     patterns: ['lower back', 'bel', 'lumbar', 'deadlift', 'hinge', 'carry', 'bridge'],
-    saturation: 20,
+    saturation: 80,
   },
 ]
 
@@ -349,9 +358,12 @@ function exerciseScore(workout, region) {
 function regionSessionScore(workout, region) {
   const tags = new Set(workout.tags || [])
   const text = workoutText(workout)
-  let score = exerciseScore(workout, region)
+  const directExerciseScore = exerciseScore(workout, region)
+  const upperPushRegion = ['chest', 'shoulder', 'triceps'].includes(region.id)
+  const legOnlyConflict = upperPushRegion && hasLegFocus(workout) && directExerciseScore <= 0
+  let score = directExerciseScore
 
-  if (region.tags.some(tag => tags.has(tag))) score += 4
+  if (!legOnlyConflict && region.tags.some(tag => tags.has(tag))) score += 4
   if (hasAnyText(text, region.patterns)) score += 3
   if (region.id === 'core' && hasDirectCoreStimulus(workout)) score += 5
   if (['quads', 'hamstrings', 'calves', 'knees', 'ankles', 'hips'].includes(region.id) && hasLegFocus(workout)) score += 2
@@ -374,6 +386,7 @@ function balanceFallback(state, region) {
 function buildRegionState(region, workouts, state, today) {
   let loadScore = 0
   let freshScore = 0
+  let matchedSessions = 0
   let latestMatch = null
   let latestSource = ''
 
@@ -382,6 +395,7 @@ function buildRegionState(region, workouts, state, today) {
     if (age > 28) continue
     const score = regionSessionScore(workout, region)
     if (score <= 0) continue
+    matchedSessions += 1
     const weight = age <= 7 ? 1 : age <= 14 ? 0.68 : 0.34
     loadScore += score * weight
     if (age <= 4) freshScore += score
@@ -413,6 +427,8 @@ function buildRegionState(region, workouts, state, today) {
     label: region.label,
     group: region.group,
     load,
+    evidenceScore: Math.round(loadScore * 10) / 10,
+    matchedSessions,
     recovery,
     risk,
     trend,

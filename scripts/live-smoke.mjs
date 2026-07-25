@@ -43,38 +43,40 @@ async function checkHome(baseUrl, fetchImpl) {
   return pass('home', { status: response.status })
 }
 
-async function checkProtected(baseUrl, fetchImpl, path, expectedError = '') {
-  const response = await fetchImpl(`${baseUrl}${path}`)
-  const { data, text } = await readJson(response)
-  if (response.status !== 401) {
-    return fail(path, `expected 401, got ${response.status}`, { sample: sample(text) })
-  }
-  if (expectedError && data?.error !== expectedError) {
-    return fail(path, `expected ${expectedError}, got ${data?.error || 'empty'}`)
-  }
-  return pass(path, { status: response.status })
-}
-
-async function checkHevyWebhook(baseUrl, fetchImpl) {
-  const response = await fetchImpl(`${baseUrl}/api/hevy-webhook`)
+async function checkSnapshot(baseUrl, fetchImpl, token = '') {
+  const response = await fetchImpl(`${baseUrl}/api/snapshot?workouts=20`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
   const { data, text } = await readJson(response)
   if (response.status !== 200 || data?.ok !== true) {
-    return fail('hevy-webhook', `expected 200 ok, got ${response.status}`, { sample: sample(text) })
+    return fail('snapshot', `expected 200 with live Hevy data, got ${response.status}`, { sample: sample(text) })
   }
-  return pass('hevy-webhook', { status: response.status })
+  if (!Array.isArray(data?.workouts) || !data?.profile) {
+    return fail('snapshot', 'dashboard bundle is incomplete')
+  }
+  if (!['live-direct', 'stale-cache'].includes(data?.source?.hevy)) {
+    return fail('snapshot', `unexpected Hevy source: ${data?.source?.hevy || 'empty'}`)
+  }
+  if (data.workouts.some(workout => 'rawExternal' in workout || 'notes' in workout)) {
+    return fail('snapshot', 'snapshot exposes private/raw workout fields')
+  }
+  return pass('snapshot', {
+    status: response.status,
+    workouts: data.workouts.length,
+    source: data.source.hevy,
+  })
 }
 
 export async function runLiveSmoke({
   baseUrl = process.env.ODIEPT_LIVE_URL || DEFAULT_BASE_URL,
+  token = process.env.ODIE_APP_ACCESS_TOKEN || '',
   fetchImpl = globalThis.fetch,
 } = {}) {
   if (!fetchImpl) throw new Error('fetch is not available')
   const root = normalizeBaseUrl(baseUrl)
   const checks = [
     () => checkHome(root, fetchImpl),
-    () => checkProtected(root, fetchImpl, '/api/snapshot', 'snapshot token is required'),
-    () => checkProtected(root, fetchImpl, '/api/hevy-sync'),
-    () => checkHevyWebhook(root, fetchImpl),
+    () => checkSnapshot(root, fetchImpl, token),
   ]
 
   const results = []

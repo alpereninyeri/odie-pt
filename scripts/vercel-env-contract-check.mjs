@@ -2,18 +2,25 @@ import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 
 export const REQUIRED_VERCEL_ENV_GROUPS = [
-  { label: 'Supabase URL', anyOf: ['VITE_SUPABASE_URL'] },
-  { label: 'Supabase service key', anyOf: ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_KEY'] },
-  { label: 'App access token', anyOf: ['ODIE_APP_ACCESS_TOKEN'] },
   { label: 'Hevy API key', anyOf: ['HEVY_API_KEY'] },
-  { label: 'Hevy webhook secret', anyOf: ['HEVY_WEBHOOK_SECRET'] },
-  { label: 'Hevy sync secret', anyOf: ['HEVY_INTERNAL_SECRET', 'CRON_SECRET'] },
 ]
 
 export const LEGACY_VERCEL_ENV_WARNINGS = [
   {
+    name: 'VITE_SUPABASE_URL',
+    message: 'legacy Supabase URL is configured but the direct Hevy dashboard does not need it',
+  },
+  {
     name: 'VITE_SUPABASE_ANON_KEY',
-    message: 'legacy browser anon key is still configured; safe only if not referenced by the built client',
+    message: 'legacy browser anon key is configured but the direct Hevy dashboard does not use it',
+  },
+  {
+    name: 'HEVY_WEBHOOK_SECRET',
+    message: 'legacy Hevy webhook secret is configured but the direct dashboard does not deploy a webhook',
+  },
+  {
+    name: 'HEVY_INTERNAL_SECRET',
+    message: 'legacy Hevy sync secret is configured but the direct dashboard has no cron sync',
   },
   {
     name: 'TELEGRAM_BOT_TOKEN',

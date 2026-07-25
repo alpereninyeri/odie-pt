@@ -19,15 +19,16 @@ const REGION_ACTIONS = {
   forearm: 'Farmer carry veya dead hang',
   wrist: 'Hafif bilek hazırlığı',
   lat: 'Pull-up veya pulldown',
-  upper_back: 'Row + face pull',
+  'upper-back': 'Row + face pull',
   core: 'Hollow hold + hanging raise',
   glute: 'Hip thrust veya split squat',
   quads: 'Squat veya lunge',
-  hamstring: 'RDL veya leg curl',
-  calf: 'Calf raise',
-  knee: 'Kontrollü step-up',
-  ankle: 'Ayak bileği mobilitesi',
-  lower_back: 'Back extension veya kontrollü hinge',
+  hamstrings: 'RDL veya leg curl',
+  calves: 'Calf raise',
+  knees: 'Kontrollü step-up',
+  ankles: 'Ayak bileği mobilitesi',
+  'lower-back': 'Back extension veya kontrollü hinge',
+  hips: 'Kalça mobilitesi ve kontrollü split squat',
 }
 
 function number(value) {

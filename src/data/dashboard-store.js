@@ -1,9 +1,9 @@
 import { MOCK_STATE } from './mock-state.js'
-import { appHeaders, hasAppAccessToken } from './app-access.js'
+import { appHeaders } from './app-access.js'
 import { normalizeSession } from './rules.js'
 
 const CACHE_KEY = 'odiept-dashboard-cache-v1'
-const MAX_WORKOUTS = 240
+const MAX_WORKOUTS = 120
 
 function readCache() {
   try {
@@ -92,6 +92,7 @@ function normalizePayload(payload = {}, fallbackMode = 'live') {
     workouts,
     syncState: payload.syncState || null,
     source: payload.source || { hevy: 'configured' },
+    privacy: payload.privacy || 'public-summary',
     mode: fallbackMode,
     lastSyncedAt:
       payload.syncState?.last_synced_at
@@ -141,7 +142,7 @@ function emit() {
 
 async function readJson(response, fallback) {
   const payload = await response.json().catch(() => ({}))
-  if (!response.ok || payload.ok === false) {
+  if (!response.ok || payload.ok !== true) {
     throw new Error(payload.error || fallback)
   }
   return payload
@@ -161,17 +162,16 @@ export const dashboardStore = {
     const cached = readCache()
     if (cached?.profile && Array.isArray(cached.workouts)) {
       state = {
-        ...normalizePayload(cached, hasAppAccessToken() ? 'cache' : 'demo'),
-        status: 'ready',
+        ...normalizePayload(cached, 'cache'),
+        status: 'syncing',
         error: '',
         syncSummary: null,
       }
     } else {
-      state = { ...state, status: 'ready' }
+      state = { ...state, status: 'syncing' }
     }
     emit()
 
-    if (!hasAppAccessToken()) return state
     try {
       await this.refresh()
     } catch {}
@@ -179,27 +179,12 @@ export const dashboardStore = {
   },
 
   async refresh({ pullHevy = false } = {}) {
-    if (!hasAppAccessToken()) {
-      state = { ...demoPayload(), status: 'ready', error: '', syncSummary: null }
-      emit()
-      return state
-    }
-
     state = { ...state, status: 'syncing', error: '', syncSummary: null }
     emit()
 
     try {
-      let syncSummary = null
-      if (pullHevy) {
-        const syncResponse = await fetch('/api/hevy-sync', {
-          method: 'POST',
-          headers: appHeaders(),
-        })
-        const syncPayload = await readJson(syncResponse, 'hevy_sync_failed')
-        syncSummary = syncPayload.summary || null
-      }
-
       const params = new URLSearchParams({ workouts: String(MAX_WORKOUTS) })
+      if (pullHevy) params.set('refresh', '1')
       const snapshotResponse = await fetch(`/api/snapshot?${params}`, {
         headers: appHeaders(),
       })
@@ -209,7 +194,12 @@ export const dashboardStore = {
         ...normalized,
         status: 'ready',
         error: '',
-        syncSummary,
+        syncSummary: pullHevy
+          ? {
+              refreshed: true,
+              fetched: Number(snapshot.syncState?.fetched_workouts) || normalized.workouts.length,
+            }
+          : null,
       }
       writeCache(normalized)
       emit()
@@ -218,7 +208,11 @@ export const dashboardStore = {
       state = {
         ...state,
         status: 'error',
-        mode: state.workouts?.length ? 'cache' : state.mode,
+        mode: state.mode === 'demo'
+          ? 'demo'
+          : state.workouts?.length
+            ? 'cache'
+            : state.mode,
         error: String(error?.message || error || 'sync_failed'),
       }
       emit()

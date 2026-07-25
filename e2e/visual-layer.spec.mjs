@@ -105,16 +105,15 @@ for (const viewport of viewports) {
   })
 }
 
-test('app token loads the live snapshot and manual Hevy sync refreshes it', async ({ page }) => {
+test('public direct Hevy snapshot loads automatically and manual refresh re-reads it', async ({ page }) => {
   const snapshotRequests = []
-  let syncRequests = 0
   const today = new Date().toISOString().slice(0, 10)
 
-  await page.addInitScript(() => {
-    localStorage.setItem('odiept-app-access-token', 'e2e-token')
-  })
   await page.route('**/api/snapshot?**', async route => {
-    snapshotRequests.push(route.request().headers())
+    snapshotRequests.push({
+      headers: route.request().headers(),
+      url: route.request().url(),
+    })
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -129,7 +128,7 @@ test('app token loads the live snapshot and manual Hevy sync refreshes it', asyn
           class: 'Hybrid Athlete',
           streak_current: 4,
           streak_max: 9,
-          stats: { strength: 62, endurance: 48, core: 37, mobility: 44, explosive: 41, grip: 56 },
+          stats: { str: 62, agi: 48, end: 37, dex: 44, con: 41, sta: 56 },
         },
         workouts: [
           {
@@ -147,17 +146,14 @@ test('app token loads the live snapshot and manual Hevy sync refreshes it', asyn
             ],
           },
         ],
-        syncState: { last_synced_at: new Date().toISOString() },
-        source: { hevy: 'configured' },
+        syncState: {
+          mode: 'direct',
+          fetched_workouts: 1,
+          last_synced_at: new Date().toISOString(),
+        },
+        source: { hevy: 'live-direct', storage: 'none' },
+        privacy: 'public-summary',
       }),
-    })
-  })
-  await page.route('**/api/hevy-sync', async route => {
-    syncRequests += 1
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ ok: true, summary: { ingested: 1, updated: 0 } }),
     })
   })
 
@@ -167,10 +163,10 @@ test('app token loads the live snapshot and manual Hevy sync refreshes it', asyn
   await expect(page.locator('.mobile-source')).toContainText('HEVY')
   await expect(page.locator('.page-head h1')).toContainText('Alperen')
   await page.locator('.sync-button').click()
-  await expect(page.locator('.status-banner.is-success')).toContainText('1 seans güncellendi')
+  await expect(page.locator('.status-banner.is-success')).toContainText('1 seans okundu')
 
-  expect(syncRequests).toBe(1)
   expect(snapshotRequests.length).toBeGreaterThanOrEqual(2)
-  expect(snapshotRequests.every(headers => headers.authorization === 'Bearer e2e-token')).toBe(true)
+  expect(snapshotRequests.some(request => new URL(request.url).searchParams.get('refresh') === '1')).toBe(true)
+  expect(snapshotRequests.every(request => !request.headers.authorization)).toBe(true)
   await auditSurface(page)
 })

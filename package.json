@@ -9,6 +9,7 @@
     "test": "node --test",
     "test:e2e": "playwright test",
     "release:check": "node scripts/release-readiness.mjs",
+    "hevy:direct:check": "node scripts/hevy-direct-check.mjs",
     "db:contract:check": "node scripts/db-contract-check.mjs",
     "vercel:env:check": "node scripts/vercel-env-contract-check.mjs",
     "live:smoke": "node scripts/live-smoke.mjs"

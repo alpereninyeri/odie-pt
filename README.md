@@ -19,36 +19,30 @@ Ham `0-100` skorlar ikincil detaydır. Ana okuma rank, ritim, açık bölge ve s
 ## Veri akışı
 
 ```text
-Hevy webhook / günlük cron
+Hevy Public API
         ↓
-api/hevy-webhook.js + api/hevy-sync.js
+api/snapshot.js (sunucu tarafı, 5 dk cache)
         ↓
-Supabase workouts + profile + hevy_sync_state
-        ↓
-api/snapshot.js
+normalize + stat / XP / rank / bölge hesabı
         ↓
 src/data/dashboard-store.js
         ↓
 Durum / Bölgeler / Seanslar
 ```
 
-- Tarayıcı Supabase'e doğrudan bağlanmaz.
-- Kişisel snapshot `ODIE_APP_ACCESS_TOKEN` ile korunur.
-- Dashboarddaki “Hevy’yi yenile” butonu aynı erişim anahtarıyla güvenli delta sync tetikler.
-- Anahtar yoksa ekran açıkça **Demo modu** olarak çalışır; demo veri canlıymış gibi sunulmaz.
-- Hevy kayıt hattı Gemini, coach veya başka bir model çağrısı yapmaz.
+- Tarayıcı Hevy API'ye doğrudan bağlanmaz; API anahtarı yalnızca sunucuda kalır.
+- Üretim dashboardu veriyi doğrudan Hevy API'den okur; Supabase, webhook ve cron gerekmez.
+- Dashboarddaki “Hevy’yi yenile” butonu sunucu cache'ini kontrollü biçimde tazeler.
+- API yalnızca dashboardun kullandığı alanları döndürür; Hevy notları ve ham payload tarayıcıya gönderilmez.
+- Varsayılan yayın modeli salt okunur public özettir. İstenirse `ODIE_APP_ACCESS_TOKEN` eklenerek endpoint kilitlenebilir.
+- Hevy hattı Gemini, coach veya başka bir model çağrısı yapmaz.
 
 ## Gerekli production env
 
-- `VITE_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` veya `SUPABASE_SERVICE_KEY`
-- `ODIE_APP_ACCESS_TOKEN`
 - `HEVY_API_KEY`
-- `HEVY_WEBHOOK_SECRET`
-- `HEVY_INTERNAL_SECRET` veya `CRON_SECRET`
-- İsteğe bağlı: `ODIEPT_PROFILE_ID`
+- İsteğe bağlı: `ODIE_APP_ACCESS_TOKEN`
 
-`GEMINI_API_KEY`, Apple Health ve Telegram değişkenleri mevcut ürün için gerekli değildir.
+Supabase, Gemini, Apple Health, Telegram, webhook ve cron değişkenleri mevcut ürün için gerekli değildir.
 
 ## Yerel çalışma
 
@@ -57,7 +51,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Yerelde erişim anahtarı verilmezse demo veri gösterilir.
+Yerelde `HEVY_API_KEY` yoksa güvenli demo veri gösterilir. Anahtar varsa gerçek Hevy verisi otomatik yüklenir.
 
 ## Doğrulama
 
@@ -66,12 +60,12 @@ npm.cmd test
 npm.cmd run build
 npm.cmd run test:e2e
 npm.cmd run release:check
+npm.cmd run hevy:direct:check
 ```
 
 Canlı sözleşme kontrolleri:
 
 ```powershell
-npm.cmd run db:contract:check
 npm.cmd run vercel:env:check
 npm.cmd run live:smoke
 ```
@@ -83,9 +77,8 @@ npm.cmd run live:smoke
 - `src/data/dashboard-model.js` — 7/28 günlük istatistikler, ranklar ve bölge açıkları
 - `src/data/dashboard-store.js` — demo/cache/live snapshot durumu
 - `src/data/body-map-engine.js` — Hevy egzersizlerinden bölge yükü ve ihmal sinyali
-- `api/snapshot.js` — küçük, token korumalı dashboard paketi
-- `api/hevy-sync.js` — cron veya dashboard üzerinden delta senkron
-- `api/hevy-webhook.js` — yeni Hevy workout webhooku
+- `api/snapshot.js` — cache'li, isteğe bağlı token korumalı Hevy dashboard paketi
+- `lib/hevy/dashboard-snapshot.js` — pagination, normalizasyon, XP/rank ve güvenli public payload
 
 ## Deploy
 

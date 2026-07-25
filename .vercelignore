@@ -8,8 +8,18 @@ api/body-events.js
 api/health-import.js
 api/health-status.js
 api/next-session.js
+api/hevy-sync.js
+api/hevy-webhook.js
+api/hevy-backfill.js
+api/app-auth.js
+api/public-error.js
+api/rate-limit.js
 scripts/setup-webhook.js
 scripts/backfill-memory.mjs
+
+lib/hevy/ingest-events.js
+lib/hevy/persist.js
+lib/odie-intake/
 
 # Release payload: keep runtime source, drop QA/docs and old visual experiments.
 docs/

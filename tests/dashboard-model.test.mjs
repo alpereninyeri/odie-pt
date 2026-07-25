@@ -54,6 +54,28 @@ test('dashboard model finds neglected muscle regions from Hevy exercise history'
   assert.ok(model.quest.action.length > 0)
 })
 
+test('leg press credits quads without falsely training chest and glutes stay a muscle region', () => {
+  const model = createDashboardModel({
+    profile: { stats: {} },
+    workouts: [
+      workout({
+        id: 'leg-press',
+        date: '2026-07-24',
+        type: 'Bacak',
+        exercises: [{ name: 'Leg Press (Machine)', sets: [{ reps: 10, weightKg: 120 }] }],
+      }),
+    ],
+  }, { today: '2026-07-25' })
+
+  const chest = model.regions.find(region => region.id === 'chest')
+  const quads = model.regions.find(region => region.id === 'quads')
+  const glute = model.regions.find(region => region.id === 'glute')
+
+  assert.equal(chest.load, 0)
+  assert.ok(quads.load > 0)
+  assert.equal(glute.group, 'muscle')
+})
+
 test('dashboard always ranks four weakest regions even without a hard neglect signal', () => {
   const model = createDashboardModel({
     profile: { stats: {} },

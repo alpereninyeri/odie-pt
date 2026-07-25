@@ -17,54 +17,60 @@ function textResponse(status, body) {
   }
 }
 
-test('live smoke passes the Hevy-only protected production contract', async () => {
+test('live smoke passes the direct Hevy production contract', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
     fetchImpl: async url => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt · Training Console</title>')
-      if (path === '/api/snapshot') return jsonResponse(401, { ok: false, error: 'snapshot token is required' })
-      if (path === '/api/hevy-sync') return jsonResponse(401, { ok: false, error: 'unauthorized' })
-      if (path === '/api/hevy-webhook') return jsonResponse(200, { ok: true, status: 'hevy webhook hazir' })
+      if (path === '/api/snapshot') {
+        return jsonResponse(200, {
+          ok: true,
+          profile: { nick: 'Alperen' },
+          workouts: [{ id: 'w1', date: '2026-07-25' }],
+          source: { hevy: 'live-direct', storage: 'none' },
+        })
+      }
       return textResponse(404, 'missing')
     },
   })
 
   assert.equal(result.ok, true)
-  assert.deepEqual(result.results.map(item => item.name), ['home', '/api/snapshot', '/api/hevy-sync', 'hevy-webhook'])
+  assert.deepEqual(result.results.map(item => item.name), ['home', 'snapshot'])
 })
 
-test('live smoke fails an old deployment without snapshot and protected sync', async () => {
+test('live smoke fails an old deployment without the direct snapshot', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
     fetchImpl: async url => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt</title>')
-      if (path === '/api/hevy-webhook') return jsonResponse(200, { ok: true, status: 'hevy webhook hazir' })
       return textResponse(404, 'The page could not be found')
     },
   })
 
   assert.equal(result.ok, false)
-  assert.deepEqual(
-    result.results.filter(item => !item.ok).map(item => item.name),
-    ['/api/snapshot', '/api/hevy-sync'],
-  )
+  assert.deepEqual(result.results.filter(item => !item.ok).map(item => item.name), ['snapshot'])
 })
 
-test('live smoke fails if Hevy webhook health is unavailable', async () => {
+test('live smoke fails if snapshot exposes raw or private workout fields', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
     fetchImpl: async url => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt · Training Console</title>')
-      if (path === '/api/snapshot') return jsonResponse(401, { ok: false, error: 'snapshot token is required' })
-      if (path === '/api/hevy-sync') return jsonResponse(401, { ok: false, error: 'unauthorized' })
-      if (path === '/api/hevy-webhook') return jsonResponse(503, { ok: false, error: 'down' })
+      if (path === '/api/snapshot') {
+        return jsonResponse(200, {
+          ok: true,
+          profile: { nick: 'Alperen' },
+          workouts: [{ id: 'w1', notes: 'private' }],
+          source: { hevy: 'live-direct' },
+        })
+      }
       return textResponse(404, 'missing')
     },
   })
 
   assert.equal(result.ok, false)
-  assert.equal(result.results.find(item => item.name === 'hevy-webhook').detail, 'expected 200 ok, got 503')
+  assert.equal(result.results.find(item => item.name === 'snapshot').detail, 'snapshot exposes private/raw workout fields')
 })

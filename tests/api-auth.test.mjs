@@ -220,67 +220,84 @@ test('health status redacts personal Apple details unless app token is provided'
   else process.env.SUPABASE_SERVICE_ROLE_KEY = previousServiceKey
 })
 
-test('snapshot endpoint is token gated and returns the dashboard data bundle', async () => {
+test('snapshot reads Hevy directly, stays public by default and supports an optional app lock', async () => {
   const previousToken = process.env.ODIE_APP_ACCESS_TOKEN
-  const previousUrl = process.env.VITE_SUPABASE_URL
-  const previousServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const previousHevyKey = process.env.HEVY_API_KEY
   const previousFetch = global.fetch
-  const { default: snapshotHandler } = await import('../api/snapshot.js')
+  const { default: snapshotHandler, resetSnapshotCacheForTest } = await import('../api/snapshot.js')
 
   delete process.env.ODIE_APP_ACCESS_TOKEN
-  const noTokenRes = createMockRes()
-  await snapshotHandler({ method: 'GET', headers: {}, query: {} }, noTokenRes)
-  assert.equal(noTokenRes.statusCode, 401)
-  assert.equal(noTokenRes.body.error, 'snapshot token is required')
-
-  process.env.ODIE_APP_ACCESS_TOKEN = 'secret'
-  process.env.VITE_SUPABASE_URL = 'https://example.supabase.co'
-  delete process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.HEVY_API_KEY = 'hevy-key'
   let fetchCalls = 0
-  global.fetch = async () => {
-    fetchCalls += 1
-    return { ok: true, json: async () => [] }
-  }
-  const noServiceRes = createMockRes()
-  await snapshotHandler({ method: 'GET', headers: { authorization: 'Bearer secret' }, query: {} }, noServiceRes)
-  assert.equal(noServiceRes.statusCode, 500)
-  assert.equal(noServiceRes.body.error, 'Supabase service env eksik')
-  assert.equal(fetchCalls, 0)
-
-  process.env.SUPABASE_SERVICE_ROLE_KEY = 'service'
   global.fetch = async url => {
     fetchCalls += 1
     const requestUrl = String(url)
-    if (requestUrl.includes('/profiles?')) {
-      return { ok: true, json: async () => [{ id: 'profile-1', level: 4, last_updated: '2026-06-25T08:00:00Z' }] }
+    if (requestUrl.includes('/v1/workouts/count')) {
+      return { ok: true, json: async () => ({ workout_count: 1 }) }
     }
-    if (requestUrl.includes('/workouts?')) {
-      return { ok: true, json: async () => [{ id: 'w1', profile_id: 'profile-1', date: '2026-06-25', type: 'Push', source: 'hevy' }] }
+    if (requestUrl.includes('/v1/user/info')) {
+      return {
+        ok: true,
+        json: async () => ({ data: { name: 'Alperen', url: 'https://hevy.com/user/senuzulme27' } }),
+      }
     }
-    if (requestUrl.includes('/hevy_sync_state?')) {
-      return { ok: true, json: async () => [{ profile_id: 'profile-1', last_synced_at: '2026-06-25T08:15:00Z' }] }
+    if (requestUrl.includes('/v1/workouts?')) {
+      return {
+        ok: true,
+        json: async () => ({
+          page: 1,
+          page_count: 1,
+          workouts: [{
+            id: 'hevy-w1',
+            title: 'Push',
+            description: 'private note',
+            start_time: '2026-06-25T08:00:00Z',
+            end_time: '2026-06-25T09:00:00Z',
+            created_at: '2026-06-25T09:01:00Z',
+            exercises: [{
+              title: 'Bench Press (Barbell)',
+              notes: 'private exercise note',
+              sets: [{ weight_kg: 80, reps: 8 }],
+            }],
+          }],
+        }),
+      }
     }
-    return { ok: true, json: async () => [] }
+    throw new Error(`unexpected fetch ${requestUrl}`)
   }
 
-  const okRes = createMockRes()
-  await snapshotHandler({ method: 'GET', headers: { authorization: 'Bearer secret' }, query: {} }, okRes)
-  assert.equal(okRes.statusCode, 200)
-  assert.equal(okRes.body.ok, true)
-  assert.equal(okRes.body.profile.id, 'profile-1')
-  assert.equal(okRes.body.workouts[0].id, 'w1')
-  assert.equal(okRes.body.syncState.last_synced_at, '2026-06-25T08:15:00Z')
-  assert.deepEqual(okRes.body.source, { hevy: 'missing' })
-  assert.equal('latestCoachNote' in okRes.body, false)
-  assert.equal('athleteMemory' in okRes.body, false)
+  resetSnapshotCacheForTest()
+  const publicRes = createMockRes()
+  await snapshotHandler({ method: 'GET', headers: {}, query: {} }, publicRes)
+  assert.equal(publicRes.statusCode, 200)
+  assert.equal(publicRes.body.ok, true)
+  assert.equal(publicRes.body.profile.nick, 'Alperen')
+  assert.equal(publicRes.body.workouts[0].id, 'hevy-w1')
+  assert.equal(publicRes.body.workouts[0].exercises[0].name, 'Bench Press (Barbell)')
+  assert.equal(publicRes.body.workouts[0].notes, undefined)
+  assert.equal(publicRes.body.workouts[0].rawExternal, undefined)
+  assert.deepEqual(publicRes.body.source, { hevy: 'live-direct', storage: 'none' })
+  assert.equal(publicRes.body.privacy, 'public-summary')
+  assert.equal(publicRes.headers['X-Odie-Data-Source'], 'hevy-direct')
+  assert.equal(fetchCalls, 3)
+
+  process.env.ODIE_APP_ACCESS_TOKEN = 'secret'
+  resetSnapshotCacheForTest()
+  const lockedRes = createMockRes()
+  await snapshotHandler({ method: 'GET', headers: {}, query: {} }, lockedRes)
+  assert.equal(lockedRes.statusCode, 401)
+  assert.equal(lockedRes.body.error, 'unauthorized')
+
+  const privateRes = createMockRes()
+  await snapshotHandler({ method: 'GET', headers: { authorization: 'Bearer secret' }, query: {} }, privateRes)
+  assert.equal(privateRes.statusCode, 200)
+  assert.equal(privateRes.headers['Cache-Control'], 'private, no-store')
 
   global.fetch = previousFetch
   if (previousToken == null) delete process.env.ODIE_APP_ACCESS_TOKEN
   else process.env.ODIE_APP_ACCESS_TOKEN = previousToken
-  if (previousUrl == null) delete process.env.VITE_SUPABASE_URL
-  else process.env.VITE_SUPABASE_URL = previousUrl
-  if (previousServiceKey == null) delete process.env.SUPABASE_SERVICE_ROLE_KEY
-  else process.env.SUPABASE_SERVICE_ROLE_KEY = previousServiceKey
+  if (previousHevyKey == null) delete process.env.HEVY_API_KEY
+  else process.env.HEVY_API_KEY = previousHevyKey
 })
 
 test('body events API fails closed when table is missing', async () => {

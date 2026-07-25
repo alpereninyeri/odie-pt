@@ -86,6 +86,7 @@ function renderShell(model) {
 
 function renderSidebar(model) {
   const live = model.mode === 'live'
+  const accessLocked = model.error === 'unauthorized'
   return `
     <aside class="side-rail">
       <button class="brand-block" type="button" data-tab="overview" aria-label="OdiePt durum ekranı">
@@ -120,9 +121,11 @@ function renderSidebar(model) {
             <b>${live ? 'HEVY CANLI' : model.mode === 'cache' ? 'SON CANLI KAYIT' : 'DEMO MODU'}</b>
           </div>
         </div>
-        <button type="button" class="rail-action" data-access>
-          ${live ? 'Anahtarı değiştir' : 'Canlı veriye bağlan'}
-        </button>
+        ${live
+          ? '<button type="button" class="rail-action" data-sync>Hevy’yi yenile</button>'
+          : accessLocked
+            ? '<button type="button" class="rail-action" data-access>Erişim anahtarı gir</button>'
+            : '<button type="button" class="rail-action" data-sync>Canlı veriyi dene</button>'}
         ${hasAppAccessToken() ? '<button type="button" class="rail-action danger" data-access-clear>Bağlantıyı kapat</button>' : ''}
       </section>
     </aside>
@@ -136,7 +139,7 @@ function renderMobileTop(model) {
         <span class="brand-mark">OP</span>
         <b>ODIE<span>PT</span></b>
       </button>
-      <button type="button" class="mobile-source ${model.mode === 'live' ? 'is-live' : ''}" data-access>
+      <button type="button" class="mobile-source ${model.mode === 'live' ? 'is-live' : ''}" data-sync>
         <span></span>${model.mode === 'live' ? 'HEVY' : 'DEMO'}
       </button>
     </header>
@@ -171,20 +174,23 @@ function renderStatusBanner(model) {
     `
   }
   if (model.error) {
+    const demoMode = model.mode === 'demo'
     return `
       <div class="status-banner is-error" role="alert">
         ${icon('warning')}
-        <span>Canlı veri yenilenemedi. Ekranda son güvenli kayıt gösteriliyor.</span>
-        <button type="button" data-sync>Tekrar dene</button>
+        <span>${demoMode
+          ? 'Hevy bağlantısı yerelde yok. Tasarım demo verisiyle gösteriliyor.'
+          : 'Canlı veri yenilenemedi. Ekranda son güvenli kayıt gösteriliyor.'}</span>
+        <button type="button" data-sync>${demoMode ? 'Canlı veriyi dene' : 'Tekrar dene'}</button>
       </div>
     `
   }
   if (model.syncSummary) {
-    const changed = Number(model.syncSummary.ingested || 0) + Number(model.syncSummary.updated || 0)
+    const fetched = Number(model.syncSummary.fetched || 0)
     return `
       <div class="status-banner is-success" role="status">
         ${icon('check')}
-        Hevy tarandı · ${formatNumber(changed)} seans güncellendi
+        Hevy yenilendi · ${formatNumber(fetched)} seans okundu
       </div>
     `
   }
@@ -210,7 +216,7 @@ function renderPageHead(model, eyebrow, title, subtitle) {
       </div>
       <button type="button" class="sync-button" data-sync ${model.status === 'syncing' ? 'disabled' : ''}>
         ${icon('refresh')}
-        <span>${model.mode === 'live' ? 'Hevy’yi yenile' : 'Canlı veriye geç'}</span>
+        <span>${model.mode === 'live' ? 'Hevy’yi yenile' : 'Canlı veriyi dene'}</span>
       </button>
     </header>
   `
@@ -741,13 +747,10 @@ function handleKeydown(event) {
 }
 
 async function syncDashboard() {
-  if (!hasAppAccessToken()) {
-    connectLive()
-    return
-  }
   try {
     await dashboardStore.refresh({ pullHevy: true })
   } catch (error) {
+    if (String(error?.message || error) === 'unauthorized') connectLive()
     console.warn('[odiept] sync failed:', error?.message || error)
   }
 }
