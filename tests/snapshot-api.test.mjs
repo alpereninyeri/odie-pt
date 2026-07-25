@@ -127,3 +127,82 @@ test('snapshot reads Hevy directly without exposing private workout fields', asy
     resetSnapshotCacheForTest()
   }
 })
+
+test('a small response cannot poison the full-history snapshot cache', async () => {
+  const previousToken = process.env.ODIE_APP_ACCESS_TOKEN
+  const previousHevyKey = process.env.HEVY_API_KEY
+  const previousFetch = global.fetch
+
+  delete process.env.ODIE_APP_ACCESS_TOKEN
+  process.env.HEVY_API_KEY = 'hevy-key'
+  let pageFetches = 0
+
+  const workout = index => ({
+    id: `hevy-${index}`,
+    title: 'Full body',
+    start_time: `2026-07-${String(25 - index).padStart(2, '0')}T08:00:00Z`,
+    end_time: `2026-07-${String(25 - index).padStart(2, '0')}T09:00:00Z`,
+    exercises: [{
+      title: 'Bench Press (Barbell)',
+      sets: [{ weight_kg: 60, reps: 8 }],
+    }],
+  })
+  const allWorkouts = Array.from({ length: 12 }, (_, index) => workout(index))
+
+  global.fetch = async url => {
+    const requestUrl = new URL(String(url))
+    if (requestUrl.pathname === '/v1/workouts/count') {
+      return { ok: true, json: async () => ({ workout_count: 12 }) }
+    }
+    if (requestUrl.pathname === '/v1/user/info') {
+      return {
+        ok: true,
+        json: async () => ({ data: { name: 'Alperen' } }),
+      }
+    }
+    if (requestUrl.pathname === '/v1/workouts') {
+      pageFetches += 1
+      const page = Number(requestUrl.searchParams.get('page'))
+      return {
+        ok: true,
+        json: async () => ({
+          page,
+          page_count: 2,
+          workouts: page === 1 ? allWorkouts.slice(0, 10) : allWorkouts.slice(10),
+        }),
+      }
+    }
+    throw new Error(`unexpected fetch ${requestUrl}`)
+  }
+
+  try {
+    resetSnapshotCacheForTest()
+    const compactRes = createMockRes()
+    await snapshotHandler({
+      method: 'GET',
+      headers: {},
+      query: { workouts: '10' },
+    }, compactRes)
+    assert.equal(compactRes.statusCode, 200)
+    assert.equal(compactRes.body.workouts.length, 10)
+    assert.equal(compactRes.body.profile.sessions, 12)
+    assert.equal(compactRes.body.syncState.fetched_workouts, 12)
+    assert.equal(compactRes.body.syncState.returned_workouts, 10)
+
+    const fullRes = createMockRes()
+    await snapshotHandler({
+      method: 'GET',
+      headers: {},
+      query: { workouts: '120' },
+    }, fullRes)
+    assert.equal(fullRes.statusCode, 200)
+    assert.equal(fullRes.body.workouts.length, 12)
+    assert.equal(fullRes.body.syncState.returned_workouts, 12)
+    assert.equal(pageFetches, 2)
+  } finally {
+    global.fetch = previousFetch
+    restoreEnv('ODIE_APP_ACCESS_TOKEN', previousToken)
+    restoreEnv('HEVY_API_KEY', previousHevyKey)
+    resetSnapshotCacheForTest()
+  }
+})
