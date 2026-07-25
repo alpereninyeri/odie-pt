@@ -10,3 +10,19 @@ api/health-status.js
 api/next-session.js
 scripts/setup-webhook.js
 scripts/backfill-memory.mjs
+
+# Release payload: keep runtime source, drop QA/docs and old visual experiments.
+docs/
+e2e/
+infra/
+scripts/
+tests/
+src/components/
+
+src/assets/game/*
+!src/assets/game/cozy-v4/
+src/assets/game/cozy-v4/*
+!src/assets/game/cozy-v4/avatar-athlete.png
+
+src/styles/*
+!src/styles/cozy-reforge.css

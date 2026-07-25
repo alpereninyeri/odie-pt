@@ -24,6 +24,7 @@ function listFiles(dir) {
 }
 
 const requiredFiles = [
+  '.vercelignore',
   'api/snapshot.js',
   'api/hevy-sync.js',
   'api/hevy-webhook.js',
@@ -43,11 +44,23 @@ for (const file of requiredFiles) {
 
 const readme = read('README.md')
 const packageJson = read('package.json')
+const vercelIgnore = read('.vercelignore')
 if (!packageJson.includes('"db:contract:check"')) fail('package.json missing db:contract:check script')
 if (!packageJson.includes('"vercel:env:check"')) fail('package.json missing vercel:env:check script')
 if (!packageJson.includes('"live:smoke"')) fail('package.json missing live:smoke script')
 if (!readme.includes('Hevy-only')) fail('README must document the Hevy-only product scope')
 if (!readme.includes('Durum')) fail('README must document the three-screen dashboard')
+for (const requiredIgnore of [
+  'api/coach.js',
+  'api/ask.js',
+  'src/assets/game/*',
+  '!src/assets/game/cozy-v4/avatar-athlete.png',
+  'tests/',
+]) {
+  if (!vercelIgnore.includes(requiredIgnore)) {
+    fail(`.vercelignore missing production payload rule: ${requiredIgnore}`)
+  }
+}
 
 const prodFiles = [
   ...listFiles('src'),
