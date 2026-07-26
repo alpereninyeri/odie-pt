@@ -1,5 +1,11 @@
-import { buildBodyMapState } from './body-map-engine.js'
-import { getLocalDateString, normalizeDateString } from './rules.js'
+import { buildBodyMapState, getExerciseBodyRegions } from './body-map-engine.js'
+import { buildClassTrack } from './class-track.js'
+import {
+  computeSessionStatDelta,
+  getLocalDateString,
+  normalizeDateString,
+  normalizeText,
+} from './rules.js'
 
 const DAY_MS = 86_400_000
 const STAT_LABELS = {
@@ -11,24 +17,75 @@ const STAT_LABELS = {
   sta: ['STAM', 'Kondisyon'],
 }
 
-const REGION_ACTIONS = {
-  chest: 'Incline press veya kontrollü şınav',
-  shoulder: 'Arka omuz + kontrollü press',
-  triceps: 'Close grip press veya dip',
-  biceps: 'Chin-up veya curl',
-  forearm: 'Farmer carry veya dead hang',
-  wrist: 'Hafif bilek hazırlığı',
-  lat: 'Pull-up veya pulldown',
-  'upper-back': 'Row + face pull',
-  core: 'Hollow hold + hanging raise',
-  glute: 'Hip thrust veya split squat',
-  quads: 'Squat veya lunge',
-  hamstrings: 'RDL veya leg curl',
-  calves: 'Calf raise',
-  knees: 'Kontrollü step-up',
-  ankles: 'Ayak bileği mobilitesi',
-  'lower-back': 'Back extension veya kontrollü hinge',
-  hips: 'Kalça mobilitesi ve kontrollü split squat',
+const REGION_GUIDES = {
+  chest: {
+    develops: 'Göğüs itiş gücü',
+    recommendations: ['Incline Press', 'Şınav'],
+  },
+  shoulder: {
+    develops: 'Omuz kuvveti + stabilite',
+    recommendations: ['Lateral Raise', 'Shoulder Press'],
+  },
+  triceps: {
+    develops: 'İtiş kilidi + arka kol',
+    recommendations: ['Pushdown', 'Close Grip Press'],
+  },
+  biceps: {
+    develops: 'Çekiş gücü + ön kol',
+    recommendations: ['Chin-up', 'Biceps Curl'],
+  },
+  forearm: {
+    develops: 'Kavrama + ön kol',
+    recommendations: ['Farmer Carry', 'Dead Hang'],
+  },
+  wrist: {
+    develops: 'Bilek dayanıklılığı',
+    recommendations: ['Wrist Curl', 'Hafif Bilek Hazırlığı'],
+  },
+  lat: {
+    develops: 'Dikey çekiş + kanat',
+    recommendations: ['Pull-up', 'Lat Pulldown'],
+  },
+  'upper-back': {
+    develops: 'Kürek kontrolü + üst sırt',
+    recommendations: ['Row', 'Face Pull'],
+  },
+  core: {
+    develops: 'Gövde stabilitesi',
+    recommendations: ['Hollow Hold', 'Hanging Leg Raise'],
+  },
+  glute: {
+    develops: 'Kalça gücü + ekstansiyon',
+    recommendations: ['Hip Thrust', 'Split Squat'],
+  },
+  quads: {
+    develops: 'Diz itişi + ön bacak',
+    recommendations: ['Squat', 'Leg Press'],
+  },
+  hamstrings: {
+    develops: 'Kalça menteşesi + arka bacak',
+    recommendations: ['Romanian Deadlift', 'Leg Curl'],
+  },
+  calves: {
+    develops: 'Ayak itişi + baldır',
+    recommendations: ['Calf Raise', 'Jump Rope'],
+  },
+  knees: {
+    develops: 'Diz kontrolü',
+    recommendations: ['Step-up', 'Split Squat'],
+  },
+  ankles: {
+    develops: 'Ayak bileği kontrolü',
+    recommendations: ['Calf Raise', 'Ankle Mobility'],
+  },
+  'lower-back': {
+    develops: 'Bel + arka zincir kontrolü',
+    recommendations: ['Back Extension', 'Romanian Deadlift'],
+  },
+  hips: {
+    develops: 'Kalça hareketliliği',
+    recommendations: ['Hip Mobility', 'Split Squat'],
+  },
 }
 
 function number(value) {
@@ -193,16 +250,62 @@ function categoryLabel(value = '') {
   return String(value || 'Diğer')
 }
 
+function workoutVerdict(workout = {}, statGains = []) {
+  const tags = new Set((workout.tags || []).map(tag => normalizeText(tag)))
+  const text = normalizeText([
+    workout.type,
+    workout.primaryCategory,
+    workout.highlight,
+    ...(workout.exercises || []).map(exercise => exercise.name),
+  ].join(' '))
+  const category = normalizeText(workout.primaryCategory)
+
+  if (category === 'recovery' || tags.has('mobility') || /stretch|mobility|mobilite/.test(text)) return 'Aktif Toparlanma'
+  if (tags.has('legs') || /squat|leg press|lunge|bacak|quad|hamstring/.test(text)) return 'Bacak Gücü'
+  if (tags.has('push') || /bench|chest press|shoulder press|pushdown/.test(text)) return 'İtiş Gücü'
+  if (tags.has('pull') || /pull up|pulldown|row|curl|deadlift/.test(text)) return 'Çekiş Gücü'
+  if (tags.has('core') || /plank|hollow|leg raise|core/.test(text)) return 'Gövde Gücü'
+  if (category === 'endurance' || tags.has('running') || tags.has('walking')) return 'Kondisyon'
+  if (category === 'movement' && (tags.has('explosive') || /jump|sprint|plyo/.test(text))) return 'Patlayıcı Beceri'
+  if (category === 'movement') return 'Hareket Becerisi'
+  if (category === 'mixed') return 'Karma Güç'
+
+  const fallback = statGains[0]?.key
+  if (fallback === 'str') return 'Kuvvet'
+  if (fallback === 'con') return 'Gövde Gücü'
+  if (fallback === 'agi' || fallback === 'dex') return 'Teknik Beceri'
+  if (fallback === 'end' || fallback === 'sta') return 'Kondisyon'
+  return 'Karma Antrenman'
+}
+
 function sessionRows(workouts) {
   return workouts.slice(0, 40).map(workout => {
     const exercises = (workout.exercises || []).filter(exercise => exercise?.name)
-    const topExercises = exercises.slice(0, 4).map(exercise => {
+    const exerciseRows = exercises.map(exercise => ({
+      ...exercise,
+      targets: getExerciseBodyRegions(exercise.name),
+    }))
+    const topExercises = exerciseRows.slice(0, 4).map(exercise => {
       const sets = Array.isArray(exercise.sets) ? exercise.sets.length : 0
       return `${exercise.name}${sets ? ` ×${sets}` : ''}`
     })
+    const statDelta = computeSessionStatDelta(workout)
+    const statGains = Object.entries(statDelta)
+      .filter(([, value]) => number(value) > 0)
+      .map(([key, value]) => ({
+        key,
+        short: STAT_LABELS[key]?.[0] || key.toUpperCase(),
+        name: STAT_LABELS[key]?.[1] || key,
+        value: Math.round(number(value) * 10) / 10,
+      }))
+      .sort((left, right) => right.value - left.value)
+      .slice(0, 2)
     return {
       ...workout,
+      exercises: exerciseRows,
       typeLabel: categoryLabel(workout.type || workout.primaryCategory),
+      verdict: workoutVerdict(workout, statGains),
+      statGains,
       topExercises,
       dateLabel: new Date(`${normalizeDateString(workout.date)}T12:00:00Z`).toLocaleDateString('tr-TR', {
         day: 'numeric',
@@ -219,14 +322,20 @@ export function createDashboardModel(sourceState = {}, { today = getLocalDateStr
   const workouts = [...(sourceState.workouts || [])]
     .filter(workout => normalizeDateString(workout.date))
     .sort((left, right) => String(right.startedAt || right.date).localeCompare(String(left.startedAt || left.date)))
+  const classTrack = profile.classTrack || buildClassTrack(workouts)
+  const displayProfile = {
+    ...profile,
+    classTrack,
+    displayTitle: profile.displayTitle || classTrack.displayTitle || profile.className,
+  }
   const current28Rows = inWindow(workouts, today, 28)
   const previous28Rows = inWindow(workouts, today, 56, 28)
   const current7Rows = inWindow(workouts, today, 7)
   const current28 = summarize(current28Rows)
   const previous28 = summarize(previous28Rows)
   const bodyMap = buildBodyMapState({
-    state: { profile, workouts, dailyLogs: [], bodyEvents: [] },
-    profile,
+    state: { profile: displayProfile, workouts, dailyLogs: [], bodyEvents: [] },
+    profile: displayProfile,
     today,
   })
   const regions = (bodyMap.regions || []).map(region => ({
@@ -234,7 +343,12 @@ export function createDashboardModel(sourceState = {}, { today = getLocalDateStr
     load: Math.round(clamp(region.load)),
     recovery: Math.round(clamp(region.recovery)),
     risk: Math.round(clamp(region.risk)),
-    action: REGION_ACTIONS[region.id] || 'Kontrollü temel çalışma',
+    develops: REGION_GUIDES[region.id]?.develops || 'Temel bölge kapasitesi',
+    recommendations: REGION_GUIDES[region.id]?.recommendations || ['Kontrollü temel çalışma'],
+    exercisePreview: (region.contributors || []).length
+      ? region.contributors.slice(0, 2).map(item => item.name)
+      : (REGION_GUIDES[region.id]?.recommendations || ['Kontrollü temel çalışma']).slice(0, 2),
+    action: (REGION_GUIDES[region.id]?.recommendations || ['Kontrollü temel çalışma']).join(' veya '),
   }))
   const muscleRegions = regions.filter(region => region.group === 'muscle')
   const weakestFirst = [...muscleRegions]
@@ -254,7 +368,7 @@ export function createDashboardModel(sourceState = {}, { today = getLocalDateStr
 
   return {
     today,
-    profile,
+    profile: displayProfile,
     workouts,
     latestWorkout,
     latestAge,
@@ -312,6 +426,8 @@ export const dashboardInternals = {
   daysBetween,
   heatmap,
   rankFromScore,
+  sessionRows,
   summarize,
+  workoutVerdict,
   weeklySeries,
 }

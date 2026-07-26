@@ -1,4 +1,4 @@
-import { normalizeSession, normalizeText } from './rules.js'
+import { isNormalizedSession, normalizeSession, normalizeText } from './rules.js'
 
 const PATTERN_GROUPS = {
   bench: ['bench', 'incline press', 'chest press'],
@@ -131,7 +131,9 @@ function activeRecoveryScore(dailyLogs = []) {
 }
 
 export function buildSemanticProfile(workouts = [], dailyLogs = []) {
-  const normalized = (workouts || []).map(workout => normalizeSession(workout))
+  const normalized = (workouts || []).map(workout => (
+    isNormalizedSession(workout) ? workout : normalizeSession(workout)
+  ))
   const total = normalized.length || 1
   const texts = normalized.map(workout => workoutText(workout))
 

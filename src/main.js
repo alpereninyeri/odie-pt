@@ -7,11 +7,12 @@ import { dashboardStore } from './data/dashboard-store.js'
 const TABS = [
   { key: 'overview', label: 'Durum', icon: 'pulse' },
   { key: 'body', label: 'Bölgeler', icon: 'body' },
-  { key: 'sessions', label: 'Seanslar', icon: 'list' },
+  { key: 'sessions', label: 'Antrenmanlar', icon: 'list' },
 ]
 
 let activeTab = readInitialTab()
 let detail = null
+let currentModel = null
 let lastMarkup = ''
 let renderQueued = false
 
@@ -60,6 +61,7 @@ function scheduleRender() {
 
 function render() {
   const model = createDashboardModel(dashboardStore.getState())
+  currentModel = model
   const markup = renderShell(model)
   const title = `OdiePt · ${TABS.find(tab => tab.key === activeTab)?.label || 'Durum'}`
   if (document.title !== title) document.title = title
@@ -105,7 +107,7 @@ function renderSidebar(model) {
         <div>
           <small>OYUNCU</small>
           <strong>${escapeHtml(model.profile.nick || 'Sporcu')}</strong>
-          <span>${escapeHtml(model.profile.className || 'Hybrid Athlete')}</span>
+          <span>${escapeHtml(model.profile.displayTitle || model.profile.className || 'Hybrid Athlete')}</span>
         </div>
       </section>
 
@@ -190,7 +192,7 @@ function renderStatusBanner(model) {
     return `
       <div class="status-banner is-success" role="status">
         ${icon('check')}
-        Hevy yenilendi · ${formatNumber(fetched)} seans okundu
+        Hevy yenilendi · ${formatNumber(fetched)} antrenman okundu
       </div>
     `
   }
@@ -229,7 +231,7 @@ function renderOverviewScreen(model) {
         model,
         formatFullDate(model.today),
         `Selam, ${model.profile.nick || 'sporcu'}.`,
-        `${model.statusLine}. Son seans ${model.latestWorkout ? relativeDay(model.latestAge) : 'henüz yok'}.`,
+        `${model.statusLine}. Son antrenman ${model.latestWorkout ? relativeDay(model.latestAge) : 'henüz yok'}.`,
       )}
 
       <div class="overview-grid">
@@ -237,7 +239,7 @@ function renderOverviewScreen(model) {
         ${renderQuestCard(model)}
 
         <section class="metric-strip" aria-label="Son 28 gün özeti">
-          ${renderMetric('Seans', model.current28.sessions, `${signed(model.momentum.sessions)} önceki dönem`, 'sessions')}
+          ${renderMetric('Antrenman', model.current28.sessions, `${signed(model.momentum.sessions)} önceki dönem`, 'sessions')}
           ${renderMetric('Aktif gün', model.current28.activeDays, `${model.recent7.activeDays} gün / son 7`, 'days')}
           ${renderMetric('Hacim', compactNumber(model.current28.volumeKg, 'kg'), `${signed(model.momentum.volume)} önceki dönem`, 'volume')}
           ${renderMetric('Süre', compactMinutes(model.current28.minutes), `${signed(model.momentum.minutes)} önceki dönem`, 'time')}
@@ -287,12 +289,19 @@ function renderOverviewScreen(model) {
 }
 
 function renderPlayerCard(model) {
+  const classTrack = model.profile.classTrack || {}
+  const classDelta = Number(classTrack.delta) || 0
+  const classDirection = classDelta > 0 ? 'up' : classDelta < 0 ? 'down' : 'steady'
   return `
     <section class="player-card">
       <div class="player-card-grid" aria-hidden="true"></div>
       <div class="player-copy">
         <span class="eyebrow">${escapeHtml(model.profile.rank || 'OYUNCU KARTI')}</span>
-        <h2>${escapeHtml(model.profile.className || 'HYBRID ATHLETE')}</h2>
+        <h2>${escapeHtml(model.profile.displayTitle || model.profile.className || 'HYBRID ATHLETE')}</h2>
+        <div class="class-track-line">
+          <span>${escapeHtml(classTrack.familyName || model.profile.className || 'Hybrid Athlete')} · %${formatNumber(classTrack.affinity || 0)} uyum</span>
+          <b class="class-shift is-${classDirection}">${classDelta > 0 ? '▲' : classDelta < 0 ? '▼' : '◆'} ${classDelta > 0 ? '+' : ''}${formatNumber(classDelta)}</b>
+        </div>
         <div class="player-state">
           <span class="pulse-dot"></span>
           ${escapeHtml(model.statusLine)}
@@ -394,7 +403,8 @@ function renderGapPanel(model) {
             <span class="gap-rank">0${index + 1}</span>
             <div class="gap-copy">
               <b>${escapeHtml(region.label)}</b>
-              <small>${region.daysSince >= 99 ? 'Kayıt yok' : `${formatNumber(region.daysSince)} gündür düşük`}</small>
+              <small>${escapeHtml(region.develops)}</small>
+              <em>${escapeHtml(region.exercisePreview.join(' · '))} · ${region.daysSince >= 99 ? 'kayıt yok' : `${formatNumber(region.daysSince)}g önce`}</em>
             </div>
             <div class="mini-track"><span style="--progress:${region.load}%"></span></div>
             <strong>${formatNumber(region.load)}%</strong>
@@ -485,7 +495,11 @@ function renderBodyScreen(model) {
                 <li>
                   <button type="button" data-region="${escapeAttr(region.id)}">
                     <span>0${index + 1}</span>
-                    <div><b>${escapeHtml(region.label)}</b><small>${escapeHtml(region.action)}</small></div>
+                    <div>
+                      <b>${escapeHtml(region.label)}</b>
+                      <small>${escapeHtml(region.develops)}</small>
+                      <em>${escapeHtml(region.exercisePreview.join(' · '))}</em>
+                    </div>
                     <strong>${formatNumber(region.load)}%</strong>
                   </button>
                 </li>
@@ -524,6 +538,8 @@ function renderRegionTile(region) {
         <strong>${formatNumber(region.load)}</strong>
       </div>
       <h3>${escapeHtml(region.label)}</h3>
+      <p class="region-develops">${escapeHtml(region.develops)}</p>
+      <span class="region-examples">${escapeHtml(region.exercisePreview.join(' · '))}</span>
       <div class="region-bars">
         <span><i style="--progress:${region.load}%"></i></span>
         <small>${region.daysSince >= 99 ? 'temas yok' : `${region.daysSince}g önce`}</small>
@@ -537,9 +553,9 @@ function renderSessionsScreen(model) {
     <section class="screen sessions-screen">
       ${renderPageHead(
         model,
-        'HEVY SEANS GEÇMİŞİ',
+        'HEVY ANTRENMAN GEÇMİŞİ',
         'Ne yaptın?',
-        `${formatNumber(model.workouts.length)} seans kayıtlı. Son 28 günde ${formatNumber(model.current28.sets)} set tamamlandı.`,
+        `${formatNumber(model.workouts.length)} antrenman kayıtlı. Son 28 günde ${formatNumber(model.current28.sets)} set tamamlandı.`,
       )}
 
       <div class="sessions-layout">
@@ -547,12 +563,12 @@ function renderSessionsScreen(model) {
           <div class="panel-head">
             <div>
               <span class="eyebrow">SON KAYITLAR</span>
-              <h2>Seans günlüğü</h2>
+              <h2>Antrenman günlüğü</h2>
             </div>
             <span class="panel-chip">${formatNumber(model.sessions.length)}</span>
           </div>
           <div class="session-list">
-            ${model.sessions.length ? model.sessions.map(renderSessionRow).join('') : '<p class="empty-state">Hevy’den henüz seans gelmedi.</p>'}
+            ${model.sessions.length ? model.sessions.map(renderSessionRow).join('') : '<p class="empty-state">Hevy’den henüz antrenman gelmedi.</p>'}
           </div>
         </section>
 
@@ -570,7 +586,7 @@ function renderSessionsScreen(model) {
                   <span class="category-index">0${index + 1}</span>
                   <div>
                     <b>${escapeHtml(category.label)}</b>
-                    <small>${formatNumber(category.sessions)} seans · ${formatNumber(category.minutes)} dk</small>
+                    <small>${formatNumber(category.sessions)} antrenman · ${formatNumber(category.minutes)} dk</small>
                   </div>
                   <div class="mini-track"><span style="--progress:${category.share}%"></span></div>
                   <strong>${formatNumber(category.share)}%</strong>
@@ -600,8 +616,12 @@ function renderSessionRow(session, index) {
       <span class="session-index">${String(index + 1).padStart(2, '0')}</span>
       <span class="session-type-icon">${session.hasPr ? icon('trophy') : icon('dumbbell')}</span>
       <div class="session-copy">
-        <span>${escapeHtml(session.dateLabel)} · ${escapeHtml(session.typeLabel)}</span>
+        <span>${escapeHtml(session.dateLabel)}</span>
         <b>${escapeHtml(session.type || 'Antrenman')}</b>
+        <div class="session-analysis">
+          <em>${escapeHtml(session.verdict)}</em>
+          ${renderStatGains(session.statGains)}
+        </div>
         <small>${escapeHtml(session.topExercises.join(' / ') || session.highlight || 'Egzersiz detayı yok')}</small>
       </div>
       <div class="session-numbers">
@@ -612,6 +632,12 @@ function renderSessionRow(session, index) {
       ${icon('arrow')}
     </button>
   `
+}
+
+function renderStatGains(statGains = []) {
+  return (statGains || []).map(gain => `
+    <span class="stat-gain">+${formatDelta(gain.value)} ${escapeHtml(gain.short)}</span>
+  `).join('')
 }
 
 function renderDetail() {
@@ -633,22 +659,58 @@ function renderDetail() {
 function regionDetail(model, regionId) {
   const region = model.regions.find(item => item.id === regionId)
   if (!region) return null
+  if (region.group === 'joint') {
+    return {
+      eyebrow: 'EKLEM RAPORU',
+      title: region.label,
+      body: `
+        <div class="detail-score-grid">
+          <div><small>YÜK</small><strong>${formatNumber(region.load)}</strong></div>
+          <div><small>TOPARLANMA</small><strong>${formatNumber(region.recovery)}</strong></div>
+          <div><small>RİSK</small><strong>${formatNumber(region.risk)}</strong></div>
+        </div>
+        <div class="detail-block">
+          <span class="eyebrow">GÜVENLİ DESTEK</span>
+          <p>${escapeHtml(region.action)}</p>
+        </div>
+        <div class="detail-meta">
+          <span>Son temas</span>
+          <b>${region.daysSince >= 99 ? 'Yakın dönem kaydı yok' : `${formatNumber(region.daysSince)} gün önce`}</b>
+        </div>
+      `,
+    }
+  }
+
+  const contributors = region.contributors || []
   return {
-    eyebrow: region.group === 'joint' ? 'EKLEM RAPORU' : 'BÖLGE RAPORU',
+    eyebrow: 'HAREKET → BÖLGE',
     title: region.label,
     body: `
       <div class="detail-score-grid">
         <div><small>YÜK</small><strong>${formatNumber(region.load)}</strong></div>
-        <div><small>TOPARLANMA</small><strong>${formatNumber(region.recovery)}</strong></div>
-        <div><small>RİSK</small><strong>${formatNumber(region.risk)}</strong></div>
+        <div><small>SON TEMAS</small><strong>${region.daysSince >= 99 ? '—' : formatNumber(region.daysSince)}<em>${region.daysSince >= 99 ? '' : 'g'}</em></strong></div>
+        <div><small>KAYIT</small><strong>${formatNumber(region.matchedSessions || 0)}</strong></div>
       </div>
       <div class="detail-block">
-        <span class="eyebrow">SONRAKİ HAMLE</span>
-        <p>${escapeHtml(region.action)}</p>
+        <span class="eyebrow">NEYİ GELİŞTİRİR?</span>
+        <p>${escapeHtml(region.develops)}</p>
       </div>
-      <div class="detail-meta">
-        <span>Son temas</span>
-        <b>${region.daysSince >= 99 ? 'Yakın dönem kaydı yok' : `${formatNumber(region.daysSince)} gün önce`}</b>
+      <div class="detail-section">
+        <span class="eyebrow">SENDE ÇALIŞAN HAREKETLER · 28G</span>
+        <div class="contributor-list">
+          ${contributors.length ? contributors.map(item => `
+            <div>
+              <span><b>${escapeHtml(item.name)}</b><small>${formatNumber(item.sessions)} antrenman · son ${formatNumber(item.daysSince)}g</small></span>
+              <strong>${formatNumber(item.sets)} set</strong>
+            </div>
+          `).join('') : '<p class="empty-inline">Son 28 günde bu bölgeye doğrudan eşleşen hareket yok.</p>'}
+        </div>
+      </div>
+      <div class="detail-section">
+        <span class="eyebrow">AÇIĞI KAPAT</span>
+        <div class="recommendation-chips">
+          ${(region.recommendations || []).map(item => `<span>${escapeHtml(item)}</span>`).join('')}
+        </div>
       </div>
     `,
   }
@@ -658,9 +720,13 @@ function sessionDetail(model, sessionId) {
   const session = model.sessions.find(item => String(item.id) === String(sessionId))
   if (!session) return null
   return {
-    eyebrow: `${session.dateLabel} · ${session.typeLabel}`,
+    eyebrow: `${session.dateLabel} · ANTRENMAN OKUMASI`,
     title: session.type || 'Antrenman',
     body: `
+      <div class="session-verdict">
+        <b>${escapeHtml(session.verdict)}</b>
+        <div>${renderStatGains(session.statGains)}</div>
+      </div>
       <div class="detail-score-grid">
         <div><small>SET</small><strong>${formatNumber(session.sets || 0)}</strong></div>
         <div><small>HACİM</small><strong>${compactNumber(session.volumeKg || 0)}</strong></div>
@@ -670,8 +736,11 @@ function sessionDetail(model, sessionId) {
       <div class="exercise-list">
         ${(session.exercises || []).length ? session.exercises.map(exercise => `
           <div>
-            <b>${escapeHtml(exercise.name || 'Egzersiz')}</b>
-            <span>${formatNumber(Array.isArray(exercise.sets) ? exercise.sets.length : 0)} set</span>
+            <span>
+              <b>${escapeHtml(exercise.name || 'Egzersiz')}</b>
+              <small>${escapeHtml((exercise.targets || []).map(target => target.label).join(' · ') || 'Genel katkı')}</small>
+            </span>
+            <strong>${formatNumber(Array.isArray(exercise.sets) ? exercise.sets.length : 0)} set</strong>
           </div>
         `).join('') : '<p class="empty-state">Egzersiz kırılımı yok.</p>'}
       </div>
@@ -709,7 +778,7 @@ async function handleClick(event) {
     return
   }
 
-  const model = createDashboardModel(dashboardStore.getState())
+  const model = currentModel || createDashboardModel(dashboardStore.getState())
   const regionButton = event.target.closest('[data-region]')
   if (regionButton) {
     detail = regionDetail(model, regionButton.dataset.region)
@@ -733,7 +802,7 @@ async function handleClick(event) {
       title: `${stat.name} · Rank ${stat.rank}`,
       body: `
         <div class="detail-stat-rank">${escapeHtml(stat.rank)}</div>
-        <div class="detail-block"><p>Bu rank Hevy seanslarındaki ilgili hareket, yük ve tekrar kanıtlarından hesaplanır. Ham skor: ${formatNumber(stat.score)}/100.</p></div>
+        <div class="detail-block"><p>Bu rank Hevy antrenmanlarındaki ilgili hareket, yük ve tekrar kanıtlarından hesaplanır. Ham skor: ${formatNumber(stat.score)}/100.</p></div>
       `,
     }
     scheduleRender()
@@ -819,6 +888,10 @@ function compactMinutes(value) {
 
 function formatNumber(value) {
   return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(Number(value) || 0)
+}
+
+function formatDelta(value) {
+  return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(Math.max(0, Number(value) || 0))
 }
 
 function formatFullDate(value) {

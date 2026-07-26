@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   buildBodyMapState,
+  getExerciseBodyRegions,
   scoreUnlockTargets,
   sessionClosesGameQuest,
 } from '../src/data/body-map-engine.js'
@@ -68,6 +69,112 @@ test('body map selects a repair quest when a muscle line is neglected', () => {
   assert.equal(bodyMapState.dailyQuest.kind, 'repair')
   assert.equal(bodyMapState.dailyQuest.linkedRegion, 'core')
   assert.match(bodyMapState.xpPreview.text, /Kapanan Hat/)
+})
+
+test('body map exposes direct Hevy exercise evidence without tag-only false positives', () => {
+  const state = {
+    profile: { fatigue: 20, armor: 90 },
+    workouts: [
+      normalizeSession({
+        id: 'push-evidence',
+        date: '2026-05-20',
+        type: 'Push',
+        exercises: [{ name: 'Bench Press', sets: [{ reps: 8 }, { reps: 8 }, { reps: 6 }] }],
+      }),
+      normalizeSession({
+        id: 'legs-evidence',
+        date: '2026-05-19',
+        type: 'Bacak',
+        exercises: [{ name: 'Leg Press (Machine)', sets: [{ reps: 10 }, { reps: 10 }] }],
+      }),
+    ],
+    dailyLogs: [],
+  }
+
+  const bodyMapState = buildBodyMapState({ state, today: '2026-05-21' })
+  const chest = bodyMapState.regions.find(region => region.id === 'chest')
+  const quads = bodyMapState.regions.find(region => region.id === 'quads')
+
+  assert.deepEqual(chest.contributors.map(item => item.name), ['Bench Press'])
+  assert.equal(chest.contributors[0].sets, 3)
+  assert.deepEqual(quads.contributors.map(item => item.name), ['Leg Press (Machine)'])
+  assert.deepEqual(getExerciseBodyRegions('Bench Press').map(region => region.id), ['chest'])
+  assert.deepEqual(getExerciseBodyRegions('Leg Press (Machine)').map(region => region.id), ['quads'])
+  assert.deepEqual(getExerciseBodyRegions('Leg Curl').map(region => region.id), ['hamstrings'])
+  assert.deepEqual(getExerciseBodyRegions('Lateral Raise').map(region => region.id), ['shoulder'])
+  assert.deepEqual(getExerciseBodyRegions('Reverse Fly').map(region => region.id), ['upper-back'])
+  assert.deepEqual(getExerciseBodyRegions('Wrist Curl').map(region => region.id), ['forearm'])
+  assert.deepEqual(getExerciseBodyRegions('Running').map(region => region.id), ['calves'])
+  assert.deepEqual(getExerciseBodyRegions('Walking').map(region => region.id), ['calves'])
+  assert.deepEqual(getExerciseBodyRegions('Jumping Jacks').map(region => region.id), ['quads', 'calves'])
+  assert.deepEqual(getExerciseBodyRegions('Dips').map(region => region.id), ['chest', 'triceps'])
+  assert.deepEqual(
+    getExerciseBodyRegions('Wrist Curl', { includeJoints: true }).map(region => region.id),
+    ['forearm', 'wrist'],
+  )
+})
+
+test('explicit Hevy exercise rows do not leak load into similarly named regions', () => {
+  const state = {
+    profile: { fatigue: 18, armor: 92 },
+    workouts: [
+      normalizeSession({
+        id: 'mapping-regression',
+        date: '2026-05-20',
+        type: 'Pull',
+        exercises: [
+          { name: 'Lateral Raise', sets: [{ reps: 12 }, { reps: 12 }] },
+          { name: 'Reverse Fly', sets: [{ reps: 12 }, { reps: 12 }] },
+          { name: 'Leg Curl', sets: [{ reps: 10 }, { reps: 10 }] },
+          { name: 'Wrist Curl', sets: [{ reps: 15 }, { reps: 15 }] },
+        ],
+      }),
+    ],
+    dailyLogs: [],
+  }
+
+  const regions = new Map(
+    buildBodyMapState({ state, today: '2026-05-21' }).regions
+      .map(region => [region.id, region]),
+  )
+
+  assert.ok(regions.get('shoulder').load > 0)
+  assert.equal(regions.get('lat').load, 0)
+  assert.ok(regions.get('upper-back').load > 0)
+  assert.equal(regions.get('chest').load, 0)
+  assert.ok(regions.get('hamstrings').load > 0)
+  assert.ok(regions.get('forearm').load > 0)
+  assert.equal(regions.get('biceps').load, 0)
+})
+
+test('common inflected Hevy exercise names still contribute direct region load', () => {
+  const state = {
+    profile: { fatigue: 18, armor: 92 },
+    workouts: [
+      normalizeSession({
+        id: 'inflected-aliases',
+        date: '2026-05-20',
+        type: 'Karma',
+        exercises: [
+          { name: 'Running', sets: [{ durationSec: 600 }] },
+          { name: 'Walking', sets: [{ durationSec: 600 }] },
+          { name: 'Jumping Jacks', sets: [{ reps: 30 }] },
+          { name: 'Dips', sets: [{ reps: 10 }, { reps: 8 }] },
+        ],
+      }),
+    ],
+    dailyLogs: [],
+  }
+
+  const regions = new Map(
+    buildBodyMapState({ state, today: '2026-05-21' }).regions
+      .map(region => [region.id, region]),
+  )
+
+  assert.ok(regions.get('quads').load > 0)
+  assert.ok(regions.get('calves').load > 0)
+  assert.ok(regions.get('chest').load > 0)
+  assert.ok(regions.get('triceps').load > 0)
 })
 
 test('body map turns a wrist injury into a protected anatomy priority', () => {

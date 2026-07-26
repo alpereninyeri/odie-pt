@@ -1,7 +1,6 @@
 import {
   getLocalDateString,
   hasDirectCoreStimulus,
-  hasLegFocus,
   normalizeDateString,
   normalizeSession,
   normalizeText,
@@ -14,11 +13,11 @@ const DAY_MS = 86400000
 const REGION_CONFIG = [
   {
     id: 'chest',
-    label: 'Gogus',
+    label: 'Göğüs',
     group: 'muscle',
     muscleLabels: ['Gogus', 'Gogus', 'GÃ¶ÄŸÃ¼s', 'Göğüs'],
     tags: ['push'],
-    patterns: ['bench', 'chest press', 'fly', 'dip', 'push up', 'push-up', 'pec', 'chest', 'incline press', 'decline press'],
+    patterns: ['bench', 'chest press', 'fly', 'dip', 'dips', 'push up', 'push-up', 'pec', 'chest', 'incline press', 'decline press'],
     saturation: 136,
   },
   {
@@ -36,7 +35,7 @@ const REGION_CONFIG = [
     group: 'muscle',
     muscleLabels: ['Triceps'],
     tags: ['push'],
-    patterns: ['tricep', 'triceps', 'pushdown', 'skull crusher', 'close grip', 'dip'],
+    patterns: ['tricep', 'triceps', 'pushdown', 'skull crusher', 'close grip', 'dip', 'dips'],
     saturation: 90,
   },
   {
@@ -54,7 +53,7 @@ const REGION_CONFIG = [
     group: 'muscle',
     muscleLabels: ['On Kol', 'Forearm'],
     tags: ['grip', 'climbing'],
-    patterns: ['dead hang', 'hang', 'grip', 'farmer', 'carry', 'fingerboard', 'towel'],
+    patterns: ['dead hang', 'hang', 'grip', 'farmer', 'carry', 'fingerboard', 'towel', 'wrist curl', 'reverse wrist curl'],
     saturation: 66,
   },
   {
@@ -77,11 +76,11 @@ const REGION_CONFIG = [
   },
   {
     id: 'upper-back',
-    label: 'Ust Sirt',
+    label: 'Üst Sırt',
     group: 'muscle',
     muscleLabels: ['Ust Sirt', 'Ãœst SÄ±rt', 'Üst Sırt'],
     tags: ['pull'],
-    patterns: ['row', 'face pull', 'rear delt', 'upper back', 'scapula', 'kurek'],
+    patterns: ['row', 'face pull', 'rear delt', 'reverse fly', 'rear fly', 'reverse pec deck', 'upper back', 'scapula', 'kurek'],
     saturation: 128,
   },
   {
@@ -95,7 +94,7 @@ const REGION_CONFIG = [
   },
   {
     id: 'hips',
-    label: 'Kalca',
+    label: 'Kalça',
     group: 'joint',
     muscleLabels: ['Kalca', 'Glute'],
     tags: ['legs', 'mobility', 'parkour'],
@@ -104,7 +103,7 @@ const REGION_CONFIG = [
   },
   {
     id: 'glute',
-    label: 'Kalca Kası',
+    label: 'Kalça Kası',
     group: 'muscle',
     muscleLabels: ['Kalca', 'Glute', 'Glutes'],
     tags: ['legs', 'posterior'],
@@ -113,11 +112,11 @@ const REGION_CONFIG = [
   },
   {
     id: 'quads',
-    label: 'On Bacak',
+    label: 'Ön Bacak',
     group: 'muscle',
     muscleLabels: ['Bacak (Parkour)', 'Quad', 'Quads'],
     tags: ['legs', 'parkour'],
-    patterns: ['squat', 'leg press', 'quad', 'jump', 'precision', 'landing', 'drop'],
+    patterns: ['squat', 'leg press', 'quad', 'jump', 'jumping', 'precision', 'landing', 'drop'],
     saturation: 120,
   },
   {
@@ -135,7 +134,7 @@ const REGION_CONFIG = [
     group: 'muscle',
     muscleLabels: ['Kalf', 'Calf'],
     tags: ['legs', 'walking', 'parkour'],
-    patterns: ['calf', 'kalf', 'baldir', 'jump', 'sprint', 'walk', 'run', 'precision'],
+    patterns: ['calf', 'kalf', 'baldir', 'jump', 'jumping', 'sprint', 'walk', 'walking', 'run', 'running', 'precision'],
     saturation: 66,
   },
   {
@@ -144,16 +143,16 @@ const REGION_CONFIG = [
     group: 'joint',
     muscleLabels: ['Diz'],
     tags: ['legs', 'parkour'],
-    patterns: ['knee', 'diz', 'landing', 'jump', 'drop', 'squat', 'lunge'],
+    patterns: ['knee', 'diz', 'landing', 'jump', 'jumping', 'drop', 'squat', 'lunge'],
     saturation: 80,
   },
   {
     id: 'ankles',
-    label: 'Ayak Bilegi',
+    label: 'Ayak Bileği',
     group: 'joint',
     muscleLabels: ['Ayak Bilegi', 'Ankle'],
     tags: ['legs', 'parkour', 'balance'],
-    patterns: ['ankle', 'ayak bilegi', 'landing', 'precision', 'jump', 'vault', 'terrain', 'calf'],
+    patterns: ['ankle', 'ayak bilegi', 'landing', 'precision', 'jump', 'jumping', 'vault', 'terrain', 'calf'],
     saturation: 80,
   },
   {
@@ -266,6 +265,55 @@ function hasAnyText(text, patterns = []) {
   })
 }
 
+const DIRECT_EXERCISE_EXCLUSIONS = {
+  chest: ['reverse fly', 'rear fly', 'rear delt fly', 'reverse pec deck'],
+  biceps: ['leg curl', 'hamstring curl', 'wrist curl', 'forearm curl'],
+}
+const EXERCISE_REGION_CACHE = new Map()
+const WORKOUT_TEXT_CACHE = new WeakMap()
+
+function exercisePatternMatches(text, pattern) {
+  const normalized = normalizeText(pattern)
+  if (!normalized) return false
+  if (normalized.includes(' ')) return text.includes(normalized)
+  const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(text)
+}
+
+function exerciseMatchesRegion(exerciseName, region) {
+  const normalizedName = normalizeText(exerciseName)
+  if (!normalizedName) return false
+  if ((DIRECT_EXERCISE_EXCLUSIONS[region.id] || []).some(pattern => normalizedName.includes(pattern))) {
+    return false
+  }
+  return region.patterns.some(pattern => exercisePatternMatches(normalizedName, pattern))
+}
+
+function workoutTextMatchesRegion(text, region) {
+  if ((DIRECT_EXERCISE_EXCLUSIONS[region.id] || []).some(pattern => text.includes(pattern))) {
+    return false
+  }
+  return region.patterns.some(pattern => exercisePatternMatches(text, pattern))
+}
+
+function directRegionsForExercise(exerciseName) {
+  const normalizedName = normalizeText(exerciseName)
+  if (!normalizedName) return []
+  if (!EXERCISE_REGION_CACHE.has(normalizedName)) {
+    EXERCISE_REGION_CACHE.set(
+      normalizedName,
+      REGION_CONFIG.filter(region => exerciseMatchesRegion(normalizedName, region)),
+    )
+  }
+  return EXERCISE_REGION_CACHE.get(normalizedName)
+}
+
+function cachedWorkoutText(workout = {}) {
+  if (!workout || typeof workout !== 'object') return workoutText(workout)
+  if (!WORKOUT_TEXT_CACHE.has(workout)) WORKOUT_TEXT_CACHE.set(workout, workoutText(workout))
+  return WORKOUT_TEXT_CACHE.get(workout)
+}
+
 function normalizeInjury(injury = {}, today = getLocalDateString()) {
   const regionId = String(injury.regionId || injury.region_id || '').trim()
   if (!regionId || injury.active === false) return null
@@ -347,26 +395,73 @@ function applyInjuryState(regions = [], injuries = []) {
 function exerciseScore(workout, region) {
   let score = 0
   for (const exercise of (workout.exercises || [])) {
-    const name = normalizeText(exercise.name || '')
-    if (!hasAnyText(name, region.patterns)) continue
+    if (!directRegionsForExercise(exercise.name).some(item => item.id === region.id)) continue
     const sets = Array.isArray(exercise.sets) ? exercise.sets.length : (Number(exercise.sets) || 1)
     score += Math.max(1, sets) * 2.4
   }
   return score
 }
 
+function directExerciseEffects(region, workouts = [], today = getLocalDateString()) {
+  const effects = new Map()
+
+  for (const workout of workouts) {
+    const age = daysAgo(workout.date, today)
+    if (age > 28) continue
+    const sessionKey = String(workout.id || workout.startedAt || `${workout.date}-${workout.type}`)
+
+    for (const exercise of (workout.exercises || [])) {
+      const name = String(exercise?.name || '').trim()
+      const normalizedName = normalizeText(name)
+      if (!normalizedName || !directRegionsForExercise(name).some(item => item.id === region.id)) continue
+
+      const sets = Array.isArray(exercise.sets)
+        ? exercise.sets.length
+        : Math.max(1, Number(exercise.sets) || 1)
+      const recencyWeight = age <= 7 ? 1 : age <= 14 ? 0.7 : 0.4
+      const current = effects.get(normalizedName) || {
+        name,
+        sets: 0,
+        sessionKeys: new Set(),
+        daysSince: 99,
+        impact: 0,
+      }
+
+      current.sets += Math.max(1, sets)
+      current.sessionKeys.add(sessionKey)
+      current.daysSince = Math.min(current.daysSince, age)
+      current.impact += Math.max(1, sets) * recencyWeight
+      effects.set(normalizedName, current)
+    }
+  }
+
+  return [...effects.values()]
+    .map(effect => ({
+      name: effect.name,
+      sets: effect.sets,
+      sessions: effect.sessionKeys.size,
+      daysSince: effect.daysSince,
+      impact: Math.round(effect.impact * 10) / 10,
+    }))
+    .sort((left, right) => right.impact - left.impact || left.daysSince - right.daysSince || left.name.localeCompare(right.name, 'tr'))
+    .slice(0, 4)
+}
+
 function regionSessionScore(workout, region) {
   const tags = new Set(workout.tags || [])
-  const text = workoutText(workout)
+  const text = cachedWorkoutText(workout)
   const directExerciseScore = exerciseScore(workout, region)
+  const hasExerciseRows = (workout.exercises || []).some(exercise => String(exercise?.name || '').trim())
+  const allowFallback = region.group === 'joint' || directExerciseScore > 0 || !hasExerciseRows
   const upperPushRegion = ['chest', 'shoulder', 'triceps'].includes(region.id)
-  const legOnlyConflict = upperPushRegion && hasLegFocus(workout) && directExerciseScore <= 0
+  const legFocus = tags.has('legs') || workout.type === 'Bacak' || workout.primaryCategory === 'endurance'
+  const legOnlyConflict = upperPushRegion && legFocus && directExerciseScore <= 0
   let score = directExerciseScore
 
-  if (!legOnlyConflict && region.tags.some(tag => tags.has(tag))) score += 4
-  if (hasAnyText(text, region.patterns)) score += 3
+  if (allowFallback && !legOnlyConflict && region.tags.some(tag => tags.has(tag))) score += 4
+  if (allowFallback && workoutTextMatchesRegion(text, region)) score += 3
   if (region.id === 'core' && hasDirectCoreStimulus(workout)) score += 5
-  if (['quads', 'hamstrings', 'calves', 'knees', 'ankles', 'hips'].includes(region.id) && hasLegFocus(workout)) score += 2
+  if (allowFallback && ['quads', 'hamstrings', 'calves', 'knees', 'ankles', 'hips'].includes(region.id) && legFocus) score += 2
   if (region.group === 'joint' && (tags.has('mobility') || workout.primaryCategory === 'recovery')) score += 1.5
 
   if (score <= 0) return 0
@@ -426,6 +521,7 @@ function buildRegionState(region, workouts, state, today) {
     id: region.id,
     label: region.label,
     group: region.group,
+    contributors: directExerciseEffects(region, workouts, today),
     load,
     evidenceScore: Math.round(loadScore * 10) / 10,
     matchedSessions,
@@ -914,8 +1010,11 @@ export function buildBodyMapState({
   semantic = null,
   today = getLocalDateString(),
 } = {}) {
-  const workouts = (state.workouts || profile.workouts || []).map(workout => normalizeSession(workout))
-  const semanticProfile = semantic || buildSemanticProfile(workouts, state.dailyLogs || profile.dailyLogs || [])
+  const sourceWorkouts = state.workouts || profile.workouts || []
+  const semanticProfile = semantic || buildSemanticProfile(sourceWorkouts, state.dailyLogs || profile.dailyLogs || [])
+  const workouts = Array.isArray(semanticProfile?.workouts)
+    ? semanticProfile.workouts
+    : sourceWorkouts.map(workout => normalizeSession(workout))
   const injuries = getActiveInjuries(state, profile, today)
   const regions = applyInjuryState(REGION_CONFIG.map(region => buildRegionState(region, workouts, state, today)), injuries)
   const movementLines = buildMovementLines(semanticProfile, regions, state)
@@ -949,6 +1048,16 @@ function sessionMatchesRegion(session = {}, regionId = '') {
 
 export function sessionTouchesBodyRegion(session = {}, regionId = '') {
   return sessionMatchesRegion(session, regionId)
+}
+
+export function getExerciseBodyRegions(exerciseName = '', { includeJoints = false } = {}) {
+  return directRegionsForExercise(exerciseName)
+    .filter(region => includeJoints || region.group === 'muscle')
+    .map(region => ({
+      id: region.id,
+      label: region.label,
+      group: region.group,
+    }))
 }
 
 function sessionMatchesMovement(session = {}, movementId = '') {

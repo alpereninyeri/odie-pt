@@ -49,9 +49,11 @@ test('dashboard model finds neglected muscle regions from Hevy exercise history'
 
   assert.ok(model.regions.length >= 12)
   assert.equal(model.gaps.length, 4)
-  assert.ok(model.gaps.some(region => region.id === 'hamstring' || region.id === 'core' || region.id === 'lat'))
+  assert.ok(model.gaps.every(region => region.group === 'muscle' && region.load === 0))
+  assert.equal(model.gaps.some(region => region.id === 'chest'), false)
   assert.equal(model.quest.region.id, model.gaps[0].id)
   assert.ok(model.quest.action.length > 0)
+  assert.ok(model.regions.every(region => region.develops && region.exercisePreview.length))
 })
 
 test('leg press credits quads without falsely training chest and glutes stay a muscle region', () => {
@@ -120,6 +122,20 @@ test('rank display stays rank-first while preserving an internal score', () => {
     workouts: [],
   }, { today })
   assert.deepEqual(model.stats.map(stat => [stat.key, stat.rank]), [['str', 'A'], ['agi', 'B']])
+})
+
+test('dashboard interprets each workout with a short verdict, stat gains and exercise targets', () => {
+  const model = createDashboardModel({
+    profile: { stats: {} },
+    workouts: [workout({ id: 'push-reading' })],
+  }, { today })
+  const session = model.sessions[0]
+
+  assert.equal(session.verdict, 'İtiş Gücü')
+  assert.ok(session.verdict.split(/\s+/).length <= 2)
+  assert.ok(session.statGains.length >= 1 && session.statGains.length <= 2)
+  assert.equal(session.statGains[0].short, 'KUV')
+  assert.deepEqual(session.exercises[0].targets.map(target => target.label), ['Göğüs'])
 })
 
 test('heatmap always returns a stable 28-day window', () => {

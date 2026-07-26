@@ -9,9 +9,23 @@ import {
   computeStreakInfo,
   getLocalDateString,
   hasLegFocus,
+  isNormalizedSession,
   normalizeDateString,
   normalizeSession,
 } from '../src/data/rules.js'
+
+test('normalized session guard recognizes dashboard-ready workout rows', () => {
+  const raw = {
+    type: 'Push',
+    exercises: [{ name: 'Bench Press', sets: [{ reps: 8 }] }],
+  }
+  const normalized = normalizeSession(raw)
+
+  assert.equal(isNormalizedSession(raw), false)
+  assert.equal(isNormalizedSession(normalized), true)
+  assert.equal(isNormalizedSession({ ...normalized, blockMix: null }), false)
+  assert.equal(isNormalizedSession({ ...normalized, exercises: [{ name: 'Bench Press' }] }), false)
+})
 
 test('walking defaults to endurance and does not raise core', () => {
   const walk = normalizeSession({

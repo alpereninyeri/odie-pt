@@ -66,7 +66,7 @@ for (const viewport of viewports) {
 
     await expect(page).toHaveTitle('OdiePt · Durum')
     await expect(page.locator('.overview-screen')).toBeVisible()
-    await expect(page.locator('.page-head')).toContainText('Son seans dün')
+    await expect(page.locator('.page-head')).toContainText('Son antrenman dün')
     await expect(page.locator('.player-card')).toBeVisible()
     await expect(page.locator('.quest-card')).toBeVisible()
     await expect(page.locator('.metric-card')).toHaveCount(4)
@@ -85,20 +85,29 @@ for (const viewport of viewports) {
     }
 
     const navSelector = viewport.width <= 840 ? '.mobile-nav-button' : '.rail-nav-button'
-    await expect(page.locator(navSelector)).toHaveText(['Durum', 'Bölgeler', 'Seanslar'])
+    await expect(page.locator(navSelector)).toHaveText(['Durum', 'Bölgeler', 'Antrenmanlar'])
 
     await page.locator(`${navSelector}[data-tab="body"]`).click()
     await expect(page).toHaveTitle('OdiePt · Bölgeler')
     await expect(page.locator('.body-screen')).toBeVisible()
     expect(await page.locator('.region-tile').count()).toBeGreaterThanOrEqual(8)
-    await openDetailAndClose(page, '.region-tile')
+    await page.locator('.region-tile').first().click()
+    await expect(page.locator('.detail-sheet')).toContainText('NEYİ GELİŞTİRİR?')
+    await expect(page.locator('.detail-sheet')).toContainText('AÇIĞI KAPAT')
+    await page.locator('.detail-sheet .icon-button').click()
+    await expect(page.locator('.detail-sheet')).toHaveCount(0)
     await auditSurface(page)
 
     await page.locator(`${navSelector}[data-tab="sessions"]`).click()
-    await expect(page).toHaveTitle('OdiePt · Seanslar')
+    await expect(page).toHaveTitle('OdiePt · Antrenmanlar')
     await expect(page.locator('.sessions-screen')).toBeVisible()
     expect(await page.locator('.session-row').count()).toBeGreaterThan(0)
-    await openDetailAndClose(page, '.session-row')
+    await expect(page.locator('.session-row .session-analysis').first()).toBeVisible()
+    await page.locator('.session-row').first().click()
+    await expect(page.locator('.detail-sheet .session-verdict')).toBeVisible()
+    await expect(page.locator('.detail-sheet .stat-gain').first()).toBeVisible()
+    await page.locator('.detail-sheet .icon-button').click()
+    await expect(page.locator('.detail-sheet')).toHaveCount(0)
     await auditSurface(page)
 
     expect(errors, 'console/page errors').toEqual([])
@@ -163,7 +172,7 @@ test('public direct Hevy snapshot loads automatically and manual refresh re-read
   await expect(page.locator('.mobile-source')).toContainText('HEVY')
   await expect(page.locator('.page-head h1')).toContainText('Alperen')
   await page.locator('.sync-button').click()
-  await expect(page.locator('.status-banner.is-success')).toContainText('1 seans okundu')
+  await expect(page.locator('.status-banner.is-success')).toContainText('1 antrenman okundu')
 
   expect(snapshotRequests.length).toBeGreaterThanOrEqual(2)
   expect(snapshotRequests.some(request => new URL(request.url).searchParams.get('refresh') === '1')).toBe(true)

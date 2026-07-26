@@ -55,6 +55,11 @@ function normalizeWorkout(row = {}) {
 function normalizeProfile(row = {}) {
   const xpCurrent = Number(row.xp?.current ?? row.xp_current) || 0
   const xpMax = Number(row.xp?.max ?? row.xp_max) || 2000
+  const classTrack = row.classTrack && typeof row.classTrack === 'object'
+    ? row.classTrack
+    : row.class_track && typeof row.class_track === 'object'
+      ? row.class_track
+      : null
   return {
     id: row.id || null,
     nick: row.nick || 'Sporcu',
@@ -62,6 +67,8 @@ function normalizeProfile(row = {}) {
     level: Number(row.level) || 1,
     rank: row.rank || 'Başlangıç',
     className: row.className || row.class || 'Hybrid Athlete',
+    displayTitle: row.displayTitle || row.display_title || classTrack?.displayTitle || '',
+    classTrack,
     subClass: row.subClass || row.sub_class || '',
     xp: { current: xpCurrent, max: xpMax },
     stats: row.stats || {},

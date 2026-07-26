@@ -945,6 +945,20 @@ export function normalizeSession(session = {}, { source = 'manual', now = new Da
   }
 }
 
+export function isNormalizedSession(session = {}) {
+  return Boolean(
+    session
+    && typeof session === 'object'
+    && typeof session.primaryCategory === 'string'
+    && typeof session.intensity === 'string'
+    && Array.isArray(session.tags)
+    && Array.isArray(session.blocks)
+    && session.blockMix
+    && Array.isArray(session.exercises)
+    && session.exercises.every(exercise => Array.isArray(exercise?.sets)),
+  )
+}
+
 export function isCoreExercise(name = '') {
   const normalized = normalizeText(name)
   return _hasKeyword(normalized, CORE_EXERCISE_KEYWORDS)
@@ -974,7 +988,7 @@ export function hasLegFocus(session = {}) {
 }
 
 export function computeSessionStatDelta(session = {}) {
-  const normalized = normalizeSession(session)
+  const normalized = isNormalizedSession(session) ? session : normalizeSession(session)
   const tags = new Set(normalized.tags)
   const blocks = normalizeBlocks(normalized.blocks || [])
   const delta = { str: 0, agi: 0, end: 0, dex: 0, con: 0, sta: 0 }

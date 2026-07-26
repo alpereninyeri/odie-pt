@@ -1,4 +1,4 @@
-import { normalizeSession } from './rules.js'
+import { isNormalizedSession, normalizeSession } from './rules.js'
 
 function _pct(workouts, matcher) {
   if (!workouts.length) return 0
@@ -226,5 +226,5 @@ export const DEFAULT_CLASS = {
 }
 
 export function normalizeClassWorkouts(workouts = []) {
-  return workouts.map(workout => normalizeSession(workout))
+  return workouts.map(workout => (isNormalizedSession(workout) ? workout : normalizeSession(workout)))
 }

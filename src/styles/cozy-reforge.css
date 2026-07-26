@@ -540,13 +540,40 @@ svg {
 
 .player-copy h2 {
   max-width: 590px;
-  margin: 14px 0 18px;
+  margin: 14px 0 10px;
   font-family: var(--display);
   font-size: clamp(34px, 4vw, 64px);
   line-height: 0.94;
   letter-spacing: -0.06em;
   text-transform: uppercase;
 }
+
+.class-track-line {
+  display: flex;
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  align-items: center;
+  gap: 9px;
+}
+
+.class-track-line > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.class-shift {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border: 1px solid currentColor;
+  font-size: 8px;
+}
+
+.class-shift.is-up { color: var(--lime); }
+.class-shift.is-down { color: var(--red); }
+.class-shift.is-steady { color: var(--yellow); }
 
 .player-state {
   display: flex;
@@ -1037,7 +1064,7 @@ svg {
 
 .gap-row {
   display: grid;
-  min-height: 61px;
+  min-height: 74px;
   padding: 8px 4px;
   border: 0;
   border-top: 1px solid var(--line);
@@ -1066,7 +1093,8 @@ svg {
 }
 
 .gap-copy b,
-.gap-copy small {
+.gap-copy small,
+.gap-copy em {
   display: block;
 }
 
@@ -1079,6 +1107,17 @@ svg {
   margin-top: 2px;
   color: var(--muted);
   font-size: 10px;
+}
+
+.gap-copy em {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-style: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .gap-row > strong {
@@ -1231,7 +1270,7 @@ svg {
 .region-tile {
   position: relative;
   display: grid;
-  min-height: 142px;
+  min-height: 178px;
   padding: 14px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1294,10 +1333,29 @@ svg {
 }
 
 .region-tile h3 {
-  margin: 12px 0;
+  margin: 10px 0 2px;
   color: var(--ink);
   font-family: var(--display);
   font-size: 16px;
+}
+
+.region-develops {
+  margin: 0;
+  color: var(--ink);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.region-examples {
+  display: block;
+  margin: 8px 0 10px;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .region-bars {
@@ -1361,6 +1419,7 @@ svg {
 
 .priority-list b,
 .priority-list small,
+.priority-list em,
 .joint-list b,
 .joint-list small {
   display: block;
@@ -1377,6 +1436,17 @@ svg {
   margin-top: 2px;
   color: var(--muted);
   font-size: 9px;
+}
+
+.priority-list em {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-style: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .priority-list strong {
@@ -1428,7 +1498,7 @@ svg {
 .session-row {
   display: grid;
   width: 100%;
-  min-height: 86px;
+  min-height: 112px;
   padding: 10px 3px;
   border: 0;
   border-top: 1px solid var(--line);
@@ -1490,6 +1560,39 @@ svg {
   font-size: 15px;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.session-analysis {
+  display: flex;
+  min-width: 0;
+  margin: 4px 0 5px;
+  align-items: center;
+  gap: 5px;
+}
+
+.session-analysis em,
+.stat-gain {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border: 1px solid rgba(201, 255, 75, 0.22);
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.session-analysis em {
+  overflow: hidden;
+  max-width: 132px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.035);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stat-gain {
+  background: var(--lime-soft);
 }
 
 .session-numbers {
@@ -1707,6 +1810,98 @@ svg {
   line-height: 1.55;
 }
 
+.detail-section {
+  margin-top: 18px;
+}
+
+.contributor-list {
+  display: grid;
+  margin-top: 8px;
+}
+
+.contributor-list > div {
+  display: flex;
+  min-height: 58px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.contributor-list > div:first-child {
+  border-top: 0;
+}
+
+.contributor-list b,
+.contributor-list small {
+  display: block;
+}
+
+.contributor-list b {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.contributor-list small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.contributor-list strong {
+  flex: 0 0 auto;
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.empty-inline {
+  margin: 10px 0 0;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.recommendation-chips {
+  display: flex;
+  margin-top: 10px;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.recommendation-chips span {
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 255, 75, 0.25);
+  color: var(--lime);
+  font-family: var(--mono);
+  font-size: 9px;
+  background: var(--lime-soft);
+}
+
+.session-verdict {
+  display: flex;
+  min-height: 54px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(201, 255, 75, 0.22);
+  background: var(--lime-soft);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.session-verdict > b {
+  font-family: var(--display);
+  font-size: 16px;
+}
+
+.session-verdict > div {
+  display: flex;
+  gap: 5px;
+}
+
 .detail-meta {
   display: flex;
   min-height: 52px;
@@ -1738,7 +1933,7 @@ svg {
 
 .exercise-list > div {
   display: flex;
-  min-height: 48px;
+  min-height: 58px;
   border-top: 1px solid var(--line);
   font-size: 12px;
   align-items: center;
@@ -1749,8 +1944,24 @@ svg {
   border-top: 0;
 }
 
-.exercise-list span {
+.exercise-list > div > span {
+  min-width: 0;
+}
+
+.exercise-list b,
+.exercise-list small {
+  display: block;
+}
+
+.exercise-list small {
+  margin-top: 3px;
   color: var(--muted);
+  font-size: 9px;
+}
+
+.exercise-list strong {
+  flex: 0 0 auto;
+  color: var(--lime);
   font-family: var(--mono);
   font-size: 9px;
 }
@@ -2085,7 +2296,7 @@ svg {
   }
 
   .gap-row {
-    min-height: 64px;
+    min-height: 76px;
     grid-template-columns: 24px 1fr 36px 18px;
     gap: 8px;
   }
@@ -2137,7 +2348,7 @@ svg {
   }
 
   .region-tile {
-    min-height: 126px;
+    min-height: 164px;
     padding: 12px;
   }
 
@@ -2151,7 +2362,7 @@ svg {
   }
 
   .session-row {
-    min-height: 100px;
+    min-height: 124px;
     grid-template-columns: 26px 38px minmax(0, 1fr) 17px;
     gap: 8px;
   }
@@ -2167,6 +2378,23 @@ svg {
 
   .session-copy > small {
     max-width: 100%;
+  }
+
+  .session-analysis {
+    overflow: hidden;
+  }
+
+  .session-analysis em {
+    max-width: 96px;
+  }
+
+  .session-analysis .stat-gain:nth-of-type(n + 3) {
+    display: none;
+  }
+
+  .session-verdict {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .detail-backdrop {

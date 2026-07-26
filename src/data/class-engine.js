@@ -117,7 +117,8 @@ function classReason(id, profile) {
 }
 
 export function computeClass(workouts) {
-  const normalized = normalizeClassWorkouts(workouts || [])
+  const source = Array.isArray(workouts) ? workouts : []
+  const normalized = normalizeClassWorkouts(source.slice(0, LOOKBACK_WORKOUTS))
   if (normalized.length < LOOKBACK_WORKOUTS) {
     return {
       ...DEFAULT_CLASS,
