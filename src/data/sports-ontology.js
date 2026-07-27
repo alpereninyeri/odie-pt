@@ -2,11 +2,11 @@ export const ONTOLOGY_CONCEPTS = [
   { id: 'push', label: 'Push Strength', patterns: ['push', 'bench', 'press', 'dip', 'incline press', 'shoulder press'], tags: ['push', 'gym'], blockKind: 'strength', typeHint: 'Push', score: 4 },
   { id: 'pull', label: 'Pull Strength', patterns: ['pull', 'row', 'curl', 'pulldown', 'lat', 'dead hang'], tags: ['pull', 'gym'], blockKind: 'strength', typeHint: 'Pull', score: 4 },
   { id: 'legs_strength', label: 'Leg Strength', patterns: ['squat', 'lunge', 'leg press', 'calf raise', 'split squat'], tags: ['legs', 'gym'], blockKind: 'strength', typeHint: 'Bacak', score: 4 },
-  { id: 'walking', label: 'Outdoor Walk', patterns: ['yuruyus', 'yurume', 'walk', 'hike', 'trek', 'doga yuruyusu', 'trail walk'], tags: ['walking', 'endurance'], blockKind: 'locomotion', typeHint: 'Yuruyus', score: 4 },
-  { id: 'running', label: 'Run', patterns: ['kosu', 'run', 'jog', 'interval'], tags: ['legs', 'endurance'], blockKind: 'locomotion', typeHint: 'Kosu', score: 4 },
-  { id: 'cycling', label: 'Bike', patterns: ['bisiklet', 'cycling', 'bike'], tags: ['cycling', 'legs', 'endurance'], blockKind: 'locomotion', typeHint: 'Bisiklet', score: 4 },
+  { id: 'walking', label: 'Outdoor Walk', patterns: ['yuruyus', 'yuruyusu', 'yurume', 'walk', 'walking', 'hike', 'hiking', 'trek', 'trekking', 'doga yuruyusu', 'trail walk'], tags: ['walking', 'endurance'], blockKind: 'locomotion', typeHint: 'Yuruyus', score: 4 },
+  { id: 'running', label: 'Run', patterns: ['kosu', 'kosusu', 'kosu bandi', 'treadmill', 'run', 'running', 'jog', 'jogging', 'interval'], tags: ['legs', 'endurance'], blockKind: 'locomotion', typeHint: 'Kosu', score: 4 },
+  { id: 'cycling', label: 'Bike', patterns: ['bisiklet', 'cycling', 'bike', 'biking'], tags: ['cycling', 'legs', 'endurance'], blockKind: 'locomotion', typeHint: 'Bisiklet', score: 4 },
   { id: 'ski', label: 'Ski', patterns: ['kayak', 'ski'], tags: ['ski', 'legs', 'balance', 'endurance'], blockKind: 'locomotion', typeHint: 'Kayak', score: 4 },
-  { id: 'climb', label: 'Climb', patterns: ['tirman', 'climb', 'boulder', 'fingerboard'], tags: ['climbing', 'pull', 'grip'], blockKind: 'skill', typeHint: 'Tirmanis', score: 5 },
+  { id: 'climb', label: 'Climb', patterns: ['tirman', 'tirmanis', 'tirmanisi', 'tirmanma', 'climb', 'climbing', 'boulder', 'bouldering', 'fingerboard'], tags: ['climbing', 'pull', 'grip'], blockKind: 'skill', typeHint: 'Tirmanis', score: 5 },
   { id: 'parkour', label: 'Parkour Drill', patterns: ['parkour', 'vault antrenmani', 'vault drill'], tags: ['parkour', 'legs', 'balance'], blockKind: 'skill', typeHint: 'Parkour', score: 6 },
   { id: 'vault', label: 'Vault', patterns: ['kong vault', 'speed vault', 'lazy vault', 'dash vault', 'vault', 'monkey vault'], tags: ['parkour', 'balance', 'explosive'], blockKind: 'skill', typeHint: 'Parkour', score: 5 },
   { id: 'precision', label: 'Precision Jump', patterns: ['precision jump', 'precision'], tags: ['parkour', 'balance', 'explosive', 'legs'], blockKind: 'explosive', typeHint: 'Parkour', score: 5 },
@@ -20,7 +20,7 @@ export const ONTOLOGY_CONCEPTS = [
   { id: 'stride', label: 'Stride', patterns: ['stride', 'stride jump'], tags: ['parkour', 'explosive', 'legs'], blockKind: 'explosive', typeHint: 'Parkour', score: 4 },
   { id: 'drop', label: 'Drop', patterns: ['drop', 'drop jump', 'depth drop', 'depth jump'], tags: ['parkour', 'legs', 'balance'], blockKind: 'skill', typeHint: 'Parkour', score: 4 },
   { id: 'quadrupedal', label: 'Quadrupedal', patterns: ['quadrupedal', 'qm', 'crawl flow', 'kong crawl', 'animal flow'], tags: ['parkour', 'core', 'balance'], blockKind: 'skill', typeHint: 'Parkour', score: 4 },
-  { id: 'flow', label: 'Flow Run', patterns: ['flow', 'combo run', 'line run', 'freerun', 'freerunning'], tags: ['parkour', 'balance', 'endurance'], blockKind: 'skill', typeHint: 'Parkour', score: 4 },
+  { id: 'flow', label: 'Flow Run', patterns: ['parkour flow', 'vault flow', 'rail flow', 'flow run', 'combo run', 'line run', 'freerun', 'freerunning'], tags: ['parkour', 'balance', 'endurance'], blockKind: 'skill', typeHint: 'Parkour', score: 4 },
   { id: 'acro', label: 'Acrobatics', patterns: ['akrobasi', 'acrobatics', 'flip', 'barani', 'round off', 'roundoff'], tags: ['acrobatics', 'balance', 'explosive'], blockKind: 'skill', typeHint: 'Akrobasi', score: 5 },
   { id: 'front_flip', label: 'Front Flip', patterns: ['front flip', 'frontflip', 'on takla', 'on salto'], tags: ['acrobatics', 'explosive', 'balance'], blockKind: 'skill', typeHint: 'Akrobasi', score: 5 },
   { id: 'back_flip', label: 'Back Flip', patterns: ['back flip', 'backflip', 'geri takla', 'salto'], tags: ['acrobatics', 'explosive', 'balance'], blockKind: 'skill', typeHint: 'Akrobasi', score: 5 },
@@ -28,7 +28,9 @@ export const ONTOLOGY_CONCEPTS = [
   { id: 'aerial', label: 'Aerial', patterns: ['aerial', 'no hand cartwheel'], tags: ['acrobatics', 'explosive', 'balance'], blockKind: 'skill', typeHint: 'Akrobasi', score: 5 },
   { id: 'gainer', label: 'Gainer', patterns: ['gainer', 'wallflip', 'wall flip'], tags: ['acrobatics', 'explosive'], blockKind: 'skill', typeHint: 'Akrobasi', score: 5 },
   { id: 'core', label: 'Core', patterns: ['core', 'plank', 'hollow', 'leg raise', 'hanging leg raise', 'dragon flag', 'caki', 'toes to bar'], tags: ['core'], blockKind: 'core', typeHint: 'Custom', score: 4 },
-  { id: 'mobility', label: 'Mobility', patterns: ['mobility', 'esneme', 'stretch', 'bridge', 'split', 'hip flexor'], tags: ['mobility', 'recovery'], blockKind: 'mobility', typeHint: 'Stretching', score: 4 },
+  { id: 'crunch', label: 'Crunch', patterns: ['crunch', 'mekik', 'sit up', 'sit-up', 'situp'], tags: ['core'], blockKind: 'core', typeHint: 'Custom', score: 4 },
+  { id: 'mountain_climber', label: 'Mountain Climber', patterns: ['mountain climber', 'dagci'], tags: ['core', 'legs', 'endurance'], blockKind: 'core', typeHint: 'Custom', score: 5 },
+  { id: 'mobility', label: 'Mobility', patterns: ['mobility', 'esneme', 'esnetme', 'stretch', 'warm up', 'warmup', 'isinma', 'yoga flow', 'yoga', 'bridge', 'split', 'hip flexor'], tags: ['mobility', 'recovery'], blockKind: 'mobility', typeHint: 'Stretching', score: 4 },
   { id: 'recovery', label: 'Recovery', patterns: ['sauna', 'recovery', 'cooldown', 'flush', 'dinlenme', 'rest day'], tags: ['recovery'], blockKind: 'recovery', typeHint: 'Stretching', score: 3 },
   { id: 'terrain', label: 'Terrain', patterns: ['doga', 'trail', 'orman', 'zemin', 'uphill', 'yokus', 'stairs', 'hill'], tags: ['terrain'], blockKind: 'locomotion', typeHint: 'Custom', score: 2 },
   { id: 'carry', label: 'Carry', patterns: ['carry', 'farmer', 'sandbag'], tags: ['carry', 'grip'], blockKind: 'strength', typeHint: 'Custom', score: 3 },
@@ -435,6 +437,73 @@ export function normalizeOntologyText(value = '') {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/ı/g, 'i')
+}
+
+const BOUNDED_SIGNAL_CACHE_LIMIT = 512
+const boundedSignalCache = new Map()
+const boundedOntologyConcepts = ONTOLOGY_CONCEPTS.map(concept => ({
+  ...concept,
+  normalizedPatterns: [...new Set(
+    (concept.patterns || []).map(normalizeOntologyText).filter(Boolean),
+  )].sort((left, right) => right.length - left.length),
+}))
+
+function isOntologyWordCharacter(value = '') {
+  return /^[a-z0-9]$/i.test(value)
+}
+
+function includesBoundedOntologyPattern(text = '', pattern = '') {
+  if (!text || !pattern) return false
+  let index = text.indexOf(pattern)
+  while (index >= 0) {
+    const before = index > 0 ? text[index - 1] : ''
+    const afterIndex = index + pattern.length
+    const after = afterIndex < text.length ? text[afterIndex] : ''
+    const leftBoundary = !isOntologyWordCharacter(pattern[0]) || !isOntologyWordCharacter(before)
+    const rightBoundary = !isOntologyWordCharacter(pattern[pattern.length - 1]) || !isOntologyWordCharacter(after)
+    if (leftBoundary && rightBoundary) return true
+    index = text.indexOf(pattern, index + 1)
+  }
+  return false
+}
+
+function boundedPatternLength(text = '', patterns = []) {
+  for (const pattern of patterns) {
+    if (includesBoundedOntologyPattern(text, pattern)) return pattern.length
+  }
+  return 0
+}
+
+function cacheBoundedSignals(key, signals) {
+  if (boundedSignalCache.size >= BOUNDED_SIGNAL_CACHE_LIMIT) {
+    boundedSignalCache.delete(boundedSignalCache.keys().next().value)
+  }
+  boundedSignalCache.set(key, signals)
+}
+
+export function detectOntologySignalsBounded(input = '') {
+  const text = normalizeOntologyText(String(input || '').slice(0, 256))
+  if (!text) return []
+  if (boundedSignalCache.has(text)) return boundedSignalCache.get(text)
+
+  const signals = boundedOntologyConcepts
+    .map(concept => ({
+      concept,
+      matchedLength: boundedPatternLength(text, concept.normalizedPatterns),
+    }))
+    .filter(item => item.matchedLength > 0)
+    .map(({ concept, matchedLength }) => ({
+      id: concept.id,
+      label: concept.label,
+      tags: [...(concept.tags || [])],
+      blockKind: concept.blockKind,
+      typeHint: concept.typeHint,
+      score: Number(concept.score) || 0,
+      matchedLength,
+    }))
+
+  cacheBoundedSignals(text, signals)
+  return signals
 }
 
 function includesPattern(text, pattern) {

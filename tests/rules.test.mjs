@@ -27,6 +27,24 @@ test('normalized session guard recognizes dashboard-ready workout rows', () => {
   assert.equal(isNormalizedSession({ ...normalized, exercises: [{ name: 'Bench Press' }] }), false)
 })
 
+test('session normalization preserves bounded public exercise impact tags', () => {
+  const normalized = normalizeSession({
+    type: 'Parkour',
+    exercises: [{
+      name: 'Kong Vault',
+      impactTags: ['parkour', 'balance', 'EXPLOSIVE', 'balance', '', 'x'.repeat(80)],
+      sets: [{ reps: 6 }],
+    }],
+  })
+
+  assert.deepEqual(normalized.exercises[0].impactTags, [
+    'parkour',
+    'balance',
+    'explosive',
+    'x'.repeat(40),
+  ])
+})
+
 test('walking defaults to endurance and does not raise core', () => {
   const walk = normalizeSession({
     type: 'Yuruyus',

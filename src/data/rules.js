@@ -423,6 +423,11 @@ export function normalizeExercises(exercises = []) {
       if (!Array.isArray(sets)) sets = []
       return {
         name: String(exercise.name || '').trim(),
+        impactTags: [...new Set(
+          (exercise.impactTags || exercise.impact_tags || [])
+            .map(tag => String(tag || '').trim().toLowerCase().slice(0, 40))
+            .filter(Boolean),
+        )].slice(0, 12),
         sets: sets.map(set => ({
           reps: set?.reps != null ? Number(set.reps) : null,
           weightKg: set?.weightKg != null || set?.weight_kg != null ? Number(set.weightKg ?? set.weight_kg) : null,

@@ -107,7 +107,7 @@ const REGION_CONFIG = [
     group: 'muscle',
     muscleLabels: ['Kalca', 'Glute', 'Glutes'],
     tags: ['legs', 'posterior'],
-    patterns: ['hip thrust', 'glute', 'bridge', 'bulgarian split squat', 'cable kickback'],
+    patterns: ['hip thrust', 'glute', 'bridge', 'lunge', 'split squat', 'bulgarian split squat', 'cable kickback'],
     saturation: 104,
   },
   {
@@ -116,7 +116,7 @@ const REGION_CONFIG = [
     group: 'muscle',
     muscleLabels: ['Bacak (Parkour)', 'Quad', 'Quads'],
     tags: ['legs', 'parkour'],
-    patterns: ['squat', 'leg press', 'quad', 'jump', 'jumping', 'precision', 'landing', 'drop'],
+    patterns: ['squat', 'leg press', 'lunge', 'split squat', 'step up', 'quad', 'jump', 'jumping', 'precision', 'landing', 'drop'],
     saturation: 120,
   },
   {
@@ -271,6 +271,32 @@ const DIRECT_EXERCISE_EXCLUSIONS = {
 }
 const EXERCISE_REGION_CACHE = new Map()
 const WORKOUT_TEXT_CACHE = new WeakMap()
+const ONTOLOGY_TAG_REGION_IDS = {
+  push: ['chest', 'shoulder', 'triceps'],
+  pull: ['lat', 'biceps', 'upper-back', 'forearm'],
+  core: ['core'],
+  legs: ['quads', 'hamstrings', 'glute', 'calves'],
+  walking: ['quads', 'hamstrings', 'calves'],
+  running: ['quads', 'hamstrings', 'calves'],
+  cycling: ['quads', 'glute', 'calves'],
+  ski: ['quads', 'glute', 'core'],
+  climbing: ['forearm', 'lat', 'biceps', 'upper-back'],
+  grip: ['forearm'],
+  parkour: ['quads', 'core', 'calves'],
+  acrobatics: ['core', 'quads'],
+  carry: ['forearm', 'core'],
+}
+const ONTOLOGY_QUALITY_TARGETS = [
+  ['balance', { id: 'quality-balance', label: 'Denge', group: 'quality' }],
+  ['explosive', { id: 'quality-explosive', label: 'Patlayıcılık', group: 'quality' }],
+  ['endurance', { id: 'quality-endurance', label: 'Kondisyon', group: 'quality' }],
+  ['aerobic', { id: 'quality-aerobic', label: 'Aerobik Taban', group: 'quality' }],
+  ['mobility', { id: 'quality-mobility', label: 'Mobilite', group: 'quality' }],
+  ['recovery', { id: 'quality-recovery', label: 'Toparlanma', group: 'quality' }],
+  ['body-control', { id: 'quality-body-control', label: 'Vücut Kontrolü', group: 'quality' }],
+  ['isometric', { id: 'quality-isometric', label: 'İzometrik Güç', group: 'quality' }],
+  ['terrain', { id: 'quality-terrain', label: 'Arazi Kontrolü', group: 'quality' }],
+]
 
 function exercisePatternMatches(text, pattern) {
   const normalized = normalizeText(pattern)
@@ -306,6 +332,50 @@ function directRegionsForExercise(exerciseName) {
     )
   }
   return EXERCISE_REGION_CACHE.get(normalizedName)
+}
+
+function uniqueTargets(targets = []) {
+  const seen = new Set()
+  return targets.filter(target => {
+    if (!target?.id || seen.has(target.id)) return false
+    seen.add(target.id)
+    return true
+  })
+}
+
+function ontologyImpactsForExercise(exerciseName = '', ontologyTags = []) {
+  const normalizedName = normalizeText(String(exerciseName || '').slice(0, 256))
+  const tags = new Set(
+    (ontologyTags || [])
+      .map(tag => normalizeText(String(tag || '').slice(0, 40)))
+      .filter(Boolean),
+  )
+  const regionIds = uniqueTargets(
+    [...tags].flatMap(tag => (ONTOLOGY_TAG_REGION_IDS[tag] || []).map(id => ({ id }))),
+  ).map(target => target.id)
+  const regions = regionIds
+    .map(id => REGION_CONFIG.find(region => region.id === id))
+    .filter(Boolean)
+  const qualities = ONTOLOGY_QUALITY_TARGETS
+    .filter(([tag]) => tags.has(tag))
+    .map(([, target]) => target)
+
+  if (/(^| )warm ?up($| )|isinma/.test(normalizedName)) {
+    qualities.push(
+      { id: 'quality-warmup', label: 'Isınma', group: 'quality' },
+      { id: 'quality-mobility', label: 'Mobilite', group: 'quality' },
+    )
+  } else if (/esnet|stretch/.test(normalizedName)) {
+    qualities.push(
+      { id: 'quality-mobility', label: 'Mobilite', group: 'quality' },
+      { id: 'quality-recovery', label: 'Toparlanma', group: 'quality' },
+    )
+  }
+
+  return {
+    regions: uniqueTargets(regions),
+    qualities: uniqueTargets(qualities),
+  }
 }
 
 function cachedWorkoutText(workout = {}) {
@@ -1058,6 +1128,32 @@ export function getExerciseBodyRegions(exerciseName = '', { includeJoints = fals
       label: region.label,
       group: region.group,
     }))
+}
+
+export function getExerciseImpacts(exerciseName = '', {
+  includeJoints = false,
+  ontologyTags = [],
+} = {}) {
+  const directRegions = directRegionsForExercise(exerciseName)
+    .filter(region => includeJoints || region.group === 'muscle')
+  const ontology = ontologyImpactsForExercise(exerciseName, ontologyTags)
+  const fallbackRegions = ontology.regions
+    .filter(region => includeJoints || region.group === 'muscle')
+  const regions = (directRegions.length ? directRegions : fallbackRegions)
+    .map(region => ({
+      id: region.id,
+      label: region.label,
+      group: region.group,
+    }))
+  const qualities = ontology.qualities
+
+  if (qualities.length >= 2) {
+    return uniqueTargets([...qualities.slice(0, 2), ...regions.slice(0, 1)])
+  }
+  if (qualities.length === 1) {
+    return uniqueTargets([...regions.slice(0, 2), qualities[0]])
+  }
+  return uniqueTargets(regions).slice(0, 3)
 }
 
 function sessionMatchesMovement(session = {}, movementId = '') {

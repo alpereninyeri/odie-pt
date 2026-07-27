@@ -117,11 +117,11 @@ test('Hevy normalization uses sports ontology without regressing strength types'
       tag: 'climbing',
     },
     {
-      name: 'Mountain climber is not Tırmanış',
+      name: 'Mountain climber is core, not Tırmanış',
       title: 'Core practice',
       exercises: ['Mountain Climber'],
-      type: 'Gym',
-      tag: 'hevy',
+      type: 'Custom',
+      tag: 'core',
     },
     {
       name: 'Push remains Push',
@@ -217,6 +217,40 @@ test('Hevy-safe ontology matching rejects substring collisions from real exercis
 
     assert.equal(normalized.type, expectedType, exerciseTitle)
   }
+})
+
+test('exercise impact tags prefer specific skills over generic walk and flow words', () => {
+  const normalizeExercise = exerciseTitle => normalizeHevyWorkout({
+    id: `impact-${exerciseTitle}`,
+    title: 'Test',
+    start_time: '2026-07-27T18:00:00.000Z',
+    end_time: '2026-07-27T19:00:00.000Z',
+    created_at: '2026-07-27T19:01:00.000Z',
+    exercises: [{ title: exerciseTitle, sets: [{ reps: 10 }] }],
+  })
+
+  const handstandWalk = normalizeExercise('Handstand Walk')
+  assert.ok(handstandWalk.exercises[0].impactTags.includes('body-control'))
+  assert.ok(handstandWalk.exercises[0].impactTags.includes('balance'))
+  assert.equal(handstandWalk.exercises[0].impactTags.includes('endurance'), false)
+
+  const walkingLunge = normalizeExercise('Walking Lunge')
+  assert.ok(walkingLunge.exercises[0].impactTags.includes('legs'))
+  assert.equal(walkingLunge.exercises[0].impactTags.includes('walking'), false)
+  assert.equal(walkingLunge.exercises[0].impactTags.includes('endurance'), false)
+
+  const yogaFlow = normalizeExercise('Yoga Flow')
+  assert.ok(yogaFlow.exercises[0].impactTags.includes('mobility'))
+  assert.ok(yogaFlow.exercises[0].impactTags.includes('recovery'))
+  assert.equal(yogaFlow.exercises[0].impactTags.includes('parkour'), false)
+
+  const obliqueCrunch = normalizeExercise('Oblique Crunch')
+  assert.ok(obliqueCrunch.exercises[0].impactTags.includes('core'))
+
+  const mountainClimber = normalizeExercise('Mountain Climber')
+  assert.equal(mountainClimber.type, 'Custom')
+  assert.ok(mountainClimber.exercises[0].impactTags.includes('core'))
+  assert.ok(mountainClimber.exercises[0].impactTags.includes('endurance'))
 })
 
 test('explicit workout title wins while specialty exercises need workout-level coverage', () => {

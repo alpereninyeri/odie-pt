@@ -1,4 +1,4 @@
-import { buildBodyMapState, getExerciseBodyRegions } from './body-map-engine.js'
+import { buildBodyMapState, getExerciseImpacts } from './body-map-engine.js'
 import { buildClassTrack } from './class-track.js'
 import {
   computeSessionStatDelta,
@@ -310,7 +310,9 @@ function sessionRows(workouts) {
     const exercises = (workout.exercises || []).filter(exercise => exercise?.name)
     const exerciseRows = exercises.map(exercise => ({
       ...exercise,
-      targets: getExerciseBodyRegions(exercise.name),
+      targets: getExerciseImpacts(exercise.name, {
+        ontologyTags: exercise.impactTags,
+      }),
     }))
     const topExercises = exerciseRows.slice(0, 4).map(exercise => {
       const sets = Array.isArray(exercise.sets) ? exercise.sets.length : 0

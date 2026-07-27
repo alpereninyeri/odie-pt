@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   buildBodyMapState,
   getExerciseBodyRegions,
+  getExerciseImpacts,
   scoreUnlockTargets,
   sessionClosesGameQuest,
 } from '../src/data/body-map-engine.js'
@@ -239,4 +240,36 @@ test('unlock targets expose linked regions, movement lines and near-unlock progr
   assert.deepEqual(hollow.linkedRegions, ['core'])
   assert.equal(landing.linkedMovement, 'landing')
   assert.ok(landing.todayStep)
+})
+
+test('exercise detail targets use the shared ontology for Hevy and outdoor movements', () => {
+  const labels = (name, ontologyTags = []) => getExerciseImpacts(name, { ontologyTags })
+    .map(target => target.label)
+
+  assert.deepEqual(labels('Bench Press'), ['Göğüs'])
+  assert.deepEqual(labels('Koşu Bandı', ['legs', 'endurance']), ['Ön Bacak', 'Arka Zincir', 'Kondisyon'])
+  assert.deepEqual(labels('Barfiks', ['pull', 'calisthenics']), ['Kanat', 'Biceps', 'Üst Sırt'])
+  assert.deepEqual(labels('Şınav', ['push', 'calisthenics']), ['Göğüs', 'Omuz', 'Triceps'])
+  assert.deepEqual(labels('Kong Vault Jump', ['parkour', 'balance', 'explosive', 'legs']), ['Denge', 'Patlayıcılık', 'Ön Bacak'])
+  assert.deepEqual(labels('Front Lever', ['pull', 'core', 'isometric', 'body-control']), ['Vücut Kontrolü', 'İzometrik Güç', 'Kanat'])
+  assert.deepEqual(labels('Doğa Yürüyüşü', ['walking', 'endurance', 'terrain']), ['Kondisyon', 'Arazi Kontrolü', 'Ön Bacak'])
+  assert.deepEqual(labels('Bouldering', ['climbing', 'pull', 'grip']), ['Grip', 'Kanat', 'Biceps'])
+  assert.deepEqual(labels('Bisiklet', ['cycling', 'legs', 'endurance']), ['Ön Bacak', 'Kalça Kası', 'Kondisyon'])
+  assert.deepEqual(labels('Esnetme', ['mobility', 'recovery']), ['Mobilite', 'Toparlanma'])
+  assert.deepEqual(labels('Warm Up', ['mobility', 'recovery']), ['Mobilite', 'Toparlanma'])
+  assert.deepEqual(labels('Handstand Walk', ['push', 'balance', 'body-control']), ['Denge', 'Vücut Kontrolü', 'Omuz'])
+  assert.deepEqual(labels('Walking Lunge', ['legs', 'unilateral']), ['Kalça Kası', 'Ön Bacak', 'Kalf'])
+  assert.deepEqual(labels('Yoga Flow', ['mobility', 'recovery']), ['Mobilite', 'Toparlanma'])
+  assert.deepEqual(labels('Oblique Crunch', ['core']), ['Core'])
+  assert.deepEqual(labels('Mountain Climber', ['core', 'legs', 'endurance']), ['Core', 'Ön Bacak', 'Kondisyon'])
+})
+
+test('exercise detail ontology keeps short aliases boundary-safe', () => {
+  const cableFly = getExerciseImpacts('Cable Fly')
+  const lateralRaise = getExerciseImpacts('Lateral Raise')
+
+  assert.deepEqual(cableFly.map(target => target.label), ['Göğüs'])
+  assert.deepEqual(lateralRaise.map(target => target.label), ['Omuz'])
+  assert.equal(cableFly.some(target => target.id === 'quality-body-control'), false)
+  assert.equal(lateralRaise.some(target => target.id === 'quality-isometric'), false)
 })

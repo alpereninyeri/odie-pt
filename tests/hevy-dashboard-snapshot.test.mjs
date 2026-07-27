@@ -131,6 +131,8 @@ test('direct Hevy snapshot derives the game profile and strips private source fi
   assert.equal(snapshot.workouts[0].notes, undefined)
   assert.equal(snapshot.workouts[0].rawExternal, undefined)
   assert.equal(snapshot.workouts[0].exercises[0].notes, undefined)
+  assert.ok(snapshot.workouts[0].exercises[0].impactTags.includes('pull'))
+  assert.equal(snapshot.workouts[0].exercises[0].impactTags.includes('body-control'), false)
   assert.equal(snapshot.syncState.mode, 'direct')
   assert.equal(snapshot.syncState.truncated, false)
   assert.equal(snapshot.syncState.history_complete, true)

@@ -143,15 +143,23 @@ test('public direct Hevy snapshot loads automatically and manual refresh re-read
           {
             id: 'e2e-workout',
             date: today,
-            type: 'Pull',
-            duration_min: 52,
-            volume_kg: 4800,
-            sets: 16,
-            has_pr: true,
+            type: 'Parkour',
+            duration_min: 90,
+            volume_kg: 0,
+            sets: 4,
+            has_pr: false,
             source: 'hevy',
             exercises: [
-              { name: 'Weighted Pull Up', sets: [{ reps: 5, weight_kg: 20 }, { reps: 5, weight_kg: 20 }] },
-              { name: 'Barbell Row', sets: [{ reps: 8, weight_kg: 70 }] },
+              {
+                name: 'Kong Vault Jump',
+                impactTags: ['parkour', 'balance', 'explosive'],
+                sets: [{ reps: 6 }, { reps: 6 }],
+              },
+              {
+                name: 'Front Lever',
+                impactTags: ['pull', 'core', 'isometric', 'body-control'],
+                sets: [{ duration_sec: 20 }, { duration_sec: 18 }],
+              },
             ],
           },
         ],
@@ -173,6 +181,14 @@ test('public direct Hevy snapshot loads automatically and manual refresh re-read
   await expect(page.locator('.page-head h1')).toContainText('Alperen')
   await page.locator('.sync-button').click()
   await expect(page.locator('.status-banner.is-success')).toContainText('1 antrenman okundu')
+  await page.locator('.mobile-nav-button[data-tab="sessions"]').click()
+  await page.locator('.session-row').first().click()
+  await expect(page.locator('.detail-sheet .session-verdict')).toContainText('Patlayıcı Beceri')
+  await expect(page.locator('.detail-sheet .exercise-list')).toContainText('Denge · Patlayıcılık · Ön Bacak')
+  await expect(page.locator('.detail-sheet .exercise-list')).toContainText('Vücut Kontrolü · İzometrik Güç · Kanat')
+  await expect(page.locator('.detail-sheet .exercise-list')).not.toContainText('Genel katkı')
+  await page.locator('.detail-sheet .icon-button').click()
+  await expect(page.locator('.detail-sheet')).toHaveCount(0)
 
   expect(snapshotRequests.length).toBeGreaterThanOrEqual(2)
   expect(snapshotRequests.some(request => new URL(request.url).searchParams.get('refresh') === '1')).toBe(true)
