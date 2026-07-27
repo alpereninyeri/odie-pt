@@ -228,7 +228,6 @@ const EXPLOSIVE_KEYWORDS = [
   'plyo',
   'muscle-up',
   'muscle up',
-  'parkour',
 ]
 
 const TYPE_ALIASES = {
@@ -726,7 +725,7 @@ function _addTypeTags(tags, type) {
       tags.push('legs', 'gym')
       break
     case 'Parkour':
-      tags.push('parkour', 'legs', 'explosive', 'balance', 'endurance')
+      tags.push('parkour', 'legs', 'balance')
       break
     case 'Akrobasi':
       tags.push('acrobatics', 'balance', 'explosive')

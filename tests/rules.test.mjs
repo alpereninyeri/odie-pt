@@ -62,6 +62,7 @@ test('parkour without exercise rows still counts as movement and legs', () => {
   const delta = computeSessionStatDelta(parkour)
   assert.equal(parkour.primaryCategory, 'movement')
   assert.equal(hasLegFocus(parkour), true)
+  assert.equal(parkour.tags.includes('explosive'), false)
   assert.equal(delta.agi, 2)
   assert.equal(delta.dex, 2)
   assert.equal(delta.sta, 1)

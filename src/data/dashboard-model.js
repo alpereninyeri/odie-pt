@@ -264,10 +264,17 @@ function workoutVerdict(workout = {}, statGains = []) {
   if (type === 'push') return 'İtiş Gücü'
   if (type === 'pull') return 'Çekiş Gücü'
   if (type === 'bacak' || type === 'legs' || type === 'leg day') return 'Bacak Gücü'
-  if (['kosu', 'run', 'running', 'walk', 'walking', 'bisiklet', 'cycling'].includes(type)) return 'Kondisyon'
+  if (['kosu', 'run', 'running', 'walk', 'walking', 'yuruyus', 'bisiklet', 'cycling', 'kayak', 'ski'].includes(type)) return 'Kondisyon'
   if (type === 'core') return 'Gövde Gücü'
-  if (['recovery', 'mobility', 'toparlanma'].includes(type)) return 'Aktif Toparlanma'
-  if (['movement', 'parkour', 'akro'].includes(type)) {
+  if (type === 'custom' && tags.has('core')) return 'Gövde Gücü'
+  if (type === 'calisthenics') {
+    return tags.has('explosive') || tags.has('lever') || tags.has('balance')
+      ? 'Beceri Kuvveti'
+      : 'Vücut Ağırlığı'
+  }
+  if (['tirmanis', 'climbing', 'bouldering'].includes(type)) return 'Tırmanış Becerisi'
+  if (['recovery', 'mobility', 'stretching', 'toparlanma'].includes(type)) return 'Aktif Toparlanma'
+  if (['movement', 'parkour', 'akro', 'akrobasi'].includes(type)) {
     return tags.has('explosive') || /jump|sprint|plyo/.test(text)
       ? 'Patlayıcı Beceri'
       : 'Hareket Becerisi'

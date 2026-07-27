@@ -172,6 +172,45 @@ test('explicit Hevy workout type outranks accessory tags in short verdicts', () 
       { name: 'Walking Lunge', sets: [{ reps: 12 }] },
     ],
   })), 'Kondisyon')
+
+  assert.equal(verdict(workout({
+    type: 'Calisthenics',
+    primaryCategory: 'mixed',
+    tags: ['calisthenics', 'pull', 'core', 'lever'],
+    exercises: [{ name: 'Front Lever', sets: [{ durationSec: 20 }] }],
+  })), 'Beceri Kuvveti')
+
+  assert.equal(verdict(workout({
+    type: 'Tırmanış',
+    primaryCategory: 'strength',
+    tags: ['climbing', 'pull', 'grip'],
+    exercises: [{ name: 'Bouldering Fingerboard', sets: [{ durationSec: 30 }] }],
+  })), 'Tırmanış Becerisi')
+
+  assert.equal(verdict(workout({
+    type: 'Custom',
+    primaryCategory: 'strength',
+    tags: ['core'],
+    exercises: [{ name: 'Oblique Crunch', sets: [{ reps: 20 }] }],
+  })), 'Gövde Gücü')
+
+  assert.equal(verdict(workout({
+    type: 'Yürüyüş',
+    primaryCategory: 'mixed',
+    tags: ['walking', 'terrain'],
+  })), 'Kondisyon')
+
+  assert.equal(verdict(workout({
+    type: 'Kayak',
+    primaryCategory: 'mixed',
+    tags: ['ski', 'balance'],
+  })), 'Kondisyon')
+
+  assert.equal(verdict(workout({
+    type: 'Stretching',
+    primaryCategory: 'mixed',
+    tags: ['mobility'],
+  })), 'Aktif Toparlanma')
 })
 
 test('explicit primary category outranks accessory tags when workout type is generic', () => {
