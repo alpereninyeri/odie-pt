@@ -58,8 +58,10 @@ test('browser data path is a direct Hevy snapshot with optional app-token header
   assert.match(snapshotApi, /buildDirectHevySnapshot/)
   assert.doesNotMatch(snapshotApi, /SUPABASE|hevy_sync_state|coach_notes|athlete_memory|memory_feedback|odie_questions/)
   assert.match(dashboardStore, /params\.set\('refresh', '1'\)/)
+  assert.match(dashboardStore, /params\.set\('refresh_nonce', Date\.now\(\)\.toString\(36\)\)/)
   assert.match(dashboardStore, /headers: appHeaders\(\)/)
   assert.doesNotMatch(dashboardStore, /\/api\/hevy-sync/)
+  assert.match(main, /Hevy zaten güncel/)
 })
 
 test('Hevy persistence does not trigger coach or model generation', () => {

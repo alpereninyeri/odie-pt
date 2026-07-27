@@ -20,6 +20,37 @@ function writeCache(value) {
   } catch {}
 }
 
+function timestampAdvanced(before, after) {
+  const afterTime = Date.parse(after || '')
+  if (!Number.isFinite(afterTime)) return false
+  const beforeTime = Date.parse(before || '')
+  return !Number.isFinite(beforeTime) || afterTime > beforeTime
+}
+
+function buildRefreshOutcome(snapshot = {}, previousLastSyncedAt = null) {
+  const syncState = snapshot.syncState || {}
+  const lastSyncedAt = syncState.last_synced_at
+    || syncState.lastSyncedAt
+    || snapshot.profile?.last_updated
+    || null
+  const timestampDidAdvance = timestampAdvanced(previousLastSyncedAt, lastSyncedAt)
+  const performed = typeof syncState.refresh_performed === 'boolean'
+    ? syncState.refresh_performed
+    : timestampDidAdvance
+  const advanced = typeof syncState.last_synced_at_advanced === 'boolean'
+    ? syncState.last_synced_at_advanced
+    : performed && timestampDidAdvance
+
+  return {
+    requested: true,
+    performed,
+    advanced,
+    reason: syncState.refresh_reason || (advanced ? 'fetched' : 'already_current'),
+    previousLastSyncedAt,
+    lastSyncedAt,
+  }
+}
+
 function normalizeWorkout(row = {}) {
   const workout = normalizeSession({
     id: row.id,
@@ -139,6 +170,7 @@ let state = {
   status: 'booting',
   error: '',
   syncSummary: null,
+  refreshOutcome: null,
 }
 
 const listeners = new Set()
@@ -173,9 +205,10 @@ export const dashboardStore = {
         status: 'syncing',
         error: '',
         syncSummary: null,
+        refreshOutcome: null,
       }
     } else {
-      state = { ...state, status: 'syncing' }
+      state = { ...state, status: 'syncing', refreshOutcome: null }
     }
     emit()
 
@@ -186,27 +219,38 @@ export const dashboardStore = {
   },
 
   async refresh({ pullHevy = false } = {}) {
-    state = { ...state, status: 'syncing', error: '', syncSummary: null }
+    const previousLastSyncedAt = state.lastSyncedAt || null
+    state = { ...state, status: 'syncing', error: '', syncSummary: null, refreshOutcome: null }
     emit()
 
     try {
       const params = new URLSearchParams({ workouts: String(MAX_WORKOUTS) })
-      if (pullHevy) params.set('refresh', '1')
+      if (pullHevy) {
+        params.set('refresh', '1')
+        params.set('refresh_nonce', Date.now().toString(36))
+      }
       const snapshotResponse = await fetch(`/api/snapshot?${params}`, {
         headers: appHeaders(),
       })
       const snapshot = await readJson(snapshotResponse, 'snapshot_failed')
       const normalized = normalizePayload(snapshot, 'live')
+      const refreshOutcome = pullHevy
+        ? buildRefreshOutcome(snapshot, previousLastSyncedAt)
+        : null
+      const refreshFailed = refreshOutcome?.reason === 'upstream_failed'
       state = {
         ...normalized,
-        status: 'ready',
-        error: '',
+        status: refreshFailed ? 'error' : 'ready',
+        error: refreshFailed ? 'refresh_failed' : '',
         syncSummary: pullHevy
           ? {
-              refreshed: true,
+              refreshed: Boolean(refreshOutcome?.advanced),
               fetched: Number(snapshot.syncState?.fetched_workouts) || normalized.workouts.length,
+              reason: refreshOutcome?.reason || 'already_current',
+              lastSyncedAt: refreshOutcome?.lastSyncedAt || normalized.lastSyncedAt,
             }
           : null,
+        refreshOutcome,
       }
       writeCache(normalized)
       emit()
@@ -221,6 +265,16 @@ export const dashboardStore = {
             ? 'cache'
             : state.mode,
         error: String(error?.message || error || 'sync_failed'),
+        refreshOutcome: pullHevy
+          ? {
+              requested: true,
+              performed: false,
+              advanced: false,
+              reason: 'request_failed',
+              previousLastSyncedAt,
+              lastSyncedAt: state.lastSyncedAt || null,
+            }
+          : null,
       }
       emit()
       throw error

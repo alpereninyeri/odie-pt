@@ -3,7 +3,6 @@ import { buildDirectHevySnapshot } from '../lib/hevy/dashboard-snapshot.js'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const MIN_FORCE_AGE_MS = 60 * 1000
-const CACHE_WORKOUT_LIMIT = 160
 
 let cache = null
 let inFlight = null
@@ -15,19 +14,47 @@ function asLimit(value, fallback = 120, max = 160) {
 }
 
 function cacheHeaders(res, { force = false } = {}) {
+  if (force) {
+    res.setHeader('Cache-Control', 'no-store, max-age=0')
+    return
+  }
   if (appAuthConfigured()) {
     res.setHeader('Cache-Control', 'private, no-store')
     return
   }
-  res.setHeader(
-    'Cache-Control',
-    force
-      ? 'public, s-maxage=60, stale-while-revalidate=600'
-      : 'public, s-maxage=300, stale-while-revalidate=3600',
-  )
+  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600')
 }
 
-function withResponseLimit(payload, workoutLimit) {
+function syncTimestamp(payload = {}) {
+  return payload?.syncState?.last_synced_at || null
+}
+
+function timestampAdvanced(before, after) {
+  const afterTime = Date.parse(after || '')
+  if (!Number.isFinite(afterTime)) return false
+  const beforeTime = Date.parse(before || '')
+  return !Number.isFinite(beforeTime) || afterTime > beforeTime
+}
+
+function refreshOutcome({
+  requested = false,
+  performed = false,
+  previousPayload = null,
+  payload = null,
+  reason = '',
+} = {}) {
+  if (!requested) return null
+  const advanced = Boolean(performed)
+    && timestampAdvanced(syncTimestamp(previousPayload), syncTimestamp(payload))
+  return {
+    requested: true,
+    performed: Boolean(performed),
+    last_synced_at_advanced: advanced,
+    reason: reason || (advanced ? 'fetched' : performed ? 'fetched_not_advanced' : 'throttled'),
+  }
+}
+
+function withResponseLimit(payload, workoutLimit, refresh = null) {
   const workouts = Array.isArray(payload.workouts)
     ? payload.workouts.slice(0, workoutLimit)
     : []
@@ -38,6 +65,14 @@ function withResponseLimit(payload, workoutLimit) {
       ? {
           ...payload.syncState,
           returned_workouts: workouts.length,
+          ...(refresh
+            ? {
+                refresh_requested: refresh.requested,
+                refresh_performed: refresh.performed,
+                last_synced_at_advanced: refresh.last_synced_at_advanced,
+                refresh_reason: refresh.reason,
+              }
+            : {}),
         }
       : payload.syncState,
   }
@@ -47,10 +82,12 @@ function sendSnapshot(res, payload, {
   force = false,
   stale = false,
   workoutLimit = 120,
+  refresh = null,
 } = {}) {
   cacheHeaders(res, { force })
   res.setHeader('X-Odie-Data-Source', stale ? 'hevy-stale-cache' : 'hevy-direct')
-  const responsePayload = withResponseLimit(payload, workoutLimit)
+  if (refresh) res.setHeader('X-Odie-Refresh', refresh.reason)
+  const responsePayload = withResponseLimit(payload, workoutLimit, refresh)
   return res.status(200).json(stale
     ? {
         ...responsePayload,
@@ -82,17 +119,28 @@ export default async function handler(req, res) {
   const forceRequested = String(req.query?.refresh || '') === '1'
   const cacheAge = cache ? now - cache.fetchedAt : Number.POSITIVE_INFINITY
   const force = forceRequested && cacheAge >= MIN_FORCE_AGE_MS
+  const previousPayload = cache?.payload || null
 
   if (cache && !force && cacheAge < CACHE_TTL_MS) {
+    const refresh = refreshOutcome({
+      requested: forceRequested,
+      performed: false,
+      previousPayload,
+      payload: cache.payload,
+      reason: forceRequested ? 'throttled' : '',
+    })
     return sendSnapshot(res, cache.payload, {
       force: forceRequested,
       workoutLimit,
+      refresh,
     })
   }
 
   try {
+    let startedFetch = false
     if (!inFlight) {
-      inFlight = buildDirectHevySnapshot({ workoutLimit: CACHE_WORKOUT_LIMIT })
+      startedFetch = true
+      inFlight = buildDirectHevySnapshot()
         .then(payload => {
           cache = { payload, fetchedAt: Date.now() }
           return payload
@@ -102,19 +150,38 @@ export default async function handler(req, res) {
         })
     }
     const payload = await inFlight
+    const refresh = refreshOutcome({
+      requested: forceRequested,
+      performed: forceRequested,
+      previousPayload,
+      payload,
+      reason: forceRequested
+        ? startedFetch ? 'fetched' : 'joined_inflight'
+        : '',
+    })
     return sendSnapshot(res, payload, {
       force: forceRequested,
       workoutLimit,
+      refresh,
     })
   } catch (error) {
     console.error('[snapshot] Hevy direct fetch failed:', error?.message || error)
     if (cache?.payload) {
+      const refresh = refreshOutcome({
+        requested: forceRequested,
+        performed: false,
+        previousPayload,
+        payload: cache.payload,
+        reason: forceRequested ? 'upstream_failed' : '',
+      })
       return sendSnapshot(res, cache.payload, {
         force: forceRequested,
         stale: true,
         workoutLimit,
+        refresh,
       })
     }
+    cacheHeaders(res, { force: forceRequested })
     return res.status(502).json({ ok: false, error: 'hevy_snapshot_failed' })
   }
 }

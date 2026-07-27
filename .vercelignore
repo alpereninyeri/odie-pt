@@ -1,5 +1,9 @@
 # The production product is Hevy-only. Legacy experiments stay available in the
 # local checkout, but they are not uploaded or bundled into the live dashboard.
+.env
+.env.*
+.claude/
+
 api/ask.js
 api/coach.js
 api/intake.js

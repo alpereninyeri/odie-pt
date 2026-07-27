@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   buildDirectHevySnapshot,
+  collectHevyWorkoutHistory,
   collectRecentHevyWorkouts,
 } from '../lib/hevy/dashboard-snapshot.js'
 
@@ -53,6 +54,57 @@ test('direct Hevy collector respects page size and keeps newest page order', asy
   assert.deepEqual([...calls].sort((left, right) => left - right), [1, 2, 3])
 })
 
+test('full-history collector deduplicates overlapping page IDs and reports pagination anomalies', async () => {
+  const calls = []
+  const pageRows = {
+    1: Array.from({ length: 10 }, (_, index) => ({ id: `w-${index + 1}` })),
+    2: [
+      { id: 'w-10' },
+      ...Array.from({ length: 9 }, (_, index) => ({ id: `w-${index + 11}` })),
+    ],
+    3: [{ id: 'w-20' }],
+  }
+  const history = await collectHevyWorkoutHistory({
+    expectedWorkoutCount: 20,
+    listPage: async page => {
+      calls.push(page)
+      return {
+        page,
+        page_count: 3,
+        workouts: pageRows[page] || [],
+      }
+    },
+  })
+
+  assert.equal(history.workouts.length, 20)
+  assert.equal(history.workouts[0].id, 'w-1')
+  assert.equal(history.workouts.at(-1).id, 'w-20')
+  assert.equal(history.pagination.duplicate_workouts_removed, 1)
+  assert.equal(history.pagination.complete, true)
+  assert.equal(history.pagination.warnings.includes('duplicates_removed:1'), true)
+  assert.equal(history.pagination.warnings.includes('page_count_mismatch:3:2'), true)
+  assert.deepEqual([...calls].sort((left, right) => left - right), [1, 2, 3])
+})
+
+test('full-history collector fails explicit when the safety page cap is reached', async () => {
+  const history = await collectHevyWorkoutHistory({
+    expectedWorkoutCount: 100,
+    maxPages: 2,
+    listPage: async page => ({
+      page,
+      page_count: 10,
+      workouts: Array.from({ length: 10 }, (_, index) => ({
+        id: `w-${((page - 1) * 10) + index + 1}`,
+      })),
+    }),
+  })
+
+  assert.equal(history.workouts.length, 20)
+  assert.equal(history.pagination.page_cap_reached, true)
+  assert.equal(history.pagination.complete, false)
+  assert.equal(history.pagination.warnings.includes('page_cap_reached:10:2'), true)
+})
+
 test('direct Hevy snapshot derives the game profile and strips private source fields', async () => {
   const rows = [
     rawWorkout(0, { exercise: 'Lat Pulldown (Cable)', date: '2026-07-24' }),
@@ -61,7 +113,6 @@ test('direct Hevy snapshot derives the game profile and strips private source fi
     rawWorkout(3, { exercise: 'Romanian Deadlift (Barbell)', date: '2026-07-21' }),
   ]
   const snapshot = await buildDirectHevySnapshot({
-    workoutLimit: 20,
     listPage: async () => ({ page: 1, page_count: 1, workouts: rows }),
     getCount: async () => 4,
     getUser: async () => ({ name: 'Alperen', url: 'https://hevy.com/user/senuzulme27' }),
@@ -82,4 +133,39 @@ test('direct Hevy snapshot derives the game profile and strips private source fi
   assert.equal(snapshot.workouts[0].exercises[0].notes, undefined)
   assert.equal(snapshot.syncState.mode, 'direct')
   assert.equal(snapshot.syncState.truncated, false)
+  assert.equal(snapshot.syncState.history_complete, true)
+  assert.equal(snapshot.syncState.pagination.fetched_pages, 1)
+})
+
+test('direct Hevy snapshot keeps 240-workout history complete with bounded gamification cost', async () => {
+  const total = 240
+  const rows = Array.from({ length: total }, (_, index) => {
+    const date = new Date(Date.UTC(2025, 0, 1 + index)).toISOString().slice(0, 10)
+    return rawWorkout(index, {
+      exercise: index % 3 === 0 ? 'Squat (Barbell)' : 'Bench Press (Barbell)',
+      date,
+    })
+  }).reverse()
+  const pageCount = Math.ceil(rows.length / 10)
+  const startedAt = performance.now()
+  const snapshot = await buildDirectHevySnapshot({
+    listPage: async page => ({
+      page,
+      page_count: pageCount,
+      workouts: rows.slice((page - 1) * 10, page * 10),
+    }),
+    getCount: async () => total,
+    getUser: async () => ({ name: 'Alperen' }),
+    now: new Date('2026-07-25T09:00:00Z'),
+  })
+  const elapsedMs = performance.now() - startedAt
+
+  assert.equal(snapshot.workouts.length, total)
+  assert.equal(snapshot.profile.sessions, total)
+  assert.equal(snapshot.syncState.fetched_workouts, total)
+  assert.equal(snapshot.syncState.total_workouts, total)
+  assert.equal(snapshot.syncState.truncated, false)
+  assert.equal(snapshot.syncState.history_complete, true)
+  assert.equal(snapshot.syncState.pagination.fetched_pages, pageCount)
+  assert.ok(elapsedMs < 4000, `240-workout snapshot took ${Math.round(elapsedMs)}ms`)
 })

@@ -138,6 +138,51 @@ test('dashboard interprets each workout with a short verdict, stat gains and exe
   assert.deepEqual(session.exercises[0].targets.map(target => target.label), ['Göğüs'])
 })
 
+test('explicit Hevy workout type outranks accessory tags in short verdicts', () => {
+  const verdict = dashboardInternals.workoutVerdict
+
+  assert.equal(verdict(workout({
+    type: 'Push',
+    primaryCategory: 'strength',
+    tags: ['push', 'legs', 'running'],
+    exercises: [
+      { name: 'Bench Press', sets: [{ reps: 8, weightKg: 50 }] },
+      { name: 'Treadmill', sets: [{ durationSec: 600 }] },
+      { name: 'Leg Extension', sets: [{ reps: 12, weightKg: 30 }] },
+    ],
+  })), 'İtiş Gücü')
+
+  assert.equal(verdict(workout({
+    type: 'Pull',
+    primaryCategory: 'strength',
+    tags: ['pull', 'core', 'push'],
+    exercises: [
+      { name: 'Lat Pulldown', sets: [{ reps: 10, weightKg: 55 }] },
+      { name: 'Hanging Leg Raise', sets: [{ reps: 12 }] },
+      { name: 'Lateral Raise', sets: [{ reps: 15, weightKg: 8 }] },
+    ],
+  })), 'Çekiş Gücü')
+
+  assert.equal(verdict(workout({
+    type: 'Koşu',
+    primaryCategory: 'endurance',
+    tags: ['running', 'legs'],
+    exercises: [
+      { name: 'Treadmill', sets: [{ durationSec: 1800, distanceMeters: 5000 }] },
+      { name: 'Walking Lunge', sets: [{ reps: 12 }] },
+    ],
+  })), 'Kondisyon')
+})
+
+test('explicit primary category outranks accessory tags when workout type is generic', () => {
+  assert.equal(dashboardInternals.workoutVerdict(workout({
+    type: 'Gym',
+    primaryCategory: 'endurance',
+    tags: ['legs', 'push'],
+    exercises: [{ name: 'Walking Lunge', sets: [{ reps: 12 }] }],
+  })), 'Kondisyon')
+})
+
 test('heatmap always returns a stable 28-day window', () => {
   const cells = dashboardInternals.heatmap([
     workout({ id: 'today', date: today, sets: 20 }),

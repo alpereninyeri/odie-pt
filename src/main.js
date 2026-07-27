@@ -189,8 +189,16 @@ function renderStatusBanner(model) {
   }
   if (model.syncSummary) {
     const fetched = Number(model.syncSummary.fetched || 0)
+    if (model.syncSummary.refreshed === false) {
+      return `
+        <div class="status-banner is-success" role="status" data-sync-outcome="current">
+          ${icon('check')}
+          Hevy zaten güncel · son kayıt değişmedi
+        </div>
+      `
+    }
     return `
-      <div class="status-banner is-success" role="status">
+      <div class="status-banner is-success" role="status" data-sync-outcome="refreshed">
         ${icon('check')}
         Hevy yenilendi · ${formatNumber(fetched)} antrenman okundu
       </div>

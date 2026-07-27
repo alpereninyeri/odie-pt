@@ -206,3 +206,80 @@ test('a small response cannot poison the full-history snapshot cache', async () 
     resetSnapshotCacheForTest()
   }
 })
+
+test('manual refresh bypasses CDN cache and reports whether sync time advanced', async () => {
+  const previousToken = process.env.ODIE_APP_ACCESS_TOKEN
+  const previousHevyKey = process.env.HEVY_API_KEY
+  const previousFetch = global.fetch
+
+  delete process.env.ODIE_APP_ACCESS_TOKEN
+  process.env.HEVY_API_KEY = 'hevy-key'
+  let fetchCalls = 0
+  global.fetch = async url => {
+    fetchCalls += 1
+    const requestUrl = String(url)
+    if (requestUrl.includes('/v1/workouts/count')) {
+      return { ok: true, json: async () => ({ workout_count: 1 }) }
+    }
+    if (requestUrl.includes('/v1/user/info')) {
+      return { ok: true, json: async () => ({ data: { name: 'Alperen' } }) }
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        page: 1,
+        page_count: 1,
+        workouts: [{
+          id: 'hevy-refresh-1',
+          title: 'Push',
+          start_time: '2026-07-25T08:00:00Z',
+          end_time: '2026-07-25T09:00:00Z',
+          exercises: [{
+            title: 'Bench Press (Barbell)',
+            sets: [{ weight_kg: 80, reps: 8 }],
+          }],
+        }],
+      }),
+    }
+  }
+
+  try {
+    resetSnapshotCacheForTest()
+    const refreshedRes = createMockRes()
+    await snapshotHandler({
+      method: 'GET',
+      headers: {},
+      query: { workouts: '10', refresh: '1', refresh_nonce: 'first' },
+    }, refreshedRes)
+
+    assert.equal(refreshedRes.statusCode, 200)
+    assert.equal(refreshedRes.headers['Cache-Control'], 'no-store, max-age=0')
+    assert.equal(refreshedRes.headers['X-Odie-Refresh'], 'fetched')
+    assert.equal(refreshedRes.body.syncState.refresh_requested, true)
+    assert.equal(refreshedRes.body.syncState.refresh_performed, true)
+    assert.equal(refreshedRes.body.syncState.last_synced_at_advanced, true)
+    assert.equal(refreshedRes.body.syncState.refresh_reason, 'fetched')
+    assert.equal(fetchCalls, 3)
+
+    const currentRes = createMockRes()
+    await snapshotHandler({
+      method: 'GET',
+      headers: {},
+      query: { workouts: '10', refresh: '1', refresh_nonce: 'second' },
+    }, currentRes)
+
+    assert.equal(currentRes.statusCode, 200)
+    assert.equal(currentRes.headers['Cache-Control'], 'no-store, max-age=0')
+    assert.equal(currentRes.headers['X-Odie-Refresh'], 'throttled')
+    assert.equal(currentRes.body.syncState.refresh_requested, true)
+    assert.equal(currentRes.body.syncState.refresh_performed, false)
+    assert.equal(currentRes.body.syncState.last_synced_at_advanced, false)
+    assert.equal(currentRes.body.syncState.refresh_reason, 'throttled')
+    assert.equal(fetchCalls, 3)
+  } finally {
+    global.fetch = previousFetch
+    restoreEnv('ODIE_APP_ACCESS_TOKEN', previousToken)
+    restoreEnv('HEVY_API_KEY', previousHevyKey)
+    resetSnapshotCacheForTest()
+  }
+})

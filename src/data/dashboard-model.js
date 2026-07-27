@@ -252,23 +252,43 @@ function categoryLabel(value = '') {
 
 function workoutVerdict(workout = {}, statGains = []) {
   const tags = new Set((workout.tags || []).map(tag => normalizeText(tag)))
+  const type = normalizeText(workout.type)
+  const category = normalizeText(workout.primaryCategory)
   const text = normalizeText([
     workout.type,
     workout.primaryCategory,
     workout.highlight,
     ...(workout.exercises || []).map(exercise => exercise.name),
   ].join(' '))
-  const category = normalizeText(workout.primaryCategory)
 
-  if (category === 'recovery' || tags.has('mobility') || /stretch|mobility|mobilite/.test(text)) return 'Aktif Toparlanma'
+  if (type === 'push') return 'İtiş Gücü'
+  if (type === 'pull') return 'Çekiş Gücü'
+  if (type === 'bacak' || type === 'legs' || type === 'leg day') return 'Bacak Gücü'
+  if (['kosu', 'run', 'running', 'walk', 'walking', 'bisiklet', 'cycling'].includes(type)) return 'Kondisyon'
+  if (type === 'core') return 'Gövde Gücü'
+  if (['recovery', 'mobility', 'toparlanma'].includes(type)) return 'Aktif Toparlanma'
+  if (['movement', 'parkour', 'akro'].includes(type)) {
+    return tags.has('explosive') || /jump|sprint|plyo/.test(text)
+      ? 'Patlayıcı Beceri'
+      : 'Hareket Becerisi'
+  }
+
+  if (category === 'recovery') return 'Aktif Toparlanma'
+  if (category === 'endurance') return 'Kondisyon'
+  if (category === 'movement') {
+    return tags.has('explosive') || /jump|sprint|plyo/.test(text)
+      ? 'Patlayıcı Beceri'
+      : 'Hareket Becerisi'
+  }
+  if (category === 'mixed') return 'Karma Güç'
+  if (category === 'strength') return 'Kuvvet'
+
+  if (tags.has('mobility') || /stretch|mobility|mobilite/.test(text)) return 'Aktif Toparlanma'
   if (tags.has('legs') || /squat|leg press|lunge|bacak|quad|hamstring/.test(text)) return 'Bacak Gücü'
   if (tags.has('push') || /bench|chest press|shoulder press|pushdown/.test(text)) return 'İtiş Gücü'
   if (tags.has('pull') || /pull up|pulldown|row|curl|deadlift/.test(text)) return 'Çekiş Gücü'
   if (tags.has('core') || /plank|hollow|leg raise|core/.test(text)) return 'Gövde Gücü'
-  if (category === 'endurance' || tags.has('running') || tags.has('walking')) return 'Kondisyon'
-  if (category === 'movement' && (tags.has('explosive') || /jump|sprint|plyo/.test(text))) return 'Patlayıcı Beceri'
-  if (category === 'movement') return 'Hareket Becerisi'
-  if (category === 'mixed') return 'Karma Güç'
+  if (tags.has('running') || tags.has('walking')) return 'Kondisyon'
 
   const fallback = statGains[0]?.key
   if (fallback === 'str') return 'Kuvvet'
