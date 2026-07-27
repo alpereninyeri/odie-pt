@@ -178,10 +178,13 @@ svg {
 }
 
 .rail-avatar img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: top;
+  transform: scale(1.4);
+  transform-origin: 50% 10%;
 }
 
 .level-badge {
@@ -605,10 +608,13 @@ svg {
 }
 
 .player-portrait img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: top;
+  transform: scale(1.42);
+  transform-origin: 50% 16%;
   filter: saturate(0.82) contrast(1.08);
 }
 
