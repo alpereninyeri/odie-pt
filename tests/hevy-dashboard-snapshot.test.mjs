@@ -3,9 +3,26 @@ import test from 'node:test'
 
 import {
   buildDirectHevySnapshot,
+  collectHevyExerciseTemplates,
   collectHevyWorkoutHistory,
   collectRecentHevyWorkouts,
 } from '../lib/hevy/dashboard-snapshot.js'
+
+test('exercise template collector reads the full catalog and deduplicates ids', async () => {
+  const catalog = await collectHevyExerciseTemplates({
+    listPage: async page => ({
+      page,
+      page_count: 2,
+      exercise_templates: page === 1
+        ? [{ id: 'a' }, { id: 'b' }]
+        : [{ id: 'b' }, { id: 'c' }],
+    }),
+  })
+
+  assert.deepEqual(catalog.templates.map(template => template.id), ['a', 'b', 'c'])
+  assert.equal(catalog.pagination.fetched_pages, 2)
+  assert.equal(catalog.pagination.complete, true)
+})
 
 function rawWorkout(index, {
   exercise = index % 2 ? 'Bench Press (Barbell)' : 'Lat Pulldown (Cable)',
@@ -20,10 +37,17 @@ function rawWorkout(index, {
     created_at: `${date}T09:01:00Z`,
     exercises: [{
       title: exercise,
+      exercise_template_id: exercise.includes('Lat')
+        ? 'lat-template'
+        : exercise.includes('Bench')
+          ? 'chest-template'
+          : exercise.includes('Squat')
+            ? 'quad-template'
+            : 'hamstring-template',
       notes: `exercise-private-${index}`,
       sets: [
-        { weight_kg: 40 + index, reps: 8 },
-        { weight_kg: 40 + index, reps: 8 },
+        { type: 'warmup', weight_kg: 40 + index, reps: 8, rpe: 5 },
+        { type: 'normal', weight_kg: 40 + index, reps: 8, rpe: 8 },
       ],
     }],
   }
@@ -114,6 +138,16 @@ test('direct Hevy snapshot derives the game profile and strips private source fi
   ]
   const snapshot = await buildDirectHevySnapshot({
     listPage: async () => ({ page: 1, page_count: 1, workouts: rows }),
+    listTemplatePage: async () => ({
+      page: 1,
+      page_count: 1,
+      exercise_templates: [
+        { id: 'lat-template', primary_muscle_group: 'lats', secondary_muscle_groups: ['biceps'] },
+        { id: 'chest-template', primary_muscle_group: 'chest', secondary_muscle_groups: ['triceps'] },
+        { id: 'quad-template', primary_muscle_group: 'quadriceps', secondary_muscle_groups: ['glutes'] },
+        { id: 'hamstring-template', primary_muscle_group: 'hamstrings', secondary_muscle_groups: ['glutes'] },
+      ],
+    }),
     getCount: async () => 4,
     getUser: async () => ({ name: 'Alperen', url: 'https://hevy.com/user/senuzulme27' }),
     now: new Date('2026-07-25T09:00:00Z'),
@@ -133,10 +167,19 @@ test('direct Hevy snapshot derives the game profile and strips private source fi
   assert.equal(snapshot.workouts[0].exercises[0].notes, undefined)
   assert.ok(snapshot.workouts[0].exercises[0].impactTags.includes('pull'))
   assert.equal(snapshot.workouts[0].exercises[0].impactTags.includes('body-control'), false)
+  assert.deepEqual(snapshot.workouts[0].exercises[0].muscleTargets, [
+    { regionId: 'lat', role: 'primary', source: 'hevy-template' },
+    { regionId: 'biceps', role: 'secondary', source: 'hevy-template' },
+  ])
+  assert.equal(snapshot.workouts[0].exercises[0].sets[0].type, 'warmup')
+  assert.equal(snapshot.workouts[0].exercises[0].sets[1].rpe, 8)
   assert.equal(snapshot.syncState.mode, 'direct')
   assert.equal(snapshot.syncState.truncated, false)
   assert.equal(snapshot.syncState.history_complete, true)
   assert.equal(snapshot.syncState.pagination.fetched_pages, 1)
+  assert.equal(snapshot.syncState.mapping.source, 'hevy-template')
+  assert.equal(snapshot.syncState.mapping.coverage_percent, 100)
+  assert.equal(snapshot.privacy, 'private-athlete')
 })
 
 test('direct Hevy snapshot keeps 240-workout history complete with bounded gamification cost', async () => {

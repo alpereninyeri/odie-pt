@@ -114,9 +114,12 @@ for (const viewport of viewports) {
   })
 }
 
-test('public direct Hevy snapshot loads automatically and manual refresh re-reads it', async ({ page }) => {
+test('private direct Hevy snapshot loads with app auth and manual refresh re-reads it', async ({ page }) => {
   const snapshotRequests = []
   const today = new Date().toISOString().slice(0, 10)
+  await page.addInitScript(() => {
+    localStorage.setItem('odiept-app-access-token', 'e2e-app-secret')
+  })
 
   await page.route('**/api/snapshot?**', async route => {
     snapshotRequests.push({
@@ -169,7 +172,7 @@ test('public direct Hevy snapshot loads automatically and manual refresh re-read
           last_synced_at: new Date().toISOString(),
         },
         source: { hevy: 'live-direct', storage: 'none' },
-        privacy: 'public-summary',
+        privacy: 'private-athlete',
       }),
     })
   })
@@ -192,6 +195,25 @@ test('public direct Hevy snapshot loads automatically and manual refresh re-read
 
   expect(snapshotRequests.length).toBeGreaterThanOrEqual(2)
   expect(snapshotRequests.some(request => new URL(request.url).searchParams.get('refresh') === '1')).toBe(true)
-  expect(snapshotRequests.every(request => !request.headers.authorization)).toBe(true)
+  expect(snapshotRequests.every(request => request.headers.authorization === 'Bearer e2e-app-secret')).toBe(true)
   await auditSurface(page)
+})
+
+test('locked dashboard does not fetch private data without an access token', async ({ page }) => {
+  const requests = []
+  await page.route('**/api/snapshot?**', async route => {
+    requests.push(route.request().headers())
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: false, error: 'unauthorized' }),
+      headers: { 'cache-control': 'private, no-store' },
+    })
+  })
+
+  await page.goto('/?tab=overview')
+  await expect(page.locator('.status-banner.is-error')).toBeVisible()
+  await expect(page.locator('[data-access]')).toContainText('Erişim anahtarı gir')
+  expect(requests.length).toBeGreaterThan(0)
+  expect(requests.every(headers => !headers.authorization)).toBe(true)
 })

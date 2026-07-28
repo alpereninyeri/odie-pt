@@ -29,11 +29,17 @@ function restoreEnv(name, value) {
   else process.env[name] = value
 }
 
-test('snapshot auth is public by default and optional when configured', () => {
+test('snapshot endpoint fails closed when app auth is not configured', async () => {
   const previous = process.env.ODIE_APP_ACCESS_TOKEN
   delete process.env.ODIE_APP_ACCESS_TOKEN
   assert.equal(appAuthConfigured(), false)
   assert.deepEqual(authorizeAppRequest({ headers: {} }), { ok: false, configured: false })
+  const unconfiguredRes = createMockRes()
+  await snapshotHandler({ method: 'GET', headers: {}, query: {} }, unconfiguredRes)
+  assert.equal(unconfiguredRes.statusCode, 503)
+  assert.equal(unconfiguredRes.body.error, 'app_auth_not_configured')
+  assert.match(unconfiguredRes.headers['Cache-Control'], /private/)
+  assert.match(unconfiguredRes.headers['Cache-Control'], /no-store/)
 
   process.env.ODIE_APP_ACCESS_TOKEN = 'secret'
   assert.equal(appAuthConfigured(), true)
@@ -49,7 +55,7 @@ test('snapshot reads Hevy directly without exposing private workout fields', asy
   const previousHevyKey = process.env.HEVY_API_KEY
   const previousFetch = global.fetch
 
-  delete process.env.ODIE_APP_ACCESS_TOKEN
+  process.env.ODIE_APP_ACCESS_TOKEN = 'secret'
   process.env.HEVY_API_KEY = 'hevy-key'
   let fetchCalls = 0
   global.fetch = async url => {
@@ -62,6 +68,20 @@ test('snapshot reads Hevy directly without exposing private workout fields', asy
       return {
         ok: true,
         json: async () => ({ data: { name: 'Alperen', url: 'https://hevy.com/user/senuzulme27' } }),
+      }
+    }
+    if (requestUrl.includes('/v1/exercise_templates')) {
+      return {
+        ok: true,
+        json: async () => ({
+          page: 1,
+          page_count: 1,
+          exercise_templates: [{
+            id: 'bench-template',
+            primary_muscle_group: 'chest',
+            secondary_muscle_groups: ['triceps'],
+          }],
+        }),
       }
     }
     if (requestUrl.includes('/v1/workouts?')) {
@@ -79,6 +99,7 @@ test('snapshot reads Hevy directly without exposing private workout fields', asy
             created_at: '2026-06-25T09:01:00Z',
             exercises: [{
               title: 'Bench Press (Barbell)',
+              exercise_template_id: 'bench-template',
               notes: 'private exercise note',
               sets: [{ weight_kg: 80, reps: 8 }],
             }],
@@ -90,22 +111,6 @@ test('snapshot reads Hevy directly without exposing private workout fields', asy
   }
 
   try {
-    resetSnapshotCacheForTest()
-    const publicRes = createMockRes()
-    await snapshotHandler({ method: 'GET', headers: {}, query: {} }, publicRes)
-    assert.equal(publicRes.statusCode, 200)
-    assert.equal(publicRes.body.ok, true)
-    assert.equal(publicRes.body.profile.nick, 'Alperen')
-    assert.equal(publicRes.body.workouts[0].id, 'hevy-w1')
-    assert.equal(publicRes.body.workouts[0].exercises[0].name, 'Bench Press (Barbell)')
-    assert.equal(publicRes.body.workouts[0].notes, undefined)
-    assert.equal(publicRes.body.workouts[0].rawExternal, undefined)
-    assert.deepEqual(publicRes.body.source, { hevy: 'live-direct', storage: 'none' })
-    assert.equal(publicRes.body.privacy, 'public-summary')
-    assert.equal(publicRes.headers['X-Odie-Data-Source'], 'hevy-direct')
-    assert.equal(fetchCalls, 3)
-
-    process.env.ODIE_APP_ACCESS_TOKEN = 'secret'
     resetSnapshotCacheForTest()
     const lockedRes = createMockRes()
     await snapshotHandler({ method: 'GET', headers: {}, query: {} }, lockedRes)
@@ -119,7 +124,21 @@ test('snapshot reads Hevy directly without exposing private workout fields', asy
       query: {},
     }, privateRes)
     assert.equal(privateRes.statusCode, 200)
-    assert.equal(privateRes.headers['Cache-Control'], 'private, no-store')
+    assert.equal(privateRes.body.ok, true)
+    assert.equal(privateRes.body.profile.nick, 'Alperen')
+    assert.equal(privateRes.body.workouts[0].id, 'hevy-w1')
+    assert.equal(privateRes.body.workouts[0].exercises[0].name, 'Bench Press (Barbell)')
+    assert.equal(privateRes.body.workouts[0].notes, undefined)
+    assert.equal(privateRes.body.workouts[0].rawExternal, undefined)
+    assert.equal(privateRes.body.source.hevy, 'live-direct')
+    assert.equal(privateRes.body.source.storage, 'none')
+    assert.equal(privateRes.body.source.mapping, 'hevy-template')
+    assert.equal(privateRes.body.privacy, 'private-athlete')
+    assert.equal(privateRes.headers['X-Odie-Data-Source'], 'hevy-direct')
+    assert.match(privateRes.headers['Cache-Control'], /private/)
+    assert.match(privateRes.headers['Cache-Control'], /no-store/)
+    assert.equal(privateRes.headers.Vary, 'Authorization, X-Odie-Token')
+    assert.equal(fetchCalls, 4)
   } finally {
     global.fetch = previousFetch
     restoreEnv('ODIE_APP_ACCESS_TOKEN', previousToken)
@@ -133,7 +152,7 @@ test('a small response cannot poison the full-history snapshot cache', async () 
   const previousHevyKey = process.env.HEVY_API_KEY
   const previousFetch = global.fetch
 
-  delete process.env.ODIE_APP_ACCESS_TOKEN
+  process.env.ODIE_APP_ACCESS_TOKEN = 'secret'
   process.env.HEVY_API_KEY = 'hevy-key'
   let pageFetches = 0
 
@@ -180,7 +199,7 @@ test('a small response cannot poison the full-history snapshot cache', async () 
     const compactRes = createMockRes()
     await snapshotHandler({
       method: 'GET',
-      headers: {},
+      headers: { authorization: 'Bearer secret' },
       query: { workouts: '10' },
     }, compactRes)
     assert.equal(compactRes.statusCode, 200)
@@ -192,7 +211,7 @@ test('a small response cannot poison the full-history snapshot cache', async () 
     const fullRes = createMockRes()
     await snapshotHandler({
       method: 'GET',
-      headers: {},
+      headers: { authorization: 'Bearer secret' },
       query: { workouts: '120' },
     }, fullRes)
     assert.equal(fullRes.statusCode, 200)
@@ -212,7 +231,7 @@ test('manual refresh bypasses CDN cache and reports whether sync time advanced',
   const previousHevyKey = process.env.HEVY_API_KEY
   const previousFetch = global.fetch
 
-  delete process.env.ODIE_APP_ACCESS_TOKEN
+  process.env.ODIE_APP_ACCESS_TOKEN = 'secret'
   process.env.HEVY_API_KEY = 'hevy-key'
   let fetchCalls = 0
   global.fetch = async url => {
@@ -248,34 +267,36 @@ test('manual refresh bypasses CDN cache and reports whether sync time advanced',
     const refreshedRes = createMockRes()
     await snapshotHandler({
       method: 'GET',
-      headers: {},
+      headers: { authorization: 'Bearer secret' },
       query: { workouts: '10', refresh: '1', refresh_nonce: 'first' },
     }, refreshedRes)
 
     assert.equal(refreshedRes.statusCode, 200)
-    assert.equal(refreshedRes.headers['Cache-Control'], 'no-store, max-age=0')
+    assert.match(refreshedRes.headers['Cache-Control'], /private/)
+    assert.match(refreshedRes.headers['Cache-Control'], /no-store/)
     assert.equal(refreshedRes.headers['X-Odie-Refresh'], 'fetched')
     assert.equal(refreshedRes.body.syncState.refresh_requested, true)
     assert.equal(refreshedRes.body.syncState.refresh_performed, true)
     assert.equal(refreshedRes.body.syncState.last_synced_at_advanced, true)
     assert.equal(refreshedRes.body.syncState.refresh_reason, 'fetched')
-    assert.equal(fetchCalls, 3)
+    assert.equal(fetchCalls, 4)
 
     const currentRes = createMockRes()
     await snapshotHandler({
       method: 'GET',
-      headers: {},
+      headers: { authorization: 'Bearer secret' },
       query: { workouts: '10', refresh: '1', refresh_nonce: 'second' },
     }, currentRes)
 
     assert.equal(currentRes.statusCode, 200)
-    assert.equal(currentRes.headers['Cache-Control'], 'no-store, max-age=0')
+    assert.match(currentRes.headers['Cache-Control'], /private/)
+    assert.match(currentRes.headers['Cache-Control'], /no-store/)
     assert.equal(currentRes.headers['X-Odie-Refresh'], 'throttled')
     assert.equal(currentRes.body.syncState.refresh_requested, true)
     assert.equal(currentRes.body.syncState.refresh_performed, false)
     assert.equal(currentRes.body.syncState.last_synced_at_advanced, false)
     assert.equal(currentRes.body.syncState.refresh_reason, 'throttled')
-    assert.equal(fetchCalls, 3)
+    assert.equal(fetchCalls, 4)
   } finally {
     global.fetch = previousFetch
     restoreEnv('ODIE_APP_ACCESS_TOKEN', previousToken)

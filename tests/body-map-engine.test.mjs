@@ -100,18 +100,92 @@ test('body map exposes direct Hevy exercise evidence without tag-only false posi
   assert.equal(chest.contributors[0].sets, 3)
   assert.deepEqual(quads.contributors.map(item => item.name), ['Leg Press (Machine)'])
   assert.deepEqual(getExerciseBodyRegions('Bench Press').map(region => region.id), ['chest'])
-  assert.deepEqual(getExerciseBodyRegions('Leg Press (Machine)').map(region => region.id), ['quads'])
+  assert.deepEqual(getExerciseBodyRegions('Leg Press (Machine)').map(region => region.id), ['quads', 'glute'])
   assert.deepEqual(getExerciseBodyRegions('Leg Curl').map(region => region.id), ['hamstrings'])
   assert.deepEqual(getExerciseBodyRegions('Lateral Raise').map(region => region.id), ['shoulder'])
   assert.deepEqual(getExerciseBodyRegions('Reverse Fly').map(region => region.id), ['upper-back'])
   assert.deepEqual(getExerciseBodyRegions('Wrist Curl').map(region => region.id), ['forearm'])
-  assert.deepEqual(getExerciseBodyRegions('Running').map(region => region.id), ['calves'])
+  assert.deepEqual(getExerciseBodyRegions('Running').map(region => region.id), ['quads', 'hamstrings', 'calves'])
   assert.deepEqual(getExerciseBodyRegions('Walking').map(region => region.id), ['calves'])
   assert.deepEqual(getExerciseBodyRegions('Jumping Jacks').map(region => region.id), ['quads', 'calves'])
   assert.deepEqual(getExerciseBodyRegions('Dips').map(region => region.id), ['chest', 'triceps'])
   assert.deepEqual(
     getExerciseBodyRegions('Wrist Curl', { includeJoints: true }).map(region => region.id),
     ['forearm', 'wrist'],
+  )
+})
+
+test('Hevy template targets weight secondary muscles and warmup sets conservatively', () => {
+  const bodyMapState = buildBodyMapState({
+    state: {
+      profile: { fatigue: 0, armor: 100 },
+      workouts: [normalizeSession({
+        id: 'template-weighting',
+        date: '2026-07-28',
+        type: 'Bacak',
+        exercises: [{
+          name: 'Custom Compound',
+          muscleTargets: [
+            { regionId: 'quads', role: 'primary', source: 'hevy-template' },
+            { regionId: 'glute', role: 'secondary', source: 'hevy-template' },
+          ],
+          sets: [
+            { type: 'warmup', reps: 10 },
+            { type: 'normal', reps: 8 },
+          ],
+        }],
+      })],
+      dailyLogs: [],
+    },
+    today: '2026-07-29',
+  })
+  const quads = bodyMapState.regions.find(region => region.id === 'quads')
+  const glute = bodyMapState.regions.find(region => region.id === 'glute')
+
+  assert.ok(quads.evidenceScore > glute.evidenceScore)
+  assert.equal(glute.evidenceScore, quads.evidenceScore / 2)
+  assert.equal(quads.contributors[0].effectiveSets, 1.3)
+  assert.equal(glute.contributors[0].effectiveSets, 0.6)
+  assert.equal(quads.contributors[0].source, 'hevy-template')
+})
+
+test('body map uses an exact 28-day window and ignores the boundary day', () => {
+  const bodyMapState = buildBodyMapState({
+    state: {
+      profile: { fatigue: 0, armor: 100 },
+      workouts: [
+        normalizeSession({
+          id: 'inside-window',
+          date: '2026-07-02',
+          type: 'Push',
+          exercises: [{ name: 'Bench Press', sets: [{ reps: 8 }] }],
+        }),
+        normalizeSession({
+          id: 'boundary-window',
+          date: '2026-07-01',
+          type: 'Pull',
+          exercises: [{ name: 'Lat Pulldown', sets: [{ reps: 8 }] }],
+        }),
+      ],
+      dailyLogs: [],
+    },
+    today: '2026-07-29',
+  })
+
+  assert.ok(bodyMapState.regions.find(region => region.id === 'chest').load > 0)
+  assert.equal(bodyMapState.regions.find(region => region.id === 'lat').load, 0)
+})
+
+test('common Turkish aliases map without broad tag leakage', () => {
+  assert.deepEqual(getExerciseBodyRegions('Barfiks').map(region => region.id), ['lat', 'biceps', 'upper-back'])
+  assert.deepEqual(getExerciseBodyRegions('Şınav').map(region => region.id), ['chest', 'shoulder', 'triceps'])
+  assert.deepEqual(getExerciseBodyRegions('Koşu Bandı').map(region => region.id), ['quads', 'hamstrings', 'calves'])
+  assert.deepEqual(getExerciseBodyRegions('Side Bend').map(region => region.id), ['core'])
+  assert.deepEqual(getExerciseBodyRegions('Shrug (Dumbbell)').map(region => region.id), ['upper-back'])
+  assert.deepEqual(getExerciseBodyRegions('Hip Adduction').map(region => region.id), [])
+  assert.deepEqual(
+    getExerciseBodyRegions('Hip Adduction', { includeJoints: true }).map(region => region.id),
+    ['hips'],
   )
 })
 

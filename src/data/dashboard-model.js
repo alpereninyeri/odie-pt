@@ -227,6 +227,13 @@ function rankFromScore(value) {
   return 'E'
 }
 
+function jointExposureLabel(value) {
+  const score = number(value)
+  if (score >= 65) return 'yüksek yük'
+  if (score >= 40) return 'orta yük'
+  return 'düşük yük'
+}
+
 function categoryRows(workouts) {
   const groups = new Map()
   for (const workout of workouts) {
@@ -312,6 +319,7 @@ function sessionRows(workouts) {
       ...exercise,
       targets: getExerciseImpacts(exercise.name, {
         ontologyTags: exercise.impactTags,
+        muscleTargets: exercise.muscleTargets,
       }),
     }))
     const topExercises = exerciseRows.slice(0, 4).map(exercise => {
@@ -372,6 +380,7 @@ export function createDashboardModel(sourceState = {}, { today = getLocalDateStr
     load: Math.round(clamp(region.load)),
     recovery: Math.round(clamp(region.recovery)),
     risk: Math.round(clamp(region.risk)),
+    riskLabel: jointExposureLabel(region.risk),
     develops: REGION_GUIDES[region.id]?.develops || 'Temel bölge kapasitesi',
     recommendations: REGION_GUIDES[region.id]?.recommendations || ['Kontrollü temel çalışma'],
     exercisePreview: (region.contributors || []).length
@@ -405,6 +414,10 @@ export function createDashboardModel(sourceState = {}, { today = getLocalDateStr
     status: sourceState.status || 'ready',
     error: sourceState.error || '',
     lastSyncedAt: sourceState.lastSyncedAt || null,
+    cachedAt: sourceState.cachedAt || null,
+    cacheAgeMs: Number.isFinite(Number(sourceState.cacheAgeMs))
+      ? Math.max(0, Number(sourceState.cacheAgeMs))
+      : null,
     syncSummary: sourceState.syncSummary || null,
     recent7: summarize(current7Rows),
     current28,
@@ -455,6 +468,7 @@ export const dashboardInternals = {
   daysBetween,
   heatmap,
   rankFromScore,
+  jointExposureLabel,
   sessionRows,
   summarize,
   workoutVerdict,

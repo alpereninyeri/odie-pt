@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url'
 
 export const REQUIRED_VERCEL_ENV_GROUPS = [
   { label: 'Hevy API key', anyOf: ['HEVY_API_KEY'] },
+  { label: 'OdiePt app access token', anyOf: ['ODIE_APP_ACCESS_TOKEN'] },
 ]
 
 export const LEGACY_VERCEL_ENV_WARNINGS = [

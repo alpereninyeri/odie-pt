@@ -121,6 +121,7 @@ function renderSidebar(model) {
           <div>
             <small>VERİ KAYNAĞI</small>
             <b>${live ? 'HEVY CANLI' : model.mode === 'cache' ? 'SON CANLI KAYIT' : 'DEMO MODU'}</b>
+            ${model.mode === 'cache' ? `<small>${escapeHtml(cacheAgeLabel(model.cacheAgeMs))}</small>` : ''}
           </div>
         </div>
         ${live
@@ -142,7 +143,7 @@ function renderMobileTop(model) {
         <b>ODIE<span>PT</span></b>
       </button>
       <button type="button" class="mobile-source ${model.mode === 'live' ? 'is-live' : ''}" data-sync>
-        <span></span>${model.mode === 'live' ? 'HEVY' : 'DEMO'}
+        <span></span>${model.mode === 'live' ? 'HEVY' : model.mode === 'cache' ? 'KAYIT' : 'DEMO'}
       </button>
     </header>
   `
@@ -182,7 +183,7 @@ function renderStatusBanner(model) {
         ${icon('warning')}
         <span>${demoMode
           ? 'Hevy bağlantısı yerelde yok. Tasarım demo verisiyle gösteriliyor.'
-          : 'Canlı veri yenilenemedi. Ekranda son güvenli kayıt gösteriliyor.'}</span>
+          : `Canlı veri yenilenemedi. ${escapeHtml(cacheAgeLabel(model.cacheAgeMs))} yaşındaki son güvenli kayıt gösteriliyor.`}</span>
         <button type="button" data-sync>${demoMode ? 'Canlı veriyi dene' : 'Tekrar dene'}</button>
       </div>
     `
@@ -458,7 +459,7 @@ function renderBodyScreen(model) {
         model,
         '28 GÜNLÜK BÖLGE ANALİZİ',
         'Neresi geride?',
-        'Hevy egzersizleri yük, son temas ve denge açısından tarandı.',
+        'Hevy ana/ikincil kas hedefleri, set türü ve son temas birlikte tarandı.',
       )}
 
       ${priority ? `
@@ -518,15 +519,15 @@ function renderBodyScreen(model) {
           <section class="console-panel joint-panel">
             <div class="panel-head compact">
               <div>
-                <span class="eyebrow">EKLEM KONTROLÜ</span>
-                <h2>Risk sinyali</h2>
+                <span class="eyebrow">EKLEM YÜKÜ</span>
+                <h2>Tahmini maruziyet</h2>
               </div>
             </div>
             <div class="joint-list">
               ${jointRegions.map(region => `
                 <button type="button" data-region="${escapeAttr(region.id)}">
                   <span class="risk-dot risk-${riskTone(region.risk)}"></span>
-                  <div><b>${escapeHtml(region.label)}</b><small>${escapeHtml(region.trend)}</small></div>
+                  <div><b>${escapeHtml(region.label)}</b><small>${escapeHtml(region.riskLabel)}</small></div>
                   <strong>${formatNumber(region.risk)}</strong>
                 </button>
               `).join('')}
@@ -669,16 +670,20 @@ function regionDetail(model, regionId) {
   if (!region) return null
   if (region.group === 'joint') {
     return {
-      eyebrow: 'EKLEM RAPORU',
+      eyebrow: 'EKLEM YÜKÜ',
       title: region.label,
       body: `
         <div class="detail-score-grid">
           <div><small>YÜK</small><strong>${formatNumber(region.load)}</strong></div>
           <div><small>TOPARLANMA</small><strong>${formatNumber(region.recovery)}</strong></div>
-          <div><small>RİSK</small><strong>${formatNumber(region.risk)}</strong></div>
+          <div><small>MARUZİYET</small><strong>${formatNumber(region.risk)}</strong></div>
         </div>
         <div class="detail-block">
-          <span class="eyebrow">GÜVENLİ DESTEK</span>
+          <span class="eyebrow">${escapeHtml(region.riskLabel)}</span>
+          <p>Bu skor yalnızca Hevy hareket ve set verisinden tahmini yük maruziyetidir; ağrı veya sakatlık teşhisi değildir.</p>
+        </div>
+        <div class="detail-block">
+          <span class="eyebrow">DENGELEYİCİ DESTEK</span>
           <p>${escapeHtml(region.action)}</p>
         </div>
         <div class="detail-meta">
@@ -776,6 +781,7 @@ async function handleClick(event) {
   }
 
   if (event.target.closest('[data-access-clear]')) {
+    dashboardStore.clearCache()
     clearAppAccessToken()
     window.location.reload()
     return
@@ -911,6 +917,16 @@ function relativeDay(age) {
   if (age <= 0) return 'bugün'
   if (age === 1) return 'dün'
   return `${formatNumber(age)} gün önce`
+}
+
+function cacheAgeLabel(value) {
+  const ageMs = Number(value)
+  if (!Number.isFinite(ageMs) || ageMs < 0) return 'yaşı bilinmiyor'
+  const minutes = Math.max(1, Math.round(ageMs / 60_000))
+  if (minutes < 60) return `${minutes} dk`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} sa`
+  return `${Math.round(hours / 24)} gün`
 }
 
 function escapeHtml(value = '') {

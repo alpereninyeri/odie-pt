@@ -45,6 +45,33 @@ test('session normalization preserves bounded public exercise impact tags', () =
   ])
 })
 
+test('session normalization preserves Hevy muscle targets, distance, set type and RPE', () => {
+  const normalized = normalizeSession({
+    type: 'Bacak',
+    exercises: [{
+      name: 'Squat',
+      muscleTargets: [
+        { regionId: 'quads', role: 'primary', source: 'hevy-template' },
+        { regionId: 'glute', role: 'secondary', source: 'hevy-template' },
+      ],
+      sets: [{
+        reps: 8,
+        distanceMeters: 120,
+        type: 'warmup',
+        rpe: 5.5,
+      }],
+    }],
+  })
+
+  assert.deepEqual(normalized.exercises[0].muscleTargets, [
+    { regionId: 'quads', role: 'primary', source: 'hevy-template' },
+    { regionId: 'glute', role: 'secondary', source: 'hevy-template' },
+  ])
+  assert.equal(normalized.exercises[0].sets[0].distanceMeters, 120)
+  assert.equal(normalized.exercises[0].sets[0].type, 'warmup')
+  assert.equal(normalized.exercises[0].sets[0].rpe, 5.5)
+})
+
 test('walking defaults to endurance and does not raise core', () => {
   const walk = normalizeSession({
     type: 'Yuruyus',

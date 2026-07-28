@@ -14,6 +14,7 @@ const CURRENT_LIVE_SHAPE = `
  HEVY_INTERNAL_SECRET       Encrypted           Development, Preview, Production    53d ago
  HEVY_WEBHOOK_SECRET        Encrypted           Development, Preview, Production    53d ago
  HEVY_API_KEY               Encrypted           Development, Preview, Production    53d ago
+ ODIE_APP_ACCESS_TOKEN      Encrypted           Development, Preview, Production    1d ago
  VITE_SUPABASE_URL          Encrypted           Development, Preview, Production    70d ago
  ${LEGACY_ANON_ENV}     Encrypted           Development, Preview, Production    70d ago
  TELEGRAM_BOT_TOKEN         Encrypted           Production, Preview, Development    70d ago
@@ -27,7 +28,7 @@ test('vercel env parser extracts env names without values', () => {
   assert.equal(names.has('Encrypted'), false)
 })
 
-test('vercel env contract accepts the current live Hevy API key', () => {
+test('vercel env contract accepts the Hevy key and private app token', () => {
   const result = evaluateVercelEnvContract(parseVercelEnvList(CURRENT_LIVE_SHAPE))
   assert.equal(result.ok, true)
   assert.deepEqual(result.missing, [])
@@ -36,9 +37,12 @@ test('vercel env contract accepts the current live Hevy API key', () => {
   assert.equal(result.warnings.some(item => item.includes('legacy Hevy sync secret')), true)
 })
 
-test('vercel env contract fails only when the Hevy API key is absent', () => {
+test('vercel env contract fails when either private dashboard secret is absent', () => {
   const names = new Set(['VITE_SUPABASE_URL', 'GEMINI_API_KEY'])
   const result = evaluateVercelEnvContract(names)
   assert.equal(result.ok, false)
-  assert.deepEqual(result.missing.map(item => item.label), ['Hevy API key'])
+  assert.deepEqual(result.missing.map(item => item.label), [
+    'Hevy API key',
+    'OdiePt app access token',
+  ])
 })

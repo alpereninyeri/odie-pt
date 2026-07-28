@@ -30,6 +30,40 @@ test('Hevy normalization preserves cardio set distance', () => {
   assert.equal(normalized.confidence.level, 'high')
 })
 
+test('Hevy normalization preserves template muscle targets and set semantics', () => {
+  const normalized = normalizeHevyWorkout({
+    id: 'hevy-template-1',
+    title: 'Leg day',
+    start_time: '2026-07-27T08:00:00.000Z',
+    end_time: '2026-07-27T09:00:00.000Z',
+    exercises: [{
+      title: 'Squat (Barbell)',
+      exercise_template_id: 'squat-template',
+      sets: [
+        { type: 'warmup', weight_kg: 40, reps: 8, rpe: 4 },
+        { type: 'normal', weight_kg: 80, reps: 6, rpe: 8.5 },
+      ],
+    }],
+  }, {
+    templateById: new Map([[
+      'squat-template',
+      {
+        id: 'squat-template',
+        primary_muscle_group: 'quadriceps',
+        secondary_muscle_groups: ['glutes', 'hamstrings'],
+      },
+    ]]),
+  })
+
+  assert.deepEqual(normalized.exercises[0].muscleTargets, [
+    { regionId: 'quads', role: 'primary', source: 'hevy-template' },
+    { regionId: 'glute', role: 'secondary', source: 'hevy-template' },
+    { regionId: 'hamstrings', role: 'secondary', source: 'hevy-template' },
+  ])
+  assert.equal(normalized.exercises[0].sets[0].type, 'warmup')
+  assert.equal(normalized.exercises[0].sets[1].rpe, 8.5)
+})
+
 test('Hevy normalization uses Istanbul local day for UTC boundary starts', () => {
   const workout = {
     id: 'hevy-boundary-1',

@@ -423,6 +423,21 @@ export function normalizeExercises(exercises = []) {
       if (!Array.isArray(sets)) sets = []
       return {
         name: String(exercise.name || '').trim(),
+        muscleTargets: (exercise.muscleTargets || exercise.muscle_targets || [])
+          .map(target => {
+            const regionId = String(target?.regionId || target?.region_id || '').trim()
+            if (!regionId) return null
+            return {
+              regionId,
+              role: target?.role === 'primary' ? 'primary' : 'secondary',
+              source: target?.source === 'hevy-template' ? 'hevy-template' : 'name-fallback',
+            }
+          })
+          .filter(Boolean)
+          .filter((target, index, list) => (
+            list.findIndex(item => item.regionId === target.regionId) === index
+          ))
+          .slice(0, 8),
         impactTags: [...new Set(
           (exercise.impactTags || exercise.impact_tags || [])
             .map(tag => String(tag || '').trim().toLowerCase().slice(0, 40))
@@ -432,7 +447,12 @@ export function normalizeExercises(exercises = []) {
           reps: set?.reps != null ? Number(set.reps) : null,
           weightKg: set?.weightKg != null || set?.weight_kg != null ? Number(set.weightKg ?? set.weight_kg) : null,
           durationSec: set?.durationSec != null || set?.duration_sec != null ? Number(set.durationSec ?? set.duration_sec) : null,
-          note: String(set?.note || '').trim(),
+          distanceMeters: set?.distanceMeters != null || set?.distance_meters != null
+            ? Number(set.distanceMeters ?? set.distance_meters)
+            : null,
+          type: String(set?.type || 'normal').trim().toLowerCase().slice(0, 24) || 'normal',
+          rpe: set?.rpe != null && Number.isFinite(Number(set.rpe)) ? Number(set.rpe) : null,
+          note: String(set?.note || set?.notes || '').trim(),
         })),
       }
     })

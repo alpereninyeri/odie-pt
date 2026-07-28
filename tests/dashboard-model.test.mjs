@@ -56,7 +56,7 @@ test('dashboard model finds neglected muscle regions from Hevy exercise history'
   assert.ok(model.regions.every(region => region.develops && region.exercisePreview.length))
 })
 
-test('leg press credits quads without falsely training chest and glutes stay a muscle region', () => {
+test('leg press credits quads and glutes without falsely training chest', () => {
   const model = createDashboardModel({
     profile: { stats: {} },
     workouts: [
@@ -76,6 +76,41 @@ test('leg press credits quads without falsely training chest and glutes stay a m
   assert.equal(chest.load, 0)
   assert.ok(quads.load > 0)
   assert.equal(glute.group, 'muscle')
+  assert.ok(glute.load > 0)
+})
+
+test('dashboard model uses Hevy template targets for compound lower-body coverage', () => {
+  const model = createDashboardModel({
+    profile: { stats: {} },
+    workouts: [
+      workout({
+        id: 'template-legs',
+        date: '2026-07-24',
+        type: 'Bacak',
+        exercises: [{
+          name: 'Custom Compound',
+          muscleTargets: [
+            { regionId: 'quads', role: 'primary', source: 'hevy-template' },
+            { regionId: 'glute', role: 'secondary', source: 'hevy-template' },
+            { regionId: 'hamstrings', role: 'secondary', source: 'hevy-template' },
+          ],
+          sets: [{ type: 'normal', reps: 8 }, { type: 'normal', reps: 8 }],
+        }],
+      }),
+    ],
+  }, { today })
+
+  assert.ok(model.regions.find(region => region.id === 'quads').load > 0)
+  assert.ok(model.regions.find(region => region.id === 'glute').load > 0)
+  assert.ok(model.regions.find(region => region.id === 'hamstrings').load > 0)
+  assert.equal(model.regions.find(region => region.id === 'chest').load, 0)
+  assert.equal(model.sessions[0].exercises[0].targets[0].source, 'hevy-template')
+})
+
+test('joint status is labeled as estimated load, not medical diagnosis', () => {
+  assert.equal(dashboardInternals.jointExposureLabel(20), 'düşük yük')
+  assert.equal(dashboardInternals.jointExposureLabel(50), 'orta yük')
+  assert.equal(dashboardInternals.jointExposureLabel(75), 'yüksek yük')
 })
 
 test('dashboard always ranks four weakest regions even without a hard neglect signal', () => {

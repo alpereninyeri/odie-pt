@@ -3,9 +3,21 @@ import test from 'node:test'
 
 import { runLiveSmoke } from '../scripts/live-smoke.mjs'
 
-function jsonResponse(status, body) {
+function responseHeaders(values = {}) {
+  const normalized = new Map(
+    Object.entries(values).map(([key, value]) => [key.toLowerCase(), String(value)]),
+  )
+  return {
+    get(name) {
+      return normalized.get(String(name).toLowerCase()) || null
+    },
+  }
+}
+
+function jsonResponse(status, body, headers = {}) {
   return {
     status,
+    headers: responseHeaders(headers),
     text: async () => JSON.stringify(body),
   }
 }
@@ -13,6 +25,7 @@ function jsonResponse(status, body) {
 function textResponse(status, body) {
   return {
     status,
+    headers: responseHeaders(),
     text: async () => body,
   }
 }
@@ -20,28 +33,34 @@ function textResponse(status, body) {
 test('live smoke passes the direct Hevy production contract', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
-    fetchImpl: async url => {
+    token: 'app-secret',
+    fetchImpl: async (url, options = {}) => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt · Training Console</title>')
       if (path === '/api/snapshot') {
+        if (!options.headers?.Authorization) {
+          return jsonResponse(401, { ok: false, error: 'unauthorized' })
+        }
         return jsonResponse(200, {
           ok: true,
           profile: { nick: 'Alperen' },
           workouts: [{ id: 'w1', date: '2026-07-25' }],
           source: { hevy: 'live-direct', storage: 'none' },
-        })
+          privacy: 'private-athlete',
+        }, { 'cache-control': 'private, no-store, max-age=0' })
       }
       return textResponse(404, 'missing')
     },
   })
 
   assert.equal(result.ok, true)
-  assert.deepEqual(result.results.map(item => item.name), ['home', 'snapshot'])
+  assert.deepEqual(result.results.map(item => item.name), ['home', 'snapshot-lock', 'snapshot'])
 })
 
 test('live smoke fails an old deployment without the direct snapshot', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
+    token: 'app-secret',
     fetchImpl: async url => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt</title>')
@@ -50,22 +69,30 @@ test('live smoke fails an old deployment without the direct snapshot', async () 
   })
 
   assert.equal(result.ok, false)
-  assert.deepEqual(result.results.filter(item => !item.ok).map(item => item.name), ['snapshot'])
+  assert.deepEqual(
+    result.results.filter(item => !item.ok).map(item => item.name),
+    ['snapshot-lock', 'snapshot'],
+  )
 })
 
 test('live smoke fails if snapshot exposes raw or private workout fields', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
-    fetchImpl: async url => {
+    token: 'app-secret',
+    fetchImpl: async (url, options = {}) => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt · Training Console</title>')
       if (path === '/api/snapshot') {
+        if (!options.headers?.Authorization) {
+          return jsonResponse(401, { ok: false, error: 'unauthorized' })
+        }
         return jsonResponse(200, {
           ok: true,
           profile: { nick: 'Alperen' },
           workouts: [{ id: 'w1', notes: 'private' }],
           source: { hevy: 'live-direct' },
-        })
+          privacy: 'private-athlete',
+        }, { 'cache-control': 'private, no-store' })
       }
       return textResponse(404, 'missing')
     },

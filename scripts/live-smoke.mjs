@@ -44,8 +44,11 @@ async function checkHome(baseUrl, fetchImpl) {
 }
 
 async function checkSnapshot(baseUrl, fetchImpl, token = '') {
+  if (!token) {
+    return fail('snapshot', 'ODIE_APP_ACCESS_TOKEN is required for the private dashboard smoke test')
+  }
   const response = await fetchImpl(`${baseUrl}/api/snapshot?workouts=20`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { Authorization: `Bearer ${token}` },
   })
   const { data, text } = await readJson(response)
   if (response.status !== 200 || data?.ok !== true) {
@@ -60,11 +63,27 @@ async function checkSnapshot(baseUrl, fetchImpl, token = '') {
   if (data.workouts.some(workout => 'rawExternal' in workout || 'notes' in workout)) {
     return fail('snapshot', 'snapshot exposes private/raw workout fields')
   }
+  if (data.privacy !== 'private-athlete') {
+    return fail('snapshot', `unexpected privacy mode: ${data.privacy || 'empty'}`)
+  }
+  const cacheControl = response.headers?.get?.('cache-control') || ''
+  if (!/private/i.test(cacheControl) || !/no-store/i.test(cacheControl)) {
+    return fail('snapshot', `unsafe cache-control: ${cacheControl || 'missing'}`)
+  }
   return pass('snapshot', {
     status: response.status,
     workouts: data.workouts.length,
     source: data.source.hevy,
   })
+}
+
+async function checkSnapshotLock(baseUrl, fetchImpl) {
+  const response = await fetchImpl(`${baseUrl}/api/snapshot?workouts=1`)
+  const { data, text } = await readJson(response)
+  if (response.status !== 401 || data?.error !== 'unauthorized') {
+    return fail('snapshot-lock', `expected 401 unauthorized, got ${response.status}`, { sample: sample(text) })
+  }
+  return pass('snapshot-lock', { status: response.status })
 }
 
 export async function runLiveSmoke({
@@ -76,6 +95,7 @@ export async function runLiveSmoke({
   const root = normalizeBaseUrl(baseUrl)
   const checks = [
     () => checkHome(root, fetchImpl),
+    () => checkSnapshotLock(root, fetchImpl),
     () => checkSnapshot(root, fetchImpl, token),
   ]
 

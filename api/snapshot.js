@@ -1,5 +1,8 @@
 import { appAuthConfigured, authorizeAppRequest } from '../lib/app-auth.js'
-import { buildDirectHevySnapshot } from '../lib/hevy/dashboard-snapshot.js'
+import {
+  buildDirectHevySnapshot,
+  resetHevyTemplateCacheForTest,
+} from '../lib/hevy/dashboard-snapshot.js'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 const MIN_FORCE_AGE_MS = 60 * 1000
@@ -13,16 +16,9 @@ function asLimit(value, fallback = 120, max = 160) {
   return Math.max(10, Math.min(max, Math.round(numeric)))
 }
 
-function cacheHeaders(res, { force = false } = {}) {
-  if (force) {
-    res.setHeader('Cache-Control', 'no-store, max-age=0')
-    return
-  }
-  if (appAuthConfigured()) {
-    res.setHeader('Cache-Control', 'private, no-store')
-    return
-  }
-  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600')
+function cacheHeaders(res) {
+  res.setHeader('Cache-Control', 'private, no-store, max-age=0')
+  res.setHeader('Vary', 'Authorization, X-Odie-Token')
 }
 
 function syncTimestamp(payload = {}) {
@@ -84,7 +80,7 @@ function sendSnapshot(res, payload, {
   workoutLimit = 120,
   refresh = null,
 } = {}) {
-  cacheHeaders(res, { force })
+  cacheHeaders(res)
   res.setHeader('X-Odie-Data-Source', stale ? 'hevy-stale-cache' : 'hevy-direct')
   if (refresh) res.setHeader('X-Odie-Refresh', refresh.reason)
   const responsePayload = withResponseLimit(payload, workoutLimit, refresh)
@@ -100,14 +96,19 @@ function sendSnapshot(res, payload, {
 export function resetSnapshotCacheForTest() {
   cache = null
   inFlight = null
+  resetHevyTemplateCacheForTest()
 }
 
 export default async function handler(req, res) {
+  cacheHeaders(res)
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ ok: false, error: 'GET gerekli' })
   }
-  if (appAuthConfigured() && !authorizeAppRequest(req).ok) {
+  if (!appAuthConfigured()) {
+    return res.status(503).json({ ok: false, error: 'app_auth_not_configured' })
+  }
+  if (!authorizeAppRequest(req).ok) {
     return res.status(401).json({ ok: false, error: 'unauthorized' })
   }
   if (!process.env.HEVY_API_KEY) {
@@ -181,7 +182,7 @@ export default async function handler(req, res) {
         refresh,
       })
     }
-    cacheHeaders(res, { force: forceRequested })
+    cacheHeaders(res)
     return res.status(502).json({ ok: false, error: 'hevy_snapshot_failed' })
   }
 }

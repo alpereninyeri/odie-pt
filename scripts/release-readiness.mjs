@@ -123,6 +123,12 @@ if (/SUPABASE|sbGet|hevy_sync_state/.test(snapshotApi)) {
 if (!snapshotApi.includes('buildDirectHevySnapshot')) {
   fail('api/snapshot.js must use the direct Hevy snapshot builder')
 }
+if (!snapshotApi.includes('app_auth_not_configured') || !snapshotApi.includes('private, no-store')) {
+  fail('api/snapshot.js must fail closed and disable shared/private response caching')
+}
+if (/public,\s*s-maxage/.test(snapshotApi)) {
+  fail('api/snapshot.js must not publish athlete data through shared CDN caching')
+}
 
 const vercelConfig = read('vercel.json')
 if (/hevy-sync|crons/.test(vercelConfig)) {

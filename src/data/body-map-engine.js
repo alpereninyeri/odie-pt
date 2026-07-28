@@ -297,6 +297,66 @@ const ONTOLOGY_QUALITY_TARGETS = [
   ['isometric', { id: 'quality-isometric', label: 'İzometrik Güç', group: 'quality' }],
   ['terrain', { id: 'quality-terrain', label: 'Arazi Kontrolü', group: 'quality' }],
 ]
+const TARGET_ROLE_WEIGHT = {
+  primary: 1,
+  secondary: 0.5,
+}
+const EXERCISE_TARGET_RULES = [
+  {
+    patterns: ['squat', 'leg press'],
+    targets: [
+      ['quads', 'primary'],
+      ['glute', 'secondary'],
+      ['knees', 'secondary'],
+    ],
+  },
+  {
+    patterns: ['pull up', 'pull-up', 'barfiks'],
+    targets: [
+      ['lat', 'primary'],
+      ['biceps', 'secondary'],
+      ['upper-back', 'secondary'],
+    ],
+  },
+  {
+    patterns: ['push up', 'push-up', 'sinav'],
+    targets: [
+      ['chest', 'primary'],
+      ['shoulder', 'secondary'],
+      ['triceps', 'secondary'],
+      ['wrist', 'secondary'],
+    ],
+  },
+  {
+    patterns: ['treadmill', 'run', 'running', 'kosu bandi', 'kosu'],
+    targets: [
+      ['quads', 'primary'],
+      ['hamstrings', 'secondary'],
+      ['calves', 'secondary'],
+      ['knees', 'secondary'],
+      ['ankles', 'secondary'],
+    ],
+  },
+  {
+    patterns: ['side bend', 'toes to bar'],
+    targets: [['core', 'primary']],
+  },
+  {
+    patterns: ['shrug'],
+    targets: [['upper-back', 'primary']],
+  },
+  {
+    patterns: ['leg extension'],
+    targets: [
+      ['quads', 'primary'],
+      ['knees', 'secondary'],
+    ],
+  },
+  {
+    patterns: ['hip adduction', 'hip abduction', 'adductor', 'abductor'],
+    targets: [['hips', 'primary']],
+  },
+]
 
 function exercisePatternMatches(text, pattern) {
   const normalized = normalizeText(pattern)
@@ -332,6 +392,88 @@ function directRegionsForExercise(exerciseName) {
     )
   }
   return EXERCISE_REGION_CACHE.get(normalizedName)
+}
+
+function regionById(regionId) {
+  return REGION_CONFIG.find(region => region.id === regionId) || null
+}
+
+function normalizeExerciseTargets(exercise = {}) {
+  const targets = new Map()
+  for (const target of (exercise.muscleTargets || exercise.muscle_targets || [])) {
+    const regionId = String(target?.regionId || target?.region_id || '').trim()
+    if (!regionById(regionId)) continue
+    const normalized = {
+      regionId,
+      role: target?.role === 'primary' ? 'primary' : 'secondary',
+      source: target?.source === 'hevy-template' ? 'hevy-template' : 'name-fallback',
+    }
+    const current = targets.get(regionId)
+    if (!current || normalized.role === 'primary') targets.set(regionId, normalized)
+  }
+  return [...targets.values()]
+}
+
+function fallbackTargetsForExercise(exerciseName = '') {
+  const normalizedName = normalizeText(exerciseName)
+  if (!normalizedName) return []
+  const matchedRule = EXERCISE_TARGET_RULES.find(rule => (
+    rule.patterns.some(pattern => exercisePatternMatches(normalizedName, pattern))
+  ))
+  if (matchedRule) {
+    return matchedRule.targets
+      .map(([regionId, role]) => regionById(regionId) ? ({
+        regionId,
+        role,
+        source: 'name-fallback',
+      }) : null)
+      .filter(Boolean)
+  }
+  return directRegionsForExercise(exerciseName).map(region => ({
+    regionId: region.id,
+    role: 'primary',
+    source: 'name-fallback',
+  }))
+}
+
+function exerciseTargets(exercise = {}) {
+  const explicit = normalizeExerciseTargets(exercise)
+  const fallback = fallbackTargetsForExercise(exercise.name)
+  if (!explicit.length) return fallback
+
+  const targets = new Map(explicit.map(target => [target.regionId, target]))
+  for (const target of fallback) {
+    const region = regionById(target.regionId)
+    if (region?.group === 'joint' && !targets.has(target.regionId)) {
+      targets.set(target.regionId, target)
+    }
+  }
+  return [...targets.values()]
+}
+
+function targetForRegion(exercise, regionId) {
+  return exerciseTargets(exercise).find(target => target.regionId === regionId) || null
+}
+
+function targetWeight(target) {
+  return TARGET_ROLE_WEIGHT[target?.role] || TARGET_ROLE_WEIGHT.secondary
+}
+
+function setWeight(set = {}) {
+  const type = normalizeText(set?.type || 'normal').replace(/\s+/g, '_')
+  return ['warmup', 'warm_up'].includes(type) ? 0.25 : 1
+}
+
+function exerciseSetCounts(exercise = {}) {
+  if (Array.isArray(exercise.sets)) {
+    if (!exercise.sets.length) return { raw: 1, weighted: 1 }
+    return {
+      raw: exercise.sets.length,
+      weighted: exercise.sets.reduce((sum, set) => sum + setWeight(set), 0),
+    }
+  }
+  const count = Math.max(1, Number(exercise.sets) || 1)
+  return { raw: count, weighted: count }
 }
 
 function uniqueTargets(targets = []) {
@@ -465,9 +607,10 @@ function applyInjuryState(regions = [], injuries = []) {
 function exerciseScore(workout, region) {
   let score = 0
   for (const exercise of (workout.exercises || [])) {
-    if (!directRegionsForExercise(exercise.name).some(item => item.id === region.id)) continue
-    const sets = Array.isArray(exercise.sets) ? exercise.sets.length : (Number(exercise.sets) || 1)
-    score += Math.max(1, sets) * 2.4
+    const target = targetForRegion(exercise, region.id)
+    if (!target) continue
+    const sets = exerciseSetCounts(exercise)
+    score += sets.weighted * targetWeight(target) * 2.4
   }
   return score
 }
@@ -477,30 +620,36 @@ function directExerciseEffects(region, workouts = [], today = getLocalDateString
 
   for (const workout of workouts) {
     const age = daysAgo(workout.date, today)
-    if (age > 28) continue
+    if (age >= 28) continue
     const sessionKey = String(workout.id || workout.startedAt || `${workout.date}-${workout.type}`)
 
     for (const exercise of (workout.exercises || [])) {
       const name = String(exercise?.name || '').trim()
       const normalizedName = normalizeText(name)
-      if (!normalizedName || !directRegionsForExercise(name).some(item => item.id === region.id)) continue
+      const target = targetForRegion(exercise, region.id)
+      if (!normalizedName || !target) continue
 
-      const sets = Array.isArray(exercise.sets)
-        ? exercise.sets.length
-        : Math.max(1, Number(exercise.sets) || 1)
+      const sets = exerciseSetCounts(exercise)
+      const roleWeight = targetWeight(target)
       const recencyWeight = age <= 7 ? 1 : age <= 14 ? 0.7 : 0.4
       const current = effects.get(normalizedName) || {
         name,
         sets: 0,
+        effectiveSets: 0,
+        role: target.role,
+        source: target.source,
         sessionKeys: new Set(),
         daysSince: 99,
         impact: 0,
       }
 
-      current.sets += Math.max(1, sets)
+      current.sets += sets.raw
+      current.effectiveSets += sets.weighted * roleWeight
+      if (target.role === 'primary') current.role = 'primary'
+      if (target.source === 'hevy-template') current.source = 'hevy-template'
       current.sessionKeys.add(sessionKey)
       current.daysSince = Math.min(current.daysSince, age)
-      current.impact += Math.max(1, sets) * recencyWeight
+      current.impact += sets.weighted * roleWeight * recencyWeight
       effects.set(normalizedName, current)
     }
   }
@@ -509,6 +658,9 @@ function directExerciseEffects(region, workouts = [], today = getLocalDateString
     .map(effect => ({
       name: effect.name,
       sets: effect.sets,
+      effectiveSets: Math.round(effect.effectiveSets * 10) / 10,
+      role: effect.role,
+      source: effect.source,
       sessions: effect.sessionKeys.size,
       daysSince: effect.daysSince,
       impact: Math.round(effect.impact * 10) / 10,
@@ -522,7 +674,7 @@ function regionSessionScore(workout, region) {
   const text = cachedWorkoutText(workout)
   const directExerciseScore = exerciseScore(workout, region)
   const hasExerciseRows = (workout.exercises || []).some(exercise => String(exercise?.name || '').trim())
-  const allowFallback = region.group === 'joint' || directExerciseScore > 0 || !hasExerciseRows
+  const allowFallback = !hasExerciseRows
   const upperPushRegion = ['chest', 'shoulder', 'triceps'].includes(region.id)
   const legFocus = tags.has('legs') || workout.type === 'Bacak' || workout.primaryCategory === 'endurance'
   const legOnlyConflict = upperPushRegion && legFocus && directExerciseScore <= 0
@@ -530,7 +682,7 @@ function regionSessionScore(workout, region) {
 
   if (allowFallback && !legOnlyConflict && region.tags.some(tag => tags.has(tag))) score += 4
   if (allowFallback && workoutTextMatchesRegion(text, region)) score += 3
-  if (region.id === 'core' && hasDirectCoreStimulus(workout)) score += 5
+  if (allowFallback && region.id === 'core' && hasDirectCoreStimulus(workout)) score += 5
   if (allowFallback && ['quads', 'hamstrings', 'calves', 'knees', 'ankles', 'hips'].includes(region.id) && legFocus) score += 2
   if (region.group === 'joint' && (tags.has('mobility') || workout.primaryCategory === 'recovery')) score += 1.5
 
@@ -557,7 +709,7 @@ function buildRegionState(region, workouts, state, today) {
 
   for (const workout of workouts) {
     const age = daysAgo(workout.date, today)
-    if (age > 28) continue
+    if (age >= 28) continue
     const score = regionSessionScore(workout, region)
     if (score <= 0) continue
     matchedSessions += 1
@@ -1120,31 +1272,48 @@ export function sessionTouchesBodyRegion(session = {}, regionId = '') {
   return sessionMatchesRegion(session, regionId)
 }
 
-export function getExerciseBodyRegions(exerciseName = '', { includeJoints = false } = {}) {
-  return directRegionsForExercise(exerciseName)
-    .filter(region => includeJoints || region.group === 'muscle')
-    .map(region => ({
-      id: region.id,
-      label: region.label,
-      group: region.group,
+export function getExerciseBodyRegions(exerciseName = '', {
+  includeJoints = false,
+  muscleTargets = [],
+} = {}) {
+  return exerciseTargets({ name: exerciseName, muscleTargets })
+    .map(target => ({ ...target, region: regionById(target.regionId) }))
+    .filter(target => target.region && (includeJoints || target.region.group === 'muscle'))
+    .map(target => ({
+      id: target.region.id,
+      label: target.region.label,
+      group: target.region.group,
+      role: target.role,
+      source: target.source,
     }))
 }
 
 export function getExerciseImpacts(exerciseName = '', {
   includeJoints = false,
   ontologyTags = [],
+  muscleTargets = [],
 } = {}) {
-  const directRegions = directRegionsForExercise(exerciseName)
-    .filter(region => includeJoints || region.group === 'muscle')
+  const directRegions = exerciseTargets({ name: exerciseName, muscleTargets })
+    .map(target => ({ ...target, region: regionById(target.regionId) }))
+    .filter(target => target.region && (includeJoints || target.region.group === 'muscle'))
+    .map(target => ({
+      id: target.region.id,
+      label: target.region.label,
+      group: target.region.group,
+      role: target.role,
+      source: target.source,
+    }))
   const ontology = ontologyImpactsForExercise(exerciseName, ontologyTags)
   const fallbackRegions = ontology.regions
     .filter(region => includeJoints || region.group === 'muscle')
-  const regions = (directRegions.length ? directRegions : fallbackRegions)
     .map(region => ({
       id: region.id,
       label: region.label,
       group: region.group,
+      role: 'primary',
+      source: 'ontology-fallback',
     }))
+  const regions = directRegions.length ? directRegions : fallbackRegions
   const qualities = ontology.qualities
 
   if (qualities.length >= 2) {

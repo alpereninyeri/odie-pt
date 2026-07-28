@@ -11,7 +11,7 @@ OdiePt artık **Hevy-only** bir üründür. Ana uygulamada AI, sohbet, coach, ma
 Üç ekran bulunur:
 
 1. **Durum** — son 7/28 gün, seans, aktif gün, hacim, süre, devam zinciri, XP ve stat rankları.
-2. **Bölgeler** — Hevy egzersizlerinden hesaplanan kas yükü, eksik kalan bölgeler, son temas ve eklem risk sinyali.
+2. **Bölgeler** — Hevy ana/ikincil kas hedeflerinden hesaplanan kas yükü, eksik kalan bölgeler, son temas ve tahmini eklem yükü.
 3. **Seanslar** — Hevy antrenman geçmişi, egzersiz kırılımı ve dönem dağılımı.
 
 Ham `0-100` skorlar ikincil detaydır. Ana okuma rank, ritim, açık bölge ve somut kayıt üzerinden yapılır.
@@ -34,13 +34,15 @@ Durum / Bölgeler / Seanslar
 - Üretim dashboardu veriyi doğrudan Hevy API'den okur; Supabase, webhook ve cron gerekmez.
 - Dashboarddaki “Hevy’yi yenile” butonu sunucu cache'ini kontrollü biçimde tazeler.
 - API yalnızca dashboardun kullandığı alanları döndürür; Hevy notları ve ham payload tarayıcıya gönderilmez.
-- Varsayılan yayın modeli salt okunur public özettir. İstenirse `ODIE_APP_ACCESS_TOKEN` eklenerek endpoint kilitlenebilir.
+- Dashboard kişisel antrenman verisi taşıdığı için `/api/snapshot` fail-closed çalışır; `ODIE_APP_ACCESS_TOKEN` olmadan açılmaz.
+- Yanıtlar `private, no-store` gönderilir. Tarayıcıdaki erişim anahtarı build içine gömülmez; yalnızca kullanıcının cihazında tutulur.
+- Kas haritası önce Hevy exercise-template ana/ikincil kas alanlarını kullanır, katalog eşleşmezse kontrollü isim eşlemesine düşer.
 - Hevy hattı Gemini, coach veya başka bir model çağrısı yapmaz.
 
 ## Gerekli production env
 
 - `HEVY_API_KEY`
-- İsteğe bağlı: `ODIE_APP_ACCESS_TOKEN`
+- `ODIE_APP_ACCESS_TOKEN`
 
 Supabase, Gemini, Apple Health, Telegram, webhook ve cron değişkenleri mevcut ürün için gerekli değildir.
 
@@ -51,7 +53,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Yerelde `HEVY_API_KEY` yoksa güvenli demo veri gösterilir. Anahtar varsa gerçek Hevy verisi otomatik yüklenir.
+Yerelde gerekli sunucu envleri yoksa güvenli demo veri gösterilir. Gerçek veriye bağlanmak için hem `HEVY_API_KEY` hem `ODIE_APP_ACCESS_TOKEN` gerekir; erişim anahtarı arayüzde cihaz bazında girilir.
 
 ## Doğrulama
 
@@ -77,8 +79,8 @@ npm.cmd run live:smoke
 - `src/data/dashboard-model.js` — 7/28 günlük istatistikler, ranklar ve bölge açıkları
 - `src/data/dashboard-store.js` — demo/cache/live snapshot durumu
 - `src/data/body-map-engine.js` — Hevy egzersizlerinden bölge yükü ve ihmal sinyali
-- `api/snapshot.js` — cache'li, isteğe bağlı token korumalı Hevy dashboard paketi
-- `lib/hevy/dashboard-snapshot.js` — pagination, normalizasyon, XP/rank ve güvenli public payload
+- `api/snapshot.js` — cache'li, zorunlu token korumalı özel Hevy dashboard paketi
+- `lib/hevy/dashboard-snapshot.js` — pagination, template kas kataloğu, normalizasyon, XP/rank ve sınırlı özel payload
 
 ## Deploy
 

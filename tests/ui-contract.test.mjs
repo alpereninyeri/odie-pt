@@ -52,16 +52,27 @@ test('body and session screens expose compact tappable detail surfaces', () => {
   assert.match(css, /\.detail-sheet/)
 })
 
-test('browser data path is a direct Hevy snapshot with optional app-token headers', () => {
+test('browser data path is a private direct Hevy snapshot with required app-token headers', () => {
   assert.match(main, /dashboardStore/)
   assert.doesNotMatch(main, /supabase-client|from ['"].*\/store\.js['"]|\/api\/ask|\/api\/intake/)
   assert.match(snapshotApi, /buildDirectHevySnapshot/)
+  assert.match(snapshotApi, /app_auth_not_configured/)
+  assert.match(snapshotApi, /private, no-store/)
+  assert.doesNotMatch(snapshotApi, /public, s-maxage/)
   assert.doesNotMatch(snapshotApi, /SUPABASE|hevy_sync_state|coach_notes|athlete_memory|memory_feedback|odie_questions/)
   assert.match(dashboardStore, /params\.set\('refresh', '1'\)/)
   assert.match(dashboardStore, /params\.set\('refresh_nonce', Date\.now\(\)\.toString\(36\)\)/)
   assert.match(dashboardStore, /headers: appHeaders\(\)/)
+  assert.match(dashboardStore, /odiept-dashboard-cache-v2/)
+  assert.match(dashboardStore, /CACHE_TTL_MS/)
   assert.doesNotMatch(dashboardStore, /\/api\/hevy-sync/)
   assert.match(main, /Hevy zaten güncel/)
+})
+
+test('joint panel describes estimated Hevy load instead of a medical risk claim', () => {
+  assert.match(main, /Tahmini maruziyet/)
+  assert.match(main, /ağrı veya sakatlık teşhisi değildir/)
+  assert.doesNotMatch(main, /Risk sinyali/)
 })
 
 test('Hevy persistence does not trigger coach or model generation', () => {

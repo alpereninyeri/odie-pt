@@ -1,22 +1,65 @@
 import { MOCK_STATE } from './mock-state.js'
-import { appHeaders } from './app-access.js'
+import { appHeaders, hasAppAccessToken } from './app-access.js'
 import { normalizeSession } from './rules.js'
 
-const CACHE_KEY = 'odiept-dashboard-cache-v1'
+const CACHE_KEY = 'odiept-dashboard-cache-v2'
+const CACHE_SCHEMA_VERSION = 2
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const MAX_WORKOUTS = 120
 
-function readCache() {
+function isObject(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
+function validPayloadShape(payload, { requireOk = false } = {}) {
+  if (!isObject(payload)) return false
+  if (requireOk && payload.ok !== true) return false
+  if (!isObject(payload.profile) || !Array.isArray(payload.workouts)) return false
+  if (payload.syncState != null && !isObject(payload.syncState)) return false
+  return true
+}
+
+function readCache(now = Date.now()) {
   try {
     const value = localStorage.getItem(CACHE_KEY)
-    return value ? JSON.parse(value) : null
+    if (!value) return null
+    const envelope = JSON.parse(value)
+    const cachedAt = Date.parse(envelope?.cachedAt || '')
+    const ageMs = now - cachedAt
+    if (
+      envelope?.schemaVersion !== CACHE_SCHEMA_VERSION
+      || !Number.isFinite(cachedAt)
+      || ageMs < -5 * 60 * 1000
+      || ageMs > CACHE_TTL_MS
+      || !validPayloadShape(envelope.payload)
+    ) {
+      return null
+    }
+    return {
+      payload: envelope.payload,
+      cachedAt: envelope.cachedAt,
+      cacheAgeMs: Math.max(0, ageMs),
+    }
   } catch {
     return null
   }
 }
 
 function writeCache(value) {
+  if (!validPayloadShape(value) || value.mode === 'demo') return
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(value))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      schemaVersion: CACHE_SCHEMA_VERSION,
+      cachedAt: new Date().toISOString(),
+      payload: value,
+    }))
+  } catch {}
+}
+
+function clearCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY)
+    localStorage.removeItem('odiept-dashboard-cache-v1')
   } catch {}
 }
 
@@ -130,13 +173,15 @@ function normalizePayload(payload = {}, fallbackMode = 'live') {
     workouts,
     syncState: payload.syncState || null,
     source: payload.source || { hevy: 'configured' },
-    privacy: payload.privacy || 'public-summary',
+    privacy: payload.privacy || 'private-athlete',
     mode: fallbackMode,
     lastSyncedAt:
       payload.syncState?.last_synced_at
       || payload.syncState?.lastSyncedAt
       || payload.profile?.last_updated
-      || new Date().toISOString(),
+      || null,
+    cachedAt: null,
+    cacheAgeMs: null,
   }
 }
 
@@ -184,6 +229,9 @@ async function readJson(response, fallback) {
   if (!response.ok || payload.ok !== true) {
     throw new Error(payload.error || fallback)
   }
+  if (!validPayloadShape(payload, { requireOk: true })) {
+    throw new Error('snapshot_invalid')
+  }
   return payload
 }
 
@@ -198,10 +246,12 @@ export const dashboardStore = {
   },
 
   async init() {
-    const cached = readCache()
-    if (cached?.profile && Array.isArray(cached.workouts)) {
+    const cached = hasAppAccessToken() ? readCache() : null
+    if (cached) {
       state = {
-        ...normalizePayload(cached, 'cache'),
+        ...normalizePayload(cached.payload, 'cache'),
+        cachedAt: cached.cachedAt,
+        cacheAgeMs: cached.cacheAgeMs,
         status: 'syncing',
         error: '',
         syncSummary: null,
@@ -280,4 +330,17 @@ export const dashboardStore = {
       throw error
     }
   },
+
+  clearCache,
+}
+
+export const dashboardStoreInternals = {
+  CACHE_KEY,
+  CACHE_SCHEMA_VERSION,
+  CACHE_TTL_MS,
+  clearCache,
+  normalizePayload,
+  readCache,
+  validPayloadShape,
+  writeCache,
 }
