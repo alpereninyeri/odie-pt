@@ -12,6 +12,7 @@ const TABS = [
 
 let activeTab = readInitialTab()
 let detail = null
+let accessPromptOpen = false
 let currentModel = null
 let lastMarkup = ''
 let renderQueued = false
@@ -21,6 +22,7 @@ boot()
 async function boot() {
   document.addEventListener('click', handleClick)
   document.addEventListener('keydown', handleKeydown)
+  document.addEventListener('submit', handleSubmit)
   dashboardStore.subscribe(() => scheduleRender())
   render()
   await dashboardStore.init()
@@ -82,6 +84,7 @@ function renderShell(model) {
       </main>
       ${renderMobileNav()}
       ${renderDetail()}
+      ${renderAccessPrompt()}
     </div>
   `
 }
@@ -178,13 +181,20 @@ function renderStatusBanner(model) {
   }
   if (model.error) {
     const demoMode = model.mode === 'demo'
+    const accessLocked = model.error === 'unauthorized'
+    const serverUnconfigured = model.error === 'app_auth_not_configured'
+    const message = accessLocked
+      ? 'OdiePt kilitli. Canlı Hevy verisini görmek için erişim anahtarını gir.'
+      : serverUnconfigured
+        ? 'Sunucuda OdiePt erişim anahtarı yapılandırılmamış.'
+        : demoMode
+          ? 'Hevy bağlantısı yerelde yok. Tasarım demo verisiyle gösteriliyor.'
+          : `Canlı veri yenilenemedi. ${cacheAgeLabel(model.cacheAgeMs)} yaşındaki son güvenli kayıt gösteriliyor.`
     return `
       <div class="status-banner is-error" role="alert">
         ${icon('warning')}
-        <span>${demoMode
-          ? 'Hevy bağlantısı yerelde yok. Tasarım demo verisiyle gösteriliyor.'
-          : `Canlı veri yenilenemedi. ${escapeHtml(cacheAgeLabel(model.cacheAgeMs))} yaşındaki son güvenli kayıt gösteriliyor.`}</span>
-        <button type="button" data-sync>${demoMode ? 'Canlı veriyi dene' : 'Tekrar dene'}</button>
+        <span>${escapeHtml(message)}</span>
+        <button type="button" ${accessLocked ? 'data-access' : 'data-sync'}>${accessLocked ? 'Anahtarı gir' : demoMode ? 'Canlı veriyi dene' : 'Tekrar dene'}</button>
       </div>
     `
   }
@@ -665,6 +675,32 @@ function renderDetail() {
   `
 }
 
+function renderAccessPrompt() {
+  if (!accessPromptOpen) return ''
+  return `
+    <div class="detail-backdrop" data-access-close>
+      <section class="detail-sheet access-sheet" role="dialog" aria-modal="true" aria-labelledby="access-title">
+        <div class="detail-head">
+          <span class="eyebrow">ÖZEL HEVY VERİSİ</span>
+          <button type="button" class="icon-button" data-access-close aria-label="Kapat">${icon('close')}</button>
+        </div>
+        <h2 id="access-title">Erişim anahtarı</h2>
+        <div class="detail-block">
+          <p>Anahtar yalnızca bu cihazda saklanır ve Hevy API anahtarını tarayıcıya açmaz.</p>
+        </div>
+        <form class="access-form" data-access-form>
+          <label for="odie-access-token">OdiePt erişim anahtarı</label>
+          <input id="odie-access-token" name="accessToken" type="password" autocomplete="off" required>
+          <div class="access-actions">
+            <button type="submit" class="sync-button">Bağlan</button>
+            <button type="button" class="rail-action" data-access-close>Vazgeç</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  `
+}
+
 function regionDetail(model, regionId) {
   const region = model.regions.find(item => item.id === regionId)
   if (!region) return null
@@ -769,6 +805,13 @@ async function handleClick(event) {
     return
   }
 
+  const accessClose = event.target.closest('[data-access-close]')
+  if (accessClose && (!event.target.closest('.access-sheet') || event.target.closest('button'))) {
+    accessPromptOpen = false
+    scheduleRender()
+    return
+  }
+
   const tabButton = event.target.closest('[data-tab]')
   if (tabButton) {
     setActiveTab(tabButton.dataset.tab)
@@ -824,9 +867,21 @@ async function handleClick(event) {
 }
 
 function handleKeydown(event) {
-  if (event.key !== 'Escape' || !detail) return
-  detail = null
+  if (event.key !== 'Escape') return
+  if (detail) detail = null
+  else if (accessPromptOpen) accessPromptOpen = false
+  else return
   scheduleRender()
+}
+
+function handleSubmit(event) {
+  const form = event.target.closest('[data-access-form]')
+  if (!form) return
+  event.preventDefault()
+  const field = form.elements.namedItem('accessToken')
+  if (!setAppAccessToken(field?.value)) return
+  accessPromptOpen = false
+  window.location.reload()
 }
 
 async function syncDashboard() {
@@ -839,9 +894,9 @@ async function syncDashboard() {
 }
 
 function connectLive() {
-  const token = window.prompt('OdiePt erişim anahtarı')
-  if (!setAppAccessToken(token)) return
-  window.location.reload()
+  detail = null
+  accessPromptOpen = true
+  scheduleRender()
 }
 
 function icon(name) {
