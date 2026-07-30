@@ -1816,47 +1816,6 @@ svg {
   line-height: 1.55;
 }
 
-.access-form {
-  display: grid;
-  margin-top: 20px;
-  gap: 10px;
-}
-
-.access-form label {
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.access-form input {
-  width: 100%;
-  min-height: 48px;
-  padding: 0 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: 0;
-  outline: 0;
-  color: var(--ink);
-  background: rgba(4, 6, 5, 0.64);
-}
-
-.access-form input:focus {
-  border-color: var(--lime);
-  box-shadow: 0 0 0 2px var(--lime-soft);
-}
-
-.access-actions {
-  display: flex;
-  margin-top: 8px;
-  gap: 8px;
-}
-
-.access-actions > button {
-  min-height: 44px;
-  margin: 0;
-}
-
 .detail-section {
   margin-top: 18px;
 }

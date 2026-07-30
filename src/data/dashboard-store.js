@@ -1,5 +1,4 @@
 import { MOCK_STATE } from './mock-state.js'
-import { appHeaders, hasAppAccessToken } from './app-access.js'
 import { normalizeSession } from './rules.js'
 
 const CACHE_KEY = 'odiept-dashboard-cache-v2'
@@ -173,7 +172,7 @@ function normalizePayload(payload = {}, fallbackMode = 'live') {
     workouts,
     syncState: payload.syncState || null,
     source: payload.source || { hevy: 'configured' },
-    privacy: payload.privacy || 'private-athlete',
+    privacy: payload.privacy || 'public-readonly',
     mode: fallbackMode,
     lastSyncedAt:
       payload.syncState?.last_synced_at
@@ -246,7 +245,7 @@ export const dashboardStore = {
   },
 
   async init() {
-    const cached = hasAppAccessToken() ? readCache() : null
+    const cached = readCache()
     if (cached) {
       state = {
         ...normalizePayload(cached.payload, 'cache'),
@@ -280,7 +279,7 @@ export const dashboardStore = {
         params.set('refresh_nonce', Date.now().toString(36))
       }
       const snapshotResponse = await fetch(`/api/snapshot?${params}`, {
-        headers: appHeaders(),
+        cache: 'no-store',
       })
       const snapshot = await readJson(snapshotResponse, 'snapshot_failed')
       const normalized = normalizePayload(snapshot, 'live')

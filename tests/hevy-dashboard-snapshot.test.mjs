@@ -179,7 +179,7 @@ test('direct Hevy snapshot derives the game profile and strips private source fi
   assert.equal(snapshot.syncState.pagination.fetched_pages, 1)
   assert.equal(snapshot.syncState.mapping.source, 'hevy-template')
   assert.equal(snapshot.syncState.mapping.coverage_percent, 100)
-  assert.equal(snapshot.privacy, 'private-athlete')
+  assert.equal(snapshot.privacy, 'public-readonly')
 })
 
 test('direct Hevy snapshot keeps 240-workout history complete with bounded gamification cost', async () => {

@@ -34,15 +34,14 @@ Durum / Bölgeler / Seanslar
 - Üretim dashboardu veriyi doğrudan Hevy API'den okur; Supabase, webhook ve cron gerekmez.
 - Dashboarddaki “Hevy’yi yenile” butonu sunucu cache'ini kontrollü biçimde tazeler.
 - API yalnızca dashboardun kullandığı alanları döndürür; Hevy notları ve ham payload tarayıcıya gönderilmez.
-- Dashboard kişisel antrenman verisi taşıdığı için `/api/snapshot` fail-closed çalışır; `ODIE_APP_ACCESS_TOKEN` olmadan açılmaz.
-- Yanıtlar `private, no-store` gönderilir. Tarayıcıdaki erişim anahtarı build içine gömülmez; yalnızca kullanıcının cihazında tutulur.
+- Dashboard salt-okunur ve doğrudan açılır; kullanıcıdan erişim anahtarı veya parola istemez.
+- Hevy API anahtarı yalnızca sunucuda kalır. Yanıtlar `private, no-store` gönderilir ve Hevy notları/ham payload yayınlanmaz.
 - Kas haritası önce Hevy exercise-template ana/ikincil kas alanlarını kullanır, katalog eşleşmezse kontrollü isim eşlemesine düşer.
 - Hevy hattı Gemini, coach veya başka bir model çağrısı yapmaz.
 
 ## Gerekli production env
 
 - `HEVY_API_KEY`
-- `ODIE_APP_ACCESS_TOKEN`
 
 Supabase, Gemini, Apple Health, Telegram, webhook ve cron değişkenleri mevcut ürün için gerekli değildir.
 
@@ -53,7 +52,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Yerelde gerekli sunucu envleri yoksa güvenli demo veri gösterilir. Gerçek veriye bağlanmak için hem `HEVY_API_KEY` hem `ODIE_APP_ACCESS_TOKEN` gerekir; erişim anahtarı arayüzde cihaz bazında girilir.
+Yerelde `HEVY_API_KEY` yoksa demo veri gösterilir. Production’da sayfa parola istemeden salt-okunur canlı Hevy verisini açar.
 
 ## Doğrulama
 
@@ -79,7 +78,7 @@ npm.cmd run live:smoke
 - `src/data/dashboard-model.js` — 7/28 günlük istatistikler, ranklar ve bölge açıkları
 - `src/data/dashboard-store.js` — demo/cache/live snapshot durumu
 - `src/data/body-map-engine.js` — Hevy egzersizlerinden bölge yükü ve ihmal sinyali
-- `api/snapshot.js` — cache'li, zorunlu token korumalı özel Hevy dashboard paketi
+- `api/snapshot.js` — cache'li, salt-okunur ve parolasız Hevy dashboard paketi
 - `lib/hevy/dashboard-snapshot.js` — pagination, template kas kataloğu, normalizasyon, XP/rank ve sınırlı özel payload
 
 ## Deploy

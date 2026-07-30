@@ -1,4 +1,3 @@
-import { appAuthConfigured, authorizeAppRequest } from '../lib/app-auth.js'
 import {
   buildDirectHevySnapshot,
   resetHevyTemplateCacheForTest,
@@ -18,7 +17,6 @@ function asLimit(value, fallback = 120, max = 160) {
 
 function cacheHeaders(res) {
   res.setHeader('Cache-Control', 'private, no-store, max-age=0')
-  res.setHeader('Vary', 'Authorization, X-Odie-Token')
 }
 
 function syncTimestamp(payload = {}) {
@@ -104,12 +102,6 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ ok: false, error: 'GET gerekli' })
-  }
-  if (!appAuthConfigured()) {
-    return res.status(503).json({ ok: false, error: 'app_auth_not_configured' })
-  }
-  if (!authorizeAppRequest(req).ok) {
-    return res.status(401).json({ ok: false, error: 'unauthorized' })
   }
   if (!process.env.HEVY_API_KEY) {
     return res.status(500).json({ ok: false, error: 'HEVY_API_KEY env eksik' })

@@ -33,20 +33,16 @@ function textResponse(status, body) {
 test('live smoke passes the direct Hevy production contract', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
-    token: 'app-secret',
-    fetchImpl: async (url, options = {}) => {
+    fetchImpl: async url => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt · Training Console</title>')
       if (path === '/api/snapshot') {
-        if (!options.headers?.Authorization) {
-          return jsonResponse(401, { ok: false, error: 'unauthorized' })
-        }
         return jsonResponse(200, {
           ok: true,
           profile: { nick: 'Alperen' },
           workouts: [{ id: 'w1', date: '2026-07-25' }],
           source: { hevy: 'live-direct', storage: 'none' },
-          privacy: 'private-athlete',
+          privacy: 'public-readonly',
         }, { 'cache-control': 'private, no-store, max-age=0' })
       }
       return textResponse(404, 'missing')
@@ -54,13 +50,12 @@ test('live smoke passes the direct Hevy production contract', async () => {
   })
 
   assert.equal(result.ok, true)
-  assert.deepEqual(result.results.map(item => item.name), ['home', 'snapshot-lock', 'snapshot'])
+  assert.deepEqual(result.results.map(item => item.name), ['home', 'snapshot'])
 })
 
 test('live smoke fails an old deployment without the direct snapshot', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
-    token: 'app-secret',
     fetchImpl: async url => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt</title>')
@@ -71,27 +66,23 @@ test('live smoke fails an old deployment without the direct snapshot', async () 
   assert.equal(result.ok, false)
   assert.deepEqual(
     result.results.filter(item => !item.ok).map(item => item.name),
-    ['snapshot-lock', 'snapshot'],
+    ['snapshot'],
   )
 })
 
 test('live smoke fails if snapshot exposes raw or private workout fields', async () => {
   const result = await runLiveSmoke({
     baseUrl: 'https://example.test',
-    token: 'app-secret',
-    fetchImpl: async (url, options = {}) => {
+    fetchImpl: async url => {
       const path = new URL(url).pathname
       if (path === '/') return textResponse(200, '<title>OdiePt · Training Console</title>')
       if (path === '/api/snapshot') {
-        if (!options.headers?.Authorization) {
-          return jsonResponse(401, { ok: false, error: 'unauthorized' })
-        }
         return jsonResponse(200, {
           ok: true,
           profile: { nick: 'Alperen' },
           workouts: [{ id: 'w1', notes: 'private' }],
           source: { hevy: 'live-direct' },
-          privacy: 'private-athlete',
+          privacy: 'public-readonly',
         }, { 'cache-control': 'private, no-store' })
       }
       return textResponse(404, 'missing')

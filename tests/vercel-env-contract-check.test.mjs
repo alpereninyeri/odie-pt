@@ -28,7 +28,7 @@ test('vercel env parser extracts env names without values', () => {
   assert.equal(names.has('Encrypted'), false)
 })
 
-test('vercel env contract accepts the Hevy key and private app token', () => {
+test('vercel env contract accepts the Hevy key for the public read-only dashboard', () => {
   const result = evaluateVercelEnvContract(parseVercelEnvList(CURRENT_LIVE_SHAPE))
   assert.equal(result.ok, true)
   assert.deepEqual(result.missing, [])
@@ -37,12 +37,9 @@ test('vercel env contract accepts the Hevy key and private app token', () => {
   assert.equal(result.warnings.some(item => item.includes('legacy Hevy sync secret')), true)
 })
 
-test('vercel env contract fails when either private dashboard secret is absent', () => {
+test('vercel env contract only requires the Hevy API key', () => {
   const names = new Set(['VITE_SUPABASE_URL', 'GEMINI_API_KEY'])
   const result = evaluateVercelEnvContract(names)
   assert.equal(result.ok, false)
-  assert.deepEqual(result.missing.map(item => item.label), [
-    'Hevy API key',
-    'OdiePt app access token',
-  ])
+  assert.deepEqual(result.missing.map(item => item.label), ['Hevy API key'])
 })

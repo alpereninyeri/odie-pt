@@ -26,9 +26,7 @@ function listFiles(dir) {
 const requiredFiles = [
   '.vercelignore',
   'api/snapshot.js',
-  'lib/app-auth.js',
   'lib/hevy/dashboard-snapshot.js',
-  'src/data/app-access.js',
   'src/data/dashboard-model.js',
   'src/data/dashboard-store.js',
   'scripts/db-contract-check.mjs',
@@ -123,8 +121,11 @@ if (/SUPABASE|sbGet|hevy_sync_state/.test(snapshotApi)) {
 if (!snapshotApi.includes('buildDirectHevySnapshot')) {
   fail('api/snapshot.js must use the direct Hevy snapshot builder')
 }
-if (!snapshotApi.includes('app_auth_not_configured') || !snapshotApi.includes('private, no-store')) {
-  fail('api/snapshot.js must fail closed and disable shared/private response caching')
+if (!snapshotApi.includes('private, no-store')) {
+  fail('api/snapshot.js must disable shared/browser response caching')
+}
+if (/authorizeAppRequest|appAuthConfigured|ODIE_APP_ACCESS_TOKEN/.test(snapshotApi)) {
+  fail('api/snapshot.js must be public read-only without a dashboard password wall')
 }
 if (/public,\s*s-maxage/.test(snapshotApi)) {
   fail('api/snapshot.js must not publish athlete data through shared CDN caching')

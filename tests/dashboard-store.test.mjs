@@ -85,7 +85,7 @@ test('malformed sync metadata never gets a fabricated fresh timestamp', () => {
   assert.equal(normalized.lastSyncedAt, null)
 })
 
-test('clearing app access also has a cache purge primitive', () => {
+test('dashboard cache exposes a purge primitive', () => {
   const previous = globalThis.localStorage
   globalThis.localStorage = memoryStorage()
   try {

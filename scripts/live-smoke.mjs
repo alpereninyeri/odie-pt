@@ -43,13 +43,8 @@ async function checkHome(baseUrl, fetchImpl) {
   return pass('home', { status: response.status })
 }
 
-async function checkSnapshot(baseUrl, fetchImpl, token = '') {
-  if (!token) {
-    return fail('snapshot', 'ODIE_APP_ACCESS_TOKEN is required for the private dashboard smoke test')
-  }
-  const response = await fetchImpl(`${baseUrl}/api/snapshot?workouts=20`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+async function checkSnapshot(baseUrl, fetchImpl) {
+  const response = await fetchImpl(`${baseUrl}/api/snapshot?workouts=20`)
   const { data, text } = await readJson(response)
   if (response.status !== 200 || data?.ok !== true) {
     return fail('snapshot', `expected 200 with live Hevy data, got ${response.status}`, { sample: sample(text) })
@@ -63,7 +58,7 @@ async function checkSnapshot(baseUrl, fetchImpl, token = '') {
   if (data.workouts.some(workout => 'rawExternal' in workout || 'notes' in workout)) {
     return fail('snapshot', 'snapshot exposes private/raw workout fields')
   }
-  if (data.privacy !== 'private-athlete') {
+  if (data.privacy !== 'public-readonly') {
     return fail('snapshot', `unexpected privacy mode: ${data.privacy || 'empty'}`)
   }
   const cacheControl = response.headers?.get?.('cache-control') || ''
@@ -77,26 +72,15 @@ async function checkSnapshot(baseUrl, fetchImpl, token = '') {
   })
 }
 
-async function checkSnapshotLock(baseUrl, fetchImpl) {
-  const response = await fetchImpl(`${baseUrl}/api/snapshot?workouts=1`)
-  const { data, text } = await readJson(response)
-  if (response.status !== 401 || data?.error !== 'unauthorized') {
-    return fail('snapshot-lock', `expected 401 unauthorized, got ${response.status}`, { sample: sample(text) })
-  }
-  return pass('snapshot-lock', { status: response.status })
-}
-
 export async function runLiveSmoke({
   baseUrl = process.env.ODIEPT_LIVE_URL || DEFAULT_BASE_URL,
-  token = process.env.ODIE_APP_ACCESS_TOKEN || '',
   fetchImpl = globalThis.fetch,
 } = {}) {
   if (!fetchImpl) throw new Error('fetch is not available')
   const root = normalizeBaseUrl(baseUrl)
   const checks = [
     () => checkHome(root, fetchImpl),
-    () => checkSnapshotLock(root, fetchImpl),
-    () => checkSnapshot(root, fetchImpl, token),
+    () => checkSnapshot(root, fetchImpl),
   ]
 
   const results = []

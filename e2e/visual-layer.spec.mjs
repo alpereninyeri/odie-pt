@@ -114,12 +114,9 @@ for (const viewport of viewports) {
   })
 }
 
-test('private direct Hevy snapshot loads with app auth and manual refresh re-reads it', async ({ page }) => {
+test('public read-only Hevy snapshot loads directly and manual refresh re-reads it', async ({ page }) => {
   const snapshotRequests = []
   const today = new Date().toISOString().slice(0, 10)
-  await page.addInitScript(() => {
-    localStorage.setItem('odiept-app-access-token', 'e2e-app-secret')
-  })
 
   await page.route('**/api/snapshot?**', async route => {
     snapshotRequests.push({
@@ -172,7 +169,7 @@ test('private direct Hevy snapshot loads with app auth and manual refresh re-rea
           last_synced_at: new Date().toISOString(),
         },
         source: { hevy: 'live-direct', storage: 'none' },
-        privacy: 'private-athlete',
+        privacy: 'public-readonly',
       }),
     })
   })
@@ -195,33 +192,34 @@ test('private direct Hevy snapshot loads with app auth and manual refresh re-rea
 
   expect(snapshotRequests.length).toBeGreaterThanOrEqual(2)
   expect(snapshotRequests.some(request => new URL(request.url).searchParams.get('refresh') === '1')).toBe(true)
-  expect(snapshotRequests.every(request => request.headers.authorization === 'Bearer e2e-app-secret')).toBe(true)
+  expect(snapshotRequests.every(request => !request.headers.authorization)).toBe(true)
   await auditSurface(page)
 })
 
-test('locked dashboard does not fetch private data without an access token', async ({ page }) => {
+test('dashboard has no access-key wall or password prompt', async ({ page }) => {
   const requests = []
   await page.route('**/api/snapshot?**', async route => {
     requests.push(route.request().headers())
     await route.fulfill({
-      status: 401,
+      status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ ok: false, error: 'unauthorized' }),
+      body: JSON.stringify({
+        ok: true,
+        profile: { nick: 'Alperen', level: 8 },
+        workouts: [],
+        syncState: { mode: 'direct', fetched_workouts: 0, last_synced_at: new Date().toISOString() },
+        source: { hevy: 'live-direct', storage: 'none' },
+        privacy: 'public-readonly',
+      }),
       headers: { 'cache-control': 'private, no-store' },
     })
   })
 
   await page.goto('/?tab=overview')
-  await expect(page.locator('.status-banner.is-error')).toBeVisible()
-  await expect(page.locator('.status-banner.is-error')).toContainText('OdiePt kilitli')
-  const accessButton = page.locator('.rail-source [data-access]')
-  await expect(accessButton).toHaveCount(1)
-  await expect(accessButton).toContainText('Erişim anahtarı gir')
-  await accessButton.click()
-  await expect(page.locator('.access-sheet')).toBeVisible()
-  await page.getByLabel('OdiePt erişim anahtarı').fill('test-only-secret')
-  await page.locator('.access-sheet .icon-button').click()
-  await expect(page.locator('.access-sheet')).toHaveCount(0)
+  await page.locator('.app-shell.mode-live').waitFor()
+  await expect(page.locator('.rail-source')).toContainText('HEVY CANLI')
+  await expect(page.locator('[data-access], .access-sheet')).toHaveCount(0)
+  await expect(page.getByText('OdiePt kilitli')).toHaveCount(0)
   expect(requests.length).toBeGreaterThan(0)
   expect(requests.every(headers => !headers.authorization)).toBe(true)
 })
